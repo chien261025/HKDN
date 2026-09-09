@@ -1,0 +1,59 @@
+server:
+  port: 8080
+  servlet:
+    context-path: /api/v1
+
+spring:
+  application:
+    name: smart-wms-backend
+  profiles:
+    active: dev
+
+  datasource:
+    url: jdbc:postgresql://${DB_HOST:localhost}:${DB_PORT:5432}/${DB_NAME:wms_db}
+    username: ${DB_USER:postgres}
+    password: ${DB_PASSWORD:password123}
+    driver-class-name: org.postgresql.Driver
+    hikari:
+      maximum-pool-size: 20
+      minimum-idle: 5
+      connection-timeout: 30000
+
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    show-sql: false
+    properties:
+      hibernate:
+        format_sql: true
+        jdbc:
+          batch_size: 50
+
+  rabbitmq:
+    host: ${RABBITMQ_HOST:localhost}
+    port: ${RABBITMQ_PORT:5672}
+    username: ${RABBITMQ_USER:guest}
+    password: ${RABBITMQ_PASS:guest}
+    template:
+      retry:
+        enabled: true
+        max-attempts: 3
+
+# Cấu hình MinIO S3
+minio:
+  endpoint: ${MINIO_ENDPOINT:http://localhost:9000}
+  access-key: ${MINIO_ACCESS_KEY:minioadmin}
+  secret-key: ${MINIO_SECRET_KEY:minioadmin}
+  bucket-name: wms-reports
+
+# Cấu hình Bảo mật JWT
+jwt:
+  secret-key: 404E635266556A586E3272357538782F413F4428472B4B6250645367566B5970
+  expiration-ms: 86400000 # 24 giờ
+
+# Cấu hình Trợ lý AI (OpenAI/Claude hoặc mô hình cục bộ)
+ai:
+  llm:
+    api-key: ${LLM_API_KEY:mock-key}
+    model: gpt-4o-mini
+    max-tokens: 1000

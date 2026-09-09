@@ -1,0 +1,57 @@
+{
+  "rabbit_version": "3.12.0",
+  "users": [
+    {
+      "name": "guest",
+      "password_hash": "k/dF1pI3uQ0u2k8D1B1YtA==",
+      "hashing_algorithm": "rabbit_password_hashing_sha256",
+      "tags": ["administrator"]
+    }
+  ],
+  "vhosts": [
+    {
+      "name": "/"
+    }
+  ],
+  "permissions": [
+    {
+      "user": "guest",
+      "vhost": "/",
+      "configure": ".*",
+      "write": ".*",
+      "read": ".*"
+    }
+  ],
+  "exchanges": [
+    {
+      "name": "wms.report.exchange",
+      "vhost": "/",
+      "type": "direct",
+      "durable": true,
+      "auto_delete": false,
+      "internal": false,
+      "arguments": {}
+    }
+  ],
+  "queues": [
+    {
+      "name": "wms.report.task.queue",
+      "vhost": "/",
+      "durable": true,
+      "auto_delete": false,
+      "arguments": {
+        "x-dead-letter-exchange": "wms.report.dlx"
+      }
+    }
+  ],
+  "bindings": [
+    {
+      "source": "wms.report.exchange",
+      "vhost": "/",
+      "destination": "wms.report.task.queue",
+      "destination_type": "queue",
+      "routing_key": "report.generate",
+      "arguments": {}
+    }
+  ]
+}

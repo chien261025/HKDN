@@ -1,0 +1,103 @@
+version: '3.8'
+
+services:
+  # 1. Cơ sở dữ liệu PostgreSQL
+  wms-postgres:
+    image: postgres:16-alpine
+    container_name: wms-postgres
+    restart: always
+    environment:
+      POSTGRES_DB: wms_db
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: password123
+    ports:
+      - "5432:5432"
+    volumes:
+      - wms_pgdata:/var/lib/postgresql/data
+      - ./docker/postgres/init:/docker-entrypoint-initdb.d
+    networks:
+      - wms-net
+
+  # 2. Hàng đợi thông điệp RabbitMQ (Hỗ trợ Management Web UI)
+  wms-rabbitmq:
+    image: rabbitmq:3-management-alpine
+    container_name: wms-rabbitmq
+    restart: always
+    ports:
+      - "5672:5672"     # AMQP protocol
+      - "15672:15672"   # Management Dashboard
+    environment:
+      RABBITMQ_DEFAULT_USER: guest
+      RABBITMQ_DEFAULT_PASS: guest
+    volumes:
+      - ./docker/rabbitmq/rabbitmq.conf:/etc/rabbitmq/rabbitmq.conf:ro
+      - ./docker/rabbitmq/definitions.json:/etc/rabbitmq/definitions.json:ro
+      - wms_mqdata:/var/lib/rabbitmq
+    networks:
+      - wms-net
+
+  # 3. Lưu trữ đối tượng MinIO (Tương thích chuẩn AWS S3)
+  wms-minio:
+    image: minio/minio:latest
+    container_name: wms-minio
+    restart: always
+    command: server /data --console-address ":9001"
+    ports:
+      - "9000:9000"     # S3 API
+      - "9001:9001"     # Web Console
+    environment:
+      MINIO_ROOT_USER: minioadmin
+      MINIO_ROOT_PASSWORD: minioadmin
+    volumes:
+      - wms_miniodata:/data
+    networks:
+      - wms-net
+
+  # 4. Backend Spring Boot 3
+  wms-backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: wms-backend
+    restart: always
+    depends_on:
+      - wms-postgres
+      - wms-rabbitmq
+      - wms-minio
+    environment:
+      SPRING_PROFILES_ACTIVE: prod
+      DB_HOST: wms-postgres
+      DB_PORT: 5432
+      DB_NAME: wms_db
+      DB_USER: postgres
+      DB_PASSWORD: password123
+      RABBITMQ_HOST: wms-rabbitmq
+      RABBITMQ_PORT: 5672
+      MINIO_ENDPOINT: http://wms-minio:9000
+    ports:
+      - "8080:8080"
+    networks:
+      - wms-net
+
+  # 5. Frontend React 18 + Nginx
+  wms-frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: wms-frontend
+    restart: always
+    depends_on:
+      - wms-backend
+    ports:
+      - "3000:80"
+    networks:
+      - wms-net
+
+volumes:
+  wms_pgdata:
+  wms_mqdata:
+  wms_miniodata:
+
+networks:
+  wms-net:
+    driver: bridge
