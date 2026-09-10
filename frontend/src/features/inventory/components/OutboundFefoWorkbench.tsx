@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { RotateCcw } from 'lucide-react';
+import { RotateCcw, ShieldCheck, Zap } from 'lucide-react';
 import { OrderItem, LedgerEntryData, InventoryStats } from '../types';
 import { OrderSelectorCard } from './outbound/OrderSelectorCard';
 import { FefoAllocationCard } from './outbound/FefoAllocationCard';
@@ -158,32 +158,36 @@ export const OutboundFefoWorkbench: React.FC = () => {
   };
 
   return (
-    <div className="space-y-5">
-      {/* Banner Tiêu Đề Điều Phối Nhỏ Gọn */}
-      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 bg-slate-900/50 p-4 rounded-2xl border border-slate-800">
-        <div>
-          <h2 className="text-base font-bold text-white flex items-center gap-2">
-            Điều Phối Xuất Kho & Phân Bổ FEFO
-            <span className="text-[11px] font-mono font-medium px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
-              Khóa bi quan (SELECT FOR UPDATE)
-            </span>
-          </h2>
-          <p className="text-xs text-slate-400 mt-0.5">
-            Tự động ưu tiên lô cận date, khóa giữ hàng an toàn chống âm kho và ghi sổ cái bất biến.
-          </p>
+    <div className="space-y-4">
+      {/* Thanh Trạng Thái Nhỏ Gọn & Nút Reset Tinh Tế */}
+      <div className="flex items-center justify-between text-xs py-0.5">
+        <div className="flex items-center gap-2">
+          <span className="text-slate-300 font-semibold flex items-center gap-1.5">
+            <Zap className="w-3.5 h-3.5 text-cyan-400" />
+            Chiến Lược Xuất:
+          </span>
+          <span className="font-mono text-cyan-300 bg-cyan-950/40 px-2 py-0.5 rounded border border-cyan-800/40 text-[11px] font-semibold">
+            FEFO (First Expired, First Out)
+          </span>
+          <span className="text-slate-500 hidden sm:inline">•</span>
+          <span className="text-slate-400 hidden sm:inline flex items-center gap-1">
+            <ShieldCheck className="w-3.5 h-3.5 text-emerald-400 inline" />
+            Khóa Bi Quan: SELECT FOR UPDATE
+          </span>
         </div>
 
         <button
           onClick={handleReset}
-          className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-750 text-slate-300 hover:text-white text-xs font-medium border border-slate-700/80 transition-colors"
+          className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-slate-300 hover:text-white text-xs font-medium border border-slate-800 hover:border-slate-700 transition-colors shadow-sm"
+          title="Đặt lại dữ liệu để thử nghiệm lại từ đầu"
         >
           <RotateCcw className="w-3.5 h-3.5 text-slate-400" />
-          <span>Đặt Lại Trạng Thái</span>
+          <span>Đặt Lại Demo</span>
         </button>
       </div>
 
-      {/* Grid 2 Cột Cân Đối: Cột Trái (Nghiệp Vụ) & Cột Phải (Tồn Kho & Sổ Cái) */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 items-start">
+      {/* Grid 2 Cột Cân Đối: Cột Trái (Nghiệp Vụ 60%) & Cột Phải (Tồn Kho & Sổ Cái 40%) */}
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 items-start">
         {/* CỘT TRÁI (7 COLS): CHỌN ĐƠN & PHÂN TÍCH FEFO */}
         <div className="lg:col-span-7 space-y-4">
           <OrderSelectorCard
