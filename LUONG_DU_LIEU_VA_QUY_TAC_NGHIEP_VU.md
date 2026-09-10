@@ -70,26 +70,26 @@ flowchart TD
 ### 2.1. Dòng Nhập Kho (Inbound Stream)
 
 ```
-Supplier ──► Inbound Order ──► Receiving ──► Putaway ──► wms_inventory
+Supplier ──► Inbound Order ──► Receipt & QC ──► Putaway Task ──► wms_inventory ──► Stock Ledger
 ```
 
 1. **Bước 1: Nhà cung cấp (Supplier) & Danh mục cung ứng (`wms_supplier`, `wms_supplier_product`)**
    - Quản lý Master data nhà cung cấp, mã sản phẩm của NCC (`supplier_sku`), đơn giá nhập (`purchase_price`), thời gian giao hàng (`lead_time_days`), và cờ nhà cung cấp ưu tiên (`is_preferred`).
 2. **Bước 2: Đơn đặt hàng nhập kho (`wms_inbound_order`, `wms_inbound_order_item`)**
-   - Tạo PO với trạng thái khởi tạo `PENDING`.
+   - Tạo Purchase Order (PO) với trạng thái `PENDING`.
    - Mỗi dòng đơn chứa: `product_id`, số lượng dự kiến (`expected_qty`), đơn giá, và dung sai vượt giao cho phép (`over_delivery_tolerance_pct` - mặc định 10%).
-3. **Bước 3: Tiếp nhận & Kiểm tra chất lượng (Receiving & Inspection)**
-   - Hàng về cửa tiếp nhận (Dock), nhân viên quét Barcode kiểm tra sản phẩm.
-   - Cập nhật số lượng thực nhận (`received_qty`). Nếu `received_qty > expected_qty * (1 + tolerance_pct / 100)`, hệ thống chặn không cho nhận vượt mức.
-   - Khởi tạo Lô hàng trong `wms_product_batch`: `batch_number`, ngày sản xuất (`manufacture_date`), hạn sử dụng (`expiry_date`), và trạng thái lô (`ACTIVE` nếu đạt chuẩn, `QUARANTINE` nếu cần kiểm định mẫu).
-   - Chuyển trạng thái đơn: `PENDING` $\rightarrow$ `RECEIVING` $\rightarrow$ `RECEIVED`.
-4. **Bước 4: Cất hàng vào kệ (Putaway Engine)**
-   - Hệ thống chạy giải thuật `suggestOptimalPutAwayLocation(preferredZone, itemWeight)`:
-     - Lọc các ô kệ hoạt động (`is_active = true`) thuộc đúng Zone nhiệt độ (Zone A: Khô, Zone B: Mát).
+3. **Bước 3: Tiếp nhận & Kiểm định chất lượng (`wms_receipt`, `wms_receipt_item`)**
+   - Xe chở hàng đến cửa tiếp nhận (Receiving Dock), hệ thống tạo Biên bản tiếp nhận `wms_receipt` (`receipt_code`, `dock_number`, `received_by`).
+   - Nhân viên quét Barcode kiểm đếm, ghi nhận chi tiết vào `wms_receipt_item`: số lượng đạt chuẩn (`accepted_qty`), số lượng lỗi/hỏng (`rejected_qty`, `reject_reason`).
+   - Khởi tạo Lô hàng trong `wms_product_batch`: `batch_number`, ngày sản xuất (`manufacture_date`), hạn sử dụng (`expiry_date`), và trạng thái lô (`ACTIVE` hoặc `QUARANTINE`).
+4. **Bước 4: Điều phối cất hàng vào kệ (`wms_putaway_task`)**
+   - Hệ thống chạy giải thuật `suggestOptimalPutAwayLocation`:
+     - Lọc các ô kệ hoạt động (`is_active = true`) thuộc đúng Phân khu nhiệt độ (Zone A: Khô, Zone B: Mát).
      - Kiểm tra sức chứa tải trọng: `location.max_weight_kg >= itemWeight`.
      - Với hàng nặng (> 100kg): tự động ưu tiên tầng trệt (`Shelf = S01`) để đảm bảo an toàn kết cấu kệ.
-   - Khi nhân viên cất hàng vào ô và quét xác nhận:
-     - Tăng số lượng thực tế: `wms_inventory.on_hand_qty += received_qty`.
+   - Hệ thống tạo lệnh cất hàng `wms_putaway_task` (`source_location_id` $\rightarrow$ `destination_location_id`, `quantity`, `assigned_to`).
+   - Khi nhân viên mang hàng lên kệ quét xác nhận (`COMPLETED`):
+     - Tăng số lượng thực tế: `wms_inventory.on_hand_qty += accepted_qty`.
      - Ghi nhận bút toán vào Sổ cái `wms_stock_ledger` với `transaction_type = 'INBOUND'`.
 
 ---
@@ -123,52 +123,46 @@ Lõi tồn kho là "trái tim" của hệ thống, quản lý số dư và tính
 - Cột tự sinh: `difference_qty = counted_qty - system_qty`.
 - Khóa ngoại phức hợp `fk_audit_item_inventory` bắt buộc: chỉ được kiểm kê bộ ba `(location_id, product_id, batch_id)` thực sự tồn tại trong `wms_inventory`.
 
-#### E. Quản Lý Hạn Dùng & Giải Thuật FEFO (`wms_product_batch`)
-- Quản lý trạng thái lô: `ACTIVE` (được xuất), `QUARANTINE` (cách ly), `EXPIRED` (hết hạn), `RECALLED` (thu hồi).
-- Partial Index chuyên biệt:
-  ```sql
-  CREATE INDEX idx_batch_fefo_active 
-  ON wms_product_batch(product_id, expiry_date ASC NULLS LAST) 
-  WHERE status = 'ACTIVE';
-  ```
-  Giúp Database Engine tối ưu hóa đường dẫn truy vấn bằng **Index Scan** thay vì quét tuần tự toàn bộ bảng (Sequential Scan).
+#### E. Cân Chỉnh Tồn Kho Sau Kiểm Kê (`wms_stock_adjustment`, `wms_stock_adjustment_item`)
+- Khi phiếu kiểm kê có chênh lệch (`difference_qty != 0`), hệ thống tạo Phiếu điều chỉnh tồn kho `wms_stock_adjustment` kèm chi tiết `wms_stock_adjustment_item`.
+- Khi Trưởng kho phê duyệt (`APPROVED`):
+  - Cập nhật lại `wms_inventory.on_hand_qty = actual_qty`.
+  - Ghi bút toán điều chỉnh vào `wms_stock_ledger` với `transaction_type = 'ADJUSTMENT'` và `qty_change = adjusted_qty`.
 
-#### F. Cân Chỉnh Tồn Kho (Stock Adjustment)
-- Khi phiếu kiểm kê được Trưởng kho phê duyệt (`APPROVED`):
-  - Với các dòng lệch (`DISCREPANCY`): Cập nhật lại `wms_inventory.on_hand_qty = counted_qty`.
-  - Ghi bút toán điều chỉnh vào `wms_stock_ledger` với `transaction_type = 'ADJUSTMENT'`.
+#### F. Quản Lý Hạn Dùng & Giải Thuật FEFO (`wms_product_batch`)
+- Quản lý trạng thái lô: `ACTIVE` (được xuất), `QUARANTINE` (cách ly), `EXPIRED` (hết hạn), `RECALLED` (thu hồi).
+- Partial Index chuyên biệt `idx_batch_fefo_active` giúp Database Engine tối ưu hóa đường dẫn truy vấn bằng **Index Scan** thay vì quét tuần tự toàn bộ bảng (Sequential Scan).
 
 ---
 
 ### 2.3. Dòng Xuất Kho & Giao Vận (Outbound Stream)
 
 ```
-wms_inventory ──► Reservation ──► Outbound Order ──► Picking (FEFO) ──► Packing ──► Shipping
+Outbound Order ──► Stock Reservation ──► Picking (FEFO) ──► Packing & QC ──► Shipping ──► Stock Ledger
 ```
 
-1. **Bước 1: Khóa giữ hàng an toàn (Stock Reservation - `InventoryLockService`)**
-   - Khi đơn hàng phát sinh, hệ thống không trừ `on_hand_qty` ngay mà gọi `reserveStock(...)`.
-   - Sử dụng **Pessimistic Locking (`SELECT FOR UPDATE`)** trên dòng `wms_inventory` tương ứng.
-   - Kiểm tra `available_qty >= requestedQty`. Nếu đủ, tăng `reserved_qty += requestedQty`.
-   - **Mục đích:** Đảm bảo hàng không bị bán trùng (Overselling) ngay cả khi có 100 yêu cầu đồng thời truy cập cùng 1 mặt hàng.
-2. **Bước 2: Đơn xuất hàng (`wms_outbound_order`, `wms_outbound_order_item`)**
-   - Chuyển trạng thái đơn: `PENDING` $\rightarrow$ `ALLOCATED`.
-3. **Bước 3: Phân bổ & Sinh lộ trình nhặt hàng (Picking - `OutboundService`)**
+1. **Bước 1: Đơn xuất hàng (`wms_outbound_order`, `wms_outbound_order_item`)**
+   - Tiếp nhận Sales Order (SO) từ khách hàng/hệ thống bán hàng, trạng thái khởi tạo `PENDING`.
+2. **Bước 2: Khóa giữ chỗ tồn kho (`wms_stock_reservation` + Pessimistic Lock)**
+   - Hệ thống dùng **Pessimistic Locking (`SELECT FOR UPDATE`)** trên dòng `wms_inventory` tương ứng để chống Race Condition.
+   - Tạo bản ghi trong bảng `wms_stock_reservation` (`outbound_order_id`, `location_id`, `product_id`, `batch_id`, `reserved_qty`, `status = 'RESERVED'`).
+   - Tăng `wms_inventory.reserved_qty += requestedQty`. Lúc này `available_qty` tự động giảm.
+3. **Bước 3: Phân bổ & Sinh lộ trình nhặt hàng (`wms_pick_allocation`)**
    - Hệ thống quét các Lô còn hạn sử dụng gần nhất theo giải thuật FEFO.
-   - Tạo bản ghi trong `wms_pick_allocation` (đầy đủ `outbound_order_item_id`, `product_id`, `location_id`, `batch_id`, `allocated_qty`).
+   - Tạo bản ghi trong `wms_pick_allocation` (có đầy đủ khóa ngoại 3 chiều: Order Item + Batch + Inventory).
    - Sắp xếp thứ tự các điểm dừng lấy hàng (Pick List) tối ưu theo tọa độ: `Aisle` $\rightarrow$ `Rack` $\rightarrow$ `Shelf` để nhân viên nhặt hàng đi theo 1 chiều duy nhất, không phải đi vòng vèo.
    - Sau khi nhặt xong, chuyển trạng thái sang `PICKED`.
-4. **Bước 4: Đóng gói & Kiểm đếm chất lượng (Packing & QC)**
+4. **Bước 4: Đóng gói kiện hàng & Kiểm đếm QC (`wms_package`, `wms_package_item`)**
    - Hàng được tập kết về bàn đóng gói (Packing Station).
-   - Nhân viên quét mã Barcode từng sản phẩm để đối chiếu với Pick List, đóng thùng, dán nhãn vận chuyển (Shipping Label).
-   - Chuyển trạng thái sang `PACKED`.
-5. **Bước 5: Giao vận & Chốt sổ xuất kho (Shipping)**
-   - Hàng được bàn giao cho tài xế/đơn vị vận chuyển.
-   - Chuyển trạng thái đơn sang `SHIPPED`.
-   - **Thao tác dữ liệu cuối cùng:**
-     - Giải phóng số lượng đã giữ: `reserved_qty -= qty`.
-     - Trừ số lượng thực tế: `on_hand_qty -= qty`.
+   - Hệ thống tạo Kiện hàng `wms_package` (`package_code`, `tracking_number`, `weight_kg`, `packed_by`).
+   - Nhân viên quét mã Barcode từng sản phẩm đối chiếu với Pick List, lưu chi tiết vào `wms_package_item`, đóng thùng và dán niêm phong (`SEALED`).
+5. **Bước 5: Vận đơn xuất kho & Giao vận (`wms_shipment`)**
+   - Tạo Chuyến xuất kho `wms_shipment` (`shipment_code`, `carrier_name`, `vehicle_number`, `driver_name`).
+   - Khi xe lăn bánh rời cổng kho (`DISPATCHED`):
+     - Giải phóng giữ chỗ: `wms_stock_reservation.status = 'RELEASED'`, `wms_inventory.reserved_qty -= qty`.
+     - Trừ tồn kho vật lý: `wms_inventory.on_hand_qty -= qty`.
      - Ghi nhận bút toán xuất kho vào Sổ cái `wms_stock_ledger` (`transaction_type = 'OUTBOUND'`).
+     - Đơn xuất chuyển trạng thái sang `SHIPPED`.
 
 ---
 

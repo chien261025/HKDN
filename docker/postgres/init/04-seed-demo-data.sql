@@ -150,8 +150,48 @@ INSERT INTO wms_inventory_audit_item (id, audit_id, location_id, product_id, bat
 (2, 1, 1, 2, 3, 25, 25, 'MATCHED',     'Số lượng khớp 100% so với hệ thống', CURRENT_TIMESTAMP)
 ON CONFLICT (id) DO NOTHING;
 
+-- 14. Nạp Biên Bản Tiếp Nhận Hàng (Receipt) & Cất Kệ (Putaway Task)
+INSERT INTO wms_receipt (id, receipt_code, inbound_order_id, warehouse_id, dock_number, status, received_by, notes) VALUES
+(1, 'REC-2026-001', 1, 1, 'DOCK-01', 'COMPLETED', 1, 'Tiếp nhận đợt 1 từ Vinamilk')
+ON CONFLICT (id) DO NOTHING;
+
+INSERT INTO wms_receipt_item (id, receipt_id, inbound_order_item_id, product_id, batch_id, accepted_qty, rejected_qty, reject_reason) VALUES
+(1, 1, 1, 1, 1, 280, 5, '5 hộp dôi ngoài đơn hàng')
+ON CONFLICT (id) DO NOTHING;
+
+INSERT INTO wms_putaway_task (id, task_code, receipt_item_id, product_id, batch_id, source_location_id, destination_location_id, quantity, status, assigned_to, completed_at) VALUES
+(1, 'PUT-2026-001', 1, 1, 1, 1, 5, 80, 'COMPLETED', 3, CURRENT_TIMESTAMP)
+ON CONFLICT (id) DO NOTHING;
+
+-- 15. Nạp Phiếu Giữ Chỗ Tồn Kho (Stock Reservation)
+INSERT INTO wms_stock_reservation (id, outbound_order_id, outbound_order_item_id, location_id, product_id, batch_id, reserved_qty, status, expires_at) VALUES
+(1, 2, 2, 1, 2, 3, 5, 'RESERVED', CURRENT_TIMESTAMP + INTERVAL '24 hours')
+ON CONFLICT (id) DO NOTHING;
+
+-- 16. Nạp Kiện Hàng Đóng Gói (Package) & Vận Đơn Xuất Kho (Shipment)
+INSERT INTO wms_package (id, package_code, outbound_order_id, tracking_number, weight_kg, status, packed_by, notes) VALUES
+(1, 'PKG-2026-001', 2, 'VN-POST-8899', 1.25, 'PACKING', 3, 'Đóng gói 5 chiếc điện thoại S24')
+ON CONFLICT (id) DO NOTHING;
+
+INSERT INTO wms_package_item (id, package_id, product_id, batch_id, quantity) VALUES
+(1, 1, 2, 3, 5)
+ON CONFLICT (id) DO NOTHING;
+
+INSERT INTO wms_shipment (id, shipment_code, outbound_order_id, carrier_name, vehicle_number, driver_name, driver_phone, status, created_by, notes) VALUES
+(1, 'SHP-2026-001', 2, 'Giao Hàng Tiết Kiệm (GHTK)', '29C-123.45', 'Nguyễn Văn Tài', '0912345678', 'DISPATCHED', 2, 'Xuất đơn OUT-2026-002 đi giao')
+ON CONFLICT (id) DO NOTHING;
+
+-- 17. Nạp Phiếu Cân Chỉnh Tồn Kho Sau Kiểm Kê (Stock Adjustment)
+INSERT INTO wms_stock_adjustment (id, adjustment_code, audit_id, warehouse_id, reason, status, created_by, notes) VALUES
+(1, 'ADJ-2026-001', 1, 1, 'Hao hụt kiểm kê đầu tháng 9/2026', 'PENDING', 2, 'Chờ duyệt trừ 2 hộp sữa rách bao bì')
+ON CONFLICT (id) DO NOTHING;
+
+INSERT INTO wms_stock_adjustment_item (id, adjustment_id, location_id, product_id, batch_id, system_qty, actual_qty) VALUES
+(1, 1, 5, 1, 1, 80, 78)
+ON CONFLICT (id) DO NOTHING;
+
 -- ==========================================================
--- 14. ĐỒNG BỘ LẠI TẤT CẢ SEQUENCES POSTGRESQL (CHUẨN ENTERPRISE)
+-- 18. ĐỒNG BỘ LẠI TẤT CẢ SEQUENCES POSTGRESQL (CHUẨN ENTERPRISE)
 -- ==========================================================
 SELECT setval(pg_get_serial_sequence('wms_role', 'id'), COALESCE((SELECT MAX(id) FROM wms_role), 1));
 SELECT setval(pg_get_serial_sequence('wms_permission', 'id'), COALESCE((SELECT MAX(id) FROM wms_permission), 1));
@@ -172,3 +212,12 @@ SELECT setval(pg_get_serial_sequence('wms_pick_allocation', 'id'), COALESCE((SEL
 SELECT setval(pg_get_serial_sequence('wms_stock_transfer', 'id'), COALESCE((SELECT MAX(id) FROM wms_stock_transfer), 1));
 SELECT setval(pg_get_serial_sequence('wms_inventory_audit', 'id'), COALESCE((SELECT MAX(id) FROM wms_inventory_audit), 1));
 SELECT setval(pg_get_serial_sequence('wms_inventory_audit_item', 'id'), COALESCE((SELECT MAX(id) FROM wms_inventory_audit_item), 1));
+SELECT setval(pg_get_serial_sequence('wms_receipt', 'id'), COALESCE((SELECT MAX(id) FROM wms_receipt), 1));
+SELECT setval(pg_get_serial_sequence('wms_receipt_item', 'id'), COALESCE((SELECT MAX(id) FROM wms_receipt_item), 1));
+SELECT setval(pg_get_serial_sequence('wms_putaway_task', 'id'), COALESCE((SELECT MAX(id) FROM wms_putaway_task), 1));
+SELECT setval(pg_get_serial_sequence('wms_stock_reservation', 'id'), COALESCE((SELECT MAX(id) FROM wms_stock_reservation), 1));
+SELECT setval(pg_get_serial_sequence('wms_package', 'id'), COALESCE((SELECT MAX(id) FROM wms_package), 1));
+SELECT setval(pg_get_serial_sequence('wms_package_item', 'id'), COALESCE((SELECT MAX(id) FROM wms_package_item), 1));
+SELECT setval(pg_get_serial_sequence('wms_shipment', 'id'), COALESCE((SELECT MAX(id) FROM wms_shipment), 1));
+SELECT setval(pg_get_serial_sequence('wms_stock_adjustment', 'id'), COALESCE((SELECT MAX(id) FROM wms_stock_adjustment), 1));
+SELECT setval(pg_get_serial_sequence('wms_stock_adjustment_item', 'id'), COALESCE((SELECT MAX(id) FROM wms_stock_adjustment_item), 1));
