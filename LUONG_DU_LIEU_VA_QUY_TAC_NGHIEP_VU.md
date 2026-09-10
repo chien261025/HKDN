@@ -46,8 +46,8 @@ flowchart TD
     end
 
     subgraph OUTBOUND ["3. DÒNG XUẤT KHO (OUTBOUND STREAM)"]
-        RES["🔒 Stock Reservation<br/>(Khóa bi quan Pessimistic Lock)"] --> OUTB["📑 Outbound Order (SO)<br/>(Đơn hàng xuất kho)"]
-        OUTB --> PICK["🛒 Picking (Pick Allocation)<br/>(Lộ trình nhặt tối ưu theo FEFO)"]
+        OUTB["📑 Outbound Order (SO)<br/>(Đơn hàng xuất kho)"] --> RES["🔒 Stock Reservation<br/>(Transactional + Row Lock)"]
+        RES --> PICK["🛒 Picking (Pick Allocation)<br/>(Lộ trình nhặt tối ưu theo FEFO)"]
         PICK --> PACK["📦 Packing & QC<br/>(Đóng gói kiện, quét kiểm barcode)"]
         PACK --> SHIP["🚚 Shipping<br/>(Xuất giao, trừ tồn thực, chốt Sổ cái)"]
     end
@@ -60,6 +60,7 @@ flowchart TD
 
     PUT --> INV
     INV --> RES
+    SHIP --> LEDGER
 ```
 
 ---
