@@ -22,7 +22,9 @@ import { LocationLayoutPage } from '../features/masterdata/pages/LocationLayoutP
 import { InventoryBalancePage } from '../features/inventory/pages/InventoryBalancePage';
 import { SmartAssistantPage } from '../features/smartquery/pages/SmartAssistantPage';
 import { ReportsPage } from '../features/reporting/pages/ReportsPage';
+import { OperatorPortalPage } from '../features/operator/pages/OperatorPortalPage';
 import { CameraBarcodeScanner } from '../components/scanner/CameraBarcodeScanner';
+import { Smartphone } from 'lucide-react';
 
 const AppContent: React.FC = () => {
   const [showScanner, setShowScanner] = useState(false);
@@ -36,12 +38,18 @@ const AppContent: React.FC = () => {
     return () => clearInterval(timer);
   }, []);
 
+  // Nếu đang ở màn hình /operator, hiển thị trực tiếp giao diện Mobile/PDA độc lập
+  if (location.pathname === '/operator') {
+    return <OperatorPortalPage />;
+  }
+
   const navItems = [
     { name: 'Trung Tâm Điều Hành', path: '/', icon: LayoutDashboard, badge: 'LIVE', shortcut: '⌘1' },
     { name: 'Bản Đồ Ô Kệ 3D/2D', path: '/layout', icon: Layers, badge: 'TOPOLOGY', shortcut: '⌘2' },
     { name: 'Cân Đối Tồn Kho & Khóa', path: '/inventory', icon: Package, badge: 'LOCK', shortcut: '⌘3' },
     { name: 'Trợ Lý AI Smart Query', path: '/smartquery', icon: Bot, badge: 'AST SAFE', shortcut: '⌘4' },
     { name: 'Báo Cáo Ngầm (RabbitMQ)', path: '/reports', icon: FileSpreadsheet, badge: 'STREAM', shortcut: '⌘5' },
+    { name: 'Portal Thủ Kho Mobile/PDA', path: '/operator', icon: Smartphone, badge: 'MOBILE', shortcut: '⌘6' },
   ];
 
   return (
@@ -206,6 +214,7 @@ const AppContent: React.FC = () => {
             <Route path="/inventory" element={<InventoryBalancePage />} />
             <Route path="/smartquery" element={<SmartAssistantPage />} />
             <Route path="/reports" element={<ReportsPage />} />
+            <Route path="/operator" element={<OperatorPortalPage />} />
             <Route path="*" element={<DashboardPage />} />
           </Routes>
         </main>
