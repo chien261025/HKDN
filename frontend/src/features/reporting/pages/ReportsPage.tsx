@@ -16,7 +16,7 @@ export const ReportsPage: React.FC = () => {
       totalRows: 50000,
       createdAt: '15 phút trước',
       completedAt: '15 phút trước',
-      fileSize: '4.2 MB (50,000 dòng)',
+      fileSize: '4.2 MB',
       workerNode: 'worker-node-01',
       ramUsageMb: 38.4,
       downloadUrl: '#',
@@ -30,7 +30,7 @@ export const ReportsPage: React.FC = () => {
       totalRows: 15000,
       createdAt: '1 giờ trước',
       completedAt: '1 giờ trước',
-      fileSize: '1.8 MB (15,000 dòng)',
+      fileSize: '1.8 MB',
       workerNode: 'worker-node-02',
       ramUsageMb: 34.2,
       downloadUrl: '#',
@@ -98,7 +98,7 @@ export const ReportsPage: React.FC = () => {
                 ...j,
                 status: 'COMPLETED',
                 progress: 100,
-                fileSize: `${template.estimatedSize} (${template.estimatedRows})`,
+                fileSize: template.estimatedSize,
                 completedAt: 'Vừa xong',
                 downloadUrl: '#',
                 ramUsageMb: 38.4,
@@ -122,22 +122,23 @@ export const ReportsPage: React.FC = () => {
   const activeCount = jobs.filter((j) => j.status !== 'COMPLETED').length;
 
   return (
-    <div className="space-y-4 max-w-7xl mx-auto pb-6">
-      {/* 1. Header with Architecture Badges */}
+    <div className="space-y-5 max-w-7xl mx-auto pb-8">
+      {/* 1. Clean Header */}
       <ReportsHeader
         completedJobsCount={completedCount}
         activeJobsCount={activeCount}
       />
 
-      {/* 2. Grid 8 : 4 Master-Detail Layout */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-5">
-        {/* CỘT TRÁI (8 COLS): DANH MỤC MẪU BÁO CÁO & HÀNG ĐỢI TÁC VỤ RABBITMQ */}
-        <div className="lg:col-span-8 space-y-4">
-          <ReportTemplateSelector
-            onTriggerExport={handleTriggerExport}
-            isProcessing={isProcessing}
-          />
+      {/* 2. Top Row: 4 Quick Export Cards (Full Width) */}
+      <ReportTemplateSelector
+        onTriggerExport={handleTriggerExport}
+        isProcessing={isProcessing}
+      />
 
+      {/* 3. Bottom Row: 8 cols Reports Table + 4 cols Telemetry Panel */}
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 pt-1">
+        {/* CỘT TRÁI (8 COLS): BẢNG DỮ LIỆU TÁC VỤ & FILE TẢI VỀ */}
+        <div className="lg:col-span-8">
           <ReportJobsFeed
             jobs={jobs}
             onDownload={handleDownload}
@@ -145,7 +146,7 @@ export const ReportsPage: React.FC = () => {
           />
         </div>
 
-        {/* CỘT PHẢI (4 COLS): ĐỒNG HỒ ĐO TELEMETRY RABBITMQ, SXSSF RAM GUARD & MINIO */}
+        {/* CỘT PHẢI (4 COLS): HẠ TẦNG XỬ LÝ NGẦM */}
         <div className="lg:col-span-4">
           <RabbitMqTelemetryPanel telemetry={telemetry} />
         </div>

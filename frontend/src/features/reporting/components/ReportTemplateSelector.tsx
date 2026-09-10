@@ -1,5 +1,5 @@
 import React from 'react';
-import { Send, Clock, Database, Layers, ShieldAlert, Sparkles } from 'lucide-react';
+import { Send, FileSpreadsheet, Database, Clock, Layers, ShieldCheck } from 'lucide-react';
 import { ReportTemplate } from '../types';
 
 interface ReportTemplateSelectorProps {
@@ -11,8 +11,8 @@ const TEMPLATES: ReportTemplate[] = [
   {
     code: 'RPT-LEDGER',
     title: 'Sổ Cái Biến Động Kho (Stock Ledger)',
-    category: 'Kiểm Toán & Bất Biến (Audit)',
-    description: 'Toàn bộ lịch sử giao dịch xuất/nhập/khóa giữ theo thời gian thực (Append-Only).',
+    category: 'Kiểm Toán',
+    description: 'Toàn bộ biến động xuất/nhập/khóa giữ',
     estimatedRows: '50,000 dòng',
     estimatedSize: '~4.2 MB',
     icon: 'Database',
@@ -21,8 +21,8 @@ const TEMPLATES: ReportTemplate[] = [
   {
     code: 'RPT-EXPIRY',
     title: 'Cân Đối Tồn & Hạn Dùng FEFO',
-    category: 'Hạn Dùng & Cảnh Báo Cận Date',
-    description: 'Thống kê chi tiết từng lô hàng, ngày hết hạn và số lượng khả dụng theo chuẩn FEFO.',
+    category: 'Hạn Dùng',
+    description: 'Tổng hợp các lô hàng cận date 30-90 ngày',
     estimatedRows: '15,000 dòng',
     estimatedSize: '~1.8 MB',
     icon: 'Clock',
@@ -31,8 +31,8 @@ const TEMPLATES: ReportTemplate[] = [
   {
     code: 'RPT-TOPOLOGY',
     title: 'Tải Trọng & Lấp Đầy Vị Trí Ô Kệ',
-    category: 'Mặt Bằng & Sức Chứa Không Gian',
-    description: 'Báo cáo trực quan tỷ lệ lấp đầy, sức chịu tải an toàn (kg) theo Dãy, Kệ, Tầng.',
+    category: 'Mặt Bằng',
+    description: 'Tỷ lệ lấp đầy & sức chứa Dãy/Kệ/Tầng',
     estimatedRows: '8,000 dòng',
     estimatedSize: '~950 KB',
     icon: 'Layers',
@@ -41,11 +41,11 @@ const TEMPLATES: ReportTemplate[] = [
   {
     code: 'RPT-LOCKS',
     title: 'Nhật Ký Khóa Giữ & Tranh Chấp',
-    category: 'Kỹ Thuật Concurrency Lock',
-    description: 'Kiểm toán các giao dịch kích hoạt khóa bi quan (Pessimistic Lock) khi xuất hàng đồng thời.',
+    category: 'Kỹ Thuật',
+    description: 'Kiểm toán các giao dịch Pessimistic Lock',
     estimatedRows: '25,000 dòng',
     estimatedSize: '~2.5 MB',
-    icon: 'ShieldAlert',
+    icon: 'ShieldCheck',
     colorScheme: 'indigo',
   },
 ];
@@ -55,69 +55,62 @@ export const ReportTemplateSelector: React.FC<ReportTemplateSelectorProps> = ({
   isProcessing,
 }) => {
   return (
-    <div className="bg-[#0b101d]/90 backdrop-blur-xl rounded-2xl p-4.5 border border-slate-800/80 shadow-xl space-y-3.5">
-      <div className="flex items-center justify-between pb-2 border-b border-slate-800">
-        <div className="flex items-center gap-2">
-          <Sparkles className="w-4 h-4 text-amber-400" />
-          <h3 className="text-xs font-bold text-white uppercase tracking-wider">
-            Danh Mục Báo Cáo Dữ Liệu Lớn Sẵn Sàng Xuất
-          </h3>
-        </div>
-        <span className="text-[10px] font-mono text-slate-400">4 Mẫu Báo Cáo</span>
+    <div className="space-y-2.5">
+      <div className="flex items-center justify-between">
+        <h2 className="text-xs font-bold text-slate-300 uppercase tracking-wider">
+          Chọn Mẫu Báo Cáo Cần Xuất
+        </h2>
+        <span className="text-[11px] text-slate-500 font-mono">Xử lý ngầm không chặn luồng</span>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
         {TEMPLATES.map((tmpl) => {
-          let badgeColor = 'text-amber-400 bg-amber-500/10 border-amber-500/20';
-          let borderHover = 'hover:border-amber-500/50';
+          let accentColor = 'border-slate-800 hover:border-amber-500/40';
+          let iconBg = 'bg-amber-500/10 text-amber-400';
 
           if (tmpl.colorScheme === 'emerald') {
-            badgeColor = 'text-emerald-400 bg-emerald-500/10 border-emerald-500/20';
-            borderHover = 'hover:border-emerald-500/50';
+            accentColor = 'border-slate-800 hover:border-emerald-500/40';
+            iconBg = 'bg-emerald-500/10 text-emerald-400';
           } else if (tmpl.colorScheme === 'cyan') {
-            badgeColor = 'text-cyan-400 bg-cyan-500/10 border-cyan-500/20';
-            borderHover = 'hover:border-cyan-500/50';
+            accentColor = 'border-slate-800 hover:border-cyan-500/40';
+            iconBg = 'bg-cyan-500/10 text-cyan-400';
           } else if (tmpl.colorScheme === 'indigo') {
-            badgeColor = 'text-indigo-400 bg-indigo-500/10 border-indigo-500/20';
-            borderHover = 'hover:border-indigo-500/50';
+            accentColor = 'border-slate-800 hover:border-indigo-500/40';
+            iconBg = 'bg-indigo-500/10 text-indigo-400';
           }
 
           return (
             <div
               key={tmpl.code}
-              className={`bg-[#070c17]/80 rounded-xl p-3.5 border border-slate-800/90 ${borderHover} transition-all flex flex-col justify-between space-y-3 shadow-md group`}
+              className={`bg-[#0d1322]/80 rounded-xl p-3.5 border ${accentColor} transition-all flex flex-col justify-between space-y-3 shadow-md`}
             >
               <div>
-                <div className="flex items-start justify-between gap-2">
-                  <span className={`text-[9px] font-mono font-bold px-2 py-0.5 rounded border ${badgeColor}`}>
-                    {tmpl.category}
+                <div className="flex items-center justify-between">
+                  <span className={`p-1.5 rounded-lg ${iconBg}`}>
+                    <FileSpreadsheet className="w-4 h-4" />
                   </span>
-                  <span className="text-[10px] font-mono text-slate-500 font-bold">{tmpl.code}</span>
+                  <span className="text-[10px] font-mono text-slate-500 font-bold">
+                    {tmpl.estimatedRows}
+                  </span>
                 </div>
 
-                <h4 className="text-xs font-bold text-white mt-2 group-hover:text-amber-300 transition-colors">
+                <h3 className="text-xs font-bold text-white mt-2 line-clamp-1">
                   {tmpl.title}
-                </h4>
-                <p className="text-[11px] text-slate-400 mt-1 leading-relaxed">
+                </h3>
+                <p className="text-[11px] text-slate-400 line-clamp-1 mt-0.5">
                   {tmpl.description}
                 </p>
               </div>
 
-              <div className="pt-2 border-t border-slate-800/60 flex items-center justify-between text-[10px] font-mono text-slate-400">
-                <div>
-                  Ước tính: <strong className="text-slate-200">{tmpl.estimatedRows}</strong> ({tmpl.estimatedSize})
-                </div>
-
-                <button
-                  type="button"
-                  onClick={() => onTriggerExport(tmpl)}
-                  disabled={isProcessing}
-                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-slate-900 hover:bg-amber-500/20 text-slate-300 hover:text-amber-300 border border-slate-700 hover:border-amber-500/40 text-[11px] font-bold transition-all disabled:opacity-40"
-                >
-                  <Send className="w-3 h-3" />
-                  <span>Đẩy Vào Hàng Đợi</span>
-                </button>
-              </div>
+              <button
+                type="button"
+                onClick={() => onTriggerExport(tmpl)}
+                disabled={isProcessing}
+                className="w-full py-1.5 px-3 bg-slate-900 hover:bg-amber-500/20 text-slate-300 hover:text-amber-300 border border-slate-700 hover:border-amber-500/40 rounded-lg text-xs font-semibold flex items-center justify-center gap-1.5 transition-all disabled:opacity-40"
+              >
+                <Send className="w-3 h-3" />
+                <span>Xuất Ngầm ({tmpl.estimatedSize})</span>
+              </button>
             </div>
           );
         })}
