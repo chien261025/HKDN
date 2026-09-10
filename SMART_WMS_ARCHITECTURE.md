@@ -77,10 +77,13 @@ graph TB
         MinIO[(MinIO Object Storage S3)]
     end
 
-    Clients -->|HTTPS / REST API| Nginx
-    Nginx --> REST_Controllers
-    REST_Controllers --> Core_Services
-    Core_Services -->|ACID Transactions| Postgres
+    WebAdmin & MobileScanner -->|HTTPS / REST API| Nginx
+    Nginx --> AuthCtrl & MasterCtrl & InvCtrl & OrderCtrl & ReportCtrl & AICtrl
+    InvCtrl --> InvLockSvc
+    OrderCtrl --> PutAwaySvc & FEFOSvc
+    ReportCtrl --> ReportSvc
+    AICtrl --> AISvc
+    InvLockSvc & PutAwaySvc & FEFOSvc & AuditSvc -->|ACID Transactions| Postgres
     ReportSvc -->|Publish Task| RabbitMQ
     RabbitMQ -->|Consume Task| ExcelWorker
     ExcelWorker -->|Stream Excel & Upload| MinIO

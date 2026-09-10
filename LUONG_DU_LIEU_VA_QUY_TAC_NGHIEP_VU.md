@@ -24,45 +24,42 @@ Một hệ thống WMS chuẩn mực không phải là tập hợp các bảng r
 
 ```mermaid
 flowchart TD
-    %% INBOUND
     subgraph INBOUND ["1. DÒNG NHẬP KHO (INBOUND STREAM)"]
-        SUP["🏢 Supplier\n(Nhà cung cấp)"] 
-        --> INB["📋 Inbound Order (PO)\n(Đơn đặt nhập hàng)"]
-        --> RCV["📦 Receiving & Inspection\n(Tiếp nhận, kiểm đếm, tạo Batch)"]
-        --> PUT["🎯 Putaway Engine\n(Gợi ý vị trí cất theo tải trọng/Zone)"]
+        SUP["🏢 Supplier<br/>(Nhà cung cấp)"] --> INB["📋 Inbound Order (PO)<br/>(Đơn đặt nhập hàng)"]
+        INB --> RCV["📦 Receiving & Inspection<br/>(Tiếp nhận, kiểm đếm, tạo Batch)"]
+        RCV --> PUT["🎯 Putaway Engine<br/>(Gợi ý vị trí cất theo tải trọng/Zone)"]
     end
 
-    %% INVENTORY CORE
     subgraph CORE ["2. LÕI TỒN KHO & NGHIỆP VỤ SONG SONG"]
-        PUT --> INV["📊 wms_inventory\n(on_hand, reserved, available)"]
-        
-        INV --- LEDGER["📒 Stock Ledger\n(Sổ cái bất biến Append-Only)"]
-        INV --- TRF["🔄 Stock Transfer\n(Điều chuyển nội bộ liên ô/kệ)"]
-        INV --- AUDIT["🔍 Inventory Audit\n(Kiểm kê định kỳ Cycle Count)"]
-        INV --- FEFO["⏳ Batch / FEFO Engine\n(Quản lý Date, quét lô cận hạn)"]
-        INV --- ADJ["⚖️ Stock Adjustment\n(Cân chỉnh tồn kho sau kiểm kê)"]
+        INV["📊 wms_inventory<br/>(on_hand, reserved, available)"]
+        LEDGER["📒 Stock Ledger<br/>(Sổ cái bất biến Append-Only)"]
+        TRF["🔄 Stock Transfer<br/>(Điều chuyển nội bộ liên ô/kệ)"]
+        AUDIT["🔍 Inventory Audit<br/>(Kiểm kê định kỳ Cycle Count)"]
+        FEFO["⏳ Batch / FEFO Engine<br/>(Quản lý Date, quét lô cận hạn)"]
+        ADJ["⚖️ Stock Adjustment<br/>(Cân chỉnh tồn kho sau kiểm kê)"]
+
+        INV --- LEDGER
+        INV --- TRF
+        INV --- AUDIT
+        INV --- FEFO
+        INV --- ADJ
     end
 
-    %% OUTBOUND
     subgraph OUTBOUND ["3. DÒNG XUẤT KHO (OUTBOUND STREAM)"]
-        INV --> RES["🔒 Stock Reservation\n(Khóa bi quan Pessimistic Lock)"]
-        RES --> OUTB["📑 Outbound Order (SO)\n(Đơn hàng xuất kho)"]
-        OUTB --> PICK["🛒 Picking (Pick Allocation)\n(Lộ trình nhặt tối ưu theo FEFO)"]
-        PICK --> PACK["📦 Packing & QC\n(Đóng gói kiện, quét kiểm barcode)"]
-        PACK --> SHIP["🚚 Shipping\n(Xuất giao, trừ tồn thực, chốt Sổ cái)"]
+        RES["🔒 Stock Reservation<br/>(Khóa bi quan Pessimistic Lock)"] --> OUTB["📑 Outbound Order (SO)<br/>(Đơn hàng xuất kho)"]
+        OUTB --> PICK["🛒 Picking (Pick Allocation)<br/>(Lộ trình nhặt tối ưu theo FEFO)"]
+        PICK --> PACK["📦 Packing & QC<br/>(Đóng gói kiện, quét kiểm barcode)"]
+        PACK --> SHIP["🚚 Shipping<br/>(Xuất giao, trừ tồn thực, chốt Sổ cái)"]
     end
 
-    %% GOVERNANCE
     subgraph GOV ["4. QUẢN TRỊ & HẠ TẦNG NỀN TẢNG"]
-        direction LR
-        RBAC["👥 RBAC\n(User ➔ Role ➔ Permission)"]
-        AUDIT_TRAIL["🛡️ Audit Log\n(Truy vết tác nhân & thời gian)"]
-        OUTBOX["📬 Transactional Outbox\n(RabbitMQ ➔ Báo cáo bất đồng bộ)"]
+        RBAC["👥 RBAC<br/>(User - Role - Permission)"]
+        AUDIT_TRAIL["🛡️ Audit Log<br/>(Truy vết tác nhân & thời gian)"]
+        OUTBOX["📬 Transactional Outbox<br/>(RabbitMQ - Báo cáo bất đồng bộ)"]
     end
 
-    INBOUND -.-> GOV
-    CORE -.-> GOV
-    OUTBOUND -.-> GOV
+    PUT --> INV
+    INV --> RES
 ```
 
 ---
