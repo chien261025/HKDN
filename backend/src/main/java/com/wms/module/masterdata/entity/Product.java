@@ -27,7 +27,12 @@ public class Product {
     @Column(nullable = false)
     private String name;
 
-    private String category;
+    @Column(name = "category_id")
+    private Long categoryId;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "category_id", insertable = false, updatable = false)
+    private Category category;
 
     @Column(nullable = false, length = 20)
     @Builder.Default
@@ -44,4 +49,8 @@ public class Product {
     @Column(name = "created_at")
     @Builder.Default
     private Instant createdAt = Instant.now();
+
+    @Column(name = "updated_at")
+    @Builder.Default
+    private Instant updatedAt = Instant.now();
 }

@@ -1,5 +1,3 @@
-version: '3.8'
-
 services:
   # 1. Cơ sở dữ liệu PostgreSQL
   wms-postgres:
@@ -73,6 +71,8 @@ services:
       DB_PASSWORD: password123
       RABBITMQ_HOST: wms-rabbitmq
       RABBITMQ_PORT: 5672
+      RABBITMQ_USER: guest
+      RABBITMQ_PASS: guest
       MINIO_ENDPOINT: http://wms-minio:9000
     ports:
       - "8080:8080"

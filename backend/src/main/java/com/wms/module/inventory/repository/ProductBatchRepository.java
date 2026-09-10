@@ -14,17 +14,19 @@ public interface ProductBatchRepository extends JpaRepository<ProductBatch, Long
 
     /**
      * Sắp xếp các lô hàng theo thứ tự Hạn sử dụng tăng dần (Hạn gần nhất lên đầu -> Hỗ trợ FEFO)
+     * Chỉ chọn các lô đang ở trạng thái ACTIVE (loại trừ QUARANTINE, RECALLED, EXPIRED)
+     * Đối với các lô không có HSD (expiryDate IS NULL), đẩy về cuối danh sách (NULLS LAST)
      */
-    @Query("SELECT b FROM ProductBatch b WHERE b.productId = :productId AND b.expiryDate > :currentDate ORDER BY b.expiryDate ASC")
+    @Query("SELECT b FROM ProductBatch b WHERE b.productId = :productId AND b.status = 'ACTIVE' AND (b.expiryDate IS NULL OR b.expiryDate > :currentDate) ORDER BY b.expiryDate ASC NULLS LAST")
     List<ProductBatch> findActiveBatchesOrderByExpiryAsc(
             @Param("productId") Long productId,
             @Param("currentDate") LocalDate currentDate
     );
 
     /**
-     * Tìm các lô sắp hết hạn trong N ngày tới
+     * Tìm các lô sắp hết hạn trong N ngày tới (Chỉ xét các lô đang ACTIVE và có quản lý HSD)
      */
-    @Query("SELECT b FROM ProductBatch b WHERE b.expiryDate BETWEEN :today AND :targetDate ORDER BY b.expiryDate ASC")
+    @Query("SELECT b FROM ProductBatch b WHERE b.status = 'ACTIVE' AND b.expiryDate IS NOT NULL AND b.expiryDate BETWEEN :today AND :targetDate ORDER BY b.expiryDate ASC")
     List<ProductBatch> findBatchesExpiringSoon(
             @Param("today") LocalDate today,
             @Param("targetDate") LocalDate targetDate

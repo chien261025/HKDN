@@ -7,7 +7,9 @@ import java.time.Instant;
 import java.time.LocalDate;
 
 @Entity
-@Table(name = "wms_product_batch")
+@Table(name = "wms_product_batch", uniqueConstraints = {
+    @UniqueConstraint(name = "uq_product_batch", columnNames = {"product_id", "batch_number"})
+})
 @Getter
 @Setter
 @NoArgsConstructor
@@ -28,8 +30,12 @@ public class ProductBatch {
     @Column(name = "manufacture_date")
     private LocalDate manufactureDate;
 
-    @Column(name = "expiry_date", nullable = false)
-    private LocalDate expiryDate;
+    @Column(name = "expiry_date")
+    private LocalDate expiryDate; // Nullable đối với sản phẩm không có hạn sử dụng (điện tử, linh kiện)
+
+    @Column(nullable = false, length = 20)
+    @Builder.Default
+    private String status = "ACTIVE"; // ACTIVE, QUARANTINE, RECALLED, EXPIRED
 
     @Column(name = "supplier_id")
     private Long supplierId;
@@ -37,4 +43,8 @@ public class ProductBatch {
     @Column(name = "created_at")
     @Builder.Default
     private Instant createdAt = Instant.now();
+
+    @Column(name = "updated_at")
+    @Builder.Default
+    private Instant updatedAt = Instant.now();
 }

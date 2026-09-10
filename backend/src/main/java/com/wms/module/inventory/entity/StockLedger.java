@@ -39,8 +39,8 @@ public class StockLedger {
     @Column(name = "balance_after", nullable = false)
     private Integer balanceAfter;
 
-    @Column(name = "performed_by", nullable = false, length = 50)
-    private String performedBy;
+    @Column(name = "performed_by", nullable = false)
+    private Long performedBy;
 
     private String notes;
 

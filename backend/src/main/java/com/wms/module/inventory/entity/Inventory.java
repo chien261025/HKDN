@@ -33,6 +33,11 @@ public class Inventory {
     @Column(name = "reserved_qty", nullable = false)
     private Integer reservedQty;
 
+    @Version
+    @Column(nullable = false)
+    @Builder.Default
+    private Long version = 0L;
+
     @Column(name = "last_updated_at")
     @Builder.Default
     private Instant lastUpdatedAt = Instant.now();
