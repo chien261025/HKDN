@@ -8,9 +8,6 @@ import {
   ShieldCheck,
   Zap,
   Layers,
-  Sparkles,
-  ArrowDownRight,
-  Filter,
   TrendingDown
 } from 'lucide-react';
 import { OutboundFefoWorkbench } from '../components/OutboundFefoWorkbench';
@@ -30,7 +27,6 @@ interface StockItem {
 }
 
 export const InventoryBalancePage: React.FC = () => {
-  // Active Tab: 'outbound' (FEFO Workbench) vs 'balance' (Matrix Table)
   const [activeTab, setActiveTab] = useState<'outbound' | 'balance'>('outbound');
 
   const [stocks, setStocks] = useState<StockItem[]>([
@@ -100,7 +96,7 @@ export const InventoryBalancePage: React.FC = () => {
     if (reserveQty > reserveModalItem.availableQty) {
       setNotification({
         type: 'error',
-        message: `Khóa dữ liệu chống âm kho: Số lượng yêu cầu (${reserveQty}) vượt quá tồn khả dụng (${reserveModalItem.availableQty})!`,
+        message: `Số lượng yêu cầu (${reserveQty}) vượt quá tồn khả dụng (${reserveModalItem.availableQty})!`,
       });
       return;
     }
@@ -121,7 +117,7 @@ export const InventoryBalancePage: React.FC = () => {
 
     setNotification({
       type: 'success',
-      message: `Giữ hàng thành công ${reserveQty} cái với khóa bi quan (SELECT FOR UPDATE)!`,
+      message: `Đã khóa giữ ${reserveQty} sản phẩm an toàn với khóa bi quan (SELECT FOR UPDATE)!`,
     });
     setReserveModalItem(null);
   };
@@ -136,76 +132,54 @@ export const InventoryBalancePage: React.FC = () => {
   });
 
   return (
-    <div className="space-y-6 max-w-[1600px] mx-auto pb-10">
-      {/* Top Header & Tab Navigation Controller */}
-      <div className="glass-panel rounded-3xl p-5 md:p-6 border border-slate-800/80 shadow-2xl space-y-4">
-        <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-          <div className="flex items-center gap-3.5">
-            <div className="w-12 h-12 rounded-2xl bg-gradient-to-tr from-indigo-600 via-indigo-500 to-cyan-400 flex items-center justify-center text-white shadow-lg shadow-indigo-500/30 ring-1 ring-white/20">
-              <Package className="w-6 h-6" />
-            </div>
-            <div>
-              <div className="flex items-center gap-2">
-                <h1 className="text-xl font-extrabold text-white tracking-tight">PHÂN HỆ QUẢN TRỊ TỒN KHO & XUẤT HÀNG</h1>
-                <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded-md bg-indigo-500/20 text-indigo-300 border border-indigo-500/40">
-                  CONCURRENCY SAFE
-                </span>
-              </div>
-              <p className="text-xs text-slate-400 mt-0.5">
-                Kiến trúc 3 trạng thái số dư: <span className="text-white font-mono font-bold">On-Hand</span> (Vật lý) ={' '}
-                <span className="text-amber-400 font-mono font-bold">Reserved</span> (Đang giữ) +{' '}
-                <span className="text-emerald-400 font-mono font-bold">Available</span> (Khả dụng)
-              </p>
-            </div>
-          </div>
-
-          <div className="flex items-center gap-2 px-3.5 py-2 rounded-xl bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 text-xs font-semibold whitespace-nowrap shadow-inner">
-            <ShieldCheck className="w-4 h-4" />
-            <span>Pessimistic Lock (SELECT FOR UPDATE): SẴN SÀNG</span>
-          </div>
+    <div className="space-y-4 max-w-[1600px] mx-auto pb-10">
+      {/* Header Gọn Gàng & Thanh Lịch Chuẩn Enterprise SaaS */}
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 pb-2 border-b border-slate-800">
+        <div>
+          <h1 className="text-lg font-bold text-white tracking-tight">Quản Lý Tồn Kho & Xuất Hàng</h1>
+          <p className="text-xs text-slate-400 mt-0.5">
+            Cân đối tồn kho ba trạng thái (On-Hand, Reserved, Available) và xuất kho theo chiến lược FEFO.
+          </p>
         </div>
 
-        {/* Tab Switching Navigation */}
-        <div className="flex flex-wrap gap-2 pt-2 border-t border-slate-800/80">
+        {/* Tab Gạt Tinh Gọn (Segmented Control) */}
+        <div className="flex items-center bg-slate-900 p-1 rounded-xl border border-slate-800">
           <button
             onClick={() => setActiveTab('outbound')}
-            className={`flex items-center gap-2.5 px-5 py-3 rounded-2xl text-xs font-extrabold transition-all relative ${
+            className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg text-xs font-semibold transition-all ${
               activeTab === 'outbound'
-                ? 'bg-gradient-to-r from-indigo-600 to-cyan-600 text-white shadow-lg shadow-indigo-600/30 border border-cyan-400/40'
-                : 'bg-slate-900/60 text-slate-400 hover:text-slate-200 hover:bg-slate-800/80 border border-slate-800'
+                ? 'bg-indigo-600 text-white shadow-sm'
+                : 'text-slate-400 hover:text-slate-200'
             }`}
           >
-            <Zap className={`w-4 h-4 ${activeTab === 'outbound' ? 'text-cyan-200' : 'text-indigo-400'}`} />
-            <span>⚡ ĐIỀU PHỐI XUẤT KHO FEFO & SỔ CÁI (WORKBENCH)</span>
-            <span className="text-[9px] font-mono px-1.5 py-0.5 rounded bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 ml-1">
-              ƯU TIÊN #1
-            </span>
+            <Zap className="w-3.5 h-3.5" />
+            <span>Xuất Kho FEFO</span>
           </button>
 
           <button
             onClick={() => setActiveTab('balance')}
-            className={`flex items-center gap-2.5 px-5 py-3 rounded-2xl text-xs font-extrabold transition-all relative ${
+            className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg text-xs font-semibold transition-all ${
               activeTab === 'balance'
-                ? 'bg-gradient-to-r from-indigo-600 to-cyan-600 text-white shadow-lg shadow-indigo-600/30 border border-cyan-400/40'
-                : 'bg-slate-900/60 text-slate-400 hover:text-slate-200 hover:bg-slate-800/80 border border-slate-800'
+                ? 'bg-indigo-600 text-white shadow-sm'
+                : 'text-slate-400 hover:text-slate-200'
             }`}
           >
-            <Layers className="w-4 h-4" />
-            <span>📊 BẢNG CÂN ĐỐI TỒN KHO THỰC TẾ (BALANCE MATRIX)</span>
+            <Layers className="w-3.5 h-3.5" />
+            <span>Bảng Tồn Kho Thực Tế</span>
           </button>
         </div>
       </div>
 
-      {/* Alert Banner */}
+      {/* Thông Báo Nhỏ Gọn (Nếu có) */}
       {notification && (
         <div
-          className={`p-4 rounded-2xl text-xs font-semibold flex items-center justify-between shadow-lg transition-all animate-in fade-in duration-200 ${
+          className={`p-3 rounded-xl text-xs font-medium flex items-center justify-between transition-all ${
             notification.type === 'success'
-              ? 'bg-emerald-950/60 text-emerald-300 border border-emerald-500/40'
-              : 'bg-rose-950/60 text-rose-300 border border-rose-500/40'
+              ? 'bg-emerald-950/40 text-emerald-300 border border-emerald-500/30'
+              : 'bg-rose-950/40 text-rose-300 border border-rose-500/30'
           }`}
         >
-          <div className="flex items-center gap-2.5">
+          <div className="flex items-center gap-2">
             {notification.type === 'success' ? (
               <CheckCircle2 className="w-4 h-4 text-emerald-400 flex-shrink-0" />
             ) : (
@@ -219,100 +193,94 @@ export const InventoryBalancePage: React.FC = () => {
         </div>
       )}
 
-      {/* Dynamic Tab Body */}
+      {/* Nội Dung Phân Hệ Theo Tab */}
       {activeTab === 'outbound' ? (
-        /* TAB 1: Outbound FEFO Workbench */
         <OutboundFefoWorkbench />
       ) : (
-        /* TAB 2: Inventory Balance Matrix Table */
-        <div className="space-y-4 animate-in fade-in duration-200">
-          {/* Table Search & Filter Toolbar */}
-          <div className="glass-panel rounded-2xl p-4 border border-slate-800/80 flex flex-col md:flex-row justify-between items-center gap-3">
-            <div className="relative w-full md:w-96">
-              <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
+        /* Tab 2: Bảng Tồn Kho Thực Tế */
+        <div className="space-y-3">
+          {/* Thanh tìm kiếm & lọc nhanh */}
+          <div className="flex flex-col sm:flex-row justify-between items-center gap-3 bg-slate-900/50 p-3 rounded-xl border border-slate-800">
+            <div className="relative w-full sm:w-80">
+              <Search className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
               <input
                 type="text"
-                placeholder="Tìm theo SKU, tên sản phẩm, mã ô kệ Barcode..."
+                placeholder="Tìm SKU, tên sản phẩm, mã ô kệ..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full pl-9 pr-4 py-2 bg-slate-900 border border-slate-700/60 rounded-xl text-xs text-slate-200 placeholder-slate-400 focus:outline-none focus:border-indigo-500 font-medium"
+                className="w-full pl-8 pr-3 py-1.5 bg-slate-950 border border-slate-800 rounded-lg text-xs text-slate-200 placeholder-slate-500 focus:outline-none focus:border-indigo-500"
               />
             </div>
 
-            <div className="flex items-center gap-2 w-full md:w-auto">
-              <button
-                onClick={() => setFilterExpiring(!filterExpiring)}
-                className={`flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-bold border transition-all ${
-                  filterExpiring
-                    ? 'bg-rose-500/20 text-rose-300 border-rose-500/50'
-                    : 'bg-slate-900/60 text-slate-400 border-slate-800 hover:border-slate-700'
-                }`}
-              >
-                <TrendingDown className="w-3.5 h-3.5" />
-                <span>Chỉ Hiện Lô Cận Date (FEFO)</span>
-              </button>
-            </div>
+            <button
+              onClick={() => setFilterExpiring(!filterExpiring)}
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium border transition-colors ${
+                filterExpiring
+                  ? 'bg-rose-500/20 text-rose-300 border-rose-500/40'
+                  : 'bg-slate-950 text-slate-400 border-slate-800 hover:border-slate-700'
+              }`}
+            >
+              <TrendingDown className="w-3.5 h-3.5" />
+              <span>Chỉ hiện lô cận date (FEFO)</span>
+            </button>
           </div>
 
-          {/* Matrix Table */}
-          <div className="glass-panel rounded-2xl border border-slate-800/80 shadow-2xl overflow-hidden">
+          {/* Bảng Dữ Liệu Tồn Kho Sạch Sẽ */}
+          <div className="bg-slate-900/50 rounded-xl border border-slate-800 overflow-hidden">
             <div className="overflow-x-auto">
               <table className="w-full text-left text-xs border-collapse">
                 <thead>
-                  <tr className="bg-slate-900/90 border-b border-slate-800 text-slate-400 font-bold uppercase tracking-wider text-[10px]">
-                    <th className="py-4 px-5">Sản Phẩm & Mã SKU</th>
-                    <th className="py-4 px-5">Vị Trí Ô Kệ</th>
-                    <th className="py-4 px-5">Số Lô & Hạn Sử Dụng</th>
-                    <th className="py-4 px-5 text-center">Tồn Vật Lý (On-Hand)</th>
-                    <th className="py-4 px-5 text-center">Đang Giữ (Reserved)</th>
-                    <th className="py-4 px-5 text-center">Khả Dụng (Available)</th>
-                    <th className="py-4 px-5 text-right">Khóa Giữ Đơn</th>
+                  <tr className="bg-slate-950/60 border-b border-slate-800 text-slate-400 font-semibold text-[11px]">
+                    <th className="py-3 px-4">Sản Phẩm & SKU</th>
+                    <th className="py-3 px-4">Vị Trí Ô Kệ</th>
+                    <th className="py-3 px-4">Lô Hàng & Hạn Dùng</th>
+                    <th className="py-3 px-4 text-center">Vật Lý (On-Hand)</th>
+                    <th className="py-3 px-4 text-center">Đang Giữ (Reserved)</th>
+                    <th className="py-3 px-4 text-center">Khả Dụng (Available)</th>
+                    <th className="py-3 px-4 text-right">Thao Tác</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-slate-800/60 text-slate-200">
+                <tbody className="divide-y divide-slate-850 text-slate-200">
                   {filteredStocks.map((item) => (
-                    <tr key={item.id} className="hover:bg-slate-800/30 transition-colors">
-                      <td className="py-4 px-5">
-                        <div className="font-bold text-white text-sm tracking-tight">{item.name}</div>
-                        <div className="text-slate-400 font-mono text-[11px] mt-0.5">{item.sku}</div>
+                    <tr key={item.id} className="hover:bg-slate-850/40 transition-colors">
+                      <td className="py-3 px-4">
+                        <div className="font-semibold text-white">{item.name}</div>
+                        <div className="text-slate-400 font-mono text-[11px]">{item.sku}</div>
                       </td>
-                      <td className="py-4 px-5 font-mono">
-                        <span className="bg-slate-800/80 text-cyan-300 px-2.5 py-1 rounded-lg border border-slate-700/60 text-[11px]">
+                      <td className="py-3 px-4 font-mono">
+                        <span className="bg-slate-950 text-cyan-300 px-2 py-0.5 rounded border border-slate-800 text-[11px]">
                           {item.locationBarcode}
                         </span>
                       </td>
-                      <td className="py-4 px-5">
-                        <div className="font-mono text-slate-300 font-bold">{item.batchNumber}</div>
-                        <div className="mt-1 flex items-center gap-2 font-mono text-[11px]">
-                          <span className="text-slate-400">Hạn: {item.expiryDate}</span>
+                      <td className="py-3 px-4">
+                        <div className="font-mono text-slate-300 font-medium">{item.batchNumber}</div>
+                        <div className="text-[11px] text-slate-400 flex items-center gap-1.5 mt-0.5">
+                          <span>Hạn: {item.expiryDate}</span>
                           {item.isExpiringSoon && (
-                            <span className="text-[9px] bg-rose-500/20 text-rose-300 border border-rose-500/30 font-bold px-1.5 py-0.5 rounded animate-pulse">
-                              CẬN DATE (FEFO)
+                            <span className="text-[9px] font-bold bg-rose-500/20 text-rose-300 px-1 rounded">
+                              CẬN DATE
                             </span>
                           )}
                         </div>
                       </td>
-                      <td className="py-4 px-5 text-center font-mono font-extrabold text-white text-base">
+                      <td className="py-3 px-4 text-center font-mono font-bold text-white">
                         {item.onHandQty}
                       </td>
-                      <td className="py-4 px-5 text-center font-mono font-bold text-amber-400 text-sm">
+                      <td className="py-3 px-4 text-center font-mono font-semibold text-amber-400">
                         {item.reservedQty > 0 ? `+${item.reservedQty}` : '0'}
                       </td>
-                      <td className="py-4 px-5 text-center font-mono">
-                        <span className="font-extrabold text-emerald-400 text-base bg-emerald-500/10 px-3 py-1 rounded-xl border border-emerald-500/30">
-                          {item.availableQty}
-                        </span>
+                      <td className="py-3 px-4 text-center font-mono font-bold text-emerald-400">
+                        {item.availableQty}
                       </td>
-                      <td className="py-4 px-5 text-right">
+                      <td className="py-3 px-4 text-right">
                         <button
                           onClick={() => {
                             setReserveModalItem(item);
                             setReserveQty(5);
                           }}
-                          className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-gradient-to-r from-indigo-600 to-cyan-600 hover:from-indigo-500 hover:to-cyan-500 text-white rounded-lg text-xs font-bold transition-all shadow-md shadow-indigo-900/30"
+                          className="px-2.5 py-1 rounded bg-slate-800 hover:bg-slate-750 text-slate-300 hover:text-white border border-slate-700 text-xs font-medium transition-colors"
                         >
-                          <Lock className="w-3 h-3" />
-                          <span>Giữ Hàng (Lock)</span>
+                          Giữ Hàng
                         </button>
                       </td>
                     </tr>
@@ -322,59 +290,58 @@ export const InventoryBalancePage: React.FC = () => {
             </div>
           </div>
 
-          {/* Modal Giữ Hàng Pessimistic Lock */}
+          {/* Modal Giữ Hàng Nhỏ Gọn */}
           {reserveModalItem && (
-            <div className="fixed inset-0 bg-black/75 backdrop-blur-md flex items-center justify-center p-4 z-50">
-              <div className="bg-[#0f172a] rounded-2xl p-6 max-w-md w-full shadow-2xl border border-slate-700 space-y-4 text-slate-200">
-                <div className="flex justify-between items-center pb-3 border-b border-slate-800">
-                  <h3 className="font-bold text-white text-base flex items-center gap-2">
-                    <Lock className="w-4 h-4 text-cyan-400" />
-                    Khóa Bi Quan (SELECT FOR UPDATE)
+            <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4 z-50">
+              <div className="bg-[#0f172a] rounded-2xl p-5 max-w-sm w-full border border-slate-700 shadow-xl space-y-4">
+                <div className="flex justify-between items-center pb-2 border-b border-slate-800">
+                  <h3 className="font-bold text-white text-sm flex items-center gap-1.5">
+                    <Lock className="w-3.5 h-3.5 text-indigo-400" />
+                    Khóa Giữ Hàng (SELECT FOR UPDATE)
                   </h3>
-                  <button onClick={() => setReserveModalItem(null)} className="text-slate-400 hover:text-white font-bold text-sm">
+                  <button onClick={() => setReserveModalItem(null)} className="text-slate-400 hover:text-white">
                     ✕
                   </button>
                 </div>
 
-                <p className="text-xs text-slate-400">
-                  Giả lập 1 đơn hàng khóa giữ mặt hàng <strong className="text-white">{reserveModalItem.name}</strong> tại ô kệ{' '}
-                  <span className="font-mono font-bold text-cyan-400">{reserveModalItem.locationBarcode}</span>
+                <p className="text-xs text-slate-300">
+                  Mặt hàng: <strong className="text-white">{reserveModalItem.name}</strong> ({reserveModalItem.locationBarcode})
                 </p>
 
-                <div className="bg-slate-900/80 p-3.5 rounded-xl space-y-2 text-xs font-mono border border-slate-800">
-                  <div className="flex justify-between">
-                    <span className="text-slate-400">Tồn khả dụng hiện tại:</span>
-                    <span className="font-bold text-emerald-400 text-sm">{reserveModalItem.availableQty} cái</span>
+                <div className="bg-slate-900 p-2.5 rounded-lg text-xs space-y-1 font-mono">
+                  <div className="flex justify-between text-slate-400">
+                    <span>Tồn khả dụng:</span>
+                    <span className="text-emerald-400 font-bold">{reserveModalItem.availableQty}</span>
                   </div>
-                  <div className="flex justify-between">
-                    <span className="text-slate-400">Mã lô hàng:</span>
-                    <span className="text-cyan-300 font-bold">{reserveModalItem.batchNumber}</span>
+                  <div className="flex justify-between text-slate-400">
+                    <span>Mã lô hàng:</span>
+                    <span className="text-slate-200">{reserveModalItem.batchNumber}</span>
                   </div>
                 </div>
 
                 <div>
-                  <label className="block text-xs font-bold text-slate-300 mb-1.5">Nhập số lượng cần giữ (Reserve Qty):</label>
+                  <label className="block text-xs font-medium text-slate-300 mb-1">Số lượng cần giữ:</label>
                   <input
                     type="number"
                     min="1"
                     value={reserveQty}
                     onChange={(e) => setReserveQty(Number(e.target.value))}
-                    className="w-full px-3.5 py-2.5 bg-slate-900 border border-slate-700 rounded-xl text-sm font-mono font-bold text-white focus:outline-none focus:border-cyan-500"
+                    className="w-full px-3 py-1.5 bg-slate-900 border border-slate-700 rounded-lg text-sm font-mono text-white focus:outline-none focus:border-indigo-500"
                   />
                 </div>
 
-                <div className="flex gap-3 pt-2">
+                <div className="flex gap-2 pt-1">
                   <button
                     onClick={() => setReserveModalItem(null)}
-                    className="flex-1 py-2.5 bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold rounded-xl text-xs transition-all border border-slate-700"
+                    className="flex-1 py-1.5 bg-slate-800 text-slate-300 rounded-lg text-xs font-medium hover:bg-slate-750"
                   >
                     Hủy
                   </button>
                   <button
                     onClick={handleReserve}
-                    className="flex-1 py-2.5 bg-gradient-to-r from-cyan-600 to-indigo-600 hover:from-cyan-500 hover:to-indigo-500 text-white font-bold rounded-xl text-xs transition-all shadow-lg shadow-indigo-600/30"
+                    className="flex-1 py-1.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg text-xs font-bold shadow-sm"
                   >
-                    Xác Nhận Giữ Chỗ
+                    Xác Nhận Khóa
                   </button>
                 </div>
               </div>
@@ -385,4 +352,3 @@ export const InventoryBalancePage: React.FC = () => {
     </div>
   );
 };
-
