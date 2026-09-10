@@ -24,10 +24,10 @@ INSERT INTO wms_role_permission (role_id, permission_id) VALUES
 ON CONFLICT (role_id, permission_id) DO NOTHING;
 
 -- Nạp Tài khoản mặc định (Mật khẩu demo: 123456)
-INSERT INTO wms_user (id, username, password_hash, full_name, email, role_id) VALUES
-(1, 'admin', '$2a$10$w8T0MhD17kP25y2oW7p1xe4V0zP5Nq8T9aV7X6Z1G4H2J3K5L6M7O', 'Nguyễn Quản Trị', 'admin@smartwms.vn', 1),
-(2, 'manager01', '$2a$10$w8T0MhD17kP25y2oW7p1xe4V0zP5Nq8T9aV7X6Z1G4H2J3K5L6M7O', 'Trần Trưởng Kho', 'manager@smartwms.vn', 2),
-(3, 'operator01', '$2a$10$w8T0MhD17kP25y2oW7p1xe4V0zP5Nq8T9aV7X6Z1G4H2J3K5L6M7O', 'Lê Thủ Kho', 'operator@smartwms.vn', 3)
+INSERT INTO wms_user (id, username, password_hash, full_name, email) VALUES
+(1, 'admin', '$2a$10$w8T0MhD17kP25y2oW7p1xe4V0zP5Nq8T9aV7X6Z1G4H2J3K5L6M7O', 'Nguyễn Quản Trị', 'admin@smartwms.vn'),
+(2, 'manager01', '$2a$10$w8T0MhD17kP25y2oW7p1xe4V0zP5Nq8T9aV7X6Z1G4H2J3K5L6M7O', 'Trần Trưởng Kho', 'manager@smartwms.vn'),
+(3, 'operator01', '$2a$10$w8T0MhD17kP25y2oW7p1xe4V0zP5Nq8T9aV7X6Z1G4H2J3K5L6M7O', 'Lê Thủ Kho', 'operator@smartwms.vn')
 ON CONFLICT (id) DO NOTHING;
 
 INSERT INTO wms_user_role (user_id, role_id) VALUES

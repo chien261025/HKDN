@@ -32,11 +32,7 @@ public class User {
     @Column(nullable = false, unique = true, length = 100)
     private String email;
 
-    @ManyToOne(fetch = FetchType.EAGER)
-    @JoinColumn(name = "role_id")
-    private Role role;
-
-    @ManyToMany(fetch = FetchType.LAZY)
+    @ManyToMany(fetch = FetchType.EAGER)
     @JoinTable(
         name = "wms_user_role",
         joinColumns = @JoinColumn(name = "user_id"),

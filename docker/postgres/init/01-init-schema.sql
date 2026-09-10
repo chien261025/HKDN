@@ -22,13 +22,13 @@ CREATE TABLE IF NOT EXISTS wms_role_permission (
     PRIMARY KEY (role_id, permission_id)
 );
 
+-- Bảng người dùng: Chuẩn hóa 100% RBAC đa vai trò thông qua bảng wms_user_role
 CREATE TABLE IF NOT EXISTS wms_user (
     id BIGSERIAL PRIMARY KEY,
     username VARCHAR(50) UNIQUE NOT NULL,
     password_hash VARCHAR(255) NOT NULL,
     full_name VARCHAR(100) NOT NULL,
     email VARCHAR(100) UNIQUE NOT NULL,
-    role_id INT REFERENCES wms_role(id),                 -- Primary Role để tương thích nhanh JWT
     is_active BOOLEAN DEFAULT TRUE,
     created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
@@ -308,7 +308,10 @@ CREATE TABLE IF NOT EXISTS wms_inventory_audit_item (
     counter_notes TEXT,
     counted_at TIMESTAMPTZ,
     CONSTRAINT fk_audit_item_batch_product FOREIGN KEY (batch_id, product_id) 
-        REFERENCES wms_product_batch(id, product_id) ON DELETE RESTRICT
+        REFERENCES wms_product_batch(id, product_id) ON DELETE RESTRICT,
+    -- Khóa toàn vẹn: Bắt buộc vị trí, sản phẩm và lô hàng kiểm kê phải thực sự tồn tại trong wms_inventory
+    CONSTRAINT fk_audit_item_inventory FOREIGN KEY (location_id, product_id, batch_id) 
+        REFERENCES wms_inventory(location_id, product_id, batch_id) ON DELETE RESTRICT
 );
 
 -- 11. BẢNG THEO DÕI JOB BÁO CÁO NẶNG (REPORT JOBS)
@@ -388,6 +391,12 @@ BEFORE UPDATE OR DELETE ON wms_stock_ledger
 FOR EACH ROW EXECUTE FUNCTION trg_stock_ledger_prevent_modification();
 
 -- Trigger Function: Bảo vệ toàn vẹn số dư Sổ cái (Ledger balance_after) khớp với wms_inventory
+-- =========================================================================================
+-- QUY TẮC BẮT BUỘC VỀ THỨ TỰ GIAO DỊCH (TRANSACTION ORDER PROTOCOL):
+-- 1. Bước 1: UPDATE wms_inventory SET on_hand_qty = ... (kèm Khóa bi quan Pessimistic Lock)
+-- 2. Bước 2: INSERT wms_stock_ledger (balance_after = số dư mới sau khi đã cập nhật wms_inventory)
+-- Trigger này sẽ đọc số dư tức thời từ wms_inventory để đối soát. Nếu lệch, giao dịch bị ROLLBACK ngay.
+-- =========================================================================================
 CREATE OR REPLACE FUNCTION trg_validate_stock_ledger_balance()
 RETURNS TRIGGER AS $$
 DECLARE
@@ -466,6 +475,40 @@ CREATE TRIGGER trg_wms_audit_item_warehouse_check
 BEFORE INSERT OR UPDATE ON wms_inventory_audit_item
 FOR EACH ROW EXECUTE FUNCTION trg_check_audit_item_warehouse();
 
+-- Trigger Function: Bảo vệ toàn vẹn kho chéo cho Điều chuyển (Stock Transfer)
+-- Bắt buộc from_location_id và to_location_id đều phải cùng thuộc warehouse_id của Lệnh điều chuyển
+CREATE OR REPLACE FUNCTION trg_check_stock_transfer_warehouse()
+RETURNS TRIGGER AS $$
+DECLARE
+    v_from_wh BIGINT;
+    v_to_wh   BIGINT;
+BEGIN
+    SELECT warehouse_id INTO v_from_wh FROM wms_location WHERE id = NEW.from_location_id;
+    SELECT warehouse_id INTO v_to_wh   FROM wms_location WHERE id = NEW.to_location_id;
+    
+    IF v_from_wh IS NULL OR v_to_wh IS NULL THEN
+        RAISE EXCEPTION 'LỖI VỊ TRÍ: Vị trí xuất phát hoặc đích đến không tồn tại trong hệ thống!';
+    END IF;
+
+    IF v_from_wh <> NEW.warehouse_id THEN
+        RAISE EXCEPTION 'VI PHẠM TOÀN VẸN KHO: Vị trí xuất phát (from_location_id: %) thuộc Kho ID %, không thuộc Kho ID % của Lệnh điều chuyển (id: %)!',
+            NEW.from_location_id, v_from_wh, NEW.warehouse_id, NEW.id;
+    END IF;
+
+    IF v_to_wh <> NEW.warehouse_id THEN
+        RAISE EXCEPTION 'VI PHẠM TOÀN VẸN KHO: Vị trí đích đến (to_location_id: %) thuộc Kho ID %, không thuộc Kho ID % của Lệnh điều chuyển (id: %)!',
+            NEW.to_location_id, v_to_wh, NEW.warehouse_id, NEW.id;
+    END IF;
+
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+DROP TRIGGER IF EXISTS trg_wms_stock_transfer_warehouse_check ON wms_stock_transfer;
+CREATE TRIGGER trg_wms_stock_transfer_warehouse_check
+BEFORE INSERT OR UPDATE ON wms_stock_transfer
+FOR EACH ROW EXECUTE FUNCTION trg_check_stock_transfer_warehouse();
+
 -- ==========================================================
 -- 14. TỐI ƯU CHỈ MỤC TRUY VẤN (INDEXING STRATEGY)
 -- ==========================================================
@@ -473,8 +516,8 @@ FOR EACH ROW EXECUTE FUNCTION trg_check_audit_item_warehouse();
 -- Index hỗ trợ tìm kiếm tồn kho theo mặt hàng và vị trí
 CREATE INDEX IF NOT EXISTS idx_inv_product_loc ON wms_inventory(product_id, location_id);
 
--- Partial Index hỗ trợ thuật toán FEFO: Lọc trước các lô hàng ACTIVE sắp xếp theo hạn sử dụng,
--- giúp truy vấn tìm kiếm lô xuất kho đạt độ phức tạp O(log N) và tránh quét toàn bộ bảng (Table Scan).
+-- Partial Index hỗ trợ giải thuật FEFO: Lọc trước các lô hàng trạng thái ACTIVE và sắp xếp tăng dần theo expiry_date,
+-- giúp Database Engine tối ưu hóa đường dẫn quét chỉ mục (Index Scan) thay vì quét toàn bộ bảng (Seq Scan).
 CREATE INDEX IF NOT EXISTS idx_batch_fefo_active 
 ON wms_product_batch(product_id, expiry_date ASC NULLS LAST) 
 WHERE status = 'ACTIVE';

@@ -50,8 +50,8 @@ public class AuthController {
             if (!matches) {
                 throw new BusinessException(ErrorCode.UNAUTHORIZED, "Mật khẩu không chính xác");
             }
-            if (user.getRole() != null) {
-                roleName = user.getRole().getName();
+            if (user.getRoles() != null && !user.getRoles().isEmpty()) {
+                roleName = user.getRoles().iterator().next().getName();
             }
             fullName = user.getFullName();
         } else {
