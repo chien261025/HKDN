@@ -23,8 +23,9 @@ import { InventoryBalancePage } from '../features/inventory/pages/InventoryBalan
 import { SmartAssistantPage } from '../features/smartquery/pages/SmartAssistantPage';
 import { ReportsPage } from '../features/reporting/pages/ReportsPage';
 import { OperatorPortalPage } from '../features/operator/pages/OperatorPortalPage';
+import { InboundOrdersPage } from '../features/inbound/pages/InboundOrdersPage';
 import { CameraBarcodeScanner } from '../components/scanner/CameraBarcodeScanner';
-import { Smartphone } from 'lucide-react';
+import { Smartphone, Truck } from 'lucide-react';
 
 const AppContent: React.FC = () => {
   const [showScanner, setShowScanner] = useState(false);
@@ -45,11 +46,12 @@ const AppContent: React.FC = () => {
 
   const navItems = [
     { name: 'Trung Tâm Điều Hành', path: '/', icon: LayoutDashboard, badge: 'LIVE', shortcut: '⌘1' },
-    { name: 'Bản Đồ Ô Kệ 3D/2D', path: '/layout', icon: Layers, badge: 'TOPOLOGY', shortcut: '⌘2' },
-    { name: 'Cân Đối Tồn Kho & Khóa', path: '/inventory', icon: Package, badge: 'LOCK', shortcut: '⌘3' },
-    { name: 'Trợ Lý AI Smart Query', path: '/smartquery', icon: Bot, badge: 'AST SAFE', shortcut: '⌘4' },
-    { name: 'Báo Cáo Ngầm (RabbitMQ)', path: '/reports', icon: FileSpreadsheet, badge: 'STREAM', shortcut: '⌘5' },
-    { name: 'Portal Thủ Kho Mobile/PDA', path: '/operator', icon: Smartphone, badge: 'MOBILE', shortcut: '⌘6' },
+    { name: 'Đơn Nhập Kho (Inbound)', path: '/inbound', icon: Truck, badge: 'PO', shortcut: '⌘2' },
+    { name: 'Bản Đồ Ô Kệ 3D/2D', path: '/layout', icon: Layers, badge: 'TOPOLOGY', shortcut: '⌘3' },
+    { name: 'Cân Đối Tồn Kho & Khóa', path: '/inventory', icon: Package, badge: 'LOCK', shortcut: '⌘4' },
+    { name: 'Trợ Lý AI Smart Query', path: '/smartquery', icon: Bot, badge: 'AST SAFE', shortcut: '⌘5' },
+    { name: 'Báo Cáo Ngầm (RabbitMQ)', path: '/reports', icon: FileSpreadsheet, badge: 'STREAM', shortcut: '⌘6' },
+    { name: 'Portal Thủ Kho Mobile/PDA', path: '/operator', icon: Smartphone, badge: 'MOBILE', shortcut: '⌘7' },
   ];
 
   return (
@@ -210,6 +212,7 @@ const AppContent: React.FC = () => {
         <main className="flex-1 overflow-y-auto p-6 bg-[#070a12] relative">
           <Routes>
             <Route path="/" element={<DashboardPage />} />
+            <Route path="/inbound" element={<InboundOrdersPage />} />
             <Route path="/layout" element={<LocationLayoutPage />} />
             <Route path="/inventory" element={<InventoryBalancePage />} />
             <Route path="/smartquery" element={<SmartAssistantPage />} />
