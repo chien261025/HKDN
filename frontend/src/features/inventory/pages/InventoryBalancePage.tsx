@@ -3,6 +3,7 @@ import { Zap, Layers, CheckCircle2, AlertCircle } from 'lucide-react';
 import { StockItem } from '../types';
 import { OutboundFefoWorkbench } from '../components/OutboundFefoWorkbench';
 import { StockBalanceTable } from '../components/balance/StockBalanceTable';
+import { StockLedgerModal, LedgerEntryData } from '../components/StockLedgerModal';
 
 export const InventoryBalancePage: React.FC = () => {
   // Tab chuyển đổi: 'outbound' (Xuất kho FEFO) hoặc 'balance' (Bảng tồn kho thực tế)
@@ -96,6 +97,32 @@ export const InventoryBalancePage: React.FC = () => {
     });
   };
 
+  const [activeLedgerEntry, setActiveLedgerEntry] = useState<LedgerEntryData | null>(null);
+  const [showLedgerModal, setShowLedgerModal] = useState(false);
+
+  // Xem Sổ Cái từ bảng tồn kho thực tế (Tab 2)
+  const handleViewLedgerFromTable = (item: StockItem) => {
+    const entry: LedgerEntryData = {
+      id: `LEDGER-BAL-${item.id}-${Date.now().toString().slice(-4)}`,
+      transactionType: 'INBOUND',
+      referenceCode: `IN-LOT-${item.batchNumber}`,
+      locationBarcode: item.locationBarcode,
+      productSku: item.sku,
+      productName: item.name,
+      batchNumber: item.batchNumber,
+      expiryDate: item.expiryDate,
+      qtyChange: item.onHandQty,
+      balanceBefore: 0,
+      balanceAfter: item.onHandQty,
+      performedBy: 'Hệ Thống (Auto Inbound Staging)',
+      notes: `Nhập lưu kho và cấp phát mã ô kệ tự động: ${item.locationBarcode}`,
+      timestamp: new Date().toLocaleTimeString('vi-VN') + ' - 10/09/2026',
+      hashSignature: `0x${Array.from({ length: 32 }, () => Math.floor(Math.random() * 16).toString(16)).join('')}`,
+    };
+    setActiveLedgerEntry(entry);
+    setShowLedgerModal(true);
+  };
+
   return (
     <div className="space-y-4 max-w-[1600px] mx-auto pb-10">
       {/* Header Gọn Gàng & Segmented Tab Switcher */}
@@ -165,6 +192,15 @@ export const InventoryBalancePage: React.FC = () => {
         <StockBalanceTable
           stocks={stocks}
           onReserveItem={handleReserveFromTable}
+          onViewLedger={handleViewLedgerFromTable}
+        />
+      )}
+
+      {/* Modal Chứng Từ Thẻ Kho (Khi bấm từ Tab Bảng Tồn Kho Thực Tế) */}
+      {showLedgerModal && activeLedgerEntry && (
+        <StockLedgerModal
+          entry={activeLedgerEntry}
+          onClose={() => setShowLedgerModal(false)}
         />
       )}
     </div>

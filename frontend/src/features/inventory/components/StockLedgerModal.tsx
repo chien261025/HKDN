@@ -81,8 +81,24 @@ export const StockLedgerModal: React.FC<StockLedgerModalProps> = ({ entry, onClo
                 </p>
               </div>
             </div>
-            <span className="px-3 py-1 rounded-xl bg-indigo-500/20 text-indigo-300 border border-indigo-500/30 text-xs font-mono font-bold">
-              {entry.transactionType}
+            <span
+              className={`px-3 py-1 rounded-xl text-xs font-mono font-bold border ${
+                entry.transactionType === 'INBOUND'
+                  ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/30'
+                  : entry.transactionType === 'OUTBOUND'
+                  ? 'bg-rose-500/20 text-rose-300 border-rose-500/30'
+                  : entry.transactionType === 'ADJUSTMENT'
+                  ? 'bg-amber-500/20 text-amber-300 border-amber-500/30'
+                  : 'bg-cyan-500/20 text-cyan-300 border-cyan-500/30'
+              }`}
+            >
+              {entry.transactionType === 'INBOUND'
+                ? 'NHẬP KHO (INBOUND)'
+                : entry.transactionType === 'OUTBOUND'
+                ? 'XUẤT KHO (OUTBOUND)'
+                : entry.transactionType === 'ADJUSTMENT'
+                ? 'CÂN ĐỐI KHO (AUDIT)'
+                : 'ĐIỀU CHUYỂN (TRANSFER)'}
             </span>
           </div>
 
@@ -124,7 +140,7 @@ export const StockLedgerModal: React.FC<StockLedgerModalProps> = ({ entry, onClo
                   </span>
                 </div>
                 <div className="flex justify-between items-center text-xs">
-                  <span className="text-slate-400">Mã Đơn Xuất (PO/SO):</span>
+                  <span className="text-slate-400">Mã Tham Chiếu:</span>
                   <span className="font-mono font-bold text-indigo-300">{entry.referenceCode}</span>
                 </div>
                 <div className="flex justify-between items-center text-xs">
@@ -149,16 +165,28 @@ export const StockLedgerModal: React.FC<StockLedgerModalProps> = ({ entry, onClo
                 <span className="text-base font-extrabold font-mono text-slate-200">{entry.balanceBefore}</span>
               </div>
 
-              <div className="p-3 rounded-xl bg-rose-500/10 border border-rose-500/30">
-                <span className="text-[11px] text-rose-300 block mb-1">Xuất Thực Tế</span>
-                <span className="text-base font-extrabold font-mono text-rose-400">
+              <div
+                className={`p-3 rounded-xl border ${
+                  entry.qtyChange > 0
+                    ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-400'
+                    : 'bg-rose-500/10 border-rose-500/30 text-rose-400'
+                }`}
+              >
+                <span className="text-[11px] block mb-1 opacity-80">
+                  {entry.transactionType === 'INBOUND'
+                    ? 'Nhập Thực Tế'
+                    : entry.transactionType === 'OUTBOUND'
+                    ? 'Xuất Thực Tế'
+                    : 'Biến Động Số Dư'}
+                </span>
+                <span className="text-base font-extrabold font-mono">
                   {entry.qtyChange > 0 ? `+${entry.qtyChange}` : `${entry.qtyChange}`}
                 </span>
               </div>
 
-              <div className="p-3 rounded-xl bg-emerald-500/10 border border-emerald-500/30">
-                <span className="text-[11px] text-emerald-300 block mb-1">Tồn Sau GD (Balance After)</span>
-                <span className="text-base font-extrabold font-mono text-emerald-400">{entry.balanceAfter}</span>
+              <div className="p-3 rounded-xl bg-indigo-500/10 border border-indigo-500/30">
+                <span className="text-[11px] text-indigo-300 block mb-1">Tồn Sau GD (Balance After)</span>
+                <span className="text-base font-extrabold font-mono text-indigo-400">{entry.balanceAfter}</span>
               </div>
             </div>
           </div>
@@ -191,7 +219,15 @@ export const StockLedgerModal: React.FC<StockLedgerModalProps> = ({ entry, onClo
             className="flex items-center gap-2 px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-semibold border border-slate-700 transition-colors"
           >
             <Printer className="w-4 h-4 text-slate-400" />
-            <span>In Phiếu Xuất Kho</span>
+            <span>
+              {entry.transactionType === 'INBOUND'
+                ? 'In Phiếu Nhập Kho'
+                : entry.transactionType === 'OUTBOUND'
+                ? 'In Phiếu Xuất Kho'
+                : entry.transactionType === 'ADJUSTMENT'
+                ? 'In Biên Bản Cân Đối'
+                : 'In Thẻ Kho Điện Tử'}
+            </span>
           </button>
 
           <button

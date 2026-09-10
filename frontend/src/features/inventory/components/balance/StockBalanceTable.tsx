@@ -1,15 +1,17 @@
 import React, { useState } from 'react';
-import { Search, TrendingDown, Lock } from 'lucide-react';
+import { Search, TrendingDown, Lock, FileText } from 'lucide-react';
 import { StockItem } from '../../types';
 
 interface StockBalanceTableProps {
   stocks: StockItem[];
   onReserveItem: (item: StockItem, qty: number) => void;
+  onViewLedger?: (item: StockItem) => void;
 }
 
 export const StockBalanceTable: React.FC<StockBalanceTableProps> = ({
   stocks,
   onReserveItem,
+  onViewLedger,
 }) => {
   const [searchQuery, setSearchQuery] = useState('');
   const [filterExpiring, setFilterExpiring] = useState(false);
@@ -107,15 +109,27 @@ export const StockBalanceTable: React.FC<StockBalanceTableProps> = ({
                     {item.availableQty}
                   </td>
                   <td className="py-3 px-4 text-right">
-                    <button
-                      onClick={() => {
-                        setReserveModalItem(item);
-                        setReserveQty(5);
-                      }}
-                      className="px-2.5 py-1 rounded bg-slate-800 hover:bg-slate-750 text-slate-300 hover:text-white border border-slate-700 text-xs font-medium transition-colors"
-                    >
-                      Giữ Hàng
-                    </button>
+                    <div className="flex items-center justify-end gap-1.5">
+                      {onViewLedger && (
+                        <button
+                          onClick={() => onViewLedger(item)}
+                          className="flex items-center gap-1 px-2.5 py-1 rounded bg-slate-800 hover:bg-slate-700 text-cyan-300 hover:text-white border border-slate-700 text-xs font-medium transition-colors"
+                          title="Xem chứng từ sổ cái thẻ kho bất biến"
+                        >
+                          <FileText className="w-3.5 h-3.5" />
+                          <span>Sổ Cái</span>
+                        </button>
+                      )}
+                      <button
+                        onClick={() => {
+                          setReserveModalItem(item);
+                          setReserveQty(5);
+                        }}
+                        className="px-2.5 py-1 rounded bg-indigo-600/20 hover:bg-indigo-600/30 text-indigo-300 hover:text-white border border-indigo-500/30 text-xs font-medium transition-colors"
+                      >
+                        Giữ Hàng
+                      </button>
+                    </div>
                   </td>
                 </tr>
               ))}

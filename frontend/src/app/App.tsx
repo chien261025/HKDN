@@ -24,13 +24,26 @@ import { SmartAssistantPage } from '../features/smartquery/pages/SmartAssistantP
 import { ReportsPage } from '../features/reporting/pages/ReportsPage';
 import { OperatorPortalPage } from '../features/operator/pages/OperatorPortalPage';
 import { InboundOrdersPage } from '../features/inbound/pages/InboundOrdersPage';
+import { OutboundOrdersPage } from '../features/outbound/pages/OutboundOrdersPage';
+import { AuditManagementPage } from '../features/audit/pages/AuditManagementPage';
+import { ProductsPage } from '../features/products/pages/ProductsPage';
+import { UsersManagementPage } from '../features/users/pages/UsersManagementPage';
+import { LoginPage } from '../features/auth/pages/LoginPage';
 import { CameraBarcodeScanner } from '../components/scanner/CameraBarcodeScanner';
-import { Smartphone, Truck } from 'lucide-react';
+import { Smartphone, Truck, PackageCheck, ClipboardCheck, LogOut } from 'lucide-react';
 
 const AppContent: React.FC = () => {
   const [showScanner, setShowScanner] = useState(false);
   const [currentTime, setCurrentTime] = useState(new Date().toLocaleTimeString('vi-VN'));
   const location = useLocation();
+
+  // Load session from localStorage if available
+  const sessionStr = localStorage.getItem('smart_wms_session');
+  const session = sessionStr ? JSON.parse(sessionStr) : {
+    fullName: 'Trần Trưởng Kho',
+    role: 'ROLE_ADMIN',
+    username: 'admin',
+  };
 
   useEffect(() => {
     const timer = setInterval(() => {
@@ -39,6 +52,11 @@ const AppContent: React.FC = () => {
     return () => clearInterval(timer);
   }, []);
 
+  // Nếu đang ở màn hình /login, hiển thị trực tiếp giao diện Đăng Nhập độc lập
+  if (location.pathname === '/login') {
+    return <LoginPage />;
+  }
+
   // Nếu đang ở màn hình /operator, hiển thị trực tiếp giao diện Mobile/PDA độc lập
   if (location.pathname === '/operator') {
     return <OperatorPortalPage />;
@@ -46,12 +64,16 @@ const AppContent: React.FC = () => {
 
   const navItems = [
     { name: 'Trung Tâm Điều Hành', path: '/', icon: LayoutDashboard, badge: 'LIVE', shortcut: '⌘1' },
-    { name: 'Đơn Nhập Kho (Inbound)', path: '/inbound', icon: Truck, badge: 'PO', shortcut: '⌘2' },
-    { name: 'Bản Đồ Ô Kệ 3D/2D', path: '/layout', icon: Layers, badge: 'TOPOLOGY', shortcut: '⌘3' },
-    { name: 'Cân Đối Tồn Kho & Khóa', path: '/inventory', icon: Package, badge: 'LOCK', shortcut: '⌘4' },
-    { name: 'Trợ Lý AI Smart Query', path: '/smartquery', icon: Bot, badge: 'AST SAFE', shortcut: '⌘5' },
-    { name: 'Báo Cáo Ngầm (RabbitMQ)', path: '/reports', icon: FileSpreadsheet, badge: 'STREAM', shortcut: '⌘6' },
-    { name: 'Portal Thủ Kho Mobile/PDA', path: '/operator', icon: Smartphone, badge: 'MOBILE', shortcut: '⌘7' },
+    { name: 'Tài Khoản & Phân Quyền', path: '/users', icon: ShieldCheck, badge: 'ADMIN', shortcut: '⌘2' },
+    { name: 'Sản Phẩm & Nhà Cung Cấp', path: '/products', icon: Package, badge: 'MASTER', shortcut: '⌘3' },
+    { name: 'Đơn Nhập Kho (Inbound)', path: '/inbound', icon: Truck, badge: 'PO', shortcut: '⌘4' },
+    { name: 'Đơn Xuất Kho (Outbound)', path: '/outbound', icon: PackageCheck, badge: 'FEFO', shortcut: '⌘5' },
+    { name: 'Bản Đồ Ô Kệ 3D/2D', path: '/layout', icon: Layers, badge: 'TOPOLOGY', shortcut: '⌘6' },
+    { name: 'Cân Đối Tồn Kho & Khóa', path: '/inventory', icon: Package, badge: 'LOCK', shortcut: '⌘7' },
+    { name: 'Kiểm Kê & Cân Đối Kho', path: '/audit', icon: ClipboardCheck, badge: 'AUDIT', shortcut: '⌘8' },
+    { name: 'Trợ Lý AI Smart Query', path: '/smartquery', icon: Bot, badge: 'AST SAFE', shortcut: '⌘9' },
+    { name: 'Báo Cáo Ngầm (RabbitMQ)', path: '/reports', icon: FileSpreadsheet, badge: 'STREAM', shortcut: '⌘R' },
+    { name: 'Portal Thủ Kho Mobile/PDA', path: '/operator', icon: Smartphone, badge: 'MOBILE', shortcut: '⌘0' },
   ];
 
   return (
@@ -194,16 +216,36 @@ const AppContent: React.FC = () => {
             </button>
 
             <div className="flex items-center gap-3 pl-3 border-l border-slate-800">
-              <div className="relative">
-                <div className="w-9 h-9 rounded-xl bg-gradient-to-tr from-indigo-600 to-purple-600 text-white font-extrabold flex items-center justify-center text-xs shadow-md shadow-indigo-500/20 border border-white/20">
-                  TK
+              <Link to="/login" title="Bấm để chuyển đổi vai trò hoặc đăng xuất" className="flex items-center gap-2 group">
+                <div className="relative">
+                  <div className="w-9 h-9 rounded-xl bg-gradient-to-tr from-indigo-600 via-purple-600 to-cyan-500 text-white font-extrabold flex items-center justify-center text-xs shadow-md shadow-indigo-500/20 border border-white/20 group-hover:scale-105 transition-transform">
+                    {session.fullName
+                      ? session.fullName
+                          .split(' ')
+                          .map((n: string) => n[0])
+                          .slice(-2)
+                          .join('')
+                      : 'TK'}
+                  </div>
+                  <span className="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 bg-emerald-400 border-2 border-[#0d121f] rounded-full"></span>
                 </div>
-                <span className="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 bg-emerald-400 border-2 border-[#0d121f] rounded-full"></span>
-              </div>
-              <div className="text-left hidden sm:block">
-                <p className="text-xs font-bold text-slate-200">Trần Trưởng Kho</p>
-                <span className="text-[10px] font-mono text-indigo-400 font-semibold">CHIEF_OPERATOR</span>
-              </div>
+                <div className="text-left hidden sm:block">
+                  <p className="text-xs font-bold text-slate-200 group-hover:text-indigo-400 transition-colors">
+                    {session.fullName || 'Trần Trưởng Kho'}
+                  </p>
+                  <span className="text-[10px] font-mono text-indigo-400 font-semibold">
+                    {session.role || 'ROLE_ADMIN'}
+                  </span>
+                </div>
+              </Link>
+
+              <Link
+                to="/login"
+                title="Đăng xuất / Đổi phiên đăng nhập"
+                className="p-2 text-slate-400 hover:text-rose-400 hover:bg-rose-500/10 rounded-xl border border-slate-700/40 transition-all ml-1"
+              >
+                <LogOut className="w-4 h-4" />
+              </Link>
             </div>
           </div>
         </header>
@@ -212,9 +254,13 @@ const AppContent: React.FC = () => {
         <main className="flex-1 overflow-y-auto p-6 bg-[#070a12] relative">
           <Routes>
             <Route path="/" element={<DashboardPage />} />
+            <Route path="/users" element={<UsersManagementPage />} />
+            <Route path="/products" element={<ProductsPage />} />
             <Route path="/inbound" element={<InboundOrdersPage />} />
+            <Route path="/outbound" element={<OutboundOrdersPage />} />
             <Route path="/layout" element={<LocationLayoutPage />} />
             <Route path="/inventory" element={<InventoryBalancePage />} />
+            <Route path="/audit" element={<AuditManagementPage />} />
             <Route path="/smartquery" element={<SmartAssistantPage />} />
             <Route path="/reports" element={<ReportsPage />} />
             <Route path="/operator" element={<OperatorPortalPage />} />
