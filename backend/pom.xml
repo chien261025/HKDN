@@ -22,7 +22,7 @@
         <java.version>25</java.version>
         <poi.version>5.2.5</poi.version>
         <jsqlparser.version>4.9</jsqlparser.version>
-        <minio.version>8.5.10</minio.version>
+        <minio.version>8.6.0</minio.version>
         <jwt.version>0.12.5</jwt.version>
     </properties>
     
