@@ -8,7 +8,7 @@
     <parent>
         <groupId>org.springframework.boot</groupId>
         <artifactId>spring-boot-starter-parent</artifactId>
-        <version>3.3.3</version>
+        <version>3.5.0</version>
         <relativePath/>
     </parent>
     
@@ -19,7 +19,7 @@
     <description>Smart Warehouse Management System Backend - Modular Monolith</description>
     
     <properties>
-        <java.version>17</java.version>
+        <java.version>25</java.version>
         <poi.version>5.2.5</poi.version>
         <jsqlparser.version>4.9</jsqlparser.version>
         <minio.version>8.5.10</minio.version>
@@ -119,7 +119,7 @@
         <dependency>
             <groupId>org.projectlombok</groupId>
             <artifactId>lombok</artifactId>
-            <version>1.18.36</version>
+            <version>1.18.48</version>
             <optional>true</optional>
         </dependency>
 
@@ -147,13 +147,13 @@
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-compiler-plugin</artifactId>
                 <configuration>
-                    <source>17</source>
-                    <target>17</target>
+                    <source>25</source>
+                    <target>25</target>
                     <annotationProcessorPaths>
                         <path>
                             <groupId>org.projectlombok</groupId>
                             <artifactId>lombok</artifactId>
-                            <version>1.18.34</version>
+                            <version>1.18.48</version>
                         </path>
                     </annotationProcessorPaths>
                 </configuration>
