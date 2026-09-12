@@ -17,11 +17,11 @@ export const RecentLedgerCard: React.FC<RecentLedgerCardProps> = ({
         <div className="flex items-center gap-2">
           <FileText className="w-4 h-4 text-slate-400" />
           <span className="text-xs font-bold text-slate-200 uppercase tracking-wide">
-            Sổ cái thẻ kho gần nhất
+            Sổ Cái Thẻ Kho Bất Biến (Immutable Stock Ledger)
           </span>
         </div>
-        <span className="text-[10px] font-mono text-cyan-400 bg-cyan-950/40 px-2 py-0.5 rounded border border-cyan-800/40">
-          APPEND-ONLY
+        <span className="text-[10px] font-mono text-cyan-400 bg-cyan-950/40 px-2 py-0.5 rounded border border-cyan-800/40 font-bold">
+          AUDIT TRAIL
         </span>
       </div>
 

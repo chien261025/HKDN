@@ -69,7 +69,7 @@ const AppContent: React.FC = () => {
     { name: 'Đơn Nhập Kho (Inbound)', path: '/inbound', icon: Truck, badge: 'PO', shortcut: '⌘4' },
     { name: 'Đơn Xuất Kho (Outbound)', path: '/outbound', icon: PackageCheck, badge: 'FEFO', shortcut: '⌘5' },
     { name: 'Bản Đồ Ô Kệ 3D/2D', path: '/layout', icon: Layers, badge: 'TOPOLOGY', shortcut: '⌘6' },
-    { name: 'Cân Đối Tồn Kho & Khóa', path: '/inventory', icon: Package, badge: 'LOCK', shortcut: '⌘7' },
+    { name: 'Phân Bổ Tồn Kho & Sổ Cái', path: '/inventory', icon: Package, badge: 'ALLOCATION', shortcut: '⌘7' },
     { name: 'Kiểm Kê & Cân Đối Kho', path: '/audit', icon: ClipboardCheck, badge: 'AUDIT', shortcut: '⌘8' },
     { name: 'Trợ Lý AI Smart Query', path: '/smartquery', icon: Bot, badge: 'AST SAFE', shortcut: '⌘9' },
     { name: 'Báo Cáo Ngầm (RabbitMQ)', path: '/reports', icon: FileSpreadsheet, badge: 'STREAM', shortcut: '⌘R' },

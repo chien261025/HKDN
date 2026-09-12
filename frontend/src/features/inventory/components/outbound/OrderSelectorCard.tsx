@@ -22,10 +22,10 @@ export const OrderSelectorCard: React.FC<OrderSelectorCardProps> = ({
             1
           </span>
           <span className="text-xs font-bold text-slate-200 uppercase tracking-wide">
-            Chọn đơn hàng xuất kho
+            Danh Sách Lệnh Xuất Kho Chờ Cấp Phát (Outbound Orders)
           </span>
         </div>
-        <span className="text-[11px] text-slate-400">Chọn 1 đơn để hệ thống phân bổ FEFO</span>
+        <span className="text-[11px] text-slate-400 font-mono">Chọn đơn hàng SO để kích hoạt phân bổ FEFO</span>
       </div>
 
       {/* Danh sách thẻ đơn */}
@@ -59,10 +59,10 @@ export const OrderSelectorCard: React.FC<OrderSelectorCardProps> = ({
                     }`}
                   >
                     {order.status === 'SHIPPED'
-                      ? 'Đã xuất kho'
+                      ? 'Đã Xuất Kho (Dispatched)'
                       : order.status === 'RESERVED'
-                      ? 'Đã giữ hàng'
-                      : 'Chờ xử lý'}
+                      ? 'Đã Khóa Tồn (Allocated)'
+                      : 'Chờ Cấp Phát (Pending)'}
                   </span>
 
                   {isSelected && (

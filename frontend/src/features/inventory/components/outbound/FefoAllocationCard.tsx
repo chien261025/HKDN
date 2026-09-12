@@ -24,12 +24,12 @@ export const FefoAllocationCard: React.FC<FefoAllocationCardProps> = ({
             2
           </span>
           <span className="text-xs font-bold text-slate-200 uppercase tracking-wide">
-            Phân tích FEFO & Vị trí lấy hàng
+            Chiến Lược Điều Phối FEFO & Lộ Trình Lấy Hàng (Pick Path)
           </span>
         </div>
-        <span className="text-[11px] text-emerald-400 font-medium flex items-center gap-1.5 bg-emerald-500/10 px-2 py-0.5 rounded-full border border-emerald-500/20">
+        <span className="text-[11px] text-emerald-400 font-medium flex items-center gap-1.5 bg-emerald-500/10 px-2 py-0.5 rounded-full border border-emerald-500/20 font-mono">
           <Sparkles className="w-3 h-3 text-emerald-400" />
-          Đã quét hạn dùng tối ưu
+          FEFO Optimized
         </span>
       </div>
 
@@ -137,8 +137,8 @@ export const FefoAllocationCard: React.FC<FefoAllocationCardProps> = ({
           <Lock className="w-3.5 h-3.5" />
           <span>
             {order.status === 'PENDING'
-              ? `1. Khóa Giữ ${order.qty} Cái (Reserve)`
-              : 'Đã Khóa Giữ Hàng'}
+              ? `1. Khóa Cấp Phát ${order.qty} SP (Reserve Stock)`
+              : 'Đã Khóa Cấp Phát (Allocated)'}
           </span>
         </button>
 
@@ -157,8 +157,8 @@ export const FefoAllocationCard: React.FC<FefoAllocationCardProps> = ({
           <Truck className="w-3.5 h-3.5" />
           <span>
             {order.status === 'SHIPPED'
-              ? 'Đã Xuất Kho Thành Công'
-              : '2. Xuất Kho (Ship Order)'}
+              ? 'Đã Xuất Kho Hoàn Tất (Dispatched)'
+              : '2. Xác Nhận Xuất Kho & Ghi Sổ (Confirm Dispatch)'}
           </span>
         </button>
       </div>
@@ -167,10 +167,10 @@ export const FefoAllocationCard: React.FC<FefoAllocationCardProps> = ({
       {order.status === 'SHIPPED' && (
         <button
           onClick={onViewLedger}
-          className="w-full py-2 rounded-xl bg-indigo-600/20 hover:bg-indigo-600/30 text-indigo-300 border border-indigo-500/30 text-xs font-semibold flex items-center justify-center gap-1.5 transition-colors shadow-sm"
+          className="w-full py-2.5 rounded-xl bg-indigo-600/20 hover:bg-indigo-600/30 text-indigo-300 border border-indigo-500/30 text-xs font-bold flex items-center justify-center gap-1.5 transition-colors shadow-sm"
         >
-          <FileText className="w-3.5 h-3.5" />
-          <span>Xem Phiếu Thẻ Kho Của Đơn Này</span>
+          <FileText className="w-4 h-4" />
+          <span>Truy Xuất Chứng Từ Sổ Cái Điện Tử (View Stock Ledger)</span>
         </button>
       )}
     </div>

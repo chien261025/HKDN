@@ -128,9 +128,11 @@ export const InventoryBalancePage: React.FC = () => {
       {/* Header Gọn Gàng & Segmented Tab Switcher */}
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 pb-2 border-b border-slate-800">
         <div>
-          <h1 className="text-lg font-bold text-white tracking-tight">Quản Lý Tồn Kho & Xuất Hàng</h1>
+          <h1 className="text-lg font-bold text-white tracking-tight">
+            Điều Phối Phân Bổ Tồn Kho & Xuất Hàng (Stock Allocation)
+          </h1>
           <p className="text-xs text-slate-400 mt-0.5">
-            Cân đối tồn kho ba trạng thái (On-Hand, Reserved, Available) và xuất kho theo chiến lược FEFO.
+            Cân đối số dư 3 trạng thái (On-Hand, Allocated, Available) & cấp phát đơn hàng tự động theo chiến lược FEFO.
           </p>
         </div>
 
@@ -145,7 +147,7 @@ export const InventoryBalancePage: React.FC = () => {
             }`}
           >
             <Zap className="w-3.5 h-3.5" />
-            <span>Xuất Kho FEFO</span>
+            <span>Phân Bổ Xuất Kho FEFO</span>
           </button>
 
           <button
@@ -157,7 +159,7 @@ export const InventoryBalancePage: React.FC = () => {
             }`}
           >
             <Layers className="w-3.5 h-3.5" />
-            <span>Bảng Tồn Kho Thực Tế</span>
+            <span>Bảng Cân Đối Tồn Kho Vật Lý</span>
           </button>
         </div>
       </div>

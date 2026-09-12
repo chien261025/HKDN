@@ -164,25 +164,25 @@ export const OutboundFefoWorkbench: React.FC = () => {
         <div className="flex items-center gap-2">
           <span className="text-slate-300 font-semibold flex items-center gap-1.5">
             <Zap className="w-3.5 h-3.5 text-cyan-400" />
-            Chiến Lược Xuất:
+            Chiến Lược Cấp Phát:
           </span>
-          <span className="font-mono text-cyan-300 bg-cyan-950/40 px-2 py-0.5 rounded border border-cyan-800/40 text-[11px] font-semibold">
-            FEFO (First Expired, First Out)
+          <span className="font-mono text-cyan-300 bg-cyan-950/40 px-2 py-0.5 rounded border border-cyan-800/40 text-[11px] font-bold">
+            FEFO (First-Expired, First-Out)
           </span>
           <span className="text-slate-500 hidden sm:inline">•</span>
           <span className="text-slate-400 hidden sm:inline flex items-center gap-1">
             <ShieldCheck className="w-3.5 h-3.5 text-emerald-400 inline" />
-            Khóa Bi Quan: SELECT FOR UPDATE
+            Kiểm Soát Đồng Thời: <span className="font-mono text-emerald-400">PESSIMISTIC_WRITE</span>
           </span>
         </div>
 
         <button
           onClick={handleReset}
           className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-slate-300 hover:text-white text-xs font-medium border border-slate-800 hover:border-slate-700 transition-colors shadow-sm"
-          title="Đặt lại dữ liệu để thử nghiệm lại từ đầu"
+          title="Khôi phục trạng thái ban đầu để kiểm thử kịch bản"
         >
           <RotateCcw className="w-3.5 h-3.5 text-slate-400" />
-          <span>Đặt Lại Demo</span>
+          <span>Khôi Phục Dữ Liệu Ban Đầu</span>
         </button>
       </div>
 
