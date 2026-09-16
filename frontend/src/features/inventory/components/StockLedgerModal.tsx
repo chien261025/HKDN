@@ -1,5 +1,5 @@
 import React from 'react';
-import { ShieldCheck, FileText, CheckCircle2, Hash, Calendar, MapPin, Package, User, Printer, Copy, X } from 'lucide-react';
+import { Printer, X, FileText, CheckCircle2 } from 'lucide-react';
 
 export interface LedgerEntryData {
   id: string;
@@ -25,44 +25,57 @@ interface StockLedgerModalProps {
 }
 
 export const StockLedgerModal: React.FC<StockLedgerModalProps> = ({ entry, onClose }) => {
-  const [copied, setCopied] = React.useState(false);
-
-  const handleCopyHash = () => {
-    navigator.clipboard.writeText(entry.hashSignature);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
+  const getVoucherTitle = () => {
+    switch (entry.transactionType) {
+      case 'OUTBOUND':
+        return 'PHIẾU XUẤT KHO';
+      case 'INBOUND':
+        return 'PHIẾU NHẬP KHO';
+      case 'ADJUSTMENT':
+        return 'BIÊN BẢN CÂN ĐỐI TỒN KHO';
+      default:
+        return 'PHIẾU ĐIỀU CHUYỂN KHO';
+    }
   };
 
+  const isOutbound = entry.transactionType === 'OUTBOUND';
+
   return (
-    <div className="fixed inset-0 bg-black/80 backdrop-blur-md flex items-center justify-center p-4 z-50 animate-in fade-in duration-200">
-      <div className="bg-[#0b1120] rounded-3xl max-w-2xl w-full border border-indigo-500/40 shadow-2xl shadow-indigo-950/50 overflow-hidden text-slate-100 relative">
-        {/* Glowing top line */}
-        <div className="h-1.5 w-full bg-gradient-to-r from-emerald-500 via-cyan-400 to-indigo-600"></div>
+    <div className="fixed inset-0 bg-black/85 backdrop-blur-md flex items-center justify-center p-4 z-50 animate-in fade-in duration-200">
+      <div className="bg-[#0b1222] rounded-2xl max-w-3xl w-full border border-slate-700 shadow-2xl overflow-hidden text-slate-100 relative">
+        {/* Top vivid accent line */}
+        <div className="h-1.5 w-full bg-gradient-to-r from-indigo-500 via-purple-500 to-cyan-400"></div>
 
         {/* Modal Header */}
-        <div className="p-6 border-b border-slate-800/80 flex items-start justify-between bg-slate-900/50">
-          <div className="flex items-center gap-3.5">
-            <div className="w-12 h-12 rounded-2xl bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-center text-emerald-400 shadow-inner">
-              <ShieldCheck className="w-6 h-6" />
+        <div className="p-5 border-b border-slate-700 flex items-start justify-between bg-slate-900/95 shadow-md">
+          <div className="flex items-center gap-3">
+            <div className="w-11 h-11 rounded-xl bg-gradient-to-tr from-indigo-600 to-cyan-500 text-white flex items-center justify-center shadow-lg shadow-indigo-500/30">
+              <FileText className="w-6 h-6" />
             </div>
             <div>
               <div className="flex items-center gap-2">
-                <h3 className="font-extrabold text-lg text-white tracking-wide">CHỨNG TỪ SỔ CÁI THẺ KHO ĐIỆN TỬ</h3>
-                <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded-md bg-emerald-500/20 text-emerald-300 border border-emerald-500/40">
-                  IMMUTABLE (BẤT BIẾN)
+                <h3 className="font-black text-lg text-white tracking-wide">
+                  {getVoucherTitle()}
+                </h3>
+                <span
+                  className={`text-[10px] font-black px-2.5 py-0.5 rounded-full border shadow-sm ${
+                    isOutbound
+                      ? 'bg-rose-500/20 text-rose-300 border-rose-400/60 shadow-rose-950/30'
+                      : 'bg-emerald-500/20 text-emerald-300 border-emerald-400/60 shadow-emerald-950/30'
+                  }`}
+                >
+                  {isOutbound ? 'XUẤT HÀNG' : 'NHẬP HÀNG'}
                 </span>
               </div>
-              <p className="text-xs text-slate-400 mt-0.5 flex items-center gap-2">
-                <span>Mã bút toán: <strong className="text-white font-mono">{entry.id}</strong></span>
-                <span>•</span>
-                <span className="font-mono text-cyan-300">{entry.timestamp}</span>
+              <p className="text-xs text-slate-300 font-medium mt-0.5">
+                Mã chứng từ: <strong className="text-cyan-300 font-mono font-bold">{entry.id}</strong> • Thời gian: {entry.timestamp}
               </p>
             </div>
           </div>
 
           <button
             onClick={onClose}
-            className="p-2 rounded-xl text-slate-400 hover:text-white hover:bg-slate-800 transition-colors"
+            className="p-2 rounded-xl text-slate-400 hover:text-white hover:bg-slate-800 transition-colors border border-slate-700"
           >
             <X className="w-5 h-5" />
           </button>
@@ -70,171 +83,151 @@ export const StockLedgerModal: React.FC<StockLedgerModalProps> = ({ entry, onClo
 
         {/* Modal Body */}
         <div className="p-6 space-y-5 max-h-[75vh] overflow-y-auto">
-          {/* Certificate Badge Banner */}
-          <div className="p-4 rounded-2xl bg-gradient-to-r from-slate-900 via-indigo-950/30 to-slate-900 border border-indigo-500/20 flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <CheckCircle2 className="w-5 h-5 text-emerald-400 flex-shrink-0" />
-              <div>
-                <p className="text-xs font-bold text-slate-200">Giao dịch đã được ghi sổ kế toán kho vĩnh viễn</p>
-                <p className="text-[11px] text-slate-400">
-                  Thỏa mãn quy tắc toàn vẹn <span className="text-cyan-400 font-mono">APPEND-ONLY</span>. Không có quyền sửa hoặc xóa.
-                </p>
-              </div>
+          {/* Thông tin chung */}
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 bg-[#111c33] p-4 rounded-xl border border-slate-700/80 text-xs shadow-inner">
+            <div>
+              <span className="text-slate-400 block text-[11px] font-medium">Mã Chứng Từ:</span>
+              <span className="font-mono font-black text-white text-sm mt-0.5 block">{entry.id}</span>
             </div>
-            <span
-              className={`px-3 py-1 rounded-xl text-xs font-mono font-bold border ${
-                entry.transactionType === 'INBOUND'
-                  ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/30'
-                  : entry.transactionType === 'OUTBOUND'
-                  ? 'bg-rose-500/20 text-rose-300 border-rose-500/30'
-                  : entry.transactionType === 'ADJUSTMENT'
-                  ? 'bg-amber-500/20 text-amber-300 border-amber-500/30'
-                  : 'bg-cyan-500/20 text-cyan-300 border-cyan-500/30'
-              }`}
-            >
-              {entry.transactionType === 'INBOUND'
-                ? 'NHẬP KHO (INBOUND)'
-                : entry.transactionType === 'OUTBOUND'
-                ? 'XUẤT KHO (OUTBOUND)'
-                : entry.transactionType === 'ADJUSTMENT'
-                ? 'CÂN ĐỐI KHO (AUDIT)'
-                : 'ĐIỀU CHUYỂN (TRANSFER)'}
-            </span>
-          </div>
-
-          {/* Grid Information Cards */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5">
-            {/* Sản phẩm & Lô */}
-            <div className="p-4 rounded-2xl bg-slate-900/60 border border-slate-800 space-y-2">
-              <div className="flex items-center gap-2 text-slate-400 text-xs font-semibold">
-                <Package className="w-4 h-4 text-indigo-400" />
-                <span>Mặt Hàng & Số Lô FEFO</span>
-              </div>
-              <div>
-                <h4 className="font-bold text-white text-sm">{entry.productName}</h4>
-                <div className="flex items-center gap-2 mt-1">
-                  <span className="font-mono text-xs px-2 py-0.5 rounded bg-slate-800 text-cyan-300 border border-slate-700">
-                    {entry.productSku}
-                  </span>
-                  <span className="font-mono text-xs px-2 py-0.5 rounded bg-amber-500/10 text-amber-300 border border-amber-500/20">
-                    Lô: {entry.batchNumber}
-                  </span>
-                </div>
-                <p className="text-[11px] text-slate-400 mt-1 font-mono">
-                  Hạn sử dụng: <strong className="text-rose-400">{entry.expiryDate}</strong>
-                </p>
-              </div>
+            <div>
+              <span className="text-slate-400 block text-[11px] font-medium">Mã Đơn Hàng:</span>
+              <span className="font-mono font-black text-cyan-300 text-sm mt-0.5 block">{entry.referenceCode}</span>
             </div>
-
-            {/* Vị Trí Ô Kệ & Chứng từ */}
-            <div className="p-4 rounded-2xl bg-slate-900/60 border border-slate-800 space-y-2">
-              <div className="flex items-center gap-2 text-slate-400 text-xs font-semibold">
-                <MapPin className="w-4 h-4 text-cyan-400" />
-                <span>Vị Trí Ô Kệ & Mã Tham Chiếu</span>
-              </div>
-              <div className="space-y-1.5">
-                <div className="flex justify-between items-center text-xs">
-                  <span className="text-slate-400">Ô Kệ Vật Lý:</span>
-                  <span className="font-mono font-bold text-cyan-300 bg-cyan-950/40 px-2 py-0.5 rounded border border-cyan-800/40">
-                    {entry.locationBarcode}
-                  </span>
-                </div>
-                <div className="flex justify-between items-center text-xs">
-                  <span className="text-slate-400">Mã Tham Chiếu:</span>
-                  <span className="font-mono font-bold text-indigo-300">{entry.referenceCode}</span>
-                </div>
-                <div className="flex justify-between items-center text-xs">
-                  <span className="text-slate-400">Người Thực Hiện:</span>
-                  <span className="font-semibold text-slate-200 flex items-center gap-1">
-                    <User className="w-3 h-3 text-slate-400" /> {entry.performedBy}
-                  </span>
-                </div>
-              </div>
+            <div>
+              <span className="text-slate-400 block text-[11px] font-medium">Người Lập Phiếu:</span>
+              <span className="font-bold text-slate-100 mt-0.5 block">{entry.performedBy}</span>
+            </div>
+            <div>
+              <span className="text-slate-400 block text-[11px] font-medium">Thời Gian Ký:</span>
+              <span className="font-mono font-medium text-slate-200 mt-0.5 block">{entry.timestamp}</span>
             </div>
           </div>
 
-          {/* Balance Change Matrix */}
-          <div className="p-4 rounded-2xl bg-slate-900/80 border border-slate-800 space-y-3">
-            <h4 className="text-xs font-bold text-slate-300 uppercase tracking-wider flex items-center gap-2">
-              <FileText className="w-4 h-4 text-emerald-400" />
-              Biến Động Số Dư Thẻ Kho (Double-Entry Balance Flow)
+          {/* Bảng Chi Tiết Mặt Hàng */}
+          <div className="space-y-2">
+            <h4 className="text-xs font-black text-white uppercase tracking-wider flex items-center gap-2">
+              <span className="w-2 h-2 rounded-full bg-cyan-400"></span>
+              <span>Chi Tiết Hàng Hóa Xuất Kho</span>
             </h4>
-            <div className="grid grid-cols-3 gap-2.5 text-center">
-              <div className="p-3 rounded-xl bg-slate-800/50 border border-slate-700/50">
-                <span className="text-[11px] text-slate-400 block mb-1">Tồn Trước GD</span>
-                <span className="text-base font-extrabold font-mono text-slate-200">{entry.balanceBefore}</span>
-              </div>
-
-              <div
-                className={`p-3 rounded-xl border ${
-                  entry.qtyChange > 0
-                    ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-400'
-                    : 'bg-rose-500/10 border-rose-500/30 text-rose-400'
-                }`}
-              >
-                <span className="text-[11px] block mb-1 opacity-80">
-                  {entry.transactionType === 'INBOUND'
-                    ? 'Nhập Thực Tế'
-                    : entry.transactionType === 'OUTBOUND'
-                    ? 'Xuất Thực Tế'
-                    : 'Biến Động Số Dư'}
-                </span>
-                <span className="text-base font-extrabold font-mono">
-                  {entry.qtyChange > 0 ? `+${entry.qtyChange}` : `${entry.qtyChange}`}
-                </span>
-              </div>
-
-              <div className="p-3 rounded-xl bg-indigo-500/10 border border-indigo-500/30">
-                <span className="text-[11px] text-indigo-300 block mb-1">Tồn Sau GD (Balance After)</span>
-                <span className="text-base font-extrabold font-mono text-indigo-400">{entry.balanceAfter}</span>
-              </div>
+            <div className="rounded-xl border border-slate-700 overflow-hidden shadow-lg">
+              <table className="w-full text-left text-xs">
+                <thead className="bg-[#0e1628] text-xs text-slate-200 font-bold border-b-2 border-slate-700 uppercase">
+                  <tr>
+                    <th className="py-3 px-3.5 w-10 text-center">STT</th>
+                    <th className="py-3 px-3.5">Tên Sản Phẩm</th>
+                    <th className="py-3 px-3.5">Mã SKU</th>
+                    <th className="py-3 px-3.5">Số Lô (Batch)</th>
+                    <th className="py-3 px-3.5">Hạn Sử Dụng</th>
+                    <th className="py-3 px-3.5">Vị Trí Ô Kệ</th>
+                    <th className="py-3 px-3.5 text-right">Số Lượng</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-800 bg-[#111c33]/70 font-sans">
+                  <tr>
+                    <td className="py-3.5 px-3.5 text-center text-slate-300 font-mono font-bold">1</td>
+                    <td className="py-3.5 px-3.5">
+                      <div className="font-bold text-white text-sm">{entry.productName}</div>
+                    </td>
+                    <td className="py-3.5 px-3.5 font-mono font-bold text-cyan-300">{entry.productSku}</td>
+                    <td className="py-3.5 px-3.5 font-mono font-bold text-amber-300">{entry.batchNumber}</td>
+                    <td className="py-3.5 px-3.5 font-mono font-bold text-rose-300">{entry.expiryDate}</td>
+                    <td className="py-3.5 px-3.5 font-mono text-xs">
+                      <span className="bg-slate-900 px-2.5 py-1 rounded-lg border border-slate-700 text-slate-100 font-bold">
+                        {entry.locationBarcode}
+                      </span>
+                    </td>
+                    <td className="py-3.5 px-3.5 text-right font-mono font-black text-amber-300 text-base">
+                      {Math.abs(entry.qtyChange)}
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
             </div>
           </div>
 
-          {/* Digital Signature & Hash */}
-          <div className="p-3.5 rounded-2xl bg-black/40 border border-slate-800 space-y-1.5 text-xs font-mono">
-            <div className="flex items-center justify-between text-slate-400">
-              <span className="flex items-center gap-1.5">
-                <Hash className="w-3.5 h-3.5 text-indigo-400" />
-                Mã Băm Toàn Vẹn (Audit Cryptographic Checksum):
-              </span>
-              <button
-                onClick={handleCopyHash}
-                className="text-[11px] text-cyan-400 hover:text-cyan-300 flex items-center gap-1"
-              >
-                <Copy className="w-3 h-3" />
-                <span>{copied ? 'Đã sao chép!' : 'Sao chép'}</span>
-              </button>
+          {/* Biến Động Số Dư & Ghi Chú */}
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            <div className="p-3.5 rounded-xl bg-[#111c33] border border-slate-700 text-center shadow-inner">
+              <span className="text-[11px] text-slate-400 font-bold block mb-0.5">Tồn Trước Khi Xuất</span>
+              <span className="text-lg font-black font-mono text-slate-200">{entry.balanceBefore}</span>
             </div>
-            <p className="text-[10px] text-slate-300 break-all bg-slate-900/90 p-2 rounded-lg border border-slate-800">
-              {entry.hashSignature}
-            </p>
+
+            <div className={`p-3.5 rounded-xl border text-center shadow-inner ${
+              isOutbound
+                ? 'bg-rose-500/20 border-rose-500/50 text-rose-300'
+                : 'bg-emerald-500/20 border-emerald-500/50 text-emerald-300'
+            }`}>
+              <span className="text-[11px] block mb-0.5 font-bold uppercase tracking-wider">
+                {isOutbound ? 'Số Lượng Xuất' : 'Số Lượng Nhập'}
+              </span>
+              <span className="text-xl font-black font-mono">
+                {entry.qtyChange > 0 ? `+${entry.qtyChange}` : entry.qtyChange} SP
+              </span>
+            </div>
+
+            <div className="p-3.5 rounded-xl bg-[#111c33] border border-slate-700 text-center shadow-inner">
+              <span className="text-[11px] text-slate-400 font-bold block mb-0.5">Tồn Sau Khi Xuất</span>
+              <span className="text-lg font-black font-mono text-cyan-300">{entry.balanceAfter}</span>
+            </div>
+          </div>
+
+          {/* Ghi chú */}
+          <div className="p-3.5 rounded-xl bg-[#111c33]/70 border border-slate-700 text-xs">
+            <span className="text-slate-300 font-bold block">Ghi chú phiếu xuất:</span>
+            <p className="text-slate-100 mt-1 font-medium">{entry.notes || 'Không có ghi chú bổ sung.'}</p>
+          </div>
+
+          {/* Phần Chữ Ký 3 Bên Chuẩn Kho Vận Doanh Nghiệp */}
+          <div className="pt-4 border-t border-slate-700">
+            <div className="grid grid-cols-3 gap-4 text-center">
+              <div className="space-y-1">
+                <span className="text-xs font-bold text-white block">Người Lập Phiếu</span>
+                <span className="text-[11px] text-slate-400 block italic">(Ký, ghi rõ họ tên)</span>
+                <div className="h-16 flex items-end justify-center">
+                  <span className="text-xs font-bold text-cyan-300 border-t border-dashed border-slate-600 pt-1 w-36">
+                    {entry.performedBy}
+                  </span>
+                </div>
+              </div>
+
+              <div className="space-y-1">
+                <span className="text-xs font-bold text-white block">Thủ Kho</span>
+                <span className="text-[11px] text-slate-400 block italic">(Ký, ghi rõ họ tên)</span>
+                <div className="h-16 flex items-end justify-center">
+                  <span className="text-xs font-bold text-indigo-300 border-t border-dashed border-slate-600 pt-1 w-36">
+                    Trần Trưởng Kho
+                  </span>
+                </div>
+              </div>
+
+              <div className="space-y-1">
+                <span className="text-xs font-bold text-white block">Người Nhận Hàng</span>
+                <span className="text-[11px] text-slate-400 block italic">(Ký, ghi rõ họ tên)</span>
+                <div className="h-16 flex items-end justify-center">
+                  <span className="text-xs font-medium text-slate-400 border-t border-dashed border-slate-600 pt-1 w-36">
+                    (Ký nhận)
+                  </span>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
 
         {/* Modal Footer */}
-        <div className="p-5 border-t border-slate-800/80 bg-slate-900/60 flex items-center justify-between gap-3">
+        <div className="p-4 border-t border-slate-700 bg-slate-900/95 flex items-center justify-between gap-3 shadow-lg">
           <button
             onClick={() => window.print()}
-            className="flex items-center gap-2 px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-semibold border border-slate-700 transition-colors"
+            className="flex items-center gap-2 px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-cyan-300 hover:text-white text-xs font-bold border border-slate-700 transition-colors cursor-pointer"
           >
-            <Printer className="w-4 h-4 text-slate-400" />
-            <span>
-              {entry.transactionType === 'INBOUND'
-                ? 'In Phiếu Nhập Kho'
-                : entry.transactionType === 'OUTBOUND'
-                ? 'In Phiếu Xuất Kho'
-                : entry.transactionType === 'ADJUSTMENT'
-                ? 'In Biên Bản Cân Đối'
-                : 'In Thẻ Kho Điện Tử'}
-            </span>
+            <Printer className="w-4 h-4 text-cyan-400" />
+            <span>In Chứng Từ Này</span>
           </button>
 
           <button
             onClick={onClose}
-            className="px-6 py-2.5 rounded-xl bg-gradient-to-r from-emerald-600 to-cyan-600 hover:from-emerald-500 hover:to-cyan-500 text-white text-xs font-bold shadow-lg shadow-emerald-900/30 transition-all"
+            className="px-6 py-2.5 rounded-xl bg-gradient-to-r from-indigo-600 via-blue-600 to-cyan-500 hover:from-indigo-500 hover:to-cyan-400 text-white text-xs font-black transition-all cursor-pointer shadow-lg shadow-indigo-600/30"
           >
-            Đã Kiểm Tra & Đóng
+            Đóng Lại
           </button>
         </div>
       </div>

@@ -1,9 +1,10 @@
 import React from 'react';
-import { CheckCircle2, MapPin, ArrowRight, Lock, Truck, FileText, Calendar, Sparkles } from 'lucide-react';
-import { OrderItem } from '../../types';
+import { MapPin, ArrowRight, Lock, Truck, FileText, CheckCircle2, PackageCheck } from 'lucide-react';
+import { OrderItem, InventoryStats } from '../../types';
 
 interface FefoAllocationCardProps {
   order: OrderItem;
+  stats: InventoryStats;
   onReserve: () => void;
   onShip: () => void;
   onViewLedger: () => void;
@@ -11,168 +12,203 @@ interface FefoAllocationCardProps {
 
 export const FefoAllocationCard: React.FC<FefoAllocationCardProps> = ({
   order,
+  stats,
   onReserve,
   onShip,
   onViewLedger,
 }) => {
   return (
-    <div className="bg-slate-900/60 rounded-2xl p-4 border border-slate-800 space-y-3.5 shadow-sm">
-      {/* Header Khối */}
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          <span className="w-5 h-5 rounded-full bg-cyan-500/20 text-cyan-400 font-bold flex items-center justify-center text-[11px] font-mono">
+    <div className="bg-[#0b101f]/90 backdrop-blur-xl rounded-2xl p-4 md:p-6 border border-slate-800/80 shadow-xl space-y-5">
+      {/* Tiêu đề gọn gàng & trực quan */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-3 border-b border-slate-800/60">
+        <div className="flex items-center gap-2.5">
+          <div className="w-6 h-6 rounded-lg bg-indigo-600/20 border border-indigo-500/30 flex items-center justify-center text-indigo-400 font-bold text-xs">
             2
-          </span>
-          <span className="text-xs font-bold text-slate-200 uppercase tracking-wide">
-            Chiến Lược Điều Phối FEFO & Lộ Trình Lấy Hàng (Pick Path)
-          </span>
-        </div>
-        <span className="text-[11px] text-emerald-400 font-medium flex items-center gap-1.5 bg-emerald-500/10 px-2 py-0.5 rounded-full border border-emerald-500/20 font-mono">
-          <Sparkles className="w-3 h-3 text-emerald-400" />
-          FEFO Optimized
-        </span>
-      </div>
-
-      {/* Thông tin mặt hàng đang chọn */}
-      <div className="bg-slate-950/60 p-3 rounded-xl border border-slate-800/80 space-y-1">
-        <div className="flex items-center justify-between text-[11px]">
-          <span className="text-slate-400 font-medium">Mặt hàng cần xuất:</span>
-          <span className="font-mono font-bold text-cyan-300 bg-cyan-950/40 px-2 py-0.5 rounded border border-cyan-800/40">
-            {order.productSku}
-          </span>
-        </div>
-        <h3 className="text-sm font-bold text-white tracking-tight">{order.productName}</h3>
-        <p className="text-[11px] text-slate-400 font-sans">
-          Giao cho khách: <strong className="text-slate-200">{order.customer}</strong>
-        </p>
-      </div>
-
-      {/* So sánh Lô FEFO (nếu có 2 lô để đối chiếu) */}
-      {order.alternateBatch && (
-        <div className="space-y-2">
-          <p className="text-[11px] text-slate-400 font-medium">So sánh các lô hàng có sẵn trong kho:</p>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
-            {/* Lô Cận Date Được Chọn */}
-            <div className="p-3 rounded-xl bg-emerald-950/20 border border-emerald-500/40 text-xs space-y-1.5 relative overflow-hidden">
-              <div className="flex items-center justify-between">
-                <span className="font-mono font-bold text-white">{order.batchNumber}</span>
-                <span className="text-[10px] font-bold text-emerald-300 bg-emerald-500/20 px-2 py-0.5 rounded-full border border-emerald-500/30">
-                  FEFO Ưu Tiên Xuất
-                </span>
-              </div>
-              <div className="text-[11px] text-rose-300 font-mono font-semibold flex items-center gap-1">
-                <Calendar className="w-3 h-3 text-rose-400" />
-                <span>HSD: {order.expiryDate} (Còn {order.daysRemaining} ngày)</span>
-              </div>
-              <p className="text-[11px] text-slate-400 font-sans">
-                Lô cận date nhất ➔ Xuất trước để bảo vệ chất lượng hàng hóa.
-              </p>
-            </div>
-
-            {/* Lô Xa Date Được Giữ Lại */}
-            <div className="p-3 rounded-xl bg-slate-950/40 border border-slate-800/80 text-xs space-y-1.5 opacity-80">
-              <div className="flex items-center justify-between">
-                <span className="font-mono text-slate-300 font-medium">{order.alternateBatch.batchNumber}</span>
-                <span className="text-[10px] font-medium text-slate-400 bg-slate-850 px-2 py-0.5 rounded-full border border-slate-750">
-                  Lưu Kho An Toàn
-                </span>
-              </div>
-              <div className="text-[11px] text-slate-400 font-mono flex items-center gap-1">
-                <Calendar className="w-3 h-3 text-slate-500" />
-                <span>HSD: {order.alternateBatch.expiryDate} (Còn {order.alternateBatch.daysRemaining} ngày)</span>
-              </div>
-              <p className="text-[11px] text-slate-500 font-sans">
-                Hạn còn dài ➔ Giữ lại kho, bảo toàn thời hạn lưu kho cho đơn sau.
-              </p>
-            </div>
+          </div>
+          <div>
+            <h2 className="text-xs md:text-sm font-bold text-white tracking-wide uppercase">
+              Bước 2: Chi Tiết Đơn Hàng & Vị Trí Lấy Hàng
+            </h2>
           </div>
         </div>
-      )}
-
-      {/* Lộ trình nhặt hàng chỉ dẫn */}
-      <div className="bg-slate-950/60 p-3 rounded-xl border border-slate-800/80 space-y-2.5">
-        <div className="flex items-center justify-between text-xs">
-          <span className="text-slate-300 font-medium flex items-center gap-1.5">
-            <MapPin className="w-3.5 h-3.5 text-cyan-400" />
-            Vị trí ô kệ lấy hàng:
-          </span>
-          <span className="font-mono text-cyan-300 font-bold bg-cyan-950/40 px-2.5 py-0.5 rounded-lg border border-cyan-800/50 text-xs">
-            {order.locationBarcode}
-          </span>
-        </div>
-
-        {/* Breadcrumb Lộ Trình Sạch Sẽ */}
-        <div className="flex items-center gap-1.5 text-xs font-mono overflow-x-auto pb-0.5">
-          <span className="text-slate-400 text-[11px] font-sans font-medium mr-1">Lộ trình:</span>
-          <span className="px-2 py-0.5 rounded bg-slate-850 text-slate-200 border border-slate-750 text-[11px]">
-            Zone B
-          </span>
-          <ArrowRight className="w-3 h-3 text-slate-500 flex-shrink-0" />
-          <span className="px-2 py-0.5 rounded bg-slate-850 text-slate-200 border border-slate-750 text-[11px]">
-            Dãy B01
-          </span>
-          <ArrowRight className="w-3 h-3 text-slate-500 flex-shrink-0" />
-          <span className="px-2 py-0.5 rounded bg-slate-850 text-slate-200 border border-slate-750 text-[11px]">
-            Kệ R01
-          </span>
-          <ArrowRight className="w-3 h-3 text-slate-500 flex-shrink-0" />
-          <span className="px-2 py-0.5 rounded bg-cyan-950/60 text-cyan-300 border border-cyan-700/60 font-bold text-[11px]">
-            Ô B05 (Lấy {order.qty} cái)
+        <div className="flex items-center gap-2">
+          <span className="text-[11px] font-mono text-emerald-400 bg-emerald-500/10 px-2.5 py-1 rounded-full border border-emerald-500/30 font-semibold flex items-center gap-1.5">
+            <PackageCheck className="w-3.5 h-3.5 text-emerald-400" />
+            Lô Xuất Ưu Tiên (FEFO)
           </span>
         </div>
       </div>
 
-      {/* Hai Nút Thao Tác Trật Tự & Rõ Ràng */}
-      <div className="pt-1.5 flex flex-col sm:flex-row gap-2.5">
-        {/* Nút 1: Khóa giữ hàng */}
-        <button
-          onClick={onReserve}
-          disabled={order.status !== 'PENDING'}
-          className={`flex-1 py-2.5 px-4 rounded-xl font-bold text-xs flex items-center justify-center gap-2 transition-all ${
-            order.status === 'PENDING'
-              ? 'bg-amber-600 hover:bg-amber-500 text-white shadow-md shadow-amber-900/30 cursor-pointer active:scale-[0.99]'
-              : 'bg-slate-850 text-slate-500 cursor-not-allowed border border-slate-800'
-          }`}
-        >
-          <Lock className="w-3.5 h-3.5" />
-          <span>
-            {order.status === 'PENDING'
-              ? `1. Khóa Cấp Phát ${order.qty} SP (Reserve Stock)`
-              : 'Đã Khóa Cấp Phát (Allocated)'}
-          </span>
-        </button>
+      {/* 3 Cột thông tin rõ ràng: Sản phẩm & Lô • Vị trí lấy hàng • Tồn kho tại ô kệ */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+        {/* CỘT 1: SẢN PHẨM & LÔ HÀNG XUẤT */}
+        <div className="p-4 rounded-xl bg-slate-900/50 border border-slate-800/70 space-y-2 flex flex-col justify-between">
+          <div>
+            <div className="flex items-center justify-between text-[11px] text-slate-400 font-mono mb-1">
+              <span>Sản Phẩm Xuất:</span>
+              <span className="text-cyan-300 font-bold bg-slate-800 px-1.5 py-0.5 rounded border border-slate-700">
+                {order.productSku}
+              </span>
+            </div>
+            <div className="font-bold text-white text-sm leading-snug">{order.productName}</div>
+            <div className="text-[11px] text-slate-400 mt-1">
+              Khách nhận: <span className="text-slate-200 font-medium">{order.customer}</span>
+            </div>
+          </div>
 
-        {/* Nút 2: Xuất kho */}
-        <button
-          onClick={onShip}
-          disabled={order.status !== 'RESERVED'}
-          className={`flex-1 py-2.5 px-4 rounded-xl font-bold text-xs flex items-center justify-center gap-2 transition-all ${
-            order.status === 'RESERVED'
-              ? 'bg-emerald-600 hover:bg-emerald-500 text-white shadow-md shadow-emerald-900/30 cursor-pointer active:scale-[0.99]'
-              : order.status === 'SHIPPED'
-              ? 'bg-slate-850 text-emerald-400 border border-emerald-500/30'
-              : 'bg-slate-850 text-slate-500 cursor-not-allowed border border-slate-800'
-          }`}
-        >
-          <Truck className="w-3.5 h-3.5" />
-          <span>
-            {order.status === 'SHIPPED'
-              ? 'Đã Xuất Kho Hoàn Tất (Dispatched)'
-              : '2. Xác Nhận Xuất Kho & Ghi Sổ (Confirm Dispatch)'}
-          </span>
-        </button>
+          <div className="pt-2 border-t border-slate-800/60">
+            <div className="flex items-center justify-between">
+              <span className="text-[11px] text-slate-400">Lô hàng xuất:</span>
+              <span className="text-[10px] font-bold font-mono text-emerald-300 bg-emerald-500/20 px-2 py-0.5 rounded border border-emerald-500/30">
+                HẾT HẠN TRƯỚC
+              </span>
+            </div>
+            <div className="flex items-center justify-between mt-1">
+              <span className="font-mono font-bold text-white text-xs">{order.batchNumber}</span>
+              <span className="text-rose-300 font-mono text-[11px] font-bold">
+                HSD: {order.expiryDate}
+              </span>
+            </div>
+            <p className="text-[10px] text-slate-400 mt-0.5">
+              (Còn {order.daysRemaining} ngày hạn sử dụng ➔ Tự động đề xuất xuất trước)
+            </p>
+          </div>
+        </div>
+
+        {/* CỘT 2: VỊ TRÍ Ô KỆ & HƯỚNG DẪN LẤY HÀNG */}
+        <div className="p-4 rounded-xl bg-slate-900/50 border border-slate-800/70 space-y-3 flex flex-col justify-between">
+          <div>
+            <div className="flex items-center justify-between text-[11px] text-slate-400 mb-1">
+              <span className="flex items-center gap-1.5 font-medium">
+                <MapPin className="w-3.5 h-3.5 text-cyan-400" />
+                Vị Trí Ô Kệ:
+              </span>
+              <span className="font-mono text-cyan-300 font-bold text-xs bg-cyan-950/60 px-2 py-0.5 rounded border border-cyan-700/50">
+                {order.locationBarcode}
+              </span>
+            </div>
+
+            <div className="mt-2 text-[11px] text-slate-400">Đường đi lấy hàng:</div>
+            <div className="flex items-center gap-1 text-[11px] font-mono text-slate-200 mt-1 flex-wrap">
+              <span className="px-1.5 py-0.5 rounded bg-slate-800 border border-slate-700 text-slate-300">
+                Khu {order.locationBarcode.startsWith('ZA') ? 'A' : 'B'}
+              </span>
+              <ArrowRight className="w-3 h-3 text-slate-500" />
+              <span className="px-1.5 py-0.5 rounded bg-slate-800 border border-slate-700 text-slate-300">
+                Dãy {order.locationBarcode.split('-')[1] || '01'}
+              </span>
+              <ArrowRight className="w-3 h-3 text-slate-500" />
+              <span className="px-1.5 py-0.5 rounded bg-slate-800 border border-slate-700 text-slate-300">
+                Kệ {order.locationBarcode.split('-')[2] || 'R01'}
+              </span>
+              <ArrowRight className="w-3 h-3 text-slate-500" />
+              <span className="px-1.5 py-0.5 rounded bg-cyan-950/80 border border-cyan-600 text-cyan-300 font-bold">
+                Ô {order.locationBarcode.split('-')[4] || 'B01'}
+              </span>
+            </div>
+          </div>
+
+          <div className="p-2 rounded-lg bg-slate-950/60 border border-slate-800/60 flex items-center justify-between text-[11px]">
+            <span className="text-slate-400">Số lượng cần lấy:</span>
+            <span className="font-mono font-black text-cyan-300 text-sm">
+              {order.qty} sản phẩm
+            </span>
+          </div>
+        </div>
+
+        {/* CỘT 3: TỒN KHO TẠI VỊ TRÍ */}
+        <div className="p-4 rounded-xl bg-slate-900/50 border border-slate-800/70 space-y-2 flex flex-col justify-between">
+          <div className="flex items-center justify-between text-[11px] text-slate-400 pb-1 border-b border-slate-800/50">
+            <span>Tồn Kho Tại Ô Kệ:</span>
+            <span className="text-emerald-400 font-medium flex items-center gap-1">
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-400"></span>
+              Đang Cập Nhật
+            </span>
+          </div>
+
+          <div className="grid grid-cols-3 gap-2 text-center py-1">
+            <div className="p-2 rounded-lg bg-slate-950/80 border border-slate-800">
+              <div className="text-[10px] text-slate-400">Tồn Thực Tế</div>
+              <div className="text-base font-extrabold font-mono text-white mt-0.5">{stats.onHand}</div>
+            </div>
+
+            <div className={`p-2 rounded-lg border ${stats.reserved > 0 ? 'bg-amber-950/30 border-amber-500/40 text-amber-300' : 'bg-slate-950/80 border-slate-800 text-slate-400'}`}>
+              <div className="text-[10px]">Đang Giữ</div>
+              <div className="text-base font-extrabold font-mono mt-0.5">{stats.reserved > 0 ? `${stats.reserved}` : '0'}</div>
+            </div>
+
+            <div className="p-2 rounded-lg bg-emerald-950/30 border border-emerald-500/40 text-emerald-300">
+              <div className="text-[10px]">Khả Dụng</div>
+              <div className="text-base font-extrabold font-mono mt-0.5">{stats.available}</div>
+            </div>
+          </div>
+
+          <div className="text-[10px] text-slate-400 text-center pt-1 border-t border-slate-800/50">
+            Khả dụng = Tồn thực tế ({stats.onHand}) - Đang giữ ({stats.reserved})
+          </div>
+        </div>
       </div>
 
-      {/* Nút Xem lại phiếu thẻ kho nếu đã xuất */}
-      {order.status === 'SHIPPED' && (
-        <button
-          onClick={onViewLedger}
-          className="w-full py-2.5 rounded-xl bg-indigo-600/20 hover:bg-indigo-600/30 text-indigo-300 border border-indigo-500/30 text-xs font-bold flex items-center justify-center gap-1.5 transition-colors shadow-sm"
-        >
-          <FileText className="w-4 h-4" />
-          <span>Truy Xuất Chứng Từ Sổ Cái Điện Tử (View Stock Ledger)</span>
-        </button>
-      )}
+      {/* BƯỚC 3: THAO TÁC XUẤT KHO TRỰC TIẾP */}
+      <div className="pt-2 border-t border-slate-800/60">
+        <div className="flex items-center gap-2 mb-2 text-xs font-bold text-slate-300 uppercase">
+          <div className="w-5 h-5 rounded-md bg-indigo-600/20 text-indigo-400 font-mono text-[10px] flex items-center justify-center">
+            3
+          </div>
+          <span>Bước 3: Thao Tác Xuất Kho</span>
+        </div>
+
+        <div className="flex flex-col sm:flex-row items-center gap-3">
+          {/* Nút 1: Giữ hàng */}
+          <button
+            onClick={onReserve}
+            disabled={order.status !== 'PENDING'}
+            className={`flex-1 w-full py-3 px-4 rounded-xl font-bold text-xs flex items-center justify-center gap-2 transition-all ${
+              order.status === 'PENDING'
+                ? 'bg-amber-600 hover:bg-amber-500 text-white shadow-lg shadow-amber-900/30 cursor-pointer active:scale-[0.99]'
+                : 'bg-slate-900 text-slate-500 cursor-not-allowed border border-slate-800'
+            }`}
+          >
+            <Lock className="w-4 h-4" />
+            <span>
+              {order.status === 'PENDING'
+                ? `1. Giữ Hàng (${order.qty} SP)`
+                : 'Đã Giữ Hàng Thành Công'}
+            </span>
+          </button>
+
+          {/* Nút 2: Xuất kho */}
+          <button
+            onClick={onShip}
+            disabled={order.status !== 'RESERVED'}
+            className={`flex-1 w-full py-3 px-4 rounded-xl font-bold text-xs flex items-center justify-center gap-2 transition-all ${
+              order.status === 'RESERVED'
+                ? 'bg-emerald-600 hover:bg-emerald-500 text-white shadow-lg shadow-emerald-900/30 cursor-pointer active:scale-[0.99]'
+                : order.status === 'SHIPPED'
+                ? 'bg-slate-900 text-emerald-400 border border-emerald-500/30'
+                : 'bg-slate-900 text-slate-500 cursor-not-allowed border border-slate-800'
+            }`}
+          >
+            <Truck className="w-4 h-4" />
+            <span>
+              {order.status === 'SHIPPED'
+                ? 'Đã Xuất Kho Thành Công'
+                : '2. Xác Nhận Xuất Kho'}
+            </span>
+          </button>
+
+          {/* Nút 3: Xem phiếu xuất */}
+          {order.status === 'SHIPPED' && (
+            <button
+              onClick={onViewLedger}
+              className="py-3 px-5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs flex items-center justify-center gap-1.5 transition-all shadow-lg shadow-indigo-900/30 flex-shrink-0 cursor-pointer"
+            >
+              <FileText className="w-4 h-4" />
+              <span>In / Xem Phiếu Xuất</span>
+            </button>
+          )}
+        </div>
+      </div>
     </div>
   );
 };

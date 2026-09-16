@@ -93,7 +93,7 @@ export const InventoryBalancePage: React.FC = () => {
 
     setNotification({
       type: 'success',
-      message: `Đã khóa giữ ${qty} sản phẩm an toàn với khóa bi quan (SELECT FOR UPDATE)!`,
+      message: `Đã giữ ${qty} sản phẩm cho đơn hàng thành công!`,
     });
   };
 
@@ -114,9 +114,9 @@ export const InventoryBalancePage: React.FC = () => {
       qtyChange: item.onHandQty,
       balanceBefore: 0,
       balanceAfter: item.onHandQty,
-      performedBy: 'Hệ Thống (Auto Inbound Staging)',
-      notes: `Nhập lưu kho và cấp phát mã ô kệ tự động: ${item.locationBarcode}`,
-      timestamp: new Date().toLocaleTimeString('vi-VN') + ' - 10/09/2026',
+      performedBy: 'Hệ Thống',
+      notes: `Nhập lưu kho và xếp vào ô kệ: ${item.locationBarcode}`,
+      timestamp: new Date().toLocaleTimeString('vi-VN') + ' - 13/09/2026',
       hashSignature: `0x${Array.from({ length: 32 }, () => Math.floor(Math.random() * 16).toString(16)).join('')}`,
     };
     setActiveLedgerEntry(entry);
@@ -124,42 +124,47 @@ export const InventoryBalancePage: React.FC = () => {
   };
 
   return (
-    <div className="space-y-4 max-w-[1600px] mx-auto pb-10">
-      {/* Header Gọn Gàng & Segmented Tab Switcher */}
-      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 pb-2 border-b border-slate-800">
+    <div className="space-y-5 max-w-[1600px] mx-auto pb-10">
+      {/* Header Nổi Bật & Bộ Chuyển Tab Cao Cấp */}
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 pb-3 border-b border-slate-700/80">
         <div>
-          <h1 className="text-lg font-bold text-white tracking-tight">
-            Điều Phối Phân Bổ Tồn Kho & Xuất Hàng (Stock Allocation)
-          </h1>
-          <p className="text-xs text-slate-400 mt-0.5">
-            Cân đối số dư 3 trạng thái (On-Hand, Allocated, Available) & cấp phát đơn hàng tự động theo chiến lược FEFO.
+          <div className="flex items-center gap-2.5">
+            <div className="w-9 h-9 rounded-xl bg-gradient-to-tr from-indigo-600 to-cyan-500 flex items-center justify-center text-white shadow-md shadow-indigo-500/30">
+              <Zap className="w-5 h-5" />
+            </div>
+            <h1 className="text-xl font-black text-white tracking-tight">
+              Quản Lý Tồn Kho & Xuất Hàng FEFO
+            </h1>
+          </div>
+          <p className="text-xs text-slate-300 font-medium mt-1 pl-11.5">
+            Theo dõi số lượng tồn kho theo vị trí ô kệ và điều phối đơn hàng xuất theo hạn sử dụng ưu tiên (First-Expired, First-Out).
           </p>
         </div>
 
-        {/* Tab Gạt Tinh Gọn */}
-        <div className="flex items-center bg-slate-900 p-1 rounded-xl border border-slate-800">
+        {/* Tab Gạt Cao Cấp & Nổi Bật */}
+        <div className="flex items-center bg-slate-950 p-1.5 rounded-2xl border border-slate-700 shadow-inner">
           <button
             onClick={() => setActiveTab('outbound')}
-            className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg text-xs font-semibold transition-all ${
+            className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${
               activeTab === 'outbound'
-                ? 'bg-indigo-600 text-white shadow-sm'
-                : 'text-slate-400 hover:text-slate-200'
+                ? 'bg-gradient-to-r from-indigo-600 via-indigo-500 to-cyan-500 text-white shadow-lg shadow-indigo-600/40 ring-1 ring-white/20'
+                : 'text-slate-300 hover:text-white hover:bg-slate-900'
             }`}
           >
-            <Zap className="w-3.5 h-3.5" />
-            <span>Phân Bổ Xuất Kho FEFO</span>
+            <Zap className="w-4 h-4 text-amber-300" />
+            <span>Xuất Hàng Theo Lô (FEFO)</span>
           </button>
 
           <button
             onClick={() => setActiveTab('balance')}
-            className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg text-xs font-semibold transition-all ${
+            className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${
               activeTab === 'balance'
-                ? 'bg-indigo-600 text-white shadow-sm'
-                : 'text-slate-400 hover:text-slate-200'
+                ? 'bg-gradient-to-r from-indigo-600 via-indigo-500 to-cyan-500 text-white shadow-lg shadow-indigo-600/40 ring-1 ring-white/20'
+                : 'text-slate-300 hover:text-white hover:bg-slate-900'
             }`}
           >
-            <Layers className="w-3.5 h-3.5" />
-            <span>Bảng Cân Đối Tồn Kho Vật Lý</span>
+            <Layers className="w-4 h-4 text-cyan-300" />
+            <span>Tra Cứu Tồn Kho Thực Tế</span>
           </button>
         </div>
       </div>
