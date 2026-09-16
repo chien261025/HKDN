@@ -1,24 +1,19 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { LoginForm } from '../components/LoginForm';
-import { DemoAccountCards } from '../components/DemoAccountCards';
-import { SecurityBadges } from '../components/SecurityBadges';
-import { DemoAccount } from '../types';
 import { authService } from '../services/authService';
-import { Sparkles, Radio, Shield, AlertTriangle, CheckCircle2 } from 'lucide-react';
+import { User, Lock, Eye, EyeOff, LogIn, Shield, Smartphone, Briefcase, AlertTriangle, CheckCircle2 } from 'lucide-react';
 
 export const LoginPage: React.FC = () => {
   const navigate = useNavigate();
   const [username, setUsername] = useState('manager01');
   const [password, setPassword] = useState('123456');
-  const [warehouse, setWarehouse] = useState('Kho Tổng Tân Bình (ZONE A & B)');
-  const [rememberMe, setRememberMe] = useState(true);
+  const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
 
   /**
-   * Thực hiện gọi API đăng nhập Backend thực tế qua authService
+   * Thực hiện gọi API đăng nhập Backend thực tế
    */
   const executeLogin = async (userToLogin: string, passToLogin: string, targetRouteOverride?: string) => {
     setIsLoading(true);
@@ -26,17 +21,13 @@ export const LoginPage: React.FC = () => {
     setSuccessMessage(null);
 
     try {
-      const data = await authService.login(
-        {
-          username: userToLogin.trim(),
-          password: passToLogin,
-        },
-        warehouse
-      );
+      const data = await authService.login({
+        username: userToLogin.trim(),
+        password: passToLogin,
+      });
 
-      setSuccessMessage(`Đăng nhập thành công! Chào mừng ${data.fullName} (${data.role})`);
+      setSuccessMessage(`Đăng nhập thành công! Chào mừng ${data.fullName}`);
 
-      // Định tuyến tự động theo phân quyền RBAC
       setTimeout(() => {
         setIsLoading(false);
         if (targetRouteOverride) {
@@ -46,13 +37,13 @@ export const LoginPage: React.FC = () => {
         } else {
           navigate('/');
         }
-      }, 500);
+      }, 400);
     } catch (err: any) {
       setIsLoading(false);
       const apiMsg =
         err.response?.data?.message ||
         err.message ||
-        'Không thể kết nối đến máy chủ Backend hoặc thông tin đăng nhập sai!';
+        'Tài khoản hoặc mật khẩu không chính xác!';
       setErrorMessage(apiMsg);
     }
   };
@@ -62,105 +53,152 @@ export const LoginPage: React.FC = () => {
     executeLogin(username, password);
   };
 
-  const handleSelectDemo = (acc: DemoAccount) => {
-    setUsername(acc.username);
+  const handleQuickDemo = (user: string, route: string) => {
+    setUsername(user);
     setPassword('123456');
-    executeLogin(acc.username, '123456', acc.targetRoute);
+    executeLogin(user, '123456', route);
   };
 
   return (
-    <div className="min-h-screen w-full bg-[#050811] text-slate-100 flex flex-col justify-between relative overflow-hidden font-sans select-none">
-      {/* Dynamic Background Glow Orbs */}
-      <div className="fixed -top-40 -left-40 w-96 h-96 bg-indigo-600/20 rounded-full blur-[130px] pointer-events-none"></div>
-      <div className="fixed -bottom-40 -right-40 w-96 h-96 bg-cyan-600/20 rounded-full blur-[130px] pointer-events-none"></div>
-      <div className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[650px] h-[650px] bg-purple-600/10 rounded-full blur-[180px] pointer-events-none"></div>
+    <div className="min-h-screen w-full bg-[#070b14] text-slate-100 flex flex-col justify-center items-center p-4 relative font-sans select-none">
+      {/* Ambient background soft light */}
+      <div className="fixed top-1/3 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[500px] h-[500px] bg-indigo-600/15 rounded-full blur-[140px] pointer-events-none -z-10"></div>
 
-      {/* Top Floating Bar */}
-      <header className="p-4 md:px-8 flex items-center justify-between relative z-10 border-b border-slate-800/60 bg-[#070b16]/70 backdrop-blur-md">
-        <div className="flex items-center gap-2.5">
-          <div className="w-8 h-8 rounded-lg bg-gradient-to-tr from-indigo-600 via-indigo-500 to-cyan-400 flex items-center justify-center text-white font-extrabold text-sm shadow-md shadow-indigo-600/40 ring-1 ring-white/20">
+      {/* Main Login Card Tinh Gọn */}
+      <div className="w-full max-w-[420px] bg-[#0c1222]/90 backdrop-blur-xl border border-slate-700/80 rounded-2xl p-7 sm:p-8 shadow-2xl space-y-6">
+        {/* Brand Header */}
+        <div className="text-center space-y-2">
+          <div className="inline-flex items-center justify-center w-12 h-12 rounded-xl bg-gradient-to-tr from-indigo-600 to-cyan-500 text-white font-black text-xl shadow-lg shadow-indigo-600/30 ring-1 ring-white/20 mx-auto">
             W
           </div>
           <div>
-            <span className="font-extrabold text-white text-sm tracking-wide">SMART WMS</span>
-            <span className="ml-1.5 text-[9px] font-mono font-bold bg-indigo-500/20 text-indigo-300 px-1.5 py-0.5 rounded border border-indigo-500/40">
-              JWT RBAC AUTH
-            </span>
+            <h1 className="text-2xl font-black text-white tracking-tight">SMART WMS</h1>
+            <p className="text-xs text-slate-400 mt-0.5">Hệ thống Quản lý Kho Thông minh</p>
           </div>
         </div>
 
-        <div className="hidden sm:flex items-center gap-3 text-xs font-mono text-slate-300">
-          <span className="flex items-center gap-1.5 text-emerald-400 font-bold">
-            <Radio className="w-3.5 h-3.5 animate-pulse" />
-            Backend API Live
-          </span>
-          <span>•</span>
-          <span className="text-slate-400">PostgreSQL 16 &amp; RabbitMQ</span>
-        </div>
-      </header>
+        {/* Thông báo lỗi / thành công */}
+        {errorMessage && (
+          <div className="p-3 rounded-xl bg-rose-500/20 border border-rose-500/60 text-rose-200 text-xs font-semibold flex items-center gap-2 animate-in fade-in">
+            <AlertTriangle className="w-4 h-4 text-rose-400 flex-shrink-0" />
+            <span>{errorMessage}</span>
+          </div>
+        )}
 
-      {/* Main Login Card Arena */}
-      <main className="flex-1 flex items-center justify-center p-4 relative z-10 my-4">
-        <div className="w-full max-w-xl bg-[#0b101f]/95 backdrop-blur-2xl border border-slate-700/80 rounded-3xl p-6 sm:p-8 shadow-2xl shadow-indigo-950/50 space-y-5">
-          {/* Brand Header */}
-          <div className="text-center space-y-2">
-            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-indigo-500/15 border border-indigo-500/40 text-indigo-300 text-xs font-mono font-bold mb-1 shadow-sm">
-              <Sparkles className="w-3.5 h-3.5 text-amber-400 animate-pulse" />
-              <span>HỆ THỐNG QUẢN LÝ KHO THÔNG MINH</span>
+        {successMessage && (
+          <div className="p-3 rounded-xl bg-emerald-500/20 border border-emerald-500/60 text-emerald-200 text-xs font-semibold flex items-center gap-2 animate-in fade-in">
+            <CheckCircle2 className="w-4 h-4 text-emerald-400 flex-shrink-0" />
+            <span>{successMessage}</span>
+          </div>
+        )}
+
+        {/* Form Đăng Nhập Chuẩn Gọn Gàng */}
+        <form onSubmit={handleSubmit} className="space-y-4 text-xs">
+          {/* Tên đăng nhập */}
+          <div>
+            <label className="block text-slate-300 font-semibold mb-1.5">
+              Tên đăng nhập
+            </label>
+            <div className="relative">
+              <User className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+              <input
+                type="text"
+                required
+                placeholder="admin, manager01, operator01..."
+                value={username}
+                onChange={(e) => setUsername(e.target.value)}
+                className="w-full pl-9 pr-3 py-2.5 bg-slate-950/80 border border-slate-700 rounded-xl text-white font-medium placeholder-slate-500 focus:outline-none focus:border-cyan-400 focus:ring-1 focus:ring-cyan-400 transition-all"
+              />
             </div>
-            <h1 className="text-2xl sm:text-3xl font-black text-white tracking-tight">
-              Đăng Nhập Cổng Điều Hành
-            </h1>
-            <p className="text-xs text-slate-300 max-w-md mx-auto leading-relaxed">
-              Xác thực JWT Token thời gian thực, tự động phân luồng theo vai trò Admin, Quản Lý Kho &amp; Thủ Kho PDA.
-            </p>
           </div>
 
-          {/* Alert Banners: Error or Success */}
-          {errorMessage && (
-            <div className="p-3.5 rounded-2xl bg-rose-500/20 border border-rose-500/60 text-rose-200 text-xs font-bold flex items-center gap-2.5 shadow-lg shadow-rose-950/40 animate-in fade-in slide-in-from-top-2">
-              <AlertTriangle className="w-4 h-4 text-rose-400 flex-shrink-0" />
-              <span>{errorMessage}</span>
+          {/* Mật khẩu */}
+          <div>
+            <div className="flex items-center justify-between mb-1.5">
+              <label className="text-slate-300 font-semibold">Mật khẩu</label>
+              <span className="text-[11px] text-slate-400 font-mono">Demo: 123456</span>
             </div>
-          )}
-
-          {successMessage && (
-            <div className="p-3.5 rounded-2xl bg-emerald-500/20 border border-emerald-500/60 text-emerald-200 text-xs font-bold flex items-center gap-2.5 shadow-lg shadow-emerald-950/40 animate-in fade-in slide-in-from-top-2">
-              <CheckCircle2 className="w-4 h-4 text-emerald-400 flex-shrink-0" />
-              <span>{successMessage}</span>
+            <div className="relative">
+              <Lock className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+              <input
+                type={showPassword ? 'text' : 'password'}
+                required
+                placeholder="••••••••"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                className="w-full pl-9 pr-10 py-2.5 bg-slate-950/80 border border-slate-700 rounded-xl text-white font-medium placeholder-slate-500 focus:outline-none focus:border-cyan-400 focus:ring-1 focus:ring-cyan-400 transition-all"
+              />
+              <button
+                type="button"
+                onClick={() => setShowPassword(!showPassword)}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white transition-colors"
+                tabIndex={-1}
+              >
+                {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+              </button>
             </div>
-          )}
+          </div>
 
-          {/* Login Form */}
-          <LoginForm
-            username={username}
-            setUsername={setUsername}
-            password={password}
-            setPassword={setPassword}
-            warehouse={warehouse}
-            setWarehouse={setWarehouse}
-            rememberMe={rememberMe}
-            setRememberMe={setRememberMe}
-            onSubmit={handleSubmit}
-            isLoading={isLoading}
-          />
+          {/* Nút Đăng nhập */}
+          <button
+            type="submit"
+            disabled={isLoading}
+            className="w-full py-2.5 px-4 bg-gradient-to-r from-indigo-600 via-indigo-500 to-cyan-500 hover:from-indigo-500 hover:to-cyan-400 text-white font-bold rounded-xl shadow-lg shadow-indigo-600/30 flex items-center justify-center gap-2 transition-all active:scale-[0.99] disabled:opacity-50 cursor-pointer pt-2.5"
+          >
+            {isLoading ? (
+              <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
+            ) : (
+              <>
+                <LogIn className="w-4 h-4" />
+                <span>Đăng Nhập</span>
+              </>
+            )}
+          </button>
+        </form>
 
-          {/* 3 Interactive Quick Demo Login Buttons (1-Click Real Login) */}
-          <DemoAccountCards onSelectDemo={handleSelectDemo} isLoading={isLoading} />
+        {/* Đăng nhập nhanh 1 chạm cho Hội đồng chấm thi */}
+        <div className="pt-4 border-t border-slate-800 space-y-2.5">
+          <p className="text-[11px] text-slate-400 text-center font-medium">
+            Hoặc chọn vai trò để đăng nhập nhanh:
+          </p>
 
-          {/* 4 Technical Pillars Badges */}
-          <SecurityBadges />
+          <div className="grid grid-cols-3 gap-2">
+            <button
+              type="button"
+              disabled={isLoading}
+              onClick={() => handleQuickDemo('admin', '/')}
+              className="py-2 px-2 rounded-xl bg-slate-900/90 hover:bg-slate-800 border border-slate-750 hover:border-indigo-500/50 text-slate-200 hover:text-white transition-all text-center flex flex-col items-center gap-1 group cursor-pointer disabled:opacity-50"
+            >
+              <Shield className="w-3.5 h-3.5 text-purple-400 group-hover:scale-110 transition-transform" />
+              <span className="text-[11px] font-bold">Admin</span>
+            </button>
+
+            <button
+              type="button"
+              disabled={isLoading}
+              onClick={() => handleQuickDemo('manager01', '/')}
+              className="py-2 px-2 rounded-xl bg-slate-900/90 hover:bg-slate-800 border border-slate-750 hover:border-cyan-500/50 text-slate-200 hover:text-white transition-all text-center flex flex-col items-center gap-1 group cursor-pointer disabled:opacity-50"
+            >
+              <Briefcase className="w-3.5 h-3.5 text-cyan-400 group-hover:scale-110 transition-transform" />
+              <span className="text-[11px] font-bold">Trưởng Kho</span>
+            </button>
+
+            <button
+              type="button"
+              disabled={isLoading}
+              onClick={() => handleQuickDemo('operator01', '/operator')}
+              className="py-2 px-2 rounded-xl bg-slate-900/90 hover:bg-slate-800 border border-slate-750 hover:border-emerald-500/50 text-slate-200 hover:text-white transition-all text-center flex flex-col items-center gap-1 group cursor-pointer disabled:opacity-50"
+            >
+              <Smartphone className="w-3.5 h-3.5 text-emerald-400 group-hover:scale-110 transition-transform" />
+              <span className="text-[11px] font-bold">Thủ Kho PDA</span>
+            </button>
+          </div>
         </div>
-      </main>
+      </div>
 
-      {/* Footer Credentials */}
-      <footer className="p-4 text-center text-xs text-slate-400 relative z-10 border-t border-slate-800/80 font-mono bg-[#070b16]/70">
-        <p className="text-slate-300 font-bold">
-          ĐỒ ÁN TỐT NGHIỆP: SMART WMS SYSTEM • KIẾN TRÚC KHO THÔNG MINH ENTERPRISE
-        </p>
-        <p className="text-[10px] text-slate-400 mt-0.5">
-          JWT Bearer Auth • Pessimistic Concurrency • FEFO Lot Tracking • RabbitMQ Streaming • JSqlParser AST
-        </p>
+      {/* Footer Gọn Nhẹ */}
+      <footer className="text-center text-[11px] text-slate-500 mt-6 font-mono">
+        Smart WMS Enterprise v2.5 • Đồ Án Tốt Nghiệp
       </footer>
     </div>
   );
