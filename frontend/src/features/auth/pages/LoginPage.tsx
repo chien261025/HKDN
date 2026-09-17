@@ -26,8 +26,8 @@ export const LoginPage: React.FC<LoginPageProps> = ({ initialMode = 'LOGIN' }) =
   const [activeTab, setActiveTab] = useState<'LOGIN' | 'REGISTER'>(initialMode);
 
   // Form Đăng nhập
-  const [username, setUsername] = useState('manager01');
-  const [password, setPassword] = useState('123456');
+  const [username, setUsername] = useState('');
+  const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
 
   // Form Đăng ký
@@ -135,27 +135,14 @@ export const LoginPage: React.FC<LoginPageProps> = ({ initialMode = 'LOGIN' }) =
   };
 
   /**
-   * Đăng nhập demo nhanh 1 chạm cho Hội đồng phản biện
+   * Điền nhanh thông tin tài khoản mẫu vào form (không tự động đăng nhập)
    */
-  const handleQuickDemo = async (user: string, route: string) => {
+  const handlePrefillDemo = (user: string, roleTitle: string) => {
     setUsername(user);
     setPassword('123456');
     setActiveTab('LOGIN');
-    setIsLoading(true);
     setErrorMessage(null);
-    setSuccessMessage(null);
-
-    try {
-      const data = await authService.login({ username: user, password: '123456' });
-      setSuccessMessage(`Đăng nhập thành công! Chào mừng ${data.fullName}`);
-      setTimeout(() => {
-        setIsLoading(false);
-        navigate(route);
-      }, 350);
-    } catch (err: any) {
-      setIsLoading(false);
-      setErrorMessage(err.message || 'Lỗi đăng nhập tài khoản demo');
-    }
+    setSuccessMessage(`Đã điền tài khoản mẫu ${roleTitle} (${user}). Bấm "Đăng Nhập" để tiếp tục.`);
   };
 
   const getRoleDisplayName = (role: string) => {
@@ -460,19 +447,19 @@ export const LoginPage: React.FC<LoginPageProps> = ({ initialMode = 'LOGIN' }) =
           </form>
         )}
 
-        {/* Đăng nhập nhanh 1 chạm cho Hội đồng chấm thi (hiển thị khi ở tab Login) */}
+        {/* Điền nhanh tài khoản mẫu cho Hội đồng chấm thi (chỉ điền form, không tự đăng nhập) */}
         {activeTab === 'LOGIN' && (
           <div className="pt-4 border-t border-slate-800 space-y-2.5">
             <p className="text-[11px] text-slate-400 text-center font-medium">
-              Hoặc chọn vai trò để đăng nhập nhanh:
+              Tài khoản mẫu (Bấm để điền nhanh):
             </p>
 
             <div className="grid grid-cols-3 gap-2">
               <button
                 type="button"
-                disabled={isLoading}
-                onClick={() => handleQuickDemo('admin', '/')}
-                className="py-2 px-2 rounded-xl bg-slate-900/90 hover:bg-slate-800 border border-slate-750 hover:border-indigo-500/50 text-slate-200 hover:text-white transition-all text-center flex flex-col items-center gap-1 group cursor-pointer disabled:opacity-50"
+                onClick={() => handlePrefillDemo('admin', 'Admin')}
+                className="py-2 px-2 rounded-xl bg-slate-900/90 hover:bg-slate-800 border border-slate-750 hover:border-indigo-500/50 text-slate-200 hover:text-white transition-all text-center flex flex-col items-center gap-1 group cursor-pointer"
+                title="Điền tài khoản Admin (admin / 123456)"
               >
                 <Shield className="w-3.5 h-3.5 text-purple-400 group-hover:scale-110 transition-transform" />
                 <span className="text-[11px] font-bold">Admin</span>
@@ -480,9 +467,9 @@ export const LoginPage: React.FC<LoginPageProps> = ({ initialMode = 'LOGIN' }) =
 
               <button
                 type="button"
-                disabled={isLoading}
-                onClick={() => handleQuickDemo('manager01', '/')}
-                className="py-2 px-2 rounded-xl bg-slate-900/90 hover:bg-slate-800 border border-slate-750 hover:border-cyan-500/50 text-slate-200 hover:text-white transition-all text-center flex flex-col items-center gap-1 group cursor-pointer disabled:opacity-50"
+                onClick={() => handlePrefillDemo('manager01', 'Trưởng Kho')}
+                className="py-2 px-2 rounded-xl bg-slate-900/90 hover:bg-slate-800 border border-slate-750 hover:border-cyan-500/50 text-slate-200 hover:text-white transition-all text-center flex flex-col items-center gap-1 group cursor-pointer"
+                title="Điền tài khoản Trưởng Kho (manager01 / 123456)"
               >
                 <Briefcase className="w-3.5 h-3.5 text-cyan-400 group-hover:scale-110 transition-transform" />
                 <span className="text-[11px] font-bold">Trưởng Kho</span>
@@ -490,9 +477,9 @@ export const LoginPage: React.FC<LoginPageProps> = ({ initialMode = 'LOGIN' }) =
 
               <button
                 type="button"
-                disabled={isLoading}
-                onClick={() => handleQuickDemo('operator01', '/operator')}
-                className="py-2 px-2 rounded-xl bg-slate-900/90 hover:bg-slate-800 border border-slate-750 hover:border-emerald-500/50 text-slate-200 hover:text-white transition-all text-center flex flex-col items-center gap-1 group cursor-pointer disabled:opacity-50"
+                onClick={() => handlePrefillDemo('operator01', 'Thủ Kho PDA')}
+                className="py-2 px-2 rounded-xl bg-slate-900/90 hover:bg-slate-800 border border-slate-750 hover:border-emerald-500/50 text-slate-200 hover:text-white transition-all text-center flex flex-col items-center gap-1 group cursor-pointer"
+                title="Điền tài khoản Thủ Kho (operator01 / 123456)"
               >
                 <Smartphone className="w-3.5 h-3.5 text-emerald-400 group-hover:scale-110 transition-transform" />
                 <span className="text-[11px] font-bold">Thủ Kho PDA</span>
