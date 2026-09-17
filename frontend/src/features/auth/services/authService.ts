@@ -6,6 +6,14 @@ export interface LoginPayload {
   password: string;
 }
 
+export interface RegisterPayload {
+  username: string;
+  password: string;
+  fullName: string;
+  email: string;
+  role?: string;
+}
+
 export interface AuthTokenData {
   accessToken: string;
   tokenType: string;
@@ -31,6 +39,35 @@ export const authService = {
     
     if (!response.data.success || !response.data.data) {
       throw new Error(response.data.message || 'Đăng nhập không thành công!');
+    }
+
+    const data = response.data.data;
+
+    // Lưu Token và phiên làm việc vào localStorage
+    localStorage.setItem('smart_wms_token', data.accessToken);
+    
+    const session: AuthSession = {
+      token: data.accessToken,
+      username: data.username,
+      fullName: data.fullName,
+      role: data.role as any,
+      warehouse: warehouse || 'Kho Tổng Tân Bình (ZONE A & B)',
+      expiresAt: new Date(Date.now() + (data.expiresIn || 86400000)).toISOString(),
+    };
+    
+    localStorage.setItem('smart_wms_session', JSON.stringify(session));
+
+    return data;
+  },
+
+  /**
+   * Gọi API đăng ký backend để tạo tài khoản mới và nhận JWT Token
+   */
+  async register(payload: RegisterPayload, warehouse?: string): Promise<AuthTokenData> {
+    const response = await apiClient.post<ApiResponse<AuthTokenData>>('/auth/register', payload);
+    
+    if (!response.data.success || !response.data.data) {
+      throw new Error(response.data.message || 'Đăng ký không thành công!');
     }
 
     const data = response.data.data;

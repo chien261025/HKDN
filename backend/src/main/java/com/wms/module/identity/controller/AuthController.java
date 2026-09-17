@@ -4,8 +4,11 @@ import com.wms.common.exception.BusinessException;
 import com.wms.common.exception.ErrorCode;
 import com.wms.common.response.ApiResponse;
 import com.wms.module.identity.dto.request.LoginRequest;
+import com.wms.module.identity.dto.request.RegisterRequest;
 import com.wms.module.identity.dto.response.AuthTokenResponse;
+import com.wms.module.identity.entity.Role;
 import com.wms.module.identity.entity.User;
+import com.wms.module.identity.repository.RoleRepository;
 import com.wms.module.identity.repository.UserRepository;
 import com.wms.module.identity.security.JwtTokenProvider;
 import io.swagger.v3.oas.annotations.Operation;
@@ -16,17 +19,21 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.web.bind.annotation.*;
 
+import java.time.Instant;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 @Slf4j
 @RestController
 @RequestMapping("/auth")
 @RequiredArgsConstructor
-@Tag(name = "1. Định danh & Phân quyền (Identity & RBAC)", description = "APIs đăng nhập JWT và thông tin người dùng")
+@Tag(name = "1. Định danh & Phân quyền (Identity & RBAC)", description = "APIs đăng nhập, đăng ký JWT và thông tin người dùng")
 public class AuthController {
 
     private final UserRepository userRepository;
+    private final RoleRepository roleRepository;
     private final JwtTokenProvider jwtTokenProvider;
     private final PasswordEncoder passwordEncoder;
 
@@ -43,12 +50,17 @@ public class AuthController {
         String fullName = "Trần Trưởng Kho";
 
         if (user != null) {
+            // Kiểm tra trạng thái kích hoạt của tài khoản
+            if (Boolean.FALSE.equals(user.getIsActive())) {
+                throw new BusinessException(ErrorCode.FORBIDDEN, "Tài khoản đang bị tạm khóa. Vui lòng liên hệ Quản trị viên!");
+            }
+
             // Kiểm tra mật khẩu mã hóa BCrypt
             boolean matches = passwordEncoder.matches(request.getPassword(), user.getPasswordHash())
                     || "123456".equals(request.getPassword()); // Hỗ trợ mật khẩu demo 123456
 
             if (!matches) {
-                throw new BusinessException(ErrorCode.UNAUTHORIZED, "Mật khẩu không chính xác");
+                throw new BusinessException(ErrorCode.UNAUTHORIZED, "Mật khẩu không chính xác!");
             }
             if (user.getRoles() != null && !user.getRoles().isEmpty()) {
                 roleName = user.getRoles().iterator().next().getName();
@@ -83,6 +95,79 @@ public class AuthController {
                 .build();
 
         return ApiResponse.success("Đăng nhập thành công!", response);
+    }
+
+    @PostMapping("/register")
+    @Operation(summary = "Đăng ký tài khoản người dùng mới",
+               description = "Đăng ký tài khoản mới và tự động cấp token đăng nhập tức thời")
+    public ApiResponse<AuthTokenResponse> register(@Valid @RequestBody RegisterRequest request) {
+        log.info("Yeu cau dang ky tai khoan moi: {}", request.getUsername());
+
+        String cleanUsername = request.getUsername().trim().toLowerCase();
+        String cleanEmail = request.getEmail().trim().toLowerCase();
+
+        // 1. Kiểm tra trùng lặp username
+        if (userRepository.existsByUsername(cleanUsername)) {
+            throw new BusinessException(ErrorCode.BAD_REQUEST, "Tên đăng nhập '" + cleanUsername + "' đã tồn tại trong hệ thống!");
+        }
+
+        // 2. Kiểm tra trùng lặp email
+        if (userRepository.existsByEmail(cleanEmail)) {
+            throw new BusinessException(ErrorCode.BAD_REQUEST, "Địa chỉ email '" + cleanEmail + "' đã được sử dụng bởi tài khoản khác!");
+        }
+
+        // 3. Chuẩn hóa và gán vai trò RBAC
+        String roleName = request.getRole();
+        if (roleName == null || roleName.isBlank()) {
+            roleName = "ROLE_OPERATOR";
+        } else {
+            roleName = roleName.trim().toUpperCase();
+            if (!roleName.startsWith("ROLE_")) {
+                roleName = "ROLE_" + roleName;
+            }
+        }
+
+        // Giới hạn vai trò hợp lệ
+        if (!List.of("ROLE_ADMIN", "ROLE_WAREHOUSE_MANAGER", "ROLE_OPERATOR").contains(roleName)) {
+            roleName = "ROLE_OPERATOR";
+        }
+
+        Role role = roleRepository.findByName(roleName).orElse(null);
+        if (role == null) {
+            role = roleRepository.save(Role.builder()
+                    .name(roleName)
+                    .description("Vai trò gán tự động khi đăng ký")
+                    .build());
+        }
+
+        // 4. Lưu tài khoản người dùng mới với mật khẩu mã hóa BCrypt
+        User newUser = User.builder()
+                .username(cleanUsername)
+                .passwordHash(passwordEncoder.encode(request.getPassword()))
+                .fullName(request.getFullName().trim())
+                .email(cleanEmail)
+                .roles(new HashSet<>(Set.of(role)))
+                .isActive(true)
+                .createdAt(Instant.now())
+                .updatedAt(Instant.now())
+                .build();
+
+        userRepository.save(newUser);
+        log.info("Da dang ky thanh cong user: {} voi role: {}", cleanUsername, roleName);
+
+        // 5. Cấp phát JWT Token đăng nhập ngay lập tức
+        String token = jwtTokenProvider.generateToken(newUser.getUsername(), roleName);
+
+        AuthTokenResponse response = AuthTokenResponse.builder()
+                .accessToken(token)
+                .tokenType("Bearer")
+                .username(newUser.getUsername())
+                .fullName(newUser.getFullName())
+                .role(roleName)
+                .expiresIn(86400000L)
+                .build();
+
+        return ApiResponse.success("Đăng ký tài khoản thành công!", response);
     }
 
     @GetMapping("/demo-accounts")

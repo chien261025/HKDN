@@ -92,9 +92,9 @@ const AppContent: React.FC = () => {
     return () => clearInterval(timer);
   }, []);
 
-  // Nếu đang ở màn hình /login, hiển thị trực tiếp giao diện Đăng Nhập độc lập
-  if (location.pathname === '/login') {
-    return <LoginPage />;
+  // Nếu đang ở màn hình /login hoặc /register, hiển thị trực tiếp giao diện Đăng Nhập / Đăng Ký độc lập
+  if (location.pathname === '/login' || location.pathname === '/register') {
+    return <LoginPage initialMode={location.pathname === '/register' ? 'REGISTER' : 'LOGIN'} />;
   }
 
   // Nếu đang ở màn hình /operator, hiển thị trực tiếp giao diện Mobile/PDA độc lập
