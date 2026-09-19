@@ -42,9 +42,11 @@ import { ProtectedRoute } from '../features/auth/components/ProtectedRoute';
 import { PublicOnlyRoute } from '../features/auth/components/PublicOnlyRoute';
 import { authService } from '../features/auth/services/authService';
 import { CameraBarcodeScanner } from '../components/scanner/CameraBarcodeScanner';
+import { UserProfileModal } from '../features/users/components/UserProfileModal';
 
 const AppContent: React.FC = () => {
   const [showScanner, setShowScanner] = useState(false);
+  const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
   const [currentTime, setCurrentTime] = useState(new Date().toLocaleTimeString('vi-VN'));
   const location = useLocation();
 
@@ -366,7 +368,12 @@ const AppContent: React.FC = () => {
             </button>
 
             <div className="flex items-center gap-3 pl-3 border-l border-slate-700">
-              <Link to="/login" title="Bấm để chuyển đổi vai trò hoặc đăng xuất" className="flex items-center gap-2 group">
+              <button
+                type="button"
+                onClick={() => setIsProfileModalOpen(true)}
+                title="Xem hồ sơ cá nhân và đổi mật khẩu"
+                className="flex items-center gap-2 group cursor-pointer text-left focus:outline-none"
+              >
                 <div className="relative">
                   <div className="w-9 h-9 rounded-xl bg-gradient-to-tr from-indigo-600 via-purple-600 to-cyan-500 text-white font-black flex items-center justify-center text-xs shadow-md shadow-indigo-500/30 border border-white/20 group-hover:scale-105 transition-transform">
                     {session.fullName
@@ -387,7 +394,7 @@ const AppContent: React.FC = () => {
                     {session.role || 'ROLE_ADMIN'}
                   </span>
                 </div>
-              </Link>
+              </button>
 
               <button
                 onClick={handleLogout}
@@ -425,6 +432,13 @@ const AppContent: React.FC = () => {
           </Routes>
         </main>
       </div>
+
+      {/* Profile & Change Password Modal */}
+      <UserProfileModal
+        isOpen={isProfileModalOpen}
+        onClose={() => setIsProfileModalOpen(false)}
+        session={session}
+      />
 
       {/* Barcode Scanner Modal */}
       {showScanner && (

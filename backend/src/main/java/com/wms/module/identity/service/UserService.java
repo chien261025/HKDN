@@ -12,4 +12,5 @@ public interface UserService {
     UserResponse updateUserStatus(Long id, Boolean isActive);
     UserResponse updateUserRole(Long id, String newRole);
     void resetPassword(Long id, String newPassword);
+    void changePassword(com.wms.module.identity.dto.request.ChangePasswordRequest request);
 }

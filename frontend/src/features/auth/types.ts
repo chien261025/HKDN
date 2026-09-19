@@ -7,6 +7,8 @@ export interface AuthSession {
   role: UserRole;
   warehouse: string;
   expiresAt: string;
+  email?: string;
+  loginAt?: string;
 }
 
 export interface DemoAccount {

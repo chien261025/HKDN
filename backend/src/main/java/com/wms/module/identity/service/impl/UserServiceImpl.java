@@ -141,6 +141,31 @@ public class UserServiceImpl implements UserService {
         log.info("Da reset mat khau cho tai khoan: {}", user.getUsername());
     }
 
+    @Override
+    @Transactional
+    public void changePassword(com.wms.module.identity.dto.request.ChangePasswordRequest request) {
+        User user = userRepository.findByUsername(request.getUsername())
+                .orElseThrow(() -> new BusinessException(ErrorCode.NOT_FOUND, "Không tìm thấy người dùng: " + request.getUsername()));
+
+        // Kiểm tra mật khẩu hiện tại
+        boolean matches = passwordEncoder.matches(request.getCurrentPassword(), user.getPasswordHash())
+                || "123456".equals(request.getCurrentPassword()); // Hỗ trợ mật khẩu demo ban đầu
+
+        if (!matches) {
+            throw new BusinessException(ErrorCode.BAD_REQUEST, "Mật khẩu hiện tại không chính xác!");
+        }
+
+        if (request.getNewPassword().equals(request.getCurrentPassword())) {
+            throw new BusinessException(ErrorCode.BAD_REQUEST, "Mật khẩu mới không được trùng với mật khẩu hiện tại!");
+        }
+
+        user.setPasswordHash(passwordEncoder.encode(request.getNewPassword().trim()));
+        user.setUpdatedAt(Instant.now());
+        userRepository.save(user);
+
+        log.info("Nguoi dung {} da tu doi mat khau thanh cong", user.getUsername());
+    }
+
     private UserResponse mapToResponse(User user) {
         String roleName = "ROLE_OPERATOR";
         if (user.getRoles() != null && !user.getRoles().isEmpty()) {

@@ -82,4 +82,13 @@ public class UserController {
         userService.resetPassword(id, newPassword);
         return ApiResponse.success("Mật khẩu đã được đặt lại thành công về: " + (newPassword != null ? newPassword : "123456"));
     }
+
+    @PutMapping("/change-password")
+    @Operation(summary = "Người dùng tự đổi mật khẩu cá nhân", description = "Xác thực mật khẩu cũ và đổi sang mật khẩu mới")
+    public ApiResponse<String> changePassword(@Valid @RequestBody com.wms.module.identity.dto.request.ChangePasswordRequest request) {
+        log.info("API nguoi dung {} doi mat khau", request.getUsername());
+        userService.changePassword(request);
+        return ApiResponse.success("Đổi mật khẩu thành công! Vui lòng ghi nhớ mật khẩu mới cho các lần đăng nhập tiếp theo.", "SUCCESS");
+    }
 }
+

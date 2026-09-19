@@ -125,5 +125,16 @@ export const userService = {
       throw new Error(res.data.message || 'Không thể khôi phục mật khẩu');
     }
     return res.data.message;
+  },
+
+  /**
+   * Người dùng tự đổi mật khẩu cá nhân
+   */
+  async changePassword(payload: { username: string; currentPassword: string; newPassword: string }): Promise<string> {
+    const res = await apiClient.put<ApiResponse<void>>('/users/change-password', payload);
+    if (!res.data.success) {
+      throw new Error(res.data.message || 'Không thể đổi mật khẩu');
+    }
+    return res.data.message;
   }
 };
