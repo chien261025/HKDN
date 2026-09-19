@@ -122,5 +122,46 @@ export const authService = {
       console.warn('Không thể tải tài khoản demo từ backend, sử dụng danh sách mặc định:', err);
       return null;
     }
+  },
+
+  /**
+   * Lấy tên đăng nhập đã ghi nhớ
+   */
+  getRememberedUsername(): string {
+    return localStorage.getItem('smart_wms_remembered_username') || '';
+  },
+
+  /**
+   * Lưu hoặc xóa tên đăng nhập đã ghi nhớ
+   */
+  setRememberedUsername(username: string, remember: boolean): void {
+    if (remember && username.trim()) {
+      localStorage.setItem('smart_wms_remembered_username', username.trim());
+      localStorage.setItem('smart_wms_remember_me', 'true');
+    } else {
+      localStorage.removeItem('smart_wms_remembered_username');
+      localStorage.removeItem('smart_wms_remember_me');
+    }
+  },
+
+  /**
+   * Kiểm tra người dùng có bật ghi nhớ không
+   */
+  isRemembered(): boolean {
+    return localStorage.getItem('smart_wms_remember_me') === 'true';
+  },
+
+  /**
+   * Đặt lại mật khẩu sau khi xác thực OTP thành công
+   */
+  async resetForgottenPassword(identifier: string, newPassword: string): Promise<string> {
+    const res = await apiClient.post<ApiResponse<string>>('/auth/forgot-password/reset', {
+      identifier: identifier.trim(),
+      newPassword: newPassword.trim(),
+    });
+    if (!res.data.success) {
+      throw new Error(res.data.message || 'Không thể đặt lại mật khẩu');
+    }
+    return res.data.message;
   }
 };

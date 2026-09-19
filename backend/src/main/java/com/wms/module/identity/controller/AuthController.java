@@ -180,4 +180,22 @@ public class AuthController {
         );
         return ApiResponse.success(accounts);
     }
+
+    @PostMapping("/forgot-password/reset")
+    @Operation(summary = "Đặt lại mật khẩu sau khi xác thực OTP", description = "Xác thực tài khoản và cập nhật mật khẩu mới mã hóa BCrypt")
+    public ApiResponse<String> resetForgottenPassword(@Valid @RequestBody com.wms.module.identity.dto.request.ForgotPasswordResetRequest request) {
+        String idOrEmail = request.getIdentifier().trim();
+        log.info("Yeu cau dat lai mat khau cho: {}", idOrEmail);
+
+        User user = userRepository.findByUsername(idOrEmail)
+                .or(() -> userRepository.findByEmail(idOrEmail))
+                .orElseThrow(() -> new BusinessException(ErrorCode.NOT_FOUND, "Không tìm thấy tài khoản với: " + idOrEmail));
+
+        user.setPasswordHash(passwordEncoder.encode(request.getNewPassword().trim()));
+        user.setUpdatedAt(Instant.now());
+        userRepository.save(user);
+
+        log.info("Da dat lai mat khau thanh cong cho user: {}", user.getUsername());
+        return ApiResponse.success("Đặt lại mật khẩu thành công! Bạn có thể đăng nhập ngay với mật khẩu mới.", user.getUsername());
+    }
 }
