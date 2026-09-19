@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { BrowserRouter, Routes, Route, Link, useLocation } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, Link, useLocation, Navigate } from 'react-router-dom';
 import {
   LayoutDashboard,
   Layers,
@@ -38,6 +38,9 @@ import { AuditManagementPage } from '../features/audit/pages/AuditManagementPage
 import { ProductsPage } from '../features/products/pages/ProductsPage';
 import { UsersManagementPage } from '../features/users/pages/UsersManagementPage';
 import { LoginPage } from '../features/auth/pages/LoginPage';
+import { ProtectedRoute } from '../features/auth/components/ProtectedRoute';
+import { PublicOnlyRoute } from '../features/auth/components/PublicOnlyRoute';
+import { authService } from '../features/auth/services/authService';
 import { CameraBarcodeScanner } from '../components/scanner/CameraBarcodeScanner';
 
 const AppContent: React.FC = () => {
@@ -71,20 +74,6 @@ const AppContent: React.FC = () => {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, []);
 
-  // Load session from localStorage if available
-  const sessionStr = localStorage.getItem('smart_wms_session');
-  const session = sessionStr ? JSON.parse(sessionStr) : {
-    fullName: 'Trần Trưởng Kho',
-    role: 'ROLE_ADMIN',
-    username: 'admin',
-  };
-
-  const handleLogout = () => {
-    localStorage.removeItem('smart_wms_token');
-    localStorage.removeItem('smart_wms_session');
-    window.location.href = '/login';
-  };
-
   useEffect(() => {
     const timer = setInterval(() => {
       setCurrentTime(new Date().toLocaleTimeString('vi-VN'));
@@ -92,19 +81,50 @@ const AppContent: React.FC = () => {
     return () => clearInterval(timer);
   }, []);
 
-  // Nếu đang ở màn hình /login hoặc /register, hiển thị trực tiếp giao diện Đăng Nhập / Đăng Ký độc lập
+  // 1. Màn hình công khai (/login, /register): Bọc PublicOnlyRoute
+  // Nếu đã đăng nhập, tự động chuyển vào / hoặc /operator
   if (location.pathname === '/login' || location.pathname === '/register') {
-    return <LoginPage initialMode={location.pathname === '/register' ? 'REGISTER' : 'LOGIN'} />;
+    return (
+      <PublicOnlyRoute>
+        <LoginPage initialMode={location.pathname === '/register' ? 'REGISTER' : 'LOGIN'} />
+      </PublicOnlyRoute>
+    );
   }
 
-  // Nếu đang ở màn hình /operator, hiển thị trực tiếp giao diện Mobile/PDA độc lập
+  // 2. Kiểm tra Auth Guard cho TẤT CẢ các route nội bộ
+  const session = authService.getCurrentSession();
+  const token = localStorage.getItem('smart_wms_token');
+  const isExpired = session?.expiresAt ? new Date(session.expiresAt).getTime() <= Date.now() : true;
+
+  if (!session || !token || isExpired) {
+    if (token || session) {
+      localStorage.removeItem('smart_wms_token');
+      localStorage.removeItem('smart_wms_session');
+    }
+    return <Navigate to="/login" replace state={{ from: location, expired: isExpired && !!session }} />;
+  }
+
+  // 3. Nếu là Thủ kho PDA và đang ở /operator: hiển thị trực tiếp giao diện Mobile PDA
   if (location.pathname === '/operator') {
-    return <OperatorPortalPage />;
+    return (
+      <ProtectedRoute allowedRoles={['ROLE_OPERATOR', 'ROLE_ADMIN', 'ROLE_WAREHOUSE_MANAGER']}>
+        <OperatorPortalPage />
+      </ProtectedRoute>
+    );
   }
 
-  const navItems = [
+  // 4. Nếu người dùng là ROLE_OPERATOR nhưng truy cập các trang Dashboard Web: tự động chuyển về /operator
+  if (session.role === 'ROLE_OPERATOR') {
+    return <Navigate to="/operator" replace />;
+  }
+
+  const handleLogout = () => {
+    authService.logout();
+  };
+
+  const allNavItems = [
     { name: 'Trung Tâm Điều Hành', path: '/', icon: LayoutDashboard, badge: 'LIVE', shortcut: '⌘1' },
-    { name: 'Tài Khoản & Phân Quyền', path: '/users', icon: ShieldCheck, badge: 'ADMIN', shortcut: '⌘2' },
+    { name: 'Tài Khoản & Phân Quyền', path: '/users', icon: ShieldCheck, badge: 'ADMIN', shortcut: '⌘2', requiredRole: 'ROLE_ADMIN' },
     { name: 'Sản Phẩm & Nhà Cung Cấp', path: '/products', icon: Package, badge: 'MASTER', shortcut: '⌘3' },
     { name: 'Đơn Nhập Kho', path: '/inbound', icon: Truck, badge: 'INBOUND', shortcut: '⌘4' },
     { name: 'Đơn Xuất Kho', path: '/outbound', icon: PackageCheck, badge: 'OUTBOUND', shortcut: '⌘5' },
@@ -115,6 +135,9 @@ const AppContent: React.FC = () => {
     { name: 'Báo Cáo & Thống Kê', path: '/reports', icon: FileSpreadsheet, badge: 'REPORT', shortcut: '⌘R' },
     { name: 'Giao Diện Quét Mã PDA', path: '/operator', icon: Smartphone, badge: 'PDA', shortcut: '⌘0' },
   ];
+
+  // Lọc menu theo vai trò người dùng (Ví dụ: Chỉ ADMIN mới thấy menu Quản lý tài khoản)
+  const navItems = allNavItems.filter((item) => !item.requiredRole || item.requiredRole === session.role);
 
   return (
     <div className="flex h-screen bg-[#070b14] text-slate-100 font-sans overflow-hidden relative">
@@ -381,7 +404,14 @@ const AppContent: React.FC = () => {
         <main className="flex-1 overflow-y-auto p-6 bg-transparent relative">
           <Routes>
             <Route path="/" element={<DashboardPage />} />
-            <Route path="/users" element={<UsersManagementPage />} />
+            <Route 
+              path="/users" 
+              element={
+                <ProtectedRoute allowedRoles={['ROLE_ADMIN']}>
+                  <UsersManagementPage />
+                </ProtectedRoute>
+              } 
+            />
             <Route path="/products" element={<ProductsPage />} />
             <Route path="/inbound" element={<InboundOrdersPage />} />
             <Route path="/outbound" element={<OutboundOrdersPage />} />
@@ -391,7 +421,7 @@ const AppContent: React.FC = () => {
             <Route path="/smartquery" element={<SmartAssistantPage />} />
             <Route path="/reports" element={<ReportsPage />} />
             <Route path="/operator" element={<OperatorPortalPage />} />
-            <Route path="*" element={<DashboardPage />} />
+            <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>
         </main>
       </div>

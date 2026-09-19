@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import React, { useState, useEffect } from 'react';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { authService } from '../services/authService';
 import { 
   User, 
@@ -23,6 +23,10 @@ interface LoginPageProps {
 
 export const LoginPage: React.FC<LoginPageProps> = ({ initialMode = 'LOGIN' }) => {
   const navigate = useNavigate();
+  const location = useLocation();
+  const fromPath = (location.state as any)?.from?.pathname;
+  const isExpired = (location.state as any)?.expired;
+
   const [activeTab, setActiveTab] = useState<'LOGIN' | 'REGISTER'>(initialMode);
 
   // Form Đăng nhập
@@ -44,16 +48,29 @@ export const LoginPage: React.FC<LoginPageProps> = ({ initialMode = 'LOGIN' }) =
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
 
+  // Cảnh báo nếu phiên đã hết hạn
+  useEffect(() => {
+    if (isExpired) {
+      setErrorMessage('Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại!');
+    }
+  }, [isExpired]);
+
   /**
    * Điều hướng theo vai trò sau khi xác thực
    */
   const handleRedirectByRole = (role: string, overrideRoute?: string) => {
     if (overrideRoute) {
-      navigate(overrideRoute);
+      navigate(overrideRoute, { replace: true });
+    } else if (fromPath && fromPath !== '/login' && fromPath !== '/register') {
+      if (role === 'ROLE_OPERATOR' && fromPath !== '/operator') {
+        navigate('/operator', { replace: true });
+      } else {
+        navigate(fromPath, { replace: true });
+      }
     } else if (role === 'ROLE_OPERATOR') {
-      navigate('/operator');
+      navigate('/operator', { replace: true });
     } else {
-      navigate('/');
+      navigate('/', { replace: true });
     }
   };
 
