@@ -37,6 +37,7 @@ public class SecurityConfig {
                         // Cho phép các API công khai và API Demo
                         .requestMatchers(
                                 "/auth/**",
+                                "/users/**",
                                 "/masterdata/**",
                                 "/inventory/**",
                                 "/orders/**",

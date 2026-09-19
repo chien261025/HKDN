@@ -16,7 +16,7 @@ export const UsersHeader: React.FC<UsersHeaderProps> = ({
   onOpenCreateModal,
 }) => {
   const adminCount = users.filter((u) => u.role === 'ROLE_ADMIN').length;
-  const managerCount = users.filter((u) => u.role === 'ROLE_MANAGER').length;
+  const managerCount = users.filter((u) => u.role === 'ROLE_MANAGER' || u.role === 'ROLE_WAREHOUSE_MANAGER').length;
   const operatorCount = users.filter((u) => u.role === 'ROLE_OPERATOR').length;
   const lockedCount = users.filter((u) => u.status === 'LOCKED').length;
 

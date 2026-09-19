@@ -41,6 +41,7 @@ export const UserListTable: React.FC<UserListTableProps> = ({
             ADMIN (Toàn quyền)
           </span>
         );
+      case 'ROLE_WAREHOUSE_MANAGER':
       case 'ROLE_MANAGER':
         return (
           <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[11px] font-bold bg-blue-500/10 text-blue-300 border border-blue-500/30 font-mono">
@@ -53,6 +54,12 @@ export const UserListTable: React.FC<UserListTableProps> = ({
           <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[11px] font-bold bg-cyan-500/10 text-cyan-300 border border-cyan-500/30 font-mono">
             <Smartphone className="w-3 h-3 text-cyan-400" />
             THỦ KHO (PDA Mobile)
+          </span>
+        );
+      default:
+        return (
+          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[11px] font-bold bg-slate-500/10 text-slate-300 border border-slate-500/30 font-mono">
+            {role}
           </span>
         );
     }
