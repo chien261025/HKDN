@@ -26,9 +26,9 @@ export const ChatInputSection: React.FC<ChatInputSectionProps> = ({
   return (
     <div className="pt-2 space-y-2.5">
       {/* Quick Suggestion Chips */}
-      <div className="flex items-center gap-1.5 overflow-x-auto pb-1 scrollbar-thin">
-        <span className="text-[10px] font-mono text-slate-500 uppercase tracking-wider flex items-center gap-1 flex-shrink-0">
-          <Sparkles className="w-3 h-3 text-cyan-400" /> Gợi ý:
+      <div className="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-thin">
+        <span className="text-xs font-bold text-slate-500 uppercase tracking-wider flex items-center gap-1.5 flex-shrink-0">
+          <Sparkles className="w-3.5 h-3.5 text-indigo-600" /> Gợi ý:
         </span>
         {quickPrompts.map((prompt, idx) => (
           <button
@@ -36,7 +36,7 @@ export const ChatInputSection: React.FC<ChatInputSectionProps> = ({
             type="button"
             onClick={() => onSend(prompt)}
             disabled={loading}
-            className="flex-shrink-0 text-[11px] px-3 py-1.5 rounded-lg bg-slate-900/90 hover:bg-slate-800 border border-slate-800 hover:border-slate-700 text-slate-300 hover:text-cyan-300 transition-all font-medium disabled:opacity-50"
+            className="flex-shrink-0 text-xs px-3.5 py-1.5 rounded-xl bg-white hover:bg-slate-50 border border-slate-200 hover:border-indigo-200 text-slate-700 hover:text-indigo-700 transition-all font-semibold shadow-2xs disabled:opacity-50 cursor-pointer"
           >
             {prompt}
           </button>
@@ -45,21 +45,21 @@ export const ChatInputSection: React.FC<ChatInputSectionProps> = ({
 
       {/* Input Form */}
       <form onSubmit={handleSubmit} className="relative">
-        <div className="flex items-center gap-2 bg-[#0a0f1d] border border-slate-700/80 rounded-2xl p-1.5 shadow-2xl focus-within:border-indigo-500 focus-within:ring-1 focus-within:ring-indigo-500/50 transition-all">
+        <div className="flex items-center gap-2 bg-white border border-slate-300 rounded-2xl p-1.5 shadow-sm focus-within:border-indigo-600 focus-within:ring-2 focus-within:ring-indigo-100 transition-all">
           <input
             type="text"
             value={input}
             onChange={(e) => setInput(e.target.value)}
             disabled={loading}
             placeholder="Hỏi bất kỳ thông tin kho (VD: 'Tìm các mặt hàng còn dưới 20 cái', 'Thống kê tồn theo Khu A')..."
-            className="flex-1 bg-transparent px-3.5 py-2.5 text-xs sm:text-sm text-white placeholder-slate-500 focus:outline-none disabled:opacity-50 font-medium"
+            className="flex-1 bg-transparent px-3.5 py-2.5 text-sm text-slate-900 placeholder-slate-400 focus:outline-none disabled:opacity-50 font-medium"
           />
 
           {input && (
             <button
               type="button"
               onClick={() => setInput('')}
-              className="p-1.5 text-slate-400 hover:text-white rounded-lg hover:bg-slate-800 transition-colors"
+              className="p-2 text-slate-400 hover:text-slate-600 rounded-lg hover:bg-slate-100 transition-colors cursor-pointer"
               title="Xóa nội dung"
             >
               <X className="w-4 h-4" />
@@ -69,7 +69,7 @@ export const ChatInputSection: React.FC<ChatInputSectionProps> = ({
           <button
             type="submit"
             disabled={loading || !input.trim()}
-            className="px-5 py-2.5 bg-gradient-to-r from-indigo-600 via-indigo-500 to-cyan-500 hover:from-indigo-500 hover:to-cyan-400 disabled:from-slate-800 disabled:to-slate-800 text-white disabled:text-slate-500 rounded-xl shadow-lg shadow-indigo-600/30 font-bold text-xs flex items-center gap-2 transition-all disabled:shadow-none active:scale-95 flex-shrink-0"
+            className="px-5 py-2.5 bg-indigo-600 hover:bg-indigo-700 disabled:bg-slate-200 text-white disabled:text-slate-400 rounded-xl shadow-sm font-bold text-xs flex items-center gap-2 transition-all active:scale-95 flex-shrink-0 cursor-pointer"
           >
             {loading ? (
               <>
@@ -85,10 +85,10 @@ export const ChatInputSection: React.FC<ChatInputSectionProps> = ({
           </button>
         </div>
 
-        <div className="flex items-center justify-between px-2 pt-1 text-[10px] text-slate-500 font-mono">
-          <span>Nhấn <kbd className="px-1.5 py-0.5 rounded bg-slate-800 text-slate-300 border border-slate-700">Enter ↵</kbd> để gửi truy vấn</span>
-          <span className="flex items-center gap-1 text-emerald-500/80">
-            <CornerDownLeft className="w-3 h-3" /> Auto Sanitize & LIMIT 50 Enforced
+        <div className="flex items-center justify-between px-2 pt-1.5 text-xs text-slate-500 font-medium">
+          <span>Nhấn <kbd className="px-2 py-0.5 rounded bg-slate-100 text-slate-700 border border-slate-200 font-mono text-xs">Enter ↵</kbd> để gửi truy vấn</span>
+          <span className="flex items-center gap-1.5 text-emerald-700 font-semibold">
+            <CornerDownLeft className="w-3.5 h-3.5 text-emerald-600" /> Auto Sanitize & LIMIT 50 Enforced
           </span>
         </div>
       </form>

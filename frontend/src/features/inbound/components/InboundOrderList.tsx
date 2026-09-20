@@ -23,34 +23,34 @@ export const InboundOrderList: React.FC<InboundOrderListProps> = ({
   onAdvanceStatus,
 }) => {
   return (
-    <div className="bg-[#0b101d]/90 backdrop-blur-xl rounded-2xl border border-slate-800/80 shadow-xl overflow-hidden">
+    <div className="bg-white rounded-2xl border border-slate-300 shadow-sm overflow-hidden">
       {/* Table Title Bar */}
-      <div className="p-4 border-b border-slate-800 flex items-center justify-between bg-slate-900/60">
-        <div className="flex items-center gap-2">
-          <PackagePlus className="w-4 h-4 text-cyan-400" />
-          <h2 className="text-xs font-bold text-white uppercase tracking-wider">
+      <div className="p-4 sm:p-5 border-b border-slate-200 flex items-center justify-between bg-slate-50">
+        <div className="flex items-center gap-2.5">
+          <PackagePlus className="w-5 h-5 text-indigo-600" />
+          <h2 className="text-sm sm:text-base font-bold text-slate-900 uppercase tracking-wider">
             Danh Sách Đơn Đặt Hàng Nhập Kho (Purchase Orders)
           </h2>
         </div>
-        <span className="text-[11px] font-mono text-slate-400 bg-slate-800 px-2.5 py-0.5 rounded-full border border-slate-700">
+        <span className="text-xs font-mono font-bold text-slate-700 bg-white px-3 py-1 rounded-full border border-slate-300 shadow-2xs">
           {orders.length} Đơn PO
         </span>
       </div>
 
       {/* Orders Table */}
       <div className="overflow-x-auto">
-        <table className="w-full text-left text-xs">
-          <thead className="bg-slate-900/80 text-slate-400 font-mono text-[10px] uppercase border-b border-slate-800">
+        <table className="w-full text-left text-sm">
+          <thead className="bg-slate-100 text-slate-800 font-bold text-xs uppercase border-b border-slate-300">
             <tr>
-              <th className="py-3 px-4">Mã Đơn PO / Nhà Cung Cấp</th>
-              <th className="py-3 px-4">Ngày Giao Hàng</th>
-              <th className="py-3 px-4">Quy Mô Hàng Hóa</th>
-              <th className="py-3 px-4">Tiến Độ Quy Trình</th>
-              <th className="py-3 px-4">Trạng Thái</th>
-              <th className="py-3 px-4 text-right">Thao Tác</th>
+              <th className="py-3.5 px-4">Mã Đơn PO / Nhà Cung Cấp</th>
+              <th className="py-3.5 px-4">Ngày Giao Hàng</th>
+              <th className="py-3.5 px-4">Quy Mô Hàng Hóa</th>
+              <th className="py-3.5 px-4">Tiến Độ Quy Trình</th>
+              <th className="py-3.5 px-4">Trạng Thái</th>
+              <th className="py-3.5 px-4 text-right">Thao Tác</th>
             </tr>
           </thead>
-          <tbody className="divide-y divide-slate-800/60 text-slate-300">
+          <tbody className="divide-y divide-slate-200 text-slate-800 font-sans">
             {orders.map((order) => {
               const isPending = order.status === 'PENDING';
               const isReceived = order.status === 'RECEIVED';
@@ -64,48 +64,48 @@ export const InboundOrderList: React.FC<InboundOrderListProps> = ({
               if (isStocked) progressPercent = 100;
 
               return (
-                <tr key={order.id} className="hover:bg-slate-800/30 transition-colors">
+                <tr key={order.id} className="hover:bg-slate-50 transition-colors">
                   {/* Mã đơn & NCC */}
-                  <td className="py-3.5 px-4">
-                    <div className="font-mono font-bold text-white text-sm">{order.poCode}</div>
-                    <div className="text-[11px] text-slate-400 line-clamp-1">{order.supplierName}</div>
+                  <td className="py-4 px-4">
+                    <div className="font-mono font-bold text-slate-900 text-sm sm:text-base">{order.poCode}</div>
+                    <div className="text-xs text-slate-600 font-medium line-clamp-1 mt-0.5">{order.supplierName}</div>
                   </td>
 
                   {/* Ngày giao */}
-                  <td className="py-3.5 px-4 font-mono text-[11px]">
-                    <div className="text-slate-300">{order.expectedDeliveryDate}</div>
-                    <div className="text-[10px] text-slate-500">Tạo: {order.createdAt}</div>
+                  <td className="py-4 px-4 font-mono text-xs sm:text-sm">
+                    <div className="text-slate-900 font-semibold">{order.expectedDeliveryDate}</div>
+                    <div className="text-xs text-slate-500 mt-0.5">Tạo: {order.createdAt}</div>
                   </td>
 
                   {/* Quy mô */}
-                  <td className="py-3.5 px-4 font-mono text-[11px]">
-                    <div className="text-white font-semibold">
+                  <td className="py-4 px-4 font-mono text-xs sm:text-sm">
+                    <div className="text-slate-900 font-bold">
                       {order.items.length} mặt hàng
                     </div>
-                    <div className="text-[10px] text-slate-400">
-                      Tổng: <strong className="text-cyan-400">{totalExpected}</strong> đơn vị
+                    <div className="text-xs text-slate-600 mt-0.5 font-sans font-medium">
+                      Tổng: <strong className="text-indigo-700 font-mono font-bold">{totalExpected}</strong> đơn vị
                     </div>
                   </td>
 
                   {/* Tiến độ 3 giai đoạn */}
-                  <td className="py-3.5 px-4">
-                    <div className="w-40 space-y-1">
-                      <div className="flex justify-between text-[10px] font-mono text-slate-400">
+                  <td className="py-4 px-4">
+                    <div className="w-44 space-y-1.5">
+                      <div className="flex justify-between text-xs font-mono text-slate-700 font-medium">
                         <span>
                           {isPending && '1. Chờ xe tải'}
                           {isReceived && '2. Tại khu đệm'}
                           {isStocked && '3. Đã cất kệ'}
                         </span>
-                        <span className="font-bold text-cyan-400">{progressPercent}%</span>
+                        <span className="font-bold text-indigo-700">{progressPercent}%</span>
                       </div>
-                      <div className="w-full bg-slate-900 rounded-full h-1.5 overflow-hidden border border-slate-800">
+                      <div className="w-full bg-slate-200 rounded-full h-2 overflow-hidden">
                         <div
                           className={`h-full transition-all duration-300 rounded-full ${
                             isStocked
-                              ? 'bg-emerald-400'
+                              ? 'bg-emerald-500'
                               : isReceived
-                              ? 'bg-cyan-400'
-                              : 'bg-amber-400'
+                              ? 'bg-indigo-600'
+                              : 'bg-amber-500'
                           }`}
                           style={{ width: `${progressPercent}%` }}
                         ></div>
@@ -114,31 +114,31 @@ export const InboundOrderList: React.FC<InboundOrderListProps> = ({
                   </td>
 
                   {/* Trạng thái badge */}
-                  <td className="py-3.5 px-4 font-mono text-[11px]">
+                  <td className="py-4 px-4 font-mono text-xs">
                     {isPending && (
-                      <span className="inline-flex items-center gap-1 text-amber-300 bg-amber-500/10 px-2.5 py-1 rounded-lg border border-amber-500/20 font-bold">
-                        <Clock className="w-3 h-3" /> PENDING
+                      <span className="inline-flex items-center gap-1.5 text-amber-800 bg-amber-50 px-3 py-1 rounded-lg border border-amber-300 font-bold">
+                        <Clock className="w-3.5 h-3.5 text-amber-600" /> PENDING
                       </span>
                     )}
                     {isReceived && (
-                      <span className="inline-flex items-center gap-1 text-cyan-300 bg-cyan-500/10 px-2.5 py-1 rounded-lg border border-cyan-500/20 font-bold">
-                        <Truck className="w-3 h-3" /> RECEIVED
+                      <span className="inline-flex items-center gap-1.5 text-indigo-800 bg-indigo-50 px-3 py-1 rounded-lg border border-indigo-300 font-bold">
+                        <Truck className="w-3.5 h-3.5 text-indigo-600" /> RECEIVED
                       </span>
                     )}
                     {isStocked && (
-                      <span className="inline-flex items-center gap-1 text-emerald-300 bg-emerald-500/10 px-2.5 py-1 rounded-lg border border-emerald-500/20 font-bold">
-                        <CheckCircle2 className="w-3 h-3" /> STOCKED
+                      <span className="inline-flex items-center gap-1.5 text-emerald-800 bg-emerald-50 px-3 py-1 rounded-lg border border-emerald-300 font-bold">
+                        <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" /> STOCKED
                       </span>
                     )}
                   </td>
 
                   {/* Actions */}
-                  <td className="py-3.5 px-4 text-right">
-                    <div className="flex items-center justify-end gap-1.5">
+                  <td className="py-4 px-4 text-right">
+                    <div className="flex items-center justify-end gap-2">
                       {isPending && (
                         <button
                           onClick={() => onAdvanceStatus(order.id)}
-                          className="px-2.5 py-1 bg-cyan-600/20 hover:bg-cyan-600/40 text-cyan-300 border border-cyan-500/30 rounded-lg text-[11px] font-semibold transition-all"
+                          className="px-3 py-1.5 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-300 rounded-lg text-xs font-bold transition-all shadow-xs cursor-pointer"
                           title="Mô phỏng xe tải đã đến, nhận hàng vào Staging"
                         >
                           Nhận Vào Đệm
@@ -148,7 +148,7 @@ export const InboundOrderList: React.FC<InboundOrderListProps> = ({
                       {isReceived && (
                         <button
                           onClick={() => onAdvanceStatus(order.id)}
-                          className="px-2.5 py-1 bg-emerald-600/20 hover:bg-emerald-600/40 text-emerald-300 border border-emerald-500/30 rounded-lg text-[11px] font-semibold transition-all"
+                          className="px-3 py-1.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-300 rounded-lg text-xs font-bold transition-all shadow-xs cursor-pointer"
                           title="Hoàn tất cất hàng lên ô kệ"
                         >
                           Cất Lên Kệ
@@ -157,7 +157,7 @@ export const InboundOrderList: React.FC<InboundOrderListProps> = ({
 
                       <button
                         onClick={() => onSelectOrder(order)}
-                        className="inline-flex items-center gap-1 px-2.5 py-1 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-lg text-[11px] font-semibold transition-colors"
+                        className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-800 border border-slate-300 rounded-lg text-xs font-bold transition-colors cursor-pointer shadow-xs"
                       >
                         <Eye className="w-3.5 h-3.5" />
                         <span>Chi Tiết</span>

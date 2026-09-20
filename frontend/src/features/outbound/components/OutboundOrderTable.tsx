@@ -26,34 +26,34 @@ export const OutboundOrderTable: React.FC<OutboundOrderTableProps> = ({
   onDispatchOrder,
 }) => {
   return (
-    <div className="bg-[#0b101d]/90 backdrop-blur-xl rounded-2xl border border-slate-800/80 shadow-xl overflow-hidden">
+    <div className="bg-white rounded-2xl border border-slate-300 shadow-sm overflow-hidden">
       {/* Table Header */}
-      <div className="p-4 border-b border-slate-800 flex items-center justify-between bg-slate-900/60">
-        <div className="flex items-center gap-2">
-          <PackageCheck className="w-4 h-4 text-amber-400" />
-          <h2 className="text-xs font-bold text-white uppercase tracking-wider">
+      <div className="p-4 sm:p-5 border-b border-slate-200 flex items-center justify-between bg-slate-50">
+        <div className="flex items-center gap-2.5">
+          <PackageCheck className="w-5 h-5 text-amber-600" />
+          <h2 className="text-sm sm:text-base font-bold text-slate-900 uppercase tracking-wider">
             Danh Sách Đơn Xuất Bán (Sales Orders / SO)
           </h2>
         </div>
-        <span className="text-[11px] font-mono text-slate-400 bg-slate-800 px-2.5 py-0.5 rounded-full border border-slate-700">
+        <span className="text-xs font-mono font-bold text-slate-700 bg-white px-3 py-1 rounded-full border border-slate-300 shadow-2xs">
           {orders.length} Đơn SO
         </span>
       </div>
 
       {/* Table */}
       <div className="overflow-x-auto">
-        <table className="w-full text-left text-xs">
-          <thead className="bg-slate-900/80 text-slate-400 font-mono text-[10px] uppercase border-b border-slate-800">
+        <table className="w-full text-left text-sm">
+          <thead className="bg-slate-100 text-slate-800 font-bold text-xs uppercase border-b border-slate-300">
             <tr>
-              <th className="py-3 px-4">Mã Đơn SO / Khách Hàng</th>
-              <th className="py-3 px-4">Hạn Giao Hàng</th>
-              <th className="py-3 px-4">Mặt Hàng & Quy Mô</th>
-              <th className="py-3 px-4">Tiến Độ Quy Trình</th>
-              <th className="py-3 px-4">Trạng Thái & Khóa</th>
-              <th className="py-3 px-4 text-right">Thao Tác</th>
+              <th className="py-3.5 px-4">Mã Đơn SO / Khách Hàng</th>
+              <th className="py-3.5 px-4">Hạn Giao Hàng</th>
+              <th className="py-3.5 px-4">Mặt Hàng & Quy Mô</th>
+              <th className="py-3.5 px-4">Tiến Độ Quy Trình</th>
+              <th className="py-3.5 px-4">Trạng Thái & Khóa</th>
+              <th className="py-3.5 px-4 text-right">Thao Tác</th>
             </tr>
           </thead>
-          <tbody className="divide-y divide-slate-800/60 text-slate-300">
+          <tbody className="divide-y divide-slate-200 text-slate-800 font-sans">
             {orders.map((order) => {
               const isPending = order.status === 'PENDING';
               const isAllocated = order.status === 'ALLOCATED';
@@ -68,58 +68,58 @@ export const OutboundOrderTable: React.FC<OutboundOrderTableProps> = ({
               if (isDispatched) progressPercent = 100;
 
               return (
-                <tr key={order.id} className="hover:bg-slate-800/30 transition-colors">
+                <tr key={order.id} className="hover:bg-slate-50 transition-colors">
                   {/* Mã đơn & Khách hàng */}
-                  <td className="py-3.5 px-4">
+                  <td className="py-4 px-4">
                     <div className="flex items-center gap-2">
-                      <span className="font-mono font-bold text-white text-sm">{order.soCode}</span>
+                      <span className="font-mono font-bold text-slate-900 text-sm sm:text-base">{order.soCode}</span>
                       {order.priority === 'URGENT' && (
-                        <span className="inline-flex items-center gap-0.5 text-[9px] font-mono font-bold px-1.5 py-0.2 rounded bg-rose-500/20 text-rose-300 border border-rose-500/40">
-                          <Flame className="w-2.5 h-2.5" /> HỎA TỐC
+                        <span className="inline-flex items-center gap-1 text-[11px] font-mono font-bold px-2 py-0.5 rounded bg-rose-100 text-rose-800 border border-rose-300">
+                          <Flame className="w-3 h-3 text-rose-600" /> HỎA TỐC
                         </span>
                       )}
                     </div>
-                    <div className="text-[11px] text-slate-400 line-clamp-1">{order.customerName}</div>
+                    <div className="text-xs text-slate-600 font-medium line-clamp-1 mt-0.5">{order.customerName}</div>
                   </td>
 
                   {/* Ngày giao */}
-                  <td className="py-3.5 px-4 font-mono text-[11px]">
-                    <div className="text-slate-300">{order.requiredDate}</div>
-                    <div className="text-[10px] text-slate-500">Tạo: {order.orderDate}</div>
+                  <td className="py-4 px-4 font-mono text-xs sm:text-sm">
+                    <div className="text-slate-900 font-semibold">{order.requiredDate}</div>
+                    <div className="text-xs text-slate-500 mt-0.5">Tạo: {order.orderDate}</div>
                   </td>
 
                   {/* Mặt hàng */}
-                  <td className="py-3.5 px-4 font-mono text-[11px]">
-                    <div className="text-white font-semibold">
+                  <td className="py-4 px-4 font-mono text-xs sm:text-sm">
+                    <div className="text-slate-900 font-bold">
                       {order.items.length} mặt hàng
                     </div>
-                    <div className="text-[10px] text-slate-400">
-                      Tổng: <strong className="text-amber-400">{totalRequested}</strong> đơn vị
+                    <div className="text-xs text-slate-600 mt-0.5 font-sans font-medium">
+                      Tổng: <strong className="text-amber-800 font-mono font-bold">{totalRequested}</strong> đơn vị
                     </div>
                   </td>
 
                   {/* Tiến độ */}
-                  <td className="py-3.5 px-4">
-                    <div className="w-40 space-y-1">
-                      <div className="flex justify-between text-[10px] font-mono text-slate-400">
+                  <td className="py-4 px-4">
+                    <div className="w-44 space-y-1.5">
+                      <div className="flex justify-between text-xs font-mono text-slate-700 font-medium">
                         <span>
                           {isPending && '1. Chờ duyệt'}
                           {isAllocated && '2. Đã khóa FEFO'}
                           {isPicking && '3. Đang nhặt hàng'}
                           {isDispatched && '4. Đã xuất kho'}
                         </span>
-                        <span className="font-bold text-amber-400">{progressPercent}%</span>
+                        <span className="font-bold text-amber-800">{progressPercent}%</span>
                       </div>
-                      <div className="w-full bg-slate-900 rounded-full h-1.5 overflow-hidden border border-slate-800">
+                      <div className="w-full bg-slate-200 rounded-full h-2 overflow-hidden">
                         <div
                           className={`h-full transition-all duration-300 rounded-full ${
                             isDispatched
-                              ? 'bg-emerald-400'
+                              ? 'bg-emerald-500'
                               : isPicking
-                              ? 'bg-indigo-400'
+                              ? 'bg-indigo-600'
                               : isAllocated
-                              ? 'bg-cyan-400'
-                              : 'bg-amber-400'
+                              ? 'bg-amber-500'
+                              : 'bg-slate-400'
                           }`}
                           style={{ width: `${progressPercent}%` }}
                         ></div>
@@ -128,39 +128,39 @@ export const OutboundOrderTable: React.FC<OutboundOrderTableProps> = ({
                   </td>
 
                   {/* Trạng thái & Khóa */}
-                  <td className="py-3.5 px-4 font-mono text-[11px]">
+                  <td className="py-4 px-4 font-mono text-xs">
                     {isPending && (
-                      <span className="inline-flex items-center gap-1 text-amber-300 bg-amber-500/10 px-2.5 py-1 rounded-lg border border-amber-500/20 font-bold">
-                        <Clock className="w-3 h-3" /> PENDING
+                      <span className="inline-flex items-center gap-1.5 text-amber-800 bg-amber-50 px-3 py-1 rounded-lg border border-amber-300 font-bold">
+                        <Clock className="w-3.5 h-3.5 text-amber-600" /> PENDING
                       </span>
                     )}
                     {isAllocated && (
-                      <span className="inline-flex items-center gap-1 text-cyan-300 bg-cyan-500/10 px-2.5 py-1 rounded-lg border border-cyan-500/20 font-bold">
-                        <Lock className="w-3 h-3" /> LOCKED (FEFO)
+                      <span className="inline-flex items-center gap-1.5 text-indigo-800 bg-indigo-50 px-3 py-1 rounded-lg border border-indigo-300 font-bold">
+                        <Lock className="w-3.5 h-3.5 text-indigo-600" /> LOCKED (FEFO)
                       </span>
                     )}
                     {isPicking && (
-                      <span className="inline-flex items-center gap-1 text-indigo-300 bg-indigo-500/10 px-2.5 py-1 rounded-lg border border-indigo-500/20 font-bold">
-                        <ShieldCheck className="w-3 h-3" /> PICKING
+                      <span className="inline-flex items-center gap-1.5 text-blue-800 bg-blue-50 px-3 py-1 rounded-lg border border-blue-300 font-bold">
+                        <ShieldCheck className="w-3.5 h-3.5 text-blue-600" /> PICKING
                       </span>
                     )}
                     {isDispatched && (
-                      <span className="inline-flex items-center gap-1 text-emerald-300 bg-emerald-500/10 px-2.5 py-1 rounded-lg border border-emerald-500/20 font-bold">
-                        <CheckCircle2 className="w-3 h-3" /> DISPATCHED
+                      <span className="inline-flex items-center gap-1.5 text-emerald-800 bg-emerald-50 px-3 py-1 rounded-lg border border-emerald-300 font-bold">
+                        <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" /> DISPATCHED
                       </span>
                     )}
                   </td>
 
                   {/* Thao tác */}
-                  <td className="py-3.5 px-4 text-right">
-                    <div className="flex items-center justify-end gap-1.5">
+                  <td className="py-4 px-4 text-right">
+                    <div className="flex items-center justify-end gap-2">
                       {isPending && (
                         <button
                           onClick={() => onAllocateAndLock(order.id)}
-                          className="px-2.5 py-1 bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 border border-amber-500/40 rounded-lg text-[11px] font-bold transition-all flex items-center gap-1"
+                          className="px-3.5 py-1.5 bg-amber-50 hover:bg-amber-100 text-amber-800 border border-amber-300 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer shadow-xs"
                           title="Kích hoạt Pessimistic Lock & sinh Pick List FEFO"
                         >
-                          <Lock className="w-3 h-3" />
+                          <Lock className="w-3.5 h-3.5 text-amber-700" />
                           <span>Duyệt & Khóa FEFO</span>
                         </button>
                       )}
@@ -168,17 +168,17 @@ export const OutboundOrderTable: React.FC<OutboundOrderTableProps> = ({
                       {(isAllocated || isPicking) && (
                         <button
                           onClick={() => onDispatchOrder(order.id)}
-                          className="px-2.5 py-1 bg-emerald-600/20 hover:bg-emerald-600/30 text-emerald-300 border border-emerald-500/30 rounded-lg text-[11px] font-bold transition-all flex items-center gap-1"
+                          className="px-3.5 py-1.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-300 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer shadow-xs"
                           title="Hoàn tất xuất kho & trừ số dư tồn"
                         >
-                          <Truck className="w-3 h-3" />
+                          <Truck className="w-3.5 h-3.5 text-emerald-700" />
                           <span>Xuất Kho</span>
                         </button>
                       )}
 
                       <button
                         onClick={() => onSelectOrder(order)}
-                        className="inline-flex items-center gap-1 px-2.5 py-1 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-lg text-[11px] font-semibold transition-colors"
+                        className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-800 border border-slate-300 rounded-lg text-xs font-bold transition-colors cursor-pointer shadow-xs"
                       >
                         <Eye className="w-3.5 h-3.5" />
                         <span>Pick List</span>

@@ -11,32 +11,32 @@ export const ReportsHeader: React.FC<ReportsHeaderProps> = ({
   activeJobsCount,
 }) => {
   return (
-    <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 pb-2">
+    <div className="bg-white rounded-2xl p-5 border border-slate-200 shadow-sm flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
       {/* Title */}
-      <div className="flex items-center gap-3">
-        <div className="w-10 h-10 rounded-xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-center text-amber-400">
-          <FileSpreadsheet className="w-5 h-5" />
+      <div className="flex items-center gap-3.5">
+        <div className="w-12 h-12 rounded-xl bg-amber-50 border border-amber-200 flex items-center justify-center text-amber-600 shadow-xs">
+          <FileSpreadsheet className="w-6 h-6" />
         </div>
         <div>
-          <h1 className="text-lg font-bold text-white tracking-tight">
+          <h1 className="text-xl font-bold text-slate-900 tracking-tight">
             Xuất Báo Cáo Dữ Liệu Lớn
           </h1>
-          <p className="text-xs text-slate-400">
+          <p className="text-xs text-slate-500 mt-0.5">
             Hàng đợi ngầm RabbitMQ • Stream Excel SXSSF (RAM &lt; 50MB) • Lưu trữ MinIO S3
           </p>
         </div>
       </div>
 
       {/* Mini status chips */}
-      <div className="flex items-center gap-2 font-mono text-xs">
-        <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-900 border border-slate-800 text-slate-300">
-          <span className="w-2 h-2 rounded-full bg-emerald-400"></span>
-          <span>Đã hoàn thành: <strong className="text-emerald-400">{completedJobsCount}</strong> tệp</span>
+      <div className="flex items-center gap-2.5 font-mono text-xs">
+        <span className="inline-flex items-center gap-2 px-3.5 py-2 rounded-xl bg-emerald-50 border border-emerald-200 text-slate-700 font-semibold shadow-xs">
+          <span className="w-2.5 h-2.5 rounded-full bg-emerald-500"></span>
+          <span>Đã hoàn thành: <strong className="text-emerald-700 font-bold">{completedJobsCount}</strong> tệp</span>
         </span>
 
         {activeJobsCount > 0 && (
-          <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-amber-500/10 border border-amber-500/30 text-amber-300 animate-pulse">
-            <span className="w-2 h-2 rounded-full bg-amber-400"></span>
+          <span className="inline-flex items-center gap-2 px-3.5 py-2 rounded-xl bg-amber-50 border border-amber-200 text-amber-800 font-semibold animate-pulse shadow-xs">
+            <span className="w-2.5 h-2.5 rounded-full bg-amber-500"></span>
             <span>Đang xử lý: <strong className="font-bold">{activeJobsCount}</strong></span>
           </span>
         )}

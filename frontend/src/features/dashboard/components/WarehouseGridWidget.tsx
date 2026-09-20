@@ -1,5 +1,5 @@
 import React from 'react';
-import { Boxes, Info } from 'lucide-react';
+import { Boxes, Info, ArrowRight, Package } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { BinCell } from '../types';
 
@@ -15,45 +15,72 @@ export const WarehouseGridWidget: React.FC<WarehouseGridWidgetProps> = ({
   onSelectBin,
 }) => {
   return (
-    <div className="bg-slate-900/60 rounded-2xl p-4 sm:p-5 border border-slate-800 shadow-sm flex flex-col justify-between space-y-4">
+    <div className="bg-white rounded-2xl p-6 border border-slate-200/90 shadow-xs flex flex-col justify-between space-y-4">
       <div>
-        {/* Header & Chú thích màu */}
-        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 pb-3 border-b border-slate-800">
+        {/* Header & Legend */}
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 pb-4 border-b border-slate-100">
           <div>
-            <h2 className="text-sm font-bold text-white flex items-center gap-2">
-              <Boxes className="w-4 h-4 text-indigo-400" />
+            <h2 className="text-base sm:text-lg font-extrabold text-slate-900 flex items-center gap-2">
+              <div className="w-8 h-8 rounded-lg bg-indigo-50 text-indigo-600 flex items-center justify-center">
+                <Boxes className="w-4.5 h-4.5" />
+              </div>
               <span>Mô Hình Không Gian Ô Kệ (Digital Twin Grid)</span>
             </h2>
-            <p className="text-[11px] text-slate-400 mt-0.5">Click vào ô kệ để xem chi tiết lô hàng, SKU và số lượng</p>
+            <p className="text-xs text-slate-500 font-medium mt-1">Chọn ô kệ trên bản đồ ảo để xem dữ liệu lô hàng thời gian thực</p>
           </div>
 
-          {/* Chú thích màu sắc */}
-          <div className="flex items-center gap-2 text-[10px] font-mono">
-            <span className="flex items-center gap-1"><span className="w-2 h-2 rounded bg-emerald-500"></span> Trống</span>
-            <span className="flex items-center gap-1"><span className="w-2 h-2 rounded bg-indigo-500"></span> Chứa Hàng</span>
-            <span className="flex items-center gap-1"><span className="w-2 h-2 rounded bg-amber-500"></span> Đang Giữ</span>
-            <span className="flex items-center gap-1"><span className="w-2 h-2 rounded bg-rose-500"></span> Cận Date</span>
+          {/* Color legend pills */}
+          <div className="flex flex-wrap items-center gap-2 text-xs font-semibold text-slate-600">
+            <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-slate-50 border border-slate-200">
+              <span className="w-2 h-2 rounded-full bg-emerald-500"></span> Trống
+            </span>
+            <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-slate-50 border border-slate-200">
+              <span className="w-2 h-2 rounded-full bg-indigo-600"></span> Chứa Hàng
+            </span>
+            <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-slate-50 border border-slate-200">
+              <span className="w-2 h-2 rounded-full bg-amber-500"></span> Đang Giữ
+            </span>
+            <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-slate-50 border border-slate-200">
+              <span className="w-2 h-2 rounded-full bg-rose-500 animate-pulse"></span> Cận Date
+            </span>
           </div>
         </div>
 
-        {/* Lưới 8 Ô Kệ Gọn Gàng & Dễ Nhìn */}
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 pt-3">
+        {/* 8 Precision Digital Twin Bin Slots */}
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 pt-4">
           {grid.map((bin) => {
-            let badgeStyle = 'border-slate-800 bg-slate-950/40 text-slate-400';
-            let dotColor = 'bg-slate-500';
+            let statusPill = {
+              text: 'Chứa Hàng',
+              dot: 'bg-indigo-600',
+              bg: 'bg-white',
+              border: 'border-slate-200 hover:border-indigo-300',
+              badge: 'bg-indigo-50 text-indigo-700',
+            };
 
             if (bin.status === 'EMPTY') {
-              badgeStyle = 'border-emerald-500/30 bg-emerald-950/15 text-emerald-300 hover:border-emerald-400/50';
-              dotColor = 'bg-emerald-400';
-            } else if (bin.status === 'OCCUPIED') {
-              badgeStyle = 'border-indigo-500/30 bg-indigo-950/15 text-indigo-200 hover:border-indigo-400/50';
-              dotColor = 'bg-indigo-400';
+              statusPill = {
+                text: 'Trống',
+                dot: 'bg-emerald-500',
+                bg: 'bg-slate-50/50',
+                border: 'border-slate-200/90 hover:border-emerald-300',
+                badge: 'bg-emerald-50 text-emerald-700',
+              };
             } else if (bin.status === 'RESERVED') {
-              badgeStyle = 'border-amber-500/30 bg-amber-950/15 text-amber-200 hover:border-amber-400/50';
-              dotColor = 'bg-amber-400';
+              statusPill = {
+                text: 'Đang Giữ',
+                dot: 'bg-amber-500',
+                bg: 'bg-white',
+                border: 'border-slate-200 hover:border-amber-300',
+                badge: 'bg-amber-50 text-amber-800',
+              };
             } else if (bin.status === 'EXPIRING') {
-              badgeStyle = 'border-rose-500/40 bg-rose-950/20 text-rose-200 hover:border-rose-400/60';
-              dotColor = 'bg-rose-400 animate-pulse';
+              statusPill = {
+                text: 'Cận Date',
+                dot: 'bg-rose-500 animate-pulse',
+                bg: 'bg-rose-50/30',
+                border: 'border-rose-200 hover:border-rose-400',
+                badge: 'bg-rose-50 text-rose-700 border border-rose-200',
+              };
             }
 
             const isSelected = selectedBin?.id === bin.id;
@@ -62,22 +89,47 @@ export const WarehouseGridWidget: React.FC<WarehouseGridWidgetProps> = ({
               <div
                 key={bin.id}
                 onClick={() => onSelectBin(bin)}
-                className={`cursor-pointer rounded-xl p-2.5 border transition-all ${badgeStyle} ${
-                  isSelected ? 'ring-2 ring-indigo-400 shadow-md' : 'hover:scale-[1.02]'
+                className={`cursor-pointer rounded-xl p-3.5 border transition-all relative ${statusPill.bg} ${statusPill.border} ${
+                  isSelected
+                    ? 'ring-2 ring-indigo-600 shadow-md border-indigo-500 bg-indigo-50/30'
+                    : 'hover:shadow-xs hover:-translate-y-0.5'
                 }`}
               >
-                <div className="flex items-center justify-between text-[10px] font-mono">
-                  <span className="font-bold">{bin.aisle}-{bin.rack}</span>
-                  <span className={`w-2 h-2 rounded-full ${dotColor}`}></span>
+                {/* Coordinates & Status Dot */}
+                <div className="flex items-center justify-between">
+                  <span className="font-mono text-xs font-black text-slate-800 tracking-tight">
+                    {bin.aisle}-{bin.rack}
+                  </span>
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-[10px] font-mono px-1.5 py-0.2 rounded bg-slate-100 text-slate-600 font-semibold">
+                      {bin.shelf}
+                    </span>
+                    <span className={`w-2 h-2 rounded-full ${statusPill.dot}`}></span>
+                  </div>
                 </div>
 
-                <div className="mt-1.5 text-xs font-semibold truncate">
-                  {bin.status === 'EMPTY' ? 'Ô Kệ Trống' : bin.productName}
+                {/* Product Name */}
+                <div className="mt-2.5 min-h-[36px]">
+                  <p className="text-xs font-bold text-slate-800 line-clamp-2 leading-tight">
+                    {bin.status === 'EMPTY' ? (
+                      <span className="text-slate-400 italic font-normal">Ô kệ đang trống</span>
+                    ) : (
+                      bin.productName
+                    )}
+                  </p>
                 </div>
 
-                <div className="mt-1 text-[10px] font-mono opacity-80 flex justify-between">
-                  <span>{bin.shelf}</span>
-                  <span>{bin.qty ? `${bin.qty} cái` : '0'}</span>
+                {/* Quantity or Status Tag */}
+                <div className="mt-2 pt-2 border-t border-slate-100 flex items-center justify-between">
+                  <span className="text-[11px] font-semibold text-slate-400">Tồn chứa</span>
+                  {bin.status === 'EMPTY' ? (
+                    <span className="text-xs font-mono font-bold text-slate-300">0</span>
+                  ) : (
+                    <span className="inline-flex items-center gap-1 text-xs font-mono font-bold text-slate-800">
+                      <Package className="w-3 h-3 text-slate-400" />
+                      {bin.qty} cái
+                    </span>
+                  )}
                 </div>
               </div>
             );
@@ -85,45 +137,62 @@ export const WarehouseGridWidget: React.FC<WarehouseGridWidgetProps> = ({
         </div>
       </div>
 
-      {/* Chi tiết ô kệ đang chọn */}
-      <div className="bg-slate-950/60 p-3 rounded-xl border border-slate-800 text-xs">
+      {/* Selected bin detail telemetry bar */}
+      <div className="bg-slate-50/90 p-4 rounded-xl border border-slate-200/80 text-sm">
         {selectedBin ? (
-          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2.5">
+          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
             <div className="space-y-1">
               <div className="flex items-center gap-2">
-                <span className="text-[10px] font-mono font-bold bg-indigo-500/20 text-indigo-300 px-2 py-0.5 rounded border border-indigo-500/30">
+                <span className="text-xs font-mono font-bold bg-white text-indigo-700 px-2 py-0.5 rounded-md border border-slate-200 shadow-2xs">
                   {selectedBin.barcode}
                 </span>
-                <span className="font-bold text-white text-xs">{selectedBin.productName || 'Ô Chưa Chứa Hàng'}</span>
+                <span className="font-bold text-slate-800 text-sm">
+                  {selectedBin.productName || 'Ô Kệ Chưa Chứa Hàng'}
+                </span>
               </div>
               {selectedBin.sku && (
-                <p className="text-slate-400 text-[11px] font-mono">
-                  SKU: <span className="text-white">{selectedBin.sku}</span> • Lô: <span className="text-cyan-300">{selectedBin.batch}</span> • HSD: <span className={selectedBin.status === 'EXPIRING' ? 'text-rose-400 font-bold' : 'text-slate-300'}>{selectedBin.expiry}</span>
+                <p className="text-slate-500 text-xs font-mono mt-1">
+                  SKU: <span className="text-slate-800 font-bold">{selectedBin.sku}</span> • Lô:{' '}
+                  <span className="text-indigo-700 font-bold">{selectedBin.batch}</span> • HSD:{' '}
+                  <span
+                    className={
+                      selectedBin.status === 'EXPIRING'
+                        ? 'text-rose-600 font-bold bg-rose-50 px-1 rounded'
+                        : 'text-slate-700 font-semibold'
+                    }
+                  >
+                    {selectedBin.expiry}
+                  </span>
                 </p>
               )}
             </div>
 
-            <div className="flex items-center gap-3">
-              <div className="text-right font-mono text-xs">
-                <span className="text-slate-400">Số lượng: </span>
-                <span className="text-emerald-400 font-bold">{selectedBin.qty || 0}</span>
+            <div className="flex items-center gap-3 w-full sm:w-auto justify-between sm:justify-end">
+              <div className="text-right font-mono">
+                <span className="text-xs text-slate-400 block">Số lượng khả dụng</span>
+                <span className="text-emerald-700 font-black text-base">{selectedBin.qty || 0} cái</span>
               </div>
               <Link
                 to="/inventory"
-                className="px-2.5 py-1 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg text-xs font-semibold transition-all"
+                className="inline-flex items-center gap-1 px-3.5 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-xs font-semibold transition-all shadow-xs"
               >
-                Xem Tồn Kho
+                <span>Xem Tồn Kho</span>
+                <ArrowRight className="w-3.5 h-3.5" />
               </Link>
             </div>
           </div>
         ) : (
-          <div className="flex items-center justify-between text-slate-400 text-xs">
-            <span className="flex items-center gap-1.5">
-              <Info className="w-3.5 h-3.5 text-cyan-400" />
-              Bấm vào một ô kệ trên lưới để kiểm tra thông tin chi tiết
+          <div className="flex items-center justify-between text-slate-600 text-xs sm:text-sm font-medium">
+            <span className="flex items-center gap-2">
+              <Info className="w-4 h-4 text-indigo-500" />
+              Nhấp vào một ô kệ trên lưới để kiểm tra thông tin chi tiết và hạn dùng
             </span>
-            <Link to="/layout" className="text-indigo-400 hover:underline font-medium text-[11px]">
-              Mở bản đồ đầy đủ →
+            <Link
+              to="/layout"
+              className="inline-flex items-center gap-1 text-indigo-600 hover:text-indigo-800 font-semibold text-xs group"
+            >
+              <span>Mở bản đồ đầy đủ</span>
+              <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-0.5 transition-transform" />
             </Link>
           </div>
         )}

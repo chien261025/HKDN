@@ -126,44 +126,44 @@ export const InventoryBalancePage: React.FC = () => {
   return (
     <div className="space-y-5 max-w-[1600px] mx-auto pb-10">
       {/* Header Nổi Bật & Bộ Chuyển Tab Cao Cấp */}
-      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 pb-3 border-b border-slate-700/80">
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 pb-4 border-b border-slate-200">
         <div>
-          <div className="flex items-center gap-2.5">
-            <div className="w-9 h-9 rounded-xl bg-gradient-to-tr from-indigo-600 to-cyan-500 flex items-center justify-center text-white shadow-md shadow-indigo-500/30">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-indigo-600 flex items-center justify-center text-white shadow-md shadow-indigo-200">
               <Zap className="w-5 h-5" />
             </div>
-            <h1 className="text-xl font-black text-white tracking-tight">
+            <h1 className="text-xl sm:text-2xl font-extrabold text-slate-900 tracking-tight">
               Quản Lý Tồn Kho & Xuất Hàng FEFO
             </h1>
           </div>
-          <p className="text-xs text-slate-300 font-medium mt-1 pl-11.5">
+          <p className="text-xs sm:text-sm text-slate-600 font-medium mt-1 pl-13">
             Theo dõi số lượng tồn kho theo vị trí ô kệ và điều phối đơn hàng xuất theo hạn sử dụng ưu tiên (First-Expired, First-Out).
           </p>
         </div>
 
         {/* Tab Gạt Cao Cấp & Nổi Bật */}
-        <div className="flex items-center bg-slate-950 p-1.5 rounded-2xl border border-slate-700 shadow-inner">
+        <div className="flex items-center bg-slate-100 p-1.5 rounded-2xl border border-slate-200 shadow-xs">
           <button
             onClick={() => setActiveTab('outbound')}
-            className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+            className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs sm:text-sm font-bold transition-all cursor-pointer ${
               activeTab === 'outbound'
-                ? 'bg-gradient-to-r from-indigo-600 via-indigo-500 to-cyan-500 text-white shadow-lg shadow-indigo-600/40 ring-1 ring-white/20'
-                : 'text-slate-300 hover:text-white hover:bg-slate-900'
+                ? 'bg-white text-indigo-700 shadow-sm border border-slate-200 ring-1 ring-slate-200'
+                : 'text-slate-600 hover:text-slate-900 hover:bg-slate-200/60'
             }`}
           >
-            <Zap className="w-4 h-4 text-amber-300" />
+            <Zap className="w-4 h-4 text-amber-500" />
             <span>Xuất Hàng Theo Lô (FEFO)</span>
           </button>
 
           <button
             onClick={() => setActiveTab('balance')}
-            className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+            className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs sm:text-sm font-bold transition-all cursor-pointer ${
               activeTab === 'balance'
-                ? 'bg-gradient-to-r from-indigo-600 via-indigo-500 to-cyan-500 text-white shadow-lg shadow-indigo-600/40 ring-1 ring-white/20'
-                : 'text-slate-300 hover:text-white hover:bg-slate-900'
+                ? 'bg-white text-indigo-700 shadow-sm border border-slate-200 ring-1 ring-slate-200'
+                : 'text-slate-600 hover:text-slate-900 hover:bg-slate-200/60'
             }`}
           >
-            <Layers className="w-4 h-4 text-cyan-300" />
+            <Layers className="w-4 h-4 text-indigo-600" />
             <span>Tra Cứu Tồn Kho Thực Tế</span>
           </button>
         </div>
@@ -172,21 +172,21 @@ export const InventoryBalancePage: React.FC = () => {
       {/* Thông Báo */}
       {notification && (
         <div
-          className={`p-3 rounded-xl text-xs font-medium flex items-center justify-between transition-all ${
+          className={`p-3.5 rounded-xl text-xs sm:text-sm font-semibold flex items-center justify-between transition-all ${
             notification.type === 'success'
-              ? 'bg-emerald-950/40 text-emerald-300 border border-emerald-500/30'
-              : 'bg-rose-950/40 text-rose-300 border border-rose-500/30'
+              ? 'bg-emerald-50 text-emerald-800 border border-emerald-200'
+              : 'bg-rose-50 text-rose-800 border border-rose-200'
           }`}
         >
           <div className="flex items-center gap-2">
             {notification.type === 'success' ? (
-              <CheckCircle2 className="w-4 h-4 text-emerald-400 flex-shrink-0" />
+              <CheckCircle2 className="w-4 h-4 text-emerald-600 flex-shrink-0" />
             ) : (
-              <AlertCircle className="w-4 h-4 text-rose-400 flex-shrink-0" />
+              <AlertCircle className="w-4 h-4 text-rose-600 flex-shrink-0" />
             )}
             <span>{notification.message}</span>
           </div>
-          <button onClick={() => setNotification(null)} className="text-slate-400 hover:text-white">
+          <button onClick={() => setNotification(null)} className="text-slate-400 hover:text-slate-700 p-1">
             ✕
           </button>
         </div>

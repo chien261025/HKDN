@@ -188,7 +188,7 @@ export const SmartAssistantPage: React.FC = () => {
       {/* 2. Grid 8 : 4 Master-Detail */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-5">
         {/* CỘT TRÁI (8 COLS): KHU VỰC HỘI THOẠI & KẾT QUẢ TRUY VẤN */}
-        <div className="lg:col-span-8 flex flex-col h-[calc(100vh-210px)] min-h-[550px] bg-[#070c17]/60 rounded-2xl border border-slate-800/80 p-4 shadow-2xl backdrop-blur-md">
+        <div className="lg:col-span-8 flex flex-col h-[calc(100vh-210px)] min-h-[550px] bg-white rounded-2xl border border-slate-200 p-5 shadow-sm">
           {/* Scrollable Message Stream */}
           <div className="flex-1 overflow-y-auto space-y-4 pr-2 scrollbar-thin">
             {messages.map((msg) => (
@@ -200,9 +200,9 @@ export const SmartAssistantPage: React.FC = () => {
             ))}
 
             {loading && (
-              <div className="flex gap-3 items-center p-3 rounded-xl bg-slate-900/60 border border-slate-800 text-xs font-mono text-cyan-400 animate-pulse">
-                <div className="w-2.5 h-2.5 rounded-full bg-cyan-400 animate-ping"></div>
-                <span>Đang phân tích cây cú pháp AST JSqlParser & kiểm tra whitelist an toàn...</span>
+              <div className="flex gap-3 items-center p-3.5 rounded-xl bg-indigo-50/80 border border-indigo-200 text-xs font-mono text-indigo-700 animate-pulse">
+                <div className="w-2.5 h-2.5 rounded-full bg-indigo-600 animate-ping"></div>
+                <span className="font-semibold">Đang phân tích cây cú pháp AST JSqlParser & kiểm tra whitelist an toàn...</span>
               </div>
             )}
             <div ref={messagesEndRef} />

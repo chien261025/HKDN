@@ -1,5 +1,5 @@
 import React from 'react';
-import { PackageCheck, Clock, ShieldCheck, Truck, Plus, CheckCircle2, Flame } from 'lucide-react';
+import { PackageCheck, Clock, ShieldCheck, Plus, CheckCircle2 } from 'lucide-react';
 import { OutboundOrder } from '../types';
 
 interface OutboundHeaderProps {
@@ -18,21 +18,21 @@ export const OutboundHeader: React.FC<OutboundHeaderProps> = ({
   return (
     <div className="space-y-4">
       {/* Top Banner Row */}
-      <div className="bg-[#0b101d]/90 backdrop-blur-xl rounded-2xl p-4 md:p-5 border border-slate-800/80 shadow-xl flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
-        <div className="flex items-center gap-3.5">
-          <div className="w-11 h-11 rounded-xl bg-gradient-to-tr from-amber-500 via-amber-600 to-rose-500 flex items-center justify-center text-slate-950 shadow-lg shadow-amber-500/20 flex-shrink-0 ring-1 ring-white/20">
-            <PackageCheck className="w-6 h-6 text-slate-950" />
+      <div className="bg-white rounded-2xl p-6 border border-slate-200 shadow-sm flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+        <div className="flex items-center gap-4">
+          <div className="w-12 h-12 rounded-xl bg-amber-500 flex items-center justify-center text-white shadow-md shadow-amber-100 flex-shrink-0">
+            <PackageCheck className="w-6 h-6 text-white" />
           </div>
           <div>
-            <div className="flex items-center gap-2">
-              <h1 className="text-base md:text-lg font-extrabold text-white tracking-tight">
+            <div className="flex items-center gap-2.5">
+              <h1 className="text-xl md:text-2xl font-black text-slate-900 tracking-tight">
                 Quản Lý Đơn Xuất Kho (Outbound Orders / SO)
               </h1>
-              <span className="text-[10px] font-mono bg-amber-500/10 text-amber-300 px-2 py-0.5 rounded-full border border-amber-500/30 font-bold">
+              <span className="text-xs font-mono bg-amber-50 text-amber-800 px-2.5 py-0.5 rounded-full border border-amber-300 font-bold">
                 FEFO & CONCURRENCY
               </span>
             </div>
-            <p className="text-xs text-slate-400 mt-0.5">
+            <p className="text-sm text-slate-600 font-medium mt-1">
               Phân bổ lô hàng cận date (FEFO) • Khóa giữ tồn kho chống tranh chấp (Pessimistic Lock) • Sinh Pick List tự động
             </p>
           </div>
@@ -40,59 +40,60 @@ export const OutboundHeader: React.FC<OutboundHeaderProps> = ({
 
         <button
           onClick={onOpenCreateModal}
-          className="flex items-center gap-2 px-4 py-2.5 bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-slate-950 rounded-xl text-xs font-bold shadow-lg shadow-amber-500/30 transition-all active:scale-95 flex-shrink-0"
+          className="flex items-center gap-2.5 px-5 py-3 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-sm font-bold shadow-md shadow-indigo-200 transition-all active:scale-95 flex-shrink-0 cursor-pointer"
         >
-          <Plus className="w-4 h-4" />
+          <Plus className="w-4.5 h-4.5" />
           <span>Tạo Đơn Xuất Hàng Mới (SO)</span>
         </button>
       </div>
 
       {/* 4 KPI Progress Cards */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         {/* Total SO */}
-        <div className="bg-[#0d1322]/80 rounded-xl p-3.5 border border-slate-800 flex items-center justify-between">
+        <div className="bg-white rounded-2xl p-5 border border-slate-200 shadow-xs flex items-center justify-between">
           <div>
-            <div className="text-[10px] font-mono text-slate-400 uppercase">Tổng Đơn Xuất</div>
-            <div className="text-lg font-extrabold text-white font-mono mt-0.5">{orders.length}</div>
+            <div className="text-xs font-bold text-slate-600 uppercase">Tổng Đơn Xuất</div>
+            <div className="text-2xl font-black text-slate-900 font-mono mt-1">{orders.length}</div>
           </div>
-          <div className="p-2 rounded-lg bg-slate-800 text-slate-300">
-            <PackageCheck className="w-4 h-4" />
+          <div className="p-3 rounded-xl bg-slate-100 text-slate-700 border border-slate-200">
+            <PackageCheck className="w-5 h-5" />
           </div>
         </div>
 
         {/* Pending Approval */}
-        <div className="bg-[#0d1322]/80 rounded-xl p-3.5 border border-slate-800 flex items-center justify-between">
+        <div className="bg-white rounded-2xl p-5 border border-slate-200 shadow-xs flex items-center justify-between">
           <div>
-            <div className="text-[10px] font-mono text-amber-400 uppercase">Chờ Duyệt & Khóa</div>
-            <div className="text-lg font-extrabold text-amber-300 font-mono mt-0.5">{pendingCount} đơn</div>
+            <div className="text-xs font-bold text-amber-700 uppercase">Chờ Duyệt & Khóa</div>
+            <div className="text-2xl font-black text-amber-700 font-mono mt-1">{pendingCount} đơn</div>
           </div>
-          <div className="p-2 rounded-lg bg-amber-500/10 text-amber-400 border border-amber-500/20">
-            <Clock className="w-4 h-4" />
+          <div className="p-3 rounded-xl bg-amber-50 text-amber-700 border border-amber-200">
+            <Clock className="w-5 h-5" />
           </div>
         </div>
 
         {/* Picking in Progress */}
-        <div className="bg-[#0d1322]/80 rounded-xl p-3.5 border border-slate-800 flex items-center justify-between">
+        <div className="bg-white rounded-2xl p-5 border border-slate-200 shadow-xs flex items-center justify-between">
           <div>
-            <div className="text-[10px] font-mono text-cyan-400 uppercase">Đang Nhặt Hàng</div>
-            <div className="text-lg font-extrabold text-cyan-300 font-mono mt-0.5">{pickingCount} đơn</div>
+            <div className="text-xs font-bold text-indigo-700 uppercase">Đang Nhặt Hàng</div>
+            <div className="text-2xl font-black text-indigo-700 font-mono mt-1">{pickingCount} đơn</div>
           </div>
-          <div className="p-2 rounded-lg bg-cyan-500/10 text-cyan-400 border border-cyan-500/20">
-            <ShieldCheck className="w-4 h-4" />
+          <div className="p-3 rounded-xl bg-indigo-50 text-indigo-700 border border-indigo-200">
+            <ShieldCheck className="w-5 h-5" />
           </div>
         </div>
 
         {/* Dispatched */}
-        <div className="bg-[#0d1322]/80 rounded-xl p-3.5 border border-slate-800 flex items-center justify-between">
+        <div className="bg-white rounded-2xl p-5 border border-slate-200 shadow-xs flex items-center justify-between">
           <div>
-            <div className="text-[10px] font-mono text-emerald-400 uppercase">Đã Xuất Kho</div>
-            <div className="text-lg font-extrabold text-emerald-300 font-mono mt-0.5">{dispatchedCount} đơn</div>
+            <div className="text-xs font-bold text-emerald-700 uppercase">Đã Xuất Kho</div>
+            <div className="text-2xl font-black text-emerald-700 font-mono mt-1">{dispatchedCount} đơn</div>
           </div>
-          <div className="p-2 rounded-lg bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
-            <CheckCircle2 className="w-4 h-4" />
+          <div className="p-3 rounded-xl bg-emerald-50 text-emerald-700 border border-emerald-200">
+            <CheckCircle2 className="w-5 h-5" />
           </div>
         </div>
       </div>
     </div>
   );
 };
+

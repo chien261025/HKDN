@@ -105,7 +105,20 @@ export const authService = {
     const sessionStr = localStorage.getItem('smart_wms_session');
     if (!sessionStr) return null;
     try {
-      return JSON.parse(sessionStr);
+      const session: AuthSession = JSON.parse(sessionStr);
+      if (session && session.fullName && session.fullName.includes('?')) {
+        if (session.username === 'manager01' || session.role === 'ROLE_WAREHOUSE_MANAGER') {
+          session.fullName = 'Trần Trưởng Kho';
+        } else if (session.username === 'admin' || session.role === 'ROLE_ADMIN') {
+          session.fullName = 'Nguyễn Quản Trị';
+        } else if (session.username === 'operator01' || session.role === 'ROLE_OPERATOR') {
+          session.fullName = 'Lê Thủ Kho';
+        } else {
+          session.fullName = session.fullName.replace(/\?+/g, '').trim() || session.username;
+        }
+        localStorage.setItem('smart_wms_session', JSON.stringify(session));
+      }
+      return session;
     } catch {
       return null;
     }

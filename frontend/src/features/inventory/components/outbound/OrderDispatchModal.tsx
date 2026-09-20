@@ -20,29 +20,29 @@ export const OrderDispatchModal: React.FC<OrderDispatchModalProps> = ({
   onViewLedger,
 }) => {
   return (
-    <div className="fixed inset-0 bg-black/80 backdrop-blur-md flex items-center justify-center p-4 z-50 animate-in fade-in duration-200">
-      <div className="bg-[#0f172a] rounded-2xl max-w-3xl w-full border border-slate-700 shadow-2xl overflow-hidden text-slate-100 relative">
+    <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm flex items-center justify-center p-4 z-50 animate-in fade-in duration-200">
+      <div className="bg-white rounded-2xl max-w-3xl w-full border border-slate-200 shadow-2xl overflow-hidden text-slate-900 relative">
         {/* Top line accent */}
-        <div className="h-1 w-full bg-gradient-to-r from-amber-500 via-indigo-500 to-emerald-500"></div>
+        <div className="h-1 w-full bg-gradient-to-r from-amber-500 via-indigo-600 to-emerald-600"></div>
 
         {/* Modal Header */}
-        <div className="p-5 border-b border-slate-800 flex items-center justify-between bg-slate-900/80">
+        <div className="p-5 border-b border-slate-100 flex items-center justify-between bg-slate-50/70">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-indigo-600/20 border border-indigo-500/30 flex items-center justify-center text-indigo-400 font-bold">
+            <div className="w-10 h-10 rounded-xl bg-indigo-50 border border-indigo-200 flex items-center justify-center text-indigo-700 font-bold">
               <Package className="w-5 h-5" />
             </div>
             <div>
               <div className="flex items-center gap-2.5">
-                <h3 className="font-bold text-base text-white tracking-wide">
-                  Chi Tiết Đơn Xuất Kho: <span className="font-mono text-cyan-300">{order.code}</span>
+                <h3 className="font-bold text-base text-slate-900 tracking-wide">
+                  Chi Tiết Đơn Xuất Kho: <span className="font-mono text-indigo-700">{order.code}</span>
                 </h3>
                 <span
-                  className={`text-[10px] font-bold px-2.5 py-0.5 rounded-full border ${
+                  className={`text-xs font-bold px-2.5 py-0.5 rounded-full border ${
                     order.status === 'PENDING'
-                      ? 'bg-amber-500/10 text-amber-300 border-amber-500/30'
+                      ? 'bg-amber-50 text-amber-800 border-amber-200'
                       : order.status === 'RESERVED'
-                      ? 'bg-cyan-500/10 text-cyan-300 border-cyan-500/30'
-                      : 'bg-emerald-500/10 text-emerald-300 border-emerald-500/30'
+                      ? 'bg-cyan-50 text-cyan-800 border-cyan-200'
+                      : 'bg-emerald-50 text-emerald-800 border-emerald-200'
                   }`}
                 >
                   {order.status === 'PENDING'
@@ -52,15 +52,15 @@ export const OrderDispatchModal: React.FC<OrderDispatchModalProps> = ({
                     : 'ĐÃ XUẤT KHO'}
                 </span>
               </div>
-              <p className="text-xs text-slate-400 mt-0.5">
-                Khách hàng: <strong className="text-slate-200">{order.customer}</strong>
+              <p className="text-xs text-slate-500 mt-0.5 font-medium">
+                Khách hàng: <strong className="text-slate-800">{order.customer}</strong>
               </p>
             </div>
           </div>
 
           <button
             onClick={onClose}
-            className="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 transition-colors cursor-pointer"
+            className="p-1.5 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-colors cursor-pointer"
           >
             <X className="w-5 h-5" />
           </button>
@@ -71,34 +71,34 @@ export const OrderDispatchModal: React.FC<OrderDispatchModalProps> = ({
           {/* Hàng 1: Mặt hàng & Lô hàng xuất */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             {/* Box 1: Thông tin sản phẩm */}
-            <div className="p-4 rounded-xl bg-slate-900/60 border border-slate-800 space-y-2">
-              <div className="flex items-center justify-between text-xs text-slate-400">
-                <span>Mặt Hàng Xuất:</span>
-                <span className="font-mono font-bold text-cyan-300 bg-slate-800 px-2 py-0.5 rounded border border-slate-700">
+            <div className="p-4.5 rounded-xl bg-slate-50 border border-slate-200 space-y-2.5">
+              <div className="flex items-center justify-between text-xs text-slate-500">
+                <span className="font-medium">Mặt Hàng Xuất:</span>
+                <span className="font-mono font-bold text-indigo-700 bg-white px-2 py-0.5 rounded border border-slate-200">
                   {order.productSku}
                 </span>
               </div>
-              <h4 className="font-bold text-white text-sm">{order.productName}</h4>
-              <div className="pt-2 border-t border-slate-800 text-xs flex items-center justify-between">
-                <span className="text-slate-400">Số lượng cần xuất:</span>
-                <span className="font-mono font-extrabold text-cyan-300 text-base">{order.qty} SP</span>
+              <h4 className="font-bold text-slate-900 text-sm">{order.productName}</h4>
+              <div className="pt-2 border-t border-slate-200 text-xs flex items-center justify-between">
+                <span className="text-slate-500 font-medium">Số lượng cần xuất:</span>
+                <span className="font-mono font-extrabold text-indigo-700 text-base">{order.qty} SP</span>
               </div>
             </div>
 
             {/* Box 2: Lô hàng FEFO đề xuất */}
-            <div className="p-4 rounded-xl bg-slate-900/60 border border-slate-800 space-y-2">
-              <div className="flex items-center justify-between text-xs text-slate-400">
-                <span>Lô Hàng Xuất (FEFO):</span>
-                <span className="text-[10px] font-bold text-emerald-300 bg-emerald-500/20 px-2 py-0.5 rounded border border-emerald-500/30">
+            <div className="p-4.5 rounded-xl bg-slate-50 border border-slate-200 space-y-2.5">
+              <div className="flex items-center justify-between text-xs text-slate-500">
+                <span className="font-medium">Lô Hàng Xuất (FEFO):</span>
+                <span className="text-xs font-bold text-emerald-800 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">
                   HẾT HẠN TRƯỚC
                 </span>
               </div>
               <div className="flex items-center justify-between">
-                <span className="font-mono font-bold text-white text-sm">{order.batchNumber}</span>
-                <span className="font-mono font-bold text-rose-300 text-xs">HSD: {order.expiryDate}</span>
+                <span className="font-mono font-bold text-slate-900 text-sm">{order.batchNumber}</span>
+                <span className="font-mono font-bold text-rose-700 text-xs">HSD: {order.expiryDate}</span>
               </div>
-              <p className="text-[11px] text-slate-400 pt-1 border-t border-slate-800">
-                Còn <strong className="text-amber-300 font-mono">{order.daysRemaining} ngày</strong> hạn sử dụng ➔ Tự động ưu tiên xuất.
+              <p className="text-xs text-slate-500 pt-1.5 border-t border-slate-200 font-medium">
+                Còn <strong className="text-amber-800 font-mono font-bold">{order.daysRemaining} ngày</strong> hạn sử dụng ➔ Tự động ưu tiên xuất.
               </p>
             </div>
           </div>
@@ -106,59 +106,59 @@ export const OrderDispatchModal: React.FC<OrderDispatchModalProps> = ({
           {/* Hàng 2: Vị trí lấy hàng & Tồn kho tại ô kệ */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             {/* Box 3: Vị trí ô kệ & lộ trình */}
-            <div className="p-4 rounded-xl bg-slate-900/60 border border-slate-800 space-y-2">
-              <div className="flex items-center justify-between text-xs text-slate-400">
-                <span className="flex items-center gap-1.5 font-medium">
-                  <MapPin className="w-3.5 h-3.5 text-cyan-400" />
+            <div className="p-4.5 rounded-xl bg-slate-50 border border-slate-200 space-y-2.5">
+              <div className="flex items-center justify-between text-xs text-slate-600">
+                <span className="flex items-center gap-1.5 font-bold text-slate-700">
+                  <MapPin className="w-4 h-4 text-indigo-600" />
                   Vị Trí Ô Kệ:
                 </span>
-                <span className="font-mono text-cyan-300 font-bold bg-cyan-950/60 px-2 py-0.5 rounded border border-cyan-700/50">
+                <span className="font-mono text-indigo-700 font-black text-xs bg-indigo-50 px-2.5 py-0.5 rounded border border-indigo-200">
                   {order.locationBarcode}
                 </span>
               </div>
 
-              <div className="text-[11px] text-slate-400 pt-1">Đường đi lấy hàng:</div>
-              <div className="flex items-center gap-1 text-[11px] font-mono text-slate-200 flex-wrap">
-                <span className="px-1.5 py-0.5 rounded bg-slate-800 border border-slate-700 text-slate-300">
+              <div className="text-xs text-slate-500 pt-1 font-medium">Đường đi lấy hàng:</div>
+              <div className="flex items-center gap-1 text-xs font-mono text-slate-700 flex-wrap">
+                <span className="px-2 py-0.5 rounded bg-white border border-slate-200 text-slate-700 font-semibold">
                   Khu {order.locationBarcode.startsWith('ZA') ? 'A' : 'B'}
                 </span>
-                <ArrowRight className="w-3 h-3 text-slate-500" />
-                <span className="px-1.5 py-0.5 rounded bg-slate-800 border border-slate-700 text-slate-300">
+                <ArrowRight className="w-3.5 h-3.5 text-slate-400" />
+                <span className="px-2 py-0.5 rounded bg-white border border-slate-200 text-slate-700 font-semibold">
                   Dãy {order.locationBarcode.split('-')[1] || '01'}
                 </span>
-                <ArrowRight className="w-3 h-3 text-slate-500" />
-                <span className="px-1.5 py-0.5 rounded bg-slate-800 border border-slate-700 text-slate-300">
+                <ArrowRight className="w-3.5 h-3.5 text-slate-400" />
+                <span className="px-2 py-0.5 rounded bg-white border border-slate-200 text-slate-700 font-semibold">
                   Kệ {order.locationBarcode.split('-')[2] || 'R01'}
                 </span>
-                <ArrowRight className="w-3 h-3 text-slate-500" />
-                <span className="px-1.5 py-0.5 rounded bg-cyan-950/80 border border-cyan-600 text-cyan-300 font-bold">
+                <ArrowRight className="w-3.5 h-3.5 text-slate-400" />
+                <span className="px-2 py-0.5 rounded bg-indigo-50 border border-indigo-300 text-indigo-700 font-black">
                   Ô {order.locationBarcode.split('-')[4] || 'B01'}
                 </span>
               </div>
             </div>
 
             {/* Box 4: Tồn kho tại vị trí */}
-            <div className="p-4 rounded-xl bg-slate-900/60 border border-slate-800 space-y-2">
-              <div className="flex items-center justify-between text-xs text-slate-400 pb-1 border-b border-slate-800">
-                <span>Tồn Kho Tại Ô Kệ:</span>
-                <span className="text-emerald-400 text-[11px] font-medium flex items-center gap-1">
-                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-400"></span>
+            <div className="p-4.5 rounded-xl bg-slate-50 border border-slate-200 space-y-2.5">
+              <div className="flex items-center justify-between text-xs text-slate-500 pb-1 border-b border-slate-200">
+                <span className="font-medium text-slate-700">Tồn Kho Tại Ô Kệ:</span>
+                <span className="text-emerald-700 text-xs font-bold flex items-center gap-1.5">
+                  <span className="w-2 h-2 rounded-full bg-emerald-500"></span>
                   Thời gian thực
                 </span>
               </div>
 
               <div className="grid grid-cols-3 gap-2 text-center py-1">
-                <div className="p-2 rounded-lg bg-slate-950 border border-slate-800">
-                  <div className="text-[10px] text-slate-400">Tồn Kệ</div>
-                  <div className="text-sm font-extrabold font-mono text-white mt-0.5">{stats.onHand}</div>
+                <div className="p-2.5 rounded-xl bg-white border border-slate-200 shadow-2xs">
+                  <div className="text-xs text-slate-500 font-medium">Tồn Kệ</div>
+                  <div className="text-sm font-extrabold font-mono text-slate-900 mt-0.5">{stats.onHand}</div>
                 </div>
-                <div className="p-2 rounded-lg bg-slate-950 border border-slate-800">
-                  <div className="text-[10px] text-slate-400">Đang Giữ</div>
-                  <div className="text-sm font-extrabold font-mono text-amber-400 mt-0.5">{stats.reserved}</div>
+                <div className="p-2.5 rounded-xl bg-white border border-slate-200 shadow-2xs">
+                  <div className="text-xs text-slate-500 font-medium">Đang Giữ</div>
+                  <div className="text-sm font-extrabold font-mono text-amber-700 mt-0.5">{stats.reserved}</div>
                 </div>
-                <div className="p-2 rounded-lg bg-slate-950 border border-slate-800">
-                  <div className="text-[10px] text-slate-400">Khả Dụng</div>
-                  <div className="text-sm font-extrabold font-mono text-emerald-400 mt-0.5">{stats.available}</div>
+                <div className="p-2.5 rounded-xl bg-emerald-50 border border-emerald-200 shadow-2xs">
+                  <div className="text-xs text-emerald-700 font-medium">Khả Dụng</div>
+                  <div className="text-sm font-extrabold font-mono text-emerald-800 mt-0.5">{stats.available}</div>
                 </div>
               </div>
             </div>
@@ -166,13 +166,13 @@ export const OrderDispatchModal: React.FC<OrderDispatchModalProps> = ({
         </div>
 
         {/* Modal Footer Actions */}
-        <div className="p-5 border-t border-slate-800 bg-slate-900/60 flex flex-col sm:flex-row items-center justify-between gap-3">
-          <div className="flex items-center gap-2 w-full sm:w-auto">
+        <div className="p-5 border-t border-slate-100 bg-slate-50/70 flex flex-col sm:flex-row items-center justify-between gap-3">
+          <div className="flex items-center gap-2.5 w-full sm:w-auto">
             {/* Nút 1: Giữ hàng */}
             {order.status === 'PENDING' && (
               <button
                 onClick={onReserve}
-                className="flex-1 sm:flex-initial px-5 py-2.5 rounded-xl bg-amber-600 hover:bg-amber-500 text-white font-bold text-xs flex items-center justify-center gap-2 shadow-lg shadow-amber-900/30 transition-all cursor-pointer"
+                className="flex-1 sm:flex-initial px-5 py-2.5 rounded-xl bg-amber-600 hover:bg-amber-700 text-white font-bold text-xs flex items-center justify-center gap-2 shadow-sm transition-all cursor-pointer active:scale-95"
               >
                 <Lock className="w-4 h-4" />
                 <span>Giữ Hàng ({order.qty} SP)</span>
@@ -183,7 +183,7 @@ export const OrderDispatchModal: React.FC<OrderDispatchModalProps> = ({
             {order.status === 'RESERVED' && (
               <button
                 onClick={onShip}
-                className="flex-1 sm:flex-initial px-5 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs flex items-center justify-center gap-2 shadow-lg shadow-emerald-900/30 transition-all cursor-pointer"
+                className="flex-1 sm:flex-initial px-5 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs flex items-center justify-center gap-2 shadow-sm transition-all cursor-pointer active:scale-95"
               >
                 <Truck className="w-4 h-4" />
                 <span>Xác Nhận Xuất Kho ({order.qty} SP)</span>
@@ -194,7 +194,7 @@ export const OrderDispatchModal: React.FC<OrderDispatchModalProps> = ({
             {order.status === 'SHIPPED' && (
               <button
                 onClick={onViewLedger}
-                className="flex-1 sm:flex-initial px-5 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs flex items-center justify-center gap-2 shadow-lg shadow-indigo-900/30 transition-all cursor-pointer"
+                className="flex-1 sm:flex-initial px-5 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs flex items-center justify-center gap-2 shadow-sm transition-all cursor-pointer active:scale-95"
               >
                 <FileText className="w-4 h-4" />
                 <span>In / Xem Phiếu Xuất</span>
@@ -204,7 +204,7 @@ export const OrderDispatchModal: React.FC<OrderDispatchModalProps> = ({
 
           <button
             onClick={onClose}
-            className="w-full sm:w-auto px-5 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white text-xs font-semibold border border-slate-700 transition-colors cursor-pointer"
+            className="w-full sm:w-auto px-5 py-2.5 rounded-xl bg-white hover:bg-slate-50 text-slate-700 hover:text-slate-900 text-xs font-bold border border-slate-300 transition-colors cursor-pointer shadow-2xs"
           >
             Đóng
           </button>

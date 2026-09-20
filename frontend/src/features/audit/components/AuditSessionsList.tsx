@@ -21,34 +21,34 @@ export const AuditSessionsList: React.FC<AuditSessionsListProps> = ({
   onSelectSession,
 }) => {
   return (
-    <div className="bg-[#0b101d]/90 backdrop-blur-xl rounded-2xl border border-slate-800/80 shadow-xl overflow-hidden">
+    <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
       {/* Header */}
-      <div className="p-4 border-b border-slate-800 flex items-center justify-between bg-slate-900/60">
-        <div className="flex items-center gap-2">
-          <ClipboardCheck className="w-4 h-4 text-emerald-400" />
-          <h2 className="text-xs font-bold text-white uppercase tracking-wider">
+      <div className="p-4 border-b border-slate-200 flex items-center justify-between bg-slate-50">
+        <div className="flex items-center gap-2.5">
+          <ClipboardCheck className="w-5 h-5 text-emerald-600" />
+          <h2 className="text-sm font-bold text-slate-900 uppercase tracking-wider">
             Lịch Sử & Tiến Độ Các Đợt Kiểm Kê Kho
           </h2>
         </div>
-        <span className="text-[11px] font-mono text-slate-400 bg-slate-800 px-2.5 py-0.5 rounded-full border border-slate-700">
+        <span className="text-xs font-mono text-slate-600 bg-white px-3 py-1 rounded-full border border-slate-200 font-semibold shadow-xs">
           {sessions.length} Đợt kiểm kê
         </span>
       </div>
 
       {/* Table */}
       <div className="overflow-x-auto">
-        <table className="w-full text-left text-xs">
-          <thead className="bg-slate-900/80 text-slate-400 font-mono text-[10px] uppercase border-b border-slate-800">
+        <table className="w-full text-left text-sm">
+          <thead className="bg-slate-100 text-slate-700 font-bold text-xs uppercase tracking-wider border-b border-slate-200">
             <tr>
-              <th className="py-3 px-4">Mã Đợt / Tiêu Đề Kiểm Kê</th>
-              <th className="py-3 px-4">Phạm Vi / Người Phụ Trách</th>
-              <th className="py-3 px-4">Tiến Độ Đếm Thực Địa</th>
-              <th className="py-3 px-4">Sai Lệch Phát Hiện</th>
-              <th className="py-3 px-4">Trạng Thái</th>
-              <th className="py-3 px-4 text-right">Thao Tác</th>
+              <th className="py-3.5 px-4">Mã Đợt / Tiêu Đề Kiểm Kê</th>
+              <th className="py-3.5 px-4">Phạm Vi / Người Phụ Trách</th>
+              <th className="py-3.5 px-4">Tiến Độ Đếm Thực Địa</th>
+              <th className="py-3.5 px-4">Sai Lệch Phát Hiện</th>
+              <th className="py-3.5 px-4">Trạng Thái</th>
+              <th className="py-3.5 px-4 text-right">Thao Tác</th>
             </tr>
           </thead>
-          <tbody className="divide-y divide-slate-800/60 text-slate-300">
+          <tbody className="divide-y divide-slate-200 text-slate-700 font-sans">
             {sessions.map((session) => {
               const isCounting = session.status === 'COUNTING';
               const isPendingReview = session.status === 'PENDING_REVIEW';
@@ -57,36 +57,36 @@ export const AuditSessionsList: React.FC<AuditSessionsListProps> = ({
               const progressPercent = Math.round((session.countedBins / session.totalBins) * 100) || 0;
 
               return (
-                <tr key={session.id} className="hover:bg-slate-800/30 transition-colors">
+                <tr key={session.id} className="hover:bg-slate-50/80 transition-colors">
                   {/* Mã đợt & Tiêu đề */}
                   <td className="py-3.5 px-4">
-                    <div className="font-mono font-bold text-white text-sm">{session.auditCode}</div>
-                    <div className="text-[11px] text-slate-400 line-clamp-1">{session.title}</div>
+                    <div className="font-mono font-bold text-slate-900 text-sm">{session.auditCode}</div>
+                    <div className="text-xs text-slate-500 line-clamp-1">{session.title}</div>
                   </td>
 
                   {/* Phạm vi & Thủ kho */}
-                  <td className="py-3.5 px-4 font-mono text-[11px]">
-                    <div className="text-slate-200">{session.scope}</div>
-                    <div className="text-[10px] text-slate-500 flex items-center gap-1 font-sans">
-                      <User className="w-3 h-3" /> {session.assignedOperator}
+                  <td className="py-3.5 px-4 font-mono text-xs">
+                    <div className="text-slate-900 font-medium">{session.scope}</div>
+                    <div className="text-xs text-slate-500 flex items-center gap-1 font-sans mt-0.5">
+                      <User className="w-3.5 h-3.5" /> {session.assignedOperator}
                     </div>
                   </td>
 
                   {/* Tiến độ đếm */}
                   <td className="py-3.5 px-4">
-                    <div className="w-36 space-y-1">
-                      <div className="flex justify-between text-[10px] font-mono text-slate-400">
+                    <div className="w-40 space-y-1.5">
+                      <div className="flex justify-between text-xs font-mono text-slate-600">
                         <span>{session.countedBins}/{session.totalBins} ô</span>
-                        <span className="font-bold text-emerald-400">{progressPercent}%</span>
+                        <span className="font-bold text-emerald-600">{progressPercent}%</span>
                       </div>
-                      <div className="w-full bg-slate-900 rounded-full h-1.5 overflow-hidden border border-slate-800">
+                      <div className="w-full bg-slate-100 rounded-full h-2 overflow-hidden border border-slate-200">
                         <div
                           className={`h-full transition-all duration-300 rounded-full ${
                             isReconciled
-                              ? 'bg-emerald-400'
+                              ? 'bg-emerald-500'
                               : isPendingReview
-                              ? 'bg-amber-400'
-                              : 'bg-cyan-400'
+                              ? 'bg-amber-500'
+                              : 'bg-blue-600'
                           }`}
                           style={{ width: `${progressPercent}%` }}
                         ></div>
@@ -95,33 +95,33 @@ export const AuditSessionsList: React.FC<AuditSessionsListProps> = ({
                   </td>
 
                   {/* Sai lệch phát hiện */}
-                  <td className="py-3.5 px-4 font-mono text-[11px]">
+                  <td className="py-3.5 px-4 font-mono text-xs">
                     {session.discrepanciesCount > 0 ? (
-                      <span className="inline-flex items-center gap-1 text-rose-400 bg-rose-500/10 px-2 py-0.5 rounded border border-rose-500/20 font-bold">
-                        <AlertTriangle className="w-3 h-3" /> {session.discrepanciesCount} ô chênh lệch
+                      <span className="inline-flex items-center gap-1.5 text-rose-700 bg-rose-50 px-2.5 py-1 rounded-md border border-rose-200 font-bold">
+                        <AlertTriangle className="w-3.5 h-3.5" /> {session.discrepanciesCount} ô chênh lệch
                       </span>
                     ) : (
-                      <span className="inline-flex items-center gap-1 text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded border border-emerald-500/20">
-                        <CheckCircle2 className="w-3 h-3" /> Khớp 100%
+                      <span className="inline-flex items-center gap-1.5 text-emerald-700 bg-emerald-50 px-2.5 py-1 rounded-md border border-emerald-200 font-bold">
+                        <CheckCircle2 className="w-3.5 h-3.5" /> Khớp 100%
                       </span>
                     )}
                   </td>
 
                   {/* Trạng thái badge */}
-                  <td className="py-3.5 px-4 font-mono text-[11px]">
+                  <td className="py-3.5 px-4 font-mono text-xs">
                     {isCounting && (
-                      <span className="inline-flex items-center gap-1 text-cyan-300 bg-cyan-500/10 px-2.5 py-1 rounded-lg border border-cyan-500/20 font-bold animate-pulse">
-                        <Clock className="w-3 h-3" /> COUNTING
+                      <span className="inline-flex items-center gap-1.5 text-blue-700 bg-blue-50 px-2.5 py-1 rounded-lg border border-blue-200 font-bold">
+                        <Clock className="w-3.5 h-3.5" /> COUNTING
                       </span>
                     )}
                     {isPendingReview && (
-                      <span className="inline-flex items-center gap-1 text-amber-300 bg-amber-500/10 px-2.5 py-1 rounded-lg border border-amber-500/20 font-bold">
-                        <AlertTriangle className="w-3 h-3" /> CHỜ DUYỆT
+                      <span className="inline-flex items-center gap-1.5 text-amber-700 bg-amber-50 px-2.5 py-1 rounded-lg border border-amber-200 font-bold">
+                        <AlertTriangle className="w-3.5 h-3.5" /> CHỜ DUYỆT
                       </span>
                     )}
                     {isReconciled && (
-                      <span className="inline-flex items-center gap-1 text-emerald-300 bg-emerald-500/10 px-2.5 py-1 rounded-lg border border-emerald-500/20 font-bold">
-                        <CheckCircle2 className="w-3 h-3" /> RECONCILED
+                      <span className="inline-flex items-center gap-1.5 text-emerald-700 bg-emerald-50 px-2.5 py-1 rounded-lg border border-emerald-200 font-bold">
+                        <CheckCircle2 className="w-3.5 h-3.5" /> RECONCILED
                       </span>
                     )}
                   </td>
@@ -130,7 +130,7 @@ export const AuditSessionsList: React.FC<AuditSessionsListProps> = ({
                   <td className="py-3.5 px-4 text-right">
                     <button
                       onClick={() => onSelectSession(session)}
-                      className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-gradient-to-r from-emerald-600/20 to-teal-600/20 hover:from-emerald-600/40 hover:to-teal-600/40 text-emerald-300 border border-emerald-500/30 rounded-lg text-[11px] font-semibold transition-all"
+                      className="inline-flex items-center gap-1.5 px-3.5 py-1.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-200 rounded-lg text-xs font-bold transition-all shadow-xs"
                     >
                       <Scale className="w-3.5 h-3.5" />
                       <span>Đối Soát & Cân Đối</span>

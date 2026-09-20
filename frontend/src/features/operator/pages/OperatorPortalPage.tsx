@@ -18,17 +18,14 @@ export const OperatorPortalPage: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-[#050811] text-slate-100 flex flex-col justify-between relative selection:bg-cyan-500 selection:text-black">
-      {/* Ambient background glow */}
-      <div className="fixed top-0 left-1/2 -translate-x-1/2 w-96 h-96 bg-cyan-600/10 rounded-full blur-3xl pointer-events-none -z-10"></div>
-
+    <div className="min-h-screen bg-slate-100 text-slate-900 flex flex-col justify-between relative selection:bg-indigo-500 selection:text-white">
       {/* Main Container - Optimized for Phone / Rugged PDA device */}
-      <div className="w-full max-w-lg mx-auto flex-1 flex flex-col bg-[#070b16] border-x border-slate-800/80 shadow-2xl">
+      <div className="w-full max-w-lg mx-auto flex-1 flex flex-col bg-white border-x border-slate-200 shadow-xl">
         {/* Device & Operator Header */}
         <OperatorHeader onOpenScanner={() => setShowScanner(true)} />
 
         {/* Dynamic Tab Body */}
-        <main className="flex-1 p-4 overflow-y-auto">
+        <main className="flex-1 p-4 overflow-y-auto bg-slate-50/50">
           {activeTab === 'STAGING' && (
             <InboundStagingTab onOpenScanner={() => setShowScanner(true)} />
           )}
@@ -44,57 +41,57 @@ export const OperatorPortalPage: React.FC = () => {
         </main>
 
         {/* Fixed Mobile Bottom Navigation Bar */}
-        <nav className="sticky bottom-0 left-0 right-0 bg-[#090e1c]/95 backdrop-blur-xl border-t border-slate-800 px-2 py-2 flex items-center justify-around z-30 shadow-2xl">
+        <nav className="sticky bottom-0 left-0 right-0 bg-white/95 backdrop-blur-xl border-t border-slate-200 px-3 py-2.5 flex items-center justify-around z-30 shadow-lg">
           {/* Tab 1: Staging */}
           <button
             onClick={() => setActiveTab('STAGING')}
-            className={`flex flex-col items-center gap-1 py-1 px-2.5 rounded-xl transition-all ${
+            className={`flex flex-col items-center gap-1 py-1 px-3 rounded-xl transition-all cursor-pointer ${
               activeTab === 'STAGING'
-                ? 'text-cyan-400 bg-cyan-500/10 font-bold scale-105'
-                : 'text-slate-400 hover:text-slate-200'
+                ? 'text-cyan-700 bg-cyan-50 font-bold scale-105 shadow-2xs'
+                : 'text-slate-500 hover:text-slate-900'
             }`}
           >
-            <Truck className="w-4 h-4" />
-            <span className="text-[10px] tracking-tight">1. Nhận Hàng</span>
+            <Truck className="w-5 h-5" />
+            <span className="text-xs tracking-tight">1. Nhận Hàng</span>
           </button>
 
           {/* Tab 2: Putaway */}
           <button
             onClick={() => setActiveTab('PUTAWAY')}
-            className={`flex flex-col items-center gap-1 py-1 px-2.5 rounded-xl transition-all ${
+            className={`flex flex-col items-center gap-1 py-1 px-3 rounded-xl transition-all cursor-pointer ${
               activeTab === 'PUTAWAY'
-                ? 'text-indigo-400 bg-indigo-500/10 font-bold scale-105'
-                : 'text-slate-400 hover:text-slate-200'
+                ? 'text-indigo-700 bg-indigo-50 font-bold scale-105 shadow-2xs'
+                : 'text-slate-500 hover:text-slate-900'
             }`}
           >
-            <Layers className="w-4 h-4" />
-            <span className="text-[10px] tracking-tight">2. Cất Kệ</span>
+            <Layers className="w-5 h-5" />
+            <span className="text-xs tracking-tight">2. Cất Kệ</span>
           </button>
 
           {/* Tab 3: Picking */}
           <button
             onClick={() => setActiveTab('PICKING')}
-            className={`flex flex-col items-center gap-1 py-1 px-2.5 rounded-xl transition-all ${
+            className={`flex flex-col items-center gap-1 py-1 px-3 rounded-xl transition-all cursor-pointer ${
               activeTab === 'PICKING'
-                ? 'text-amber-400 bg-amber-500/10 font-bold scale-105'
-                : 'text-slate-400 hover:text-slate-200'
+                ? 'text-amber-700 bg-amber-50 font-bold scale-105 shadow-2xs'
+                : 'text-slate-500 hover:text-slate-900'
             }`}
           >
-            <PackageCheck className="w-4 h-4" />
-            <span className="text-[10px] tracking-tight">3. Nhặt FEFO</span>
+            <PackageCheck className="w-5 h-5" />
+            <span className="text-xs tracking-tight">3. Nhặt FEFO</span>
           </button>
 
           {/* Tab 4: Audit */}
           <button
             onClick={() => setActiveTab('AUDIT')}
-            className={`flex flex-col items-center gap-1 py-1 px-2.5 rounded-xl transition-all ${
+            className={`flex flex-col items-center gap-1 py-1 px-3 rounded-xl transition-all cursor-pointer ${
               activeTab === 'AUDIT'
-                ? 'text-emerald-400 bg-emerald-500/10 font-bold scale-105'
-                : 'text-slate-400 hover:text-slate-200'
+                ? 'text-emerald-700 bg-emerald-50 font-bold scale-105 shadow-2xs'
+                : 'text-slate-500 hover:text-slate-900'
             }`}
           >
-            <ClipboardCheck className="w-4 h-4" />
-            <span className="text-[10px] tracking-tight">4. Đếm Mù</span>
+            <ClipboardCheck className="w-5 h-5" />
+            <span className="text-xs tracking-tight">4. Đếm Mù</span>
           </button>
         </nav>
       </div>

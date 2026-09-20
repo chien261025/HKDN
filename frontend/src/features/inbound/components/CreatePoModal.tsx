@@ -64,28 +64,28 @@ export const CreatePoModal: React.FC<CreatePoModalProps> = ({ onClose, onCreateO
   };
 
   return (
-    <div className="fixed inset-0 bg-black/80 backdrop-blur-md flex items-center justify-center p-4 z-50 animate-in fade-in duration-200">
-      <div className="bg-[#0b101d] rounded-2xl max-w-xl w-full border border-slate-700 shadow-2xl overflow-hidden text-slate-100">
+    <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4 z-50 animate-in fade-in duration-200">
+      <div className="bg-white rounded-2xl max-w-xl w-full border border-slate-200 shadow-2xl overflow-hidden text-slate-900">
         {/* Header */}
-        <div className="p-4 border-b border-slate-800 flex items-center justify-between bg-slate-900/60">
-          <div className="flex items-center gap-2">
-            <Building2 className="w-5 h-5 text-cyan-400" />
-            <h3 className="font-bold text-sm text-white">Tạo Đơn Đặt Hàng Nhập Kho (PO Mới)</h3>
+        <div className="p-5 border-b border-slate-200 flex items-center justify-between bg-slate-50">
+          <div className="flex items-center gap-2.5">
+            <Building2 className="w-5 h-5 text-indigo-600" />
+            <h3 className="font-bold text-base text-slate-900">Tạo Đơn Đặt Hàng Nhập Kho (PO Mới)</h3>
           </div>
-          <button onClick={onClose} className="p-1 rounded-lg text-slate-400 hover:text-white">
+          <button onClick={onClose} className="p-1 rounded-lg text-slate-400 hover:text-slate-700 cursor-pointer">
             <X className="w-5 h-5" />
           </button>
         </div>
 
         {/* Form */}
-        <form onSubmit={handleSubmit} className="p-5 space-y-4 text-xs">
+        <form onSubmit={handleSubmit} className="p-6 space-y-4 text-sm">
           {/* Nhà cung cấp */}
           <div>
-            <label className="text-slate-400 font-semibold block mb-1">Chọn Nhà Cung Cấp:</label>
+            <label className="text-slate-700 font-bold block mb-1.5">Chọn Nhà Cung Cấp:</label>
             <select
               value={supplierCode}
               onChange={(e) => setSupplierCode(e.target.value)}
-              className="w-full p-2.5 rounded-xl bg-slate-900 border border-slate-700 text-white font-medium focus:outline-none focus:border-cyan-500"
+              className="w-full p-2.5 rounded-xl bg-white border border-slate-300 text-slate-900 font-medium focus:outline-none focus:border-indigo-600 focus:ring-2 focus:ring-indigo-100"
             >
               {SUPPLIERS.map((s) => (
                 <option key={s.code} value={s.code}>
@@ -96,25 +96,25 @@ export const CreatePoModal: React.FC<CreatePoModalProps> = ({ onClose, onCreateO
           </div>
 
           {/* Ngày dự kiến */}
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-2 gap-3.5">
             <div>
-              <label className="text-slate-400 font-semibold block mb-1">Ngày Giao Hàng Dự Kiến:</label>
+              <label className="text-slate-700 font-bold block mb-1.5">Ngày Giao Hàng Dự Kiến:</label>
               <input
                 type="date"
                 value={expectedDate}
                 onChange={(e) => setExpectedDate(e.target.value)}
                 required
-                className="w-full p-2 rounded-xl bg-slate-900 border border-slate-700 text-white font-mono focus:outline-none focus:border-cyan-500"
+                className="w-full p-2.5 rounded-xl bg-white border border-slate-300 text-slate-900 font-mono focus:outline-none focus:border-indigo-600 focus:ring-2 focus:ring-indigo-100"
               />
             </div>
 
             <div>
-              <label className="text-slate-400 font-semibold block mb-1">Kho Tiếp Nhận:</label>
+              <label className="text-slate-700 font-bold block mb-1.5">Kho Tiếp Nhận:</label>
               <input
                 type="text"
                 disabled
                 value="Kho Trung Tâm (Khu A & B)"
-                className="w-full p-2 rounded-xl bg-slate-900/50 border border-slate-800 text-slate-400 font-mono"
+                className="w-full p-2.5 rounded-xl bg-slate-100 border border-slate-300 text-slate-600 font-medium"
               />
             </div>
           </div>
@@ -122,20 +122,20 @@ export const CreatePoModal: React.FC<CreatePoModalProps> = ({ onClose, onCreateO
           {/* Danh sách mặt hàng */}
           <div className="space-y-2">
             <div className="flex items-center justify-between">
-              <label className="text-slate-400 font-semibold">Danh Sách Mặt Hàng Đặt Nhập ({items.length}):</label>
+              <label className="text-slate-700 font-bold">Danh Sách Mặt Hàng Đặt Nhập ({items.length}):</label>
               <button
                 type="button"
                 onClick={handleAddItem}
-                className="flex items-center gap-1 text-cyan-400 hover:text-cyan-300 font-semibold text-[11px]"
+                className="flex items-center gap-1.5 text-indigo-600 hover:text-indigo-800 font-bold text-xs cursor-pointer"
               >
-                <Plus className="w-3.5 h-3.5" />
+                <Plus className="w-4 h-4" />
                 <span>Thêm dòng hàng</span>
               </button>
             </div>
 
-            <div className="space-y-2 max-h-48 overflow-y-auto pr-1">
+            <div className="space-y-2.5 max-h-48 overflow-y-auto pr-1">
               {items.map((it, idx) => (
-                <div key={idx} className="p-2.5 rounded-xl bg-slate-900/90 border border-slate-800 flex items-center gap-2">
+                <div key={idx} className="p-3 rounded-xl bg-slate-50 border border-slate-200 flex items-center gap-2.5">
                   <div className="flex-1">
                     <select
                       value={it.sku}
@@ -156,7 +156,7 @@ export const CreatePoModal: React.FC<CreatePoModalProps> = ({ onClose, onCreateO
                           )
                         );
                       }}
-                      className="w-full p-1.5 rounded-lg bg-slate-950 border border-slate-700 text-white text-[11px]"
+                      className="w-full p-2 rounded-lg bg-white border border-slate-300 text-slate-900 text-xs font-semibold focus:outline-none focus:border-indigo-600"
                     >
                       <option value="SKU-MILK-100">Sữa tươi Vinamilk 100% 1L</option>
                       <option value="SKU-OMO-MATIC">Nước giặt OMO Matic 3.6kg</option>
@@ -175,19 +175,19 @@ export const CreatePoModal: React.FC<CreatePoModalProps> = ({ onClose, onCreateO
                           prev.map((item, i) => (i === idx ? { ...item, expectedQty: val } : item))
                         );
                       }}
-                      className="w-full p-1.5 rounded-lg bg-slate-950 border border-slate-700 text-emerald-400 font-mono font-bold text-[11px]"
+                      className="w-full p-2 rounded-lg bg-white border border-slate-300 text-slate-900 font-mono font-bold text-xs text-center focus:outline-none focus:border-indigo-600"
                     />
                   </div>
 
-                  <span className="text-[11px] font-mono text-slate-400 w-12">{it.unit}</span>
+                  <span className="text-xs font-bold text-slate-600 w-12 text-center">{it.unit}</span>
 
                   {items.length > 1 && (
                     <button
                       type="button"
                       onClick={() => handleRemoveItem(idx)}
-                      className="p-1 text-slate-500 hover:text-rose-400"
+                      className="p-1 text-slate-400 hover:text-rose-600 cursor-pointer"
                     >
-                      <Trash2 className="w-3.5 h-3.5" />
+                      <Trash2 className="w-4 h-4" />
                     </button>
                   )}
                 </div>
@@ -197,27 +197,27 @@ export const CreatePoModal: React.FC<CreatePoModalProps> = ({ onClose, onCreateO
 
           {/* Ghi chú */}
           <div>
-            <label className="text-slate-400 font-semibold block mb-1">Ghi Chú Đơn Hàng:</label>
+            <label className="text-slate-700 font-bold block mb-1.5">Ghi Chú Đơn Hàng:</label>
             <input
               type="text"
               value={notes}
               onChange={(e) => setNotes(e.target.value)}
-              className="w-full p-2 rounded-xl bg-slate-900 border border-slate-700 text-white text-[11px] focus:outline-none focus:border-cyan-500"
+              className="w-full p-2.5 rounded-xl bg-white border border-slate-300 text-slate-900 text-sm focus:outline-none focus:border-indigo-600 focus:ring-2 focus:ring-indigo-100"
             />
           </div>
 
           {/* Nút hành động */}
-          <div className="flex gap-2 pt-2 border-t border-slate-800">
+          <div className="flex gap-3 pt-3 border-t border-slate-200">
             <button
               type="button"
               onClick={onClose}
-              className="flex-1 py-2.5 rounded-xl bg-slate-900 text-slate-400 hover:text-white font-semibold"
+              className="flex-1 py-3 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 hover:text-slate-900 font-bold cursor-pointer"
             >
               Hủy
             </button>
             <button
               type="submit"
-              className="flex-1 py-2.5 rounded-xl bg-gradient-to-r from-cyan-600 to-indigo-600 hover:from-cyan-500 hover:to-indigo-500 text-white font-bold shadow-lg shadow-cyan-900/30"
+              className="flex-1 py-3 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold shadow-md shadow-indigo-200 cursor-pointer transition-all"
             >
               Phát Hành Đơn PO
             </button>
@@ -227,3 +227,4 @@ export const CreatePoModal: React.FC<CreatePoModalProps> = ({ onClose, onCreateO
     </div>
   );
 };
+
