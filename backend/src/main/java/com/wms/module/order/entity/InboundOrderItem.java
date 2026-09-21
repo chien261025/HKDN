@@ -20,6 +20,7 @@ public class InboundOrderItem {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
+    @com.fasterxml.jackson.annotation.JsonIgnore
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "inbound_order_id", nullable = false)
     private InboundOrder inboundOrder;

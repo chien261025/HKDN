@@ -24,12 +24,62 @@ public class InventoryController {
 
     private final InventoryRepository inventoryRepository;
     private final InventoryLockService inventoryLockService;
+    private final com.wms.module.inventory.repository.StockLedgerRepository stockLedgerRepository;
+    private final com.wms.module.inventory.repository.InventoryAuditRepository inventoryAuditRepository;
 
     @GetMapping
     @Operation(summary = "Xem bảng cân đối tồn kho thực tế", description = "Trả về số lượng On-hand (vật lý), Reserved (đang giữ), Available (khả dụng)")
     public ApiResponse<List<Inventory>> getInventoryBalances() {
         List<Inventory> inventories = inventoryRepository.findAll();
         return ApiResponse.success("Lấy số dư tồn kho thành công!", inventories);
+    }
+
+    @GetMapping("/ledger")
+    @Operation(summary = "Lấy lịch sử sổ cái thẻ kho bất biến", description = "Trả về 50 biến động thẻ kho gần nhất (Nhập, Xuất, Điều chỉnh)")
+    public ApiResponse<List<com.wms.module.inventory.entity.StockLedger>> getRecentStockLedger() {
+        List<com.wms.module.inventory.entity.StockLedger> ledgers = stockLedgerRepository.findTop50ByOrderByCreatedAtDesc();
+        return ApiResponse.success("Lấy sổ cái thẻ kho thành công!", ledgers);
+    }
+
+    @GetMapping("/audit")
+    @Operation(summary = "Lấy danh sách các đợt kiểm kê kho", description = "Trả về toàn bộ các phiên kiểm kê mù định kỳ")
+    public ApiResponse<List<com.wms.module.inventory.entity.InventoryAudit>> getAllAudits() {
+        List<com.wms.module.inventory.entity.InventoryAudit> audits = inventoryAuditRepository.findAll();
+        return ApiResponse.success("Lấy danh sách đợt kiểm kê thành công!", audits);
+    }
+
+    @PostMapping("/audit")
+    @Operation(summary = "Khởi tạo đợt kiểm kê mù mới", description = "Tạo phiên kiểm kê mới cho kho hàng")
+    public ApiResponse<com.wms.module.inventory.entity.InventoryAudit> createAudit(@RequestBody com.wms.module.inventory.entity.InventoryAudit audit) {
+        if (audit.getAuditCode() == null || audit.getAuditCode().isBlank()) {
+            audit.setAuditCode("AUD-" + System.currentTimeMillis() % 1000000);
+        }
+        audit.setStatus("IN_PROGRESS");
+        audit.setCreatedAt(java.time.Instant.now());
+        if (audit.getItems() != null) {
+            for (com.wms.module.inventory.entity.InventoryAuditItem item : audit.getItems()) {
+                item.setAudit(audit);
+                item.setStatus("PENDING");
+            }
+        }
+        com.wms.module.inventory.entity.InventoryAudit saved = inventoryAuditRepository.save(audit);
+        return ApiResponse.success("Khởi tạo đợt kiểm kê thành công!", saved);
+    }
+
+    @PutMapping("/audit/{id}/reconcile")
+    @Operation(summary = "Phê duyệt đối soát cân chỉnh kiểm kê", description = "Duyệt kết quả kiểm kê và chuyển trạng thái sang APPROVED")
+    public ApiResponse<com.wms.module.inventory.entity.InventoryAudit> reconcileAudit(@PathVariable Long id) {
+        com.wms.module.inventory.entity.InventoryAudit audit = inventoryAuditRepository.findById(id)
+                .orElseThrow(() -> new com.wms.common.exception.BusinessException(com.wms.common.exception.ErrorCode.NOT_FOUND, "Không tìm thấy đợt kiểm kê: " + id));
+        audit.setStatus("APPROVED");
+        audit.setCompletedAt(java.time.Instant.now());
+        if (audit.getItems() != null) {
+            for (com.wms.module.inventory.entity.InventoryAuditItem item : audit.getItems()) {
+                item.setStatus("ADJUSTED");
+            }
+        }
+        com.wms.module.inventory.entity.InventoryAudit saved = inventoryAuditRepository.save(audit);
+        return ApiResponse.success("Phê duyệt cân chỉnh kiểm kê thành công!", saved);
     }
 
     @PostMapping("/reserve")

@@ -49,4 +49,50 @@ public class ProductController {
                 .orElseThrow(() -> new BusinessException(ErrorCode.NOT_FOUND, "Không tìm thấy sản phẩm với SKU: " + sku));
         return ApiResponse.success(product);
     }
+
+    @PostMapping
+    @Operation(summary = "Tạo mới sản phẩm SKU", description = "Đăng ký sản phẩm mới vào danh mục Master Data")
+    public ApiResponse<Product> createProduct(@RequestBody Product product) {
+        if (product.getSku() == null || product.getSku().isBlank()) {
+            throw new BusinessException(ErrorCode.BAD_REQUEST, "Mã SKU không được để trống!");
+        }
+        if (productRepository.findBySku(product.getSku()).isPresent()) {
+            throw new BusinessException(ErrorCode.BAD_REQUEST, "Mã SKU đã tồn tại: " + product.getSku());
+        }
+        if (product.getBarcode() == null || product.getBarcode().isBlank()) {
+            product.setBarcode("893" + System.currentTimeMillis());
+        }
+        product.setCreatedAt(java.time.Instant.now());
+        product.setUpdatedAt(java.time.Instant.now());
+        Product saved = productRepository.save(product);
+        return ApiResponse.success("Tạo mới sản phẩm thành công!", saved);
+    }
+
+    @PutMapping("/{id}")
+    @Operation(summary = "Cập nhật thông tin sản phẩm", description = "Cập nhật tên, mã vạch, đơn vị, định mức an toàn, điểm đặt hàng")
+    public ApiResponse<Product> updateProduct(@PathVariable Long id, @RequestBody Product productUpdate) {
+        Product existing = productRepository.findById(id)
+                .orElseThrow(() -> new BusinessException(ErrorCode.NOT_FOUND, "Không tìm thấy sản phẩm với ID: " + id));
+        if (productUpdate.getName() != null && !productUpdate.getName().isBlank()) {
+            existing.setName(productUpdate.getName());
+        }
+        if (productUpdate.getBarcode() != null && !productUpdate.getBarcode().isBlank()) {
+            existing.setBarcode(productUpdate.getBarcode());
+        }
+        if (productUpdate.getUnit() != null && !productUpdate.getUnit().isBlank()) {
+            existing.setUnit(productUpdate.getUnit());
+        }
+        if (productUpdate.getSafetyStock() != null) {
+            existing.setSafetyStock(productUpdate.getSafetyStock());
+        }
+        if (productUpdate.getReorderPoint() != null) {
+            existing.setReorderPoint(productUpdate.getReorderPoint());
+        }
+        if (productUpdate.getCategoryId() != null) {
+            existing.setCategoryId(productUpdate.getCategoryId());
+        }
+        existing.setUpdatedAt(java.time.Instant.now());
+        Product saved = productRepository.save(existing);
+        return ApiResponse.success("Cập nhật thông tin sản phẩm thành công!", saved);
+    }
 }

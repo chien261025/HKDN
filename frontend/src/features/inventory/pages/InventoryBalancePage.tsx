@@ -1,74 +1,23 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Zap, Layers, CheckCircle2, AlertCircle } from 'lucide-react';
 import { StockItem } from '../types';
 import { OutboundFefoWorkbench } from '../components/OutboundFefoWorkbench';
 import { StockBalanceTable } from '../components/balance/StockBalanceTable';
 import { StockLedgerModal, LedgerEntryData } from '../components/StockLedgerModal';
+import { inventoryService } from '../services/inventoryService';
 
 export const InventoryBalancePage: React.FC = () => {
   // Tab chuyển đổi: 'outbound' (Xuất kho FEFO) hoặc 'balance' (Bảng tồn kho thực tế)
   const [activeTab, setActiveTab] = useState<'outbound' | 'balance'>('outbound');
-
-  // Dữ liệu mẫu bảng cân đối tồn kho
-  const [stocks, setStocks] = useState<StockItem[]>([
-    {
-      id: 1,
-      productId: 1,
-      sku: 'SKU-MILK-100',
-      name: 'Sữa tươi tiệt trùng Vinamilk 100% 1L',
-      locationBarcode: 'ZB-B01-R01-S01-B05',
-      batchNumber: 'BATCH-MILK-26A',
-      expiryDate: '2026-09-25',
-      onHandQty: 80,
-      reservedQty: 0,
-      availableQty: 80,
-      isExpiringSoon: true,
-    },
-    {
-      id: 2,
-      productId: 1,
-      sku: 'SKU-MILK-100',
-      name: 'Sữa tươi tiệt trùng Vinamilk 100% 1L',
-      locationBarcode: 'ZB-B01-R01-S02-B06',
-      batchNumber: 'BATCH-MILK-26B',
-      expiryDate: '2026-11-30',
-      onHandQty: 200,
-      reservedQty: 10,
-      availableQty: 190,
-      isExpiringSoon: false,
-    },
-    {
-      id: 3,
-      productId: 2,
-      sku: 'SKU-SAMS-S24',
-      name: 'Điện thoại Samsung Galaxy S24 Ultra 256GB',
-      locationBarcode: 'ZA-A01-R01-S01-B01',
-      batchNumber: 'BATCH-S24-01',
-      expiryDate: '2028-01-10',
-      onHandQty: 25,
-      reservedQty: 5,
-      availableQty: 20,
-      isExpiringSoon: false,
-    },
-    {
-      id: 4,
-      productId: 3,
-      sku: 'SKU-OMO-MATIC',
-      name: 'Nước giặt OMO Matic Cửa Trên 3.6kg',
-      locationBarcode: 'ZA-A01-R02-S01-B03',
-      batchNumber: 'BATCH-OMO-01',
-      expiryDate: '2027-03-01',
-      onHandQty: 60,
-      reservedQty: 0,
-      availableQty: 60,
-      isExpiringSoon: false,
-    },
-  ]);
-
+  const [stocks, setStocks] = useState<StockItem[]>([]);
   const [notification, setNotification] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
 
+  useEffect(() => {
+    inventoryService.getInventoryBalances().then(setStocks);
+  }, []);
+
   // Xử lý giữ hàng từ bảng tồn kho (Tab 2)
-  const handleReserveFromTable = (item: StockItem, qty: number) => {
+  const handleReserveFromTable = async (item: StockItem, qty: number) => {
     if (qty > item.availableQty) {
       setNotification({
         type: 'error',
@@ -76,6 +25,9 @@ export const InventoryBalancePage: React.FC = () => {
       });
       return;
     }
+
+    // Gửi yêu cầu Khóa bi quan (Pessimistic Lock) xuống database
+    await inventoryService.reserveStock(item.productId, item.id, 1, qty);
 
     setStocks((prev) =>
       prev.map((s) => {

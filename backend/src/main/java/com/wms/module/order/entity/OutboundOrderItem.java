@@ -21,6 +21,7 @@ public class OutboundOrderItem {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
+    @com.fasterxml.jackson.annotation.JsonIgnore
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "outbound_order_id", nullable = false)
     private OutboundOrder outboundOrder;

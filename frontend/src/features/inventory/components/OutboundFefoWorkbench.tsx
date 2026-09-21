@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   RotateCcw,
   Package,
@@ -20,6 +20,7 @@ import { OrderItem, LedgerEntryData, InventoryStats } from '../types';
 import { RecentLedgerCard } from './outbound/RecentLedgerCard';
 import { OrderDispatchDrawer } from './outbound/OrderDispatchDrawer';
 import { StockLedgerModal } from './StockLedgerModal';
+import { inventoryService } from '../services/inventoryService';
 
 export const OutboundFefoWorkbench: React.FC = () => {
   // Chế độ hiển thị: 'table' (Bảng dữ liệu) hoặc 'kanban' (Bảng điều phối luồng hàng)
@@ -96,6 +97,14 @@ export const OutboundFefoWorkbench: React.FC = () => {
     },
   ]);
 
+  useEffect(() => {
+    inventoryService.getRecentLedger().then((entries) => {
+      if (entries && entries.length > 0) {
+        setLedgerHistory(entries);
+      }
+    });
+  }, []);
+
   // Modal Phiếu Xuất Kho
   const [showLedgerModal, setShowLedgerModal] = useState(false);
   const [activeLedgerEntry, setActiveLedgerEntry] = useState<LedgerEntryData | null>(null);
@@ -104,6 +113,9 @@ export const OutboundFefoWorkbench: React.FC = () => {
   const handleReserveOrder = (orderId: string) => {
     const targetOrder = orders.find((o) => o.id === orderId);
     if (!targetOrder || targetOrder.status !== 'PENDING') return;
+
+    // Gửi yêu cầu giữ hàng tới backend
+    inventoryService.reserveStock(1, 5, 1, targetOrder.qty);
 
     setOrders((prev) =>
       prev.map((o) => (o.id === orderId ? { ...o, status: 'RESERVED' } : o))
