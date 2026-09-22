@@ -3,7 +3,7 @@
   "users": [
     {
       "name": "guest",
-      "password_hash": "k/dF1pI3uQ0u2k8D1B1YtA==",
+      "password_hash": "xe/ghsNaxI9jJaRgTjLGRAu2bhhVmHejzvle5119S5tBLb0w",
       "hashing_algorithm": "rabbit_password_hashing_sha256",
       "tags": ["administrator"]
     }

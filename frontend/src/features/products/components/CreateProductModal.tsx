@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
-import { X, Plus, Package, Barcode, ShieldAlert, AlertTriangle, Layers } from 'lucide-react';
+import { Plus, Package, Barcode, ShieldAlert, AlertTriangle, Layers, Sparkles } from 'lucide-react';
 import { ProductItem, ProductCategory, StorageZoneReq, SupplierItem } from '../types';
+import { Modal, Button, InputField, SelectField } from '../../../components/common';
 
 interface CreateProductModalProps {
   isOpen: boolean;
@@ -62,224 +63,150 @@ export const CreateProductModal: React.FC<CreateProductModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 backdrop-blur-sm p-4 overflow-y-auto">
-      <div className="bg-white border border-slate-200 rounded-2xl w-full max-w-2xl shadow-2xl overflow-hidden my-8">
-        {/* Modal Header */}
-        <div className="p-4 md:p-5 border-b border-slate-200 flex items-center justify-between bg-slate-50">
-          <div className="flex items-center gap-3">
-            <div className="p-2.5 rounded-xl bg-indigo-50 text-indigo-600 border border-indigo-200">
-              <Package className="w-5 h-5" />
-            </div>
-            <div>
-              <h2 className="text-lg font-bold text-slate-900">Thêm Mặt Hàng SKU Mới Vào Danh Mục</h2>
-              <p className="text-xs text-slate-500 mt-0.5">Khởi tạo Master Data hàng hóa, định mức an toàn và barcode</p>
-            </div>
-          </div>
-          <button
-            onClick={onClose}
-            className="p-1.5 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-200 transition-colors"
-          >
-            <X className="w-5 h-5" />
-          </button>
-        </div>
+    <Modal
+      isOpen={isOpen}
+      onClose={onClose}
+      title="Thêm Mặt Hàng SKU Mới Vào Danh Mục"
+      description="Khởi tạo Master Data hàng hóa, định mức an toàn và barcode"
+      icon={<Package className="w-5 h-5" />}
+      maxWidth="2xl"
+    >
+      <form onSubmit={handleSubmit} className="space-y-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {/* Mã SKU */}
+          <InputField
+            label="Mã SKU"
+            required
+            placeholder="VD: SKU-DRK-010"
+            value={sku}
+            onChange={(e) => setSku(e.target.value)}
+          />
 
-        {/* Modal Form */}
-        <form onSubmit={handleSubmit} className="p-5 md:p-6 space-y-4 text-sm">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {/* SKU */}
-            <div>
-              <label className="block text-slate-700 font-semibold mb-1">
-                Mã SKU <span className="text-rose-500">*</span>
-              </label>
-              <input
-                type="text"
-                required
-                placeholder="VD: SKU-DRK-010"
-                value={sku}
-                onChange={(e) => setSku(e.target.value)}
-                className="w-full px-3 py-2 bg-white border border-slate-300 rounded-xl text-slate-900 font-mono uppercase focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-600"
-              />
-            </div>
+          {/* Mã Barcode */}
+          <InputField
+            label="Mã Vạch Barcode (GS1/EAN-13)"
+            placeholder="VD: 8935001234567"
+            value={barcode}
+            onChange={(e) => setBarcode(e.target.value)}
+            action={
+              <button
+                type="button"
+                onClick={handleAutoBarcode}
+                className="text-xs text-indigo-600 hover:text-indigo-800 font-semibold flex items-center gap-1 cursor-pointer"
+              >
+                <Sparkles className="w-3 h-3" />
+                <span>Sinh mã ngẫu nhiên</span>
+              </button>
+            }
+          />
 
-            {/* Barcode */}
-            <div>
-              <div className="flex items-center justify-between mb-1">
-                <label className="text-slate-700 font-semibold">Mã Vạch Barcode (GS1/EAN-13)</label>
-                <button
-                  type="button"
-                  onClick={handleAutoBarcode}
-                  className="text-xs text-indigo-600 hover:underline font-semibold font-mono"
-                >
-                  + Tự động sinh mã
-                </button>
-              </div>
-              <div className="relative">
-                <input
-                  type="text"
-                  placeholder="VD: 8935001234567"
-                  value={barcode}
-                  onChange={(e) => setBarcode(e.target.value)}
-                  className="w-full px-3 py-2 bg-white border border-slate-300 rounded-xl text-slate-900 font-mono focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-600"
-                />
-              </div>
-            </div>
-          </div>
-
-          {/* Product Name */}
-          <div>
-            <label className="block text-slate-700 font-semibold mb-1">
-              Tên Sản Phẩm <span className="text-rose-500">*</span>
-            </label>
-            <input
-              type="text"
+          {/* Tên sản phẩm */}
+          <div className="md:col-span-2">
+            <InputField
+              label="Tên Hàng Hóa / Sản Phẩm"
               required
-              placeholder="VD: Sữa Tươi Tiệt Trùng Nguyên Chất 1L"
+              placeholder="VD: Nước Ép Cam Tươi Vfresh 1L"
               value={name}
               onChange={(e) => setName(e.target.value)}
-              className="w-full px-3 py-2 bg-white border border-slate-300 rounded-xl text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-600"
             />
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            {/* Category */}
-            <div>
-              <label className="block text-slate-700 font-semibold mb-1">Ngành Hàng</label>
-              <select
-                value={category}
-                onChange={(e) => setCategory(e.target.value as ProductCategory)}
-                className="w-full px-3 py-2 bg-white border border-slate-300 rounded-xl text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-600 cursor-pointer"
-              >
-                <option value="FOOD_BEVERAGE">Thực Phẩm & Đồ Uống</option>
-                <option value="CHEMICAL">Hóa Chất / Dung Môi</option>
-                <option value="ELECTRONICS">Linh Kiện Điện Tử</option>
-                <option value="PHARMA">Dược Phẩm Y Tế</option>
-                <option value="GENERAL">Hàng Tổng Hợp</option>
-              </select>
-            </div>
+          {/* Ngành hàng */}
+          <SelectField
+            label="Ngành Hàng (Category)"
+            value={category}
+            onChange={(e) => setCategory(e.target.value as ProductCategory)}
+            options={[
+              { value: 'FOOD_BEVERAGE', label: 'Thực Phẩm & Đồ Uống' },
+              { value: 'ELECTRONICS', label: 'Linh Kiện & Điện Tử' },
+              { value: 'CHEMICAL', label: 'Hóa Mỹ Phẩm & Tẩy Rửa' },
+              { value: 'PHARMACEUTICAL', label: 'Dược Phẩm & Y Tế' },
+              { value: 'FASHION', label: 'Thời Trang & Dệt May' },
+            ]}
+          />
 
-            {/* Storage Zone */}
-            <div>
-              <label className="block text-slate-700 font-semibold mb-1">Vùng Lưu Trữ</label>
-              <select
-                value={storageZone}
-                onChange={(e) => setStorageZone(e.target.value as StorageZoneReq)}
-                className="w-full px-3 py-2 bg-white border border-slate-300 rounded-xl text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-600 cursor-pointer font-mono"
-              >
-                <option value="ZONE_A">ZONE_A (Kho Khô / Thường)</option>
-                <option value="ZONE_B">ZONE_B (Kho Mát 2-8°C)</option>
-              </select>
-            </div>
+          {/* Đơn vị tính */}
+          <SelectField
+            label="Đơn Vị Tính (Unit)"
+            value={unit}
+            onChange={(e) => setUnit(e.target.value)}
+            options={[
+              { value: 'Thùng', label: 'Thùng' },
+              { value: 'Hộp', label: 'Hộp' },
+              { value: 'Chai', label: 'Chai' },
+              { value: 'Gói', label: 'Gói' },
+              { value: 'Chiếc', label: 'Chiếc' },
+              { value: 'Pallet', label: 'Pallet' },
+            ]}
+          />
 
-            {/* Unit */}
-            <div>
-              <label className="block text-slate-700 font-semibold mb-1">Đơn Vị Tính (ĐVT)</label>
-              <input
-                type="text"
-                placeholder="Thùng, Hộp, Chai, Bao..."
-                value={unit}
-                onChange={(e) => setUnit(e.target.value)}
-                className="w-full px-3 py-2 bg-white border border-slate-300 rounded-xl text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-600"
-              />
-            </div>
+          {/* Trọng lượng */}
+          <InputField
+            label="Trọng Lượng Quy Cách (kg/đơn vị)"
+            type="number"
+            step="0.1"
+            min="0.1"
+            value={weightKg}
+            onChange={(e) => setWeightKg(parseFloat(e.target.value) || 0)}
+          />
+
+          {/* Phân khu cất giữ */}
+          <SelectField
+            label="Phân Khu Lưu Trữ Ưu Tiên"
+            value={storageZone}
+            onChange={(e) => setStorageZone(e.target.value as StorageZoneReq)}
+            options={[
+              { value: 'ZONE_A', label: 'ZONE A - Kho Thường / Khô (Ambient)' },
+              { value: 'ZONE_B', label: 'ZONE B - Kho Mát (Cold 2-8°C)' },
+              { value: 'ZONE_C', label: 'ZONE C - Kho Đông Lạnh (-18°C)' },
+              { value: 'ZONE_D', label: 'ZONE D - Hàng Giá Trị Cao (High Value)' },
+            ]}
+          />
+
+          {/* Nhà cung cấp */}
+          <div className="md:col-span-2">
+            <SelectField
+              label="Nhà Cung Cấp Mặc Định"
+              value={supplierId}
+              onChange={(e) => setSupplierId(e.target.value)}
+              options={suppliers.map((s) => ({
+                value: s.id,
+                label: `${s.name} (${s.code})`,
+              }))}
+            />
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {/* Weight */}
-            <div>
-              <label className="block text-slate-700 font-semibold mb-1">Trọng Lượng Đơn Vị (Kg)</label>
-              <input
-                type="number"
-                step="0.1"
-                min="0.1"
-                value={weightKg}
-                onChange={(e) => setWeightKg(parseFloat(e.target.value))}
-                className="w-full px-3 py-2 bg-white border border-slate-300 rounded-xl text-slate-900 font-mono focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-600"
-              />
-            </div>
+          {/* Điểm đặt hàng lại */}
+          <InputField
+            label="Điểm Đặt Hàng Lại (ROP)"
+            type="number"
+            min="1"
+            value={reorderPoint}
+            onChange={(e) => setReorderPoint(parseInt(e.target.value) || 0)}
+            icon={<AlertTriangle className="w-3.5 h-3.5 text-amber-500" />}
+          />
 
-            {/* Supplier */}
-            <div>
-              <label className="block text-slate-700 font-semibold mb-1">Nhà Cung Cấp Đối Tác</label>
-              <select
-                value={supplierId}
-                onChange={(e) => setSupplierId(e.target.value)}
-                className="w-full px-3 py-2 bg-white border border-slate-300 rounded-xl text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-600 cursor-pointer"
-              >
-                {suppliers.map((s) => (
-                  <option key={s.id} value={s.id}>
-                    [{s.code}] {s.name}
-                  </option>
-                ))}
-              </select>
-            </div>
-          </div>
+          {/* Định mức tồn an toàn */}
+          <InputField
+            label="Tồn Kho An Toàn (Safety Stock)"
+            type="number"
+            min="0"
+            value={safetyStock}
+            onChange={(e) => setSafetyStock(parseInt(e.target.value) || 0)}
+            icon={<ShieldAlert className="w-3.5 h-3.5 text-rose-500" />}
+          />
+        </div>
 
-          {/* Stock Metrics Row */}
-          <div className="p-4 bg-slate-50 rounded-xl border border-slate-200 space-y-3">
-            <div className="text-slate-700 font-bold text-xs uppercase tracking-wider">
-              Thiết Lập Định Mức Tồn Kho & Cảnh Báo An Toàn
-            </div>
-            <div className="grid grid-cols-3 gap-3">
-              <div>
-                <label className="block text-rose-700 font-semibold text-xs mb-1">
-                  Tồn An Toàn (Safety Stock)
-                </label>
-                <input
-                  type="number"
-                  min="0"
-                  value={safetyStock}
-                  onChange={(e) => setSafetyStock(parseInt(e.target.value) || 0)}
-                  className="w-full px-3 py-2 bg-white border border-rose-300 rounded-lg text-rose-900 font-mono focus:outline-none focus:border-rose-600"
-                />
-              </div>
-
-              <div>
-                <label className="block text-amber-700 font-semibold text-xs mb-1">
-                  Điểm Đặt Lại (Reorder Point)
-                </label>
-                <input
-                  type="number"
-                  min="0"
-                  value={reorderPoint}
-                  onChange={(e) => setReorderPoint(parseInt(e.target.value) || 0)}
-                  className="w-full px-3 py-2 bg-white border border-amber-300 rounded-lg text-amber-900 font-mono focus:outline-none focus:border-amber-600"
-                />
-              </div>
-
-              <div>
-                <label className="block text-indigo-700 font-semibold text-xs mb-1">
-                  Tồn Đầu Kỳ Khởi Tạo
-                </label>
-                <input
-                  type="number"
-                  min="0"
-                  value={initialStock}
-                  onChange={(e) => setInitialStock(parseInt(e.target.value) || 0)}
-                  className="w-full px-3 py-2 bg-white border border-slate-300 rounded-lg text-slate-900 font-mono focus:outline-none focus:border-indigo-600"
-                />
-              </div>
-            </div>
-          </div>
-
-          {/* Modal Footer */}
-          <div className="flex items-center justify-end gap-3 pt-4 border-t border-slate-200">
-            <button
-              type="button"
-              onClick={onClose}
-              className="px-4 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl transition-colors font-semibold text-sm"
-            >
-              Hủy Bỏ
-            </button>
-            <button
-              type="submit"
-              className="flex items-center gap-2 px-5 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-bold shadow-md shadow-indigo-600/20 transition-all active:scale-95 text-sm"
-            >
-              <Plus className="w-4 h-4" />
-              <span>Lưu Vào Danh Mục</span>
-            </button>
-          </div>
-        </form>
-      </div>
-    </div>
+        {/* Footer Actions */}
+        <div className="pt-4 border-t border-slate-100 flex items-center justify-end gap-3">
+          <Button variant="outline" size="md" onClick={onClose}>
+            Hủy bỏ
+          </Button>
+          <Button variant="primary" size="md" type="submit" icon={<Plus className="w-4 h-4" />}>
+            Thêm Vào Danh Mục
+          </Button>
+        </div>
+      </form>
+    </Modal>
   );
 };
