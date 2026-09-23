@@ -286,14 +286,9 @@ export const RbacMatrixTable: React.FC = () => {
       </div>
 
       {/* Footer Legend */}
-      <div className="p-4 bg-slate-50 border-t border-slate-200 text-xs text-slate-600 flex flex-col sm:flex-row items-center justify-between gap-2 font-mono">
-        <div className="flex items-center gap-2">
-          <Info className="w-4 h-4 text-indigo-600 flex-shrink-0" />
-          <span>Bấm trực tiếp vào các biểu tượng dấu kiểm để cấp hoặc thu hồi quyền truy cập theo thời gian thực.</span>
-        </div>
-        <div className="text-xs text-slate-500">
-          Tuân thủ chuẩn RBAC NIST SP 800-162
-        </div>
+      <div className="p-4 bg-slate-50 border-t border-slate-200 text-xs text-slate-600 flex items-center gap-2">
+        <Info className="w-4 h-4 text-indigo-600 flex-shrink-0" />
+        <span>Bấm trực tiếp vào các biểu tượng dấu kiểm để cấp hoặc thu hồi quyền truy cập.</span>
       </div>
     </div>
   );

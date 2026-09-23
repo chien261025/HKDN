@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Truck, Layers, PackageCheck, ClipboardCheck, ScanLine, Smartphone } from 'lucide-react';
+import { Truck, Layers, PackageCheck, ClipboardCheck } from 'lucide-react';
 import { OperatorHeader } from '../components/OperatorHeader';
 import { InboundStagingTab } from '../components/tabs/InboundStagingTab';
 import { PutawayTab } from '../components/tabs/PutawayTab';
@@ -11,10 +11,11 @@ import { OperatorTab } from '../types';
 export const OperatorPortalPage: React.FC = () => {
   const [activeTab, setActiveTab] = useState<OperatorTab>('STAGING');
   const [showScanner, setShowScanner] = useState(false);
+  const [scannedCode, setScannedCode] = useState<string | null>(null);
 
   const handleScanSuccess = (code: string) => {
     setShowScanner(false);
-    alert(`[PDA SCANNER] Đã quét thành công mã vạch:\n${code}`);
+    setScannedCode(code);
   };
 
   return (
@@ -27,16 +28,32 @@ export const OperatorPortalPage: React.FC = () => {
         {/* Dynamic Tab Body */}
         <main className="flex-1 p-4 overflow-y-auto bg-slate-50/50">
           {activeTab === 'STAGING' && (
-            <InboundStagingTab onOpenScanner={() => setShowScanner(true)} />
+            <InboundStagingTab
+              onOpenScanner={() => setShowScanner(true)}
+              scannedCode={scannedCode}
+              onClearScannedCode={() => setScannedCode(null)}
+            />
           )}
           {activeTab === 'PUTAWAY' && (
-            <PutawayTab onOpenScanner={() => setShowScanner(true)} />
+            <PutawayTab
+              onOpenScanner={() => setShowScanner(true)}
+              scannedCode={scannedCode}
+              onClearScannedCode={() => setScannedCode(null)}
+            />
           )}
           {activeTab === 'PICKING' && (
-            <PickingFefoTab onOpenScanner={() => setShowScanner(true)} />
+            <PickingFefoTab
+              onOpenScanner={() => setShowScanner(true)}
+              scannedCode={scannedCode}
+              onClearScannedCode={() => setScannedCode(null)}
+            />
           )}
           {activeTab === 'AUDIT' && (
-            <BlindCountTab onOpenScanner={() => setShowScanner(true)} />
+            <BlindCountTab
+              onOpenScanner={() => setShowScanner(true)}
+              scannedCode={scannedCode}
+              onClearScannedCode={() => setScannedCode(null)}
+            />
           )}
         </main>
 

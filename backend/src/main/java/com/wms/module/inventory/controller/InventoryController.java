@@ -54,6 +54,12 @@ public class InventoryController {
         if (audit.getAuditCode() == null || audit.getAuditCode().isBlank()) {
             audit.setAuditCode("AUD-" + System.currentTimeMillis() % 1000000);
         }
+        if (audit.getCreatedBy() == null) {
+            audit.setCreatedBy(1L);
+        }
+        if (audit.getWarehouseId() == null) {
+            audit.setWarehouseId(1L);
+        }
         audit.setStatus("IN_PROGRESS");
         audit.setCreatedAt(java.time.Instant.now());
         if (audit.getItems() != null) {

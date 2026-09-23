@@ -1,57 +1,89 @@
-import React, { useState } from 'react';
-import { Package, Truck, CheckCircle2, ScanLine, Plus, Calendar, Hash } from 'lucide-react';
-import { InboundReceiptItem } from '../../types';
+import React, { useState, useEffect } from 'react';
+import { Package, Truck, CheckCircle2, ScanLine, ArrowRight, RefreshCw, Clock, Layers } from 'lucide-react';
+import { operatorService, InboundOrderDto, ProductDto } from '../../services/operatorService';
 
 interface InboundStagingTabProps {
   onOpenScanner: () => void;
+  scannedCode?: string | null;
+  onClearScannedCode?: () => void;
 }
 
-export const InboundStagingTab: React.FC<InboundStagingTabProps> = ({ onOpenScanner }) => {
-  const [items, setItems] = useState<InboundReceiptItem[]>([
-    {
-      id: 'rcp-01',
-      poCode: 'PO-2026-001',
-      sku: 'SKU-MILK-100',
-      productName: 'Sữa tươi Vinamilk 100% 1L',
-      expectedQty: 100,
-      receivedQty: 100,
-      batchNumber: 'BATCH-MILK-26B',
-      expiryDate: '2026-10-15',
-      status: 'RECEIVED',
-    },
-  ]);
+export const InboundStagingTab: React.FC<InboundStagingTabProps> = ({
+  onOpenScanner,
+  scannedCode,
+  onClearScannedCode,
+}) => {
+  const [orders, setOrders] = useState<InboundOrderDto[]>([]);
+  const [products, setProducts] = useState<ProductDto[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [receivingId, setReceivingId] = useState<number | null>(null);
+  const [notice, setNotice] = useState<{ msg: string; type: 'success' | 'error' } | null>(null);
 
-  const [sku, setSku] = useState('SKU-OMO-MATIC');
-  const [productName, setProductName] = useState('Nước giặt OMO Matic 3.6kg');
-  const [qty, setQty] = useState('50');
-  const [expiry, setExpiry] = useState('2026-11-20');
-  const [batch, setBatch] = useState('BATCH-OMO-02');
-  const [successNotice, setSuccessNotice] = useState<string | null>(null);
-
-  const handleConfirmReceive = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!qty || parseInt(qty) <= 0) return;
-
-    const newItem: InboundReceiptItem = {
-      id: `rcp-${Date.now().toString().slice(-4)}`,
-      poCode: 'PO-2026-002',
-      sku,
-      productName,
-      expectedQty: parseInt(qty),
-      receivedQty: parseInt(qty),
-      batchNumber: batch || `BATCH-${Date.now().toString().slice(-4)}`,
-      expiryDate: expiry,
-      status: 'RECEIVED',
-    };
-
-    setItems((prev) => [newItem, ...prev]);
-    setSuccessNotice(`Đã nhận ${qty} cái ${productName} vào Khu Đệm (STAGING)!`);
-    setTimeout(() => setSuccessNotice(null), 3000);
+  const loadData = async () => {
+    setLoading(true);
+    try {
+      const [orderList, prodList] = await Promise.all([
+        operatorService.getInboundOrders(),
+        operatorService.getProducts(),
+      ]);
+      setOrders(orderList);
+      setProducts(prodList);
+    } catch (err: any) {
+      setNotice({ msg: 'Không thể tải danh sách đơn nhập kho: ' + err.message, type: 'error' });
+    } finally {
+      setLoading(false);
+    }
   };
+
+  useEffect(() => {
+    loadData();
+  }, []);
+
+  // Xử lý khi có mã vạch được quét từ camera hoặc máy quét PDA
+  useEffect(() => {
+    if (scannedCode) {
+      const matchedProd = products.find((p) => p.barcode === scannedCode || p.sku === scannedCode);
+      if (matchedProd) {
+        setNotice({
+          msg: `[PDA] Đã nhận diện kiện hàng: ${matchedProd.name} (${matchedProd.sku})!`,
+          type: 'success',
+        });
+      } else {
+        setNotice({
+          msg: `[PDA] Đã quét mã: ${scannedCode}. Vui lòng chọn đơn PO tương ứng.`,
+          type: 'success',
+        });
+      }
+      onClearScannedCode?.();
+    }
+  }, [scannedCode, products, onClearScannedCode]);
+
+  const handleConfirmReceive = async (order: InboundOrderDto) => {
+    setReceivingId(order.id);
+    setNotice(null);
+    try {
+      await operatorService.confirmReceiveInboundOrder(order.id);
+      setOrders((prev) =>
+        prev.map((o) => (o.id === order.id ? { ...o, status: 'RECEIVED' } : o))
+      );
+      setNotice({
+        msg: `Thành công: Đã tiếp nhận toàn bộ kiện hàng của đơn ${order.orderCode} vào Khu Đệm (STAGING)!`,
+        type: 'success',
+      });
+    } catch (err: any) {
+      setNotice({ msg: 'Lỗi tiếp nhận đơn: ' + err.message, type: 'error' });
+    } finally {
+      setReceivingId(null);
+      setTimeout(() => setNotice(null), 4000);
+    }
+  };
+
+  const pendingOrders = orders.filter((o) => o.status === 'PENDING');
+  const receivedOrders = orders.filter((o) => o.status === 'RECEIVED');
 
   return (
     <div className="space-y-4 pb-20">
-      {/* Banner / Title */}
+      {/* Header Banner */}
       <div className="p-4 rounded-2xl bg-white border border-slate-200 flex items-center justify-between shadow-xs">
         <div className="flex items-center gap-3">
           <div className="p-2.5 rounded-xl bg-cyan-50 text-cyan-700 border border-cyan-200">
@@ -65,139 +97,148 @@ export const InboundStagingTab: React.FC<InboundStagingTabProps> = ({ onOpenScan
           </div>
         </div>
 
-        <span className="text-xs font-mono font-bold px-2.5 py-1 rounded-lg bg-cyan-50 text-cyan-800 border border-cyan-200">
-          GATE 01
-        </span>
+        <button
+          onClick={loadData}
+          disabled={loading}
+          className="p-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 transition-colors"
+          title="Làm mới danh sách"
+        >
+          <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
+        </button>
       </div>
 
-      {/* Success Notification */}
-      {successNotice && (
-        <div className="p-3.5 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs flex items-center gap-2 animate-in fade-in shadow-2xs font-medium">
+      {/* Notice Banner */}
+      {notice && (
+        <div
+          className={`p-3.5 rounded-xl text-xs flex items-center gap-2 font-medium shadow-2xs animate-in fade-in ${
+            notice.type === 'success'
+              ? 'bg-emerald-50 border border-emerald-200 text-emerald-800'
+              : 'bg-rose-50 border border-rose-200 text-rose-800'
+          }`}
+        >
           <CheckCircle2 className="w-4 h-4 flex-shrink-0 text-emerald-600" />
-          <span className="font-semibold">{successNotice}</span>
+          <span>{notice.msg}</span>
         </div>
       )}
 
-      {/* Scan & Receipt Form */}
-      <form onSubmit={handleConfirmReceive} className="bg-white rounded-2xl p-5 border border-slate-200 space-y-4 shadow-sm">
-        <div className="flex items-center justify-between pb-2.5 border-b border-slate-100">
-          <span className="text-xs font-bold text-slate-900 uppercase tracking-wide">Nhập Liệu Kiện Hàng</span>
-          <button
-            type="button"
-            onClick={onOpenScanner}
-            className="flex items-center gap-1.5 text-xs text-indigo-600 hover:text-indigo-800 font-bold cursor-pointer"
-          >
-            <ScanLine className="w-4 h-4" />
-            <span>Quét Thùng Hàng</span>
-          </button>
-        </div>
-
-        {/* Sản phẩm */}
+      {/* Quét Mã Vạch Barcode Nhanh */}
+      <div className="bg-white rounded-2xl p-4 border border-slate-200 flex items-center justify-between shadow-xs">
         <div>
-          <label className="text-xs text-slate-700 font-bold">Mặt Hàng Nhận:</label>
-          <select
-            value={sku}
-            onChange={(e) => {
-              setSku(e.target.value);
-              if (e.target.value === 'SKU-OMO-MATIC') {
-                setProductName('Nước giặt OMO Matic 3.6kg');
-                setBatch('BATCH-OMO-02');
-              } else if (e.target.value === 'SKU-MILK-100') {
-                setProductName('Sữa tươi Vinamilk 100% 1L');
-                setBatch('BATCH-MILK-26C');
-              } else {
-                setProductName('Samsung Galaxy S24 Ultra');
-                setBatch('BATCH-S24-01');
-              }
-            }}
-            className="mt-1 w-full p-2.5 rounded-xl bg-white border border-slate-300 text-xs text-slate-900 focus:outline-none focus:border-indigo-600 font-semibold"
-          >
-            <option value="SKU-OMO-MATIC">Nước giặt OMO Matic 3.6kg (SKU-OMO-MATIC)</option>
-            <option value="SKU-MILK-100">Sữa tươi Vinamilk 100% 1L (SKU-MILK-100)</option>
-            <option value="SKU-SAMS-S24">Samsung Galaxy S24 Ultra (SKU-SAMS-S24)</option>
-          </select>
+          <span className="text-xs font-bold text-slate-800 uppercase">Quét Thùng Hàng Thực Tế</span>
+          <p className="text-xs text-slate-500 mt-0.5">Sử dụng Camera hoặc máy quét mã vạch chuyên dụng</p>
         </div>
-
-        {/* Grid Số lượng & Lô */}
-        <div className="grid grid-cols-2 gap-3">
-          <div>
-            <label className="text-xs text-slate-700 font-bold">Số Lượng Thực Nhận:</label>
-            <input
-              type="number"
-              value={qty}
-              onChange={(e) => setQty(e.target.value)}
-              min="1"
-              required
-              className="mt-1 w-full p-2.5 rounded-xl bg-white border border-slate-300 text-xs text-indigo-700 font-bold font-mono focus:outline-none focus:border-indigo-600"
-            />
-          </div>
-
-          <div>
-            <label className="text-xs text-slate-700 font-bold">Mã Số Lô Hàng:</label>
-            <input
-              type="text"
-              value={batch}
-              onChange={(e) => setBatch(e.target.value)}
-              required
-              className="mt-1 w-full p-2.5 rounded-xl bg-white border border-slate-300 text-xs text-slate-900 font-mono font-semibold focus:outline-none focus:border-indigo-600"
-            />
-          </div>
-        </div>
-
-        {/* Hạn sử dụng FEFO */}
-        <div>
-          <label className="text-xs text-slate-700 font-bold">Hạn Sử Dụng (In Trên Thùng):</label>
-          <input
-            type="date"
-            value={expiry}
-            onChange={(e) => setExpiry(e.target.value)}
-            required
-            className="mt-1 w-full p-2.5 rounded-xl bg-white border border-slate-300 text-xs text-slate-900 font-mono font-semibold focus:outline-none focus:border-indigo-600"
-          />
-        </div>
-
         <button
-          type="submit"
-          className="w-full py-3 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-xl text-xs flex items-center justify-center gap-2 shadow-sm transition-all active:scale-95 cursor-pointer"
+          type="button"
+          onClick={onOpenScanner}
+          className="flex items-center gap-2 px-4 py-2 bg-indigo-600 hover:bg-indigo-700 active:bg-indigo-800 text-white rounded-xl text-xs font-bold shadow-md shadow-indigo-200 transition-all cursor-pointer"
         >
-          <Plus className="w-4 h-4" />
-          <span>Xác Nhận Nhận Hàng Vào Khu Đệm (STAGING)</span>
+          <ScanLine className="w-4 h-4" />
+          <span>Bật Quét Mã</span>
         </button>
-      </form>
+      </div>
 
-      {/* Danh sách kiện vừa nhận */}
-      <div className="bg-white rounded-2xl p-5 border border-slate-200 space-y-3 shadow-sm">
-        <div className="flex items-center justify-between pb-2 border-b border-slate-100">
-          <h3 className="text-xs font-bold text-slate-900 uppercase tracking-wider">
-            Kiện Hàng Đang Ở Khu Đệm ({items.length})
-          </h3>
-          <span className="text-xs text-slate-500 font-medium">Chờ cất hàng lên kệ</span>
+      {/* Danh sách đơn hàng PO đang chờ nhận */}
+      <div className="space-y-3">
+        <div className="flex items-center justify-between px-1">
+          <span className="text-xs font-bold text-slate-700 uppercase tracking-wider">
+            Đơn PO Chờ Nhận ({pendingOrders.length})
+          </span>
+          <span className="text-xs text-slate-500 font-mono">Dữ liệu PostgreSQL</span>
         </div>
 
-        <div className="space-y-2">
-          {items.map((item) => (
+        {pendingOrders.length === 0 ? (
+          <div className="bg-white rounded-2xl p-8 border border-slate-200 text-center text-slate-500 text-xs">
+            <CheckCircle2 className="w-8 h-8 text-emerald-500 mx-auto mb-2 opacity-80" />
+            <p className="font-semibold text-slate-800">Không có đơn hàng nào đang chờ nhận tại bến!</p>
+            <p className="mt-1">Tất cả kiện hàng từ xe tải đã được tiếp nhận đầy đủ vào kho.</p>
+          </div>
+        ) : (
+          pendingOrders.map((order) => (
             <div
-              key={item.id}
-              className="p-3.5 rounded-xl bg-slate-50 border border-slate-200 flex items-center justify-between gap-3 text-xs"
+              key={order.id}
+              className="bg-white rounded-2xl p-4 border border-slate-200 shadow-xs hover:border-cyan-400 transition-all space-y-3"
             >
-              <div className="space-y-0.5">
-                <div className="font-bold text-slate-900 text-sm">{item.productName}</div>
-                <div className="text-xs font-mono text-slate-500 flex items-center gap-2">
-                  <span>Lô: <strong className="text-indigo-700 font-bold">{item.batchNumber}</strong></span>
-                  <span>•</span>
-                  <span>HSD: <strong className="text-amber-700 font-bold">{item.expiryDate}</strong></span>
+              <div className="flex items-start justify-between">
+                <div>
+                  <div className="flex items-center gap-2">
+                    <span className="font-mono font-black text-slate-900 text-sm">{order.orderCode}</span>
+                    <span className="px-2 py-0.5 rounded-full text-xs font-bold bg-amber-50 text-amber-700 border border-amber-200">
+                      CHỜ TIẾP NHẬN
+                    </span>
+                  </div>
+                  <p className="text-xs text-slate-500 mt-1">
+                    Ghi chú: {order.notes || 'Đơn nhập hàng tiêu chuẩn'}
+                  </p>
+                </div>
+                <div className="text-xs text-slate-400 flex items-center gap-1 font-mono">
+                  <Clock className="w-3.5 h-3.5" />
+                  <span>{new Date(order.createdAt).toLocaleDateString('vi-VN')}</span>
                 </div>
               </div>
 
-              <div className="text-right flex-shrink-0 font-mono">
-                <div className="text-emerald-700 font-bold text-sm">{item.receivedQty} cái</div>
-                <span className="text-xs px-2 py-0.5 rounded-md bg-emerald-50 text-emerald-800 border border-emerald-200 font-bold font-sans">
-                  STAGING
-                </span>
+              {/* Chi tiết mặt hàng trong đơn */}
+              {order.items && order.items.length > 0 && (
+                <div className="bg-slate-50 rounded-xl p-3 space-y-2 border border-slate-100">
+                  {order.items.map((item) => {
+                    const prod = products.find((p) => p.id === item.productId);
+                    return (
+                      <div key={item.id} className="flex items-center justify-between text-xs">
+                        <div className="flex items-center gap-2">
+                          <Package className="w-3.5 h-3.5 text-slate-400" />
+                          <span className="font-semibold text-slate-800">
+                            {prod ? prod.name : `Sản phẩm #${item.productId}`}
+                          </span>
+                        </div>
+                        <span className="font-mono font-bold text-indigo-700">
+                          {item.expectedQty} {prod ? prod.unit : 'cái'}
+                        </span>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+
+              {/* Nút tiếp nhận đơn vào kho */}
+              <div className="flex items-center justify-end pt-1">
+                <button
+                  type="button"
+                  disabled={receivingId === order.id}
+                  onClick={() => handleConfirmReceive(order)}
+                  className="flex items-center gap-2 px-4 py-2 bg-cyan-600 hover:bg-cyan-700 active:bg-cyan-800 disabled:opacity-50 text-white rounded-xl text-xs font-bold shadow-md shadow-cyan-200 transition-all cursor-pointer"
+                >
+                  {receivingId === order.id ? (
+                    <RefreshCw className="w-4 h-4 animate-spin" />
+                  ) : (
+                    <CheckCircle2 className="w-4 h-4" />
+                  )}
+                  <span>Xác Nhận Nhập Kho Staging</span>
+                </button>
               </div>
             </div>
-          ))}
-        </div>
+          ))
+        )}
+
+        {/* Đơn hàng đã nhận gần đây */}
+        {receivedOrders.length > 0 && (
+          <div className="pt-2">
+            <span className="text-xs font-bold text-slate-600 uppercase tracking-wider px-1">
+              Đơn Đã Nhận Gần Đây ({receivedOrders.slice(0, 3).length})
+            </span>
+            <div className="mt-2 space-y-2">
+              {receivedOrders.slice(0, 3).map((ro) => (
+                <div key={ro.id} className="bg-slate-50 border border-slate-200 rounded-xl p-3 flex items-center justify-between text-xs">
+                  <div className="flex items-center gap-2">
+                    <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+                    <span className="font-mono font-bold text-slate-800">{ro.orderCode}</span>
+                  </div>
+                  <span className="text-emerald-700 font-semibold bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200">
+                    ĐÃ VÀO KHU ĐỆM
+                  </span>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );

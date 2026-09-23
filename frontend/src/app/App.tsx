@@ -38,11 +38,14 @@ const AppContent: React.FC = () => {
     return () => clearInterval(timer);
   }, []);
 
-  // 1. Màn hình công khai (/login, /register): Bọc PublicOnlyRoute
-  if (location.pathname === '/login' || location.pathname === '/register') {
+  // 1. Màn hình công khai (/login): Bọc PublicOnlyRoute
+  if (location.pathname === '/register') {
+    return <Navigate to="/login" replace />;
+  }
+  if (location.pathname === '/login') {
     return (
       <PublicOnlyRoute>
-        <LoginPage initialMode={location.pathname === '/register' ? 'REGISTER' : 'LOGIN'} />
+        <LoginPage />
       </PublicOnlyRoute>
     );
   }

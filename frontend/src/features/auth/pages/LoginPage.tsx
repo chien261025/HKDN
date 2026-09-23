@@ -3,33 +3,18 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import { authService } from '../services/authService';
 import { ForgotPasswordModal } from '../components/ForgotPasswordModal';
 import { LoginForm } from '../components/LoginForm';
-import { RegisterForm } from '../components/RegisterForm';
 import { AlertCircle, CheckCircle2 } from 'lucide-react';
 
-interface LoginPageProps {
-  initialMode?: 'LOGIN' | 'REGISTER';
-}
-
-export const LoginPage: React.FC<LoginPageProps> = ({ initialMode = 'LOGIN' }) => {
+export const LoginPage: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const fromPath = (location.state as any)?.from?.pathname;
   const isExpired = (location.state as any)?.expired;
 
-  const [activeTab, setActiveTab] = useState<'LOGIN' | 'REGISTER'>(initialMode);
-
   // Form Đăng nhập states
   const [username, setUsername] = useState(() => authService.getRememberedUsername());
   const [password, setPassword] = useState('');
   const [rememberMe, setRememberMe] = useState(() => authService.isRemembered());
-
-  // Form Đăng ký states
-  const [regFullName, setRegFullName] = useState('');
-  const [regUsername, setRegUsername] = useState('');
-  const [regEmail, setRegEmail] = useState('');
-  const [regRole, setRegRole] = useState<'ROLE_OPERATOR' | 'ROLE_WAREHOUSE_MANAGER' | 'ROLE_ADMIN'>('ROLE_OPERATOR');
-  const [regPassword, setRegPassword] = useState('');
-  const [regConfirmPassword, setRegConfirmPassword] = useState('');
 
   // Modal quên mật khẩu
   const [isForgotModalOpen, setIsForgotModalOpen] = useState(false);
@@ -96,52 +81,9 @@ export const LoginPage: React.FC<LoginPageProps> = ({ initialMode = 'LOGIN' }) =
     }
   };
 
-  const handleRegisterSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setErrorMessage(null);
-    setSuccessMessage(null);
-
-    if (regPassword.length < 6) {
-      setErrorMessage('Mật khẩu phải có tối thiểu 6 ký tự!');
-      return;
-    }
-
-    if (regPassword !== regConfirmPassword) {
-      setErrorMessage('Mật khẩu xác nhận không khớp!');
-      return;
-    }
-
-    setIsLoading(true);
-
-    try {
-      const data = await authService.register({
-        fullName: regFullName.trim(),
-        username: regUsername.trim().toLowerCase(),
-        email: regEmail.trim(),
-        role: regRole,
-        password: regPassword,
-      });
-
-      setSuccessMessage(`Khởi tạo tài khoản thành công! Đang đăng nhập...`);
-
-      setTimeout(() => {
-        setIsLoading(false);
-        handleRedirectByRole(data.role);
-      }, 400);
-    } catch (err: any) {
-      setIsLoading(false);
-      const apiMsg =
-        err.response?.data?.message ||
-        err.message ||
-        'Đăng ký không thành công. Vui lòng thử lại!';
-      setErrorMessage(apiMsg);
-    }
-  };
-
   const handlePrefillDemo = (user: string, roleTitle: string) => {
     setUsername(user);
     setPassword('123456');
-    setActiveTab('LOGIN');
     setErrorMessage(null);
     setSuccessMessage(`Đã điền tài khoản mẫu ${roleTitle} (@${user}). Bấm Đăng nhập để tiếp tục.`);
   };
@@ -161,40 +103,6 @@ export const LoginPage: React.FC<LoginPageProps> = ({ initialMode = 'LOGIN' }) =
           </div>
         </div>
 
-        {/* Tab Switcher: Đăng Nhập / Đăng Ký */}
-        <div className="grid grid-cols-2 p-1 bg-slate-100 rounded-xl text-sm font-semibold">
-          <button
-            type="button"
-            onClick={() => {
-              setActiveTab('LOGIN');
-              setErrorMessage(null);
-              setSuccessMessage(null);
-            }}
-            className={`py-2 rounded-lg transition-all text-center cursor-pointer ${
-              activeTab === 'LOGIN'
-                ? 'bg-white text-indigo-700 shadow-xs font-bold'
-                : 'text-slate-600 hover:text-slate-900'
-            }`}
-          >
-            Đăng Nhập
-          </button>
-          <button
-            type="button"
-            onClick={() => {
-              setActiveTab('REGISTER');
-              setErrorMessage(null);
-              setSuccessMessage(null);
-            }}
-            className={`py-2 rounded-lg transition-all text-center cursor-pointer ${
-              activeTab === 'REGISTER'
-                ? 'bg-white text-indigo-700 shadow-xs font-bold'
-                : 'text-slate-600 hover:text-slate-900'
-            }`}
-          >
-            Đăng Ký
-          </button>
-        </div>
-
         {/* Alert Notifications */}
         {errorMessage && (
           <div className="p-3.5 rounded-xl bg-rose-50 border border-rose-200 text-rose-800 text-sm font-medium flex items-center gap-2.5 animate-in fade-in">
@@ -211,40 +119,18 @@ export const LoginPage: React.FC<LoginPageProps> = ({ initialMode = 'LOGIN' }) =
         )}
 
         {/* Form Đăng Nhập */}
-        {activeTab === 'LOGIN' && (
-          <LoginForm
-            username={username}
-            onUsernameChange={setUsername}
-            password={password}
-            onPasswordChange={setPassword}
-            rememberMe={rememberMe}
-            onRememberMeChange={setRememberMe}
-            isLoading={isLoading}
-            onSubmit={handleLoginSubmit}
-            onOpenForgotModal={() => setIsForgotModalOpen(true)}
-            onPrefillDemo={handlePrefillDemo}
-          />
-        )}
-
-        {/* Form Đăng Ký */}
-        {activeTab === 'REGISTER' && (
-          <RegisterForm
-            fullName={regFullName}
-            onFullNameChange={setRegFullName}
-            username={regUsername}
-            onUsernameChange={setRegUsername}
-            email={regEmail}
-            onEmailChange={setRegEmail}
-            role={regRole}
-            onRoleChange={setRegRole}
-            password={regPassword}
-            onPasswordChange={setRegPassword}
-            confirmPassword={regConfirmPassword}
-            onConfirmPasswordChange={setRegConfirmPassword}
-            isLoading={isLoading}
-            onSubmit={handleRegisterSubmit}
-          />
-        )}
+        <LoginForm
+          username={username}
+          onUsernameChange={setUsername}
+          password={password}
+          onPasswordChange={setPassword}
+          rememberMe={rememberMe}
+          onRememberMeChange={setRememberMe}
+          isLoading={isLoading}
+          onSubmit={handleLoginSubmit}
+          onOpenForgotModal={() => setIsForgotModalOpen(true)}
+          onPrefillDemo={handlePrefillDemo}
+        />
       </div>
 
       {/* Modal Quên Mật Khẩu */}
@@ -260,7 +146,7 @@ export const LoginPage: React.FC<LoginPageProps> = ({ initialMode = 'LOGIN' }) =
 
       {/* Footer */}
       <footer className="text-center text-xs text-slate-500 mt-6 font-medium">
-        Smart WMS • Phiên bản 2.5
+        Smart WMS • Hệ Thống Nội Bộ Doanh Nghiệp
       </footer>
     </div>
   );

@@ -239,12 +239,9 @@ export const UserListTable: React.FC<UserListTableProps> = ({
       </div>
 
       {/* Footer */}
-      <div className="p-4 bg-slate-50 border-t border-slate-200 text-xs text-slate-600 flex items-center justify-between font-mono">
+      <div className="p-4 bg-slate-50 border-t border-slate-200 text-xs text-slate-600 flex items-center justify-between">
         <div>
           Hiển thị <span className="text-slate-900 font-bold">{filteredUsers.length}</span> / {users.length} tài khoản
-        </div>
-        <div className="text-xs text-slate-500">
-          Chính sách mật khẩu: BCrypt Hash + JWT Access Token Expired 8h
         </div>
       </div>
     </div>

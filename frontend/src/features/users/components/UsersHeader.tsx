@@ -29,16 +29,11 @@ export const UsersHeader: React.FC<UsersHeaderProps> = ({
             <Shield className="w-6 h-6" />
           </div>
           <div>
-            <div className="flex items-center gap-2.5">
-              <h1 className="text-xl md:text-2xl font-black text-slate-900 tracking-tight">
-                Quản Lý Tài Khoản & Phân Quyền (RBAC)
-              </h1>
-              <span className="text-xs font-mono bg-purple-50 text-purple-700 px-2.5 py-0.5 rounded-full border border-purple-200 font-bold">
-                ADMIN ONLY
-              </span>
-            </div>
+            <h1 className="text-xl md:text-2xl font-black text-slate-900 tracking-tight">
+              Quản Lý Tài Khoản & Phân Quyền
+            </h1>
             <p className="text-sm text-slate-600 mt-1">
-              Role-Based Access Control 3 cấp: Quản trị viên (Admin) • Quản lý kho (Manager) • Thủ kho PDA (Operator)
+              Quản lý danh sách nhân sự và phân quyền truy cập hệ thống kho
             </p>
           </div>
         </div>
