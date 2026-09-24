@@ -26,6 +26,7 @@ public class InventoryController {
     private final InventoryLockService inventoryLockService;
     private final com.wms.module.inventory.repository.StockLedgerRepository stockLedgerRepository;
     private final com.wms.module.inventory.repository.InventoryAuditRepository inventoryAuditRepository;
+    private final com.wms.module.inventory.service.StockTransferService stockTransferService;
 
     @GetMapping
     @Operation(summary = "Xem bảng cân đối tồn kho thực tế", description = "Trả về số lượng On-hand (vật lý), Reserved (đang giữ), Available (khả dụng)")
@@ -114,4 +115,21 @@ public class InventoryController {
                 "availableQty", updated.getAvailableQty()
         ));
     }
+
+    @GetMapping("/transfers")
+    @Operation(summary = "Lấy lịch sử điều chuyển nội bộ giữa các ô kệ", description = "Trả về danh sách các đợt chuyển hàng trong kho")
+    public ApiResponse<List<com.wms.module.inventory.dto.response.StockTransferResponse>> getAllTransfers() {
+        List<com.wms.module.inventory.dto.response.StockTransferResponse> transfers = stockTransferService.getAllTransfers();
+        return ApiResponse.success("Lấy lịch sử điều chuyển thành công!", transfers);
+    }
+
+    @PostMapping("/transfers")
+    @Operation(summary = "Thực hiện điều chuyển tồn kho giữa 2 ô kệ",
+               description = "Trừ tồn ô nguồn, cộng tồn ô đích, khóa dòng dữ liệu chống race condition và tự động ghi 2 bút toán đối ứng vào sổ cái")
+    public ApiResponse<com.wms.module.inventory.dto.response.StockTransferResponse> executeTransfer(
+            @Valid @RequestBody com.wms.module.inventory.dto.request.CreateStockTransferRequest request) {
+        com.wms.module.inventory.dto.response.StockTransferResponse response = stockTransferService.executeTransfer(request);
+        return ApiResponse.success("Điều chuyển tồn kho thành công!", response);
+    }
 }
+

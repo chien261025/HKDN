@@ -11,4 +11,5 @@ import java.util.Optional;
 public interface StockTransferRepository extends JpaRepository<StockTransfer, Long> {
     Optional<StockTransfer> findByTransferCode(String transferCode);
     List<StockTransfer> findByWarehouseIdAndStatus(Long warehouseId, String status);
+    List<StockTransfer> findAllByOrderByCreatedAtDesc();
 }

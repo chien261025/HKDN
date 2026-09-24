@@ -1,19 +1,45 @@
 import React, { useState, useEffect } from 'react';
-import { Zap, Layers, CheckCircle2, AlertCircle } from 'lucide-react';
-import { StockItem } from '../types';
+import { Zap, Layers, ArrowRightLeft, CheckCircle2, AlertCircle } from 'lucide-react';
+import { StockItem, StockTransferDto } from '../types';
 import { OutboundFefoWorkbench } from '../components/OutboundFefoWorkbench';
 import { StockBalanceTable } from '../components/balance/StockBalanceTable';
+import { StockTransferHistoryTable } from '../components/balance/StockTransferHistoryTable';
+import { StockTransferModal } from '../components/StockTransferModal';
 import { StockLedgerModal, LedgerEntryData } from '../components/StockLedgerModal';
 import { inventoryService } from '../services/inventoryService';
 
 export const InventoryBalancePage: React.FC = () => {
-  // Tab chuyển đổi: 'outbound' (Xuất kho FEFO) hoặc 'balance' (Bảng tồn kho thực tế)
-  const [activeTab, setActiveTab] = useState<'outbound' | 'balance'>('outbound');
+  const [activeTab, setActiveTab] = useState<'outbound' | 'balance' | 'transfer'>('balance');
   const [stocks, setStocks] = useState<StockItem[]>([]);
+  const [transfers, setTransfers] = useState<StockTransferDto[]>([]);
+  const [loadingTransfers, setLoadingTransfers] = useState(false);
   const [notification, setNotification] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
 
-  useEffect(() => {
+  // Modal điều chuyển
+  const [transferModalItem, setTransferModalItem] = useState<StockItem | null>(null);
+  const [showTransferModal, setShowTransferModal] = useState(false);
+
+  // Modal sổ cái
+  const [activeLedgerEntry, setActiveLedgerEntry] = useState<LedgerEntryData | null>(null);
+  const [showLedgerModal, setShowLedgerModal] = useState(false);
+
+  const loadStockData = () => {
     inventoryService.getInventoryBalances().then(setStocks);
+  };
+
+  const loadTransfers = async () => {
+    setLoadingTransfers(true);
+    try {
+      const data = await inventoryService.getStockTransfers();
+      setTransfers(data);
+    } finally {
+      setLoadingTransfers(false);
+    }
+  };
+
+  useEffect(() => {
+    loadStockData();
+    loadTransfers();
   }, []);
 
   // Xử lý giữ hàng từ bảng tồn kho (Tab 2)
@@ -26,8 +52,7 @@ export const InventoryBalancePage: React.FC = () => {
       return;
     }
 
-    // Gửi yêu cầu Khóa bi quan (Pessimistic Lock) xuống database
-    await inventoryService.reserveStock(item.productId, item.id, 1, qty);
+    await inventoryService.reserveStock(item.productId, item.locationId || 5, item.batchId || 1, qty);
 
     setStocks((prev) =>
       prev.map((s) => {
@@ -49,8 +74,21 @@ export const InventoryBalancePage: React.FC = () => {
     });
   };
 
-  const [activeLedgerEntry, setActiveLedgerEntry] = useState<LedgerEntryData | null>(null);
-  const [showLedgerModal, setShowLedgerModal] = useState(false);
+  // Mở modal điều chuyển ô kệ
+  const handleOpenTransfer = (item: StockItem) => {
+    setTransferModalItem(item);
+    setShowTransferModal(true);
+  };
+
+  // Sau khi điều chuyển thành công
+  const handleTransferSuccess = () => {
+    loadStockData();
+    loadTransfers();
+    setNotification({
+      type: 'success',
+      message: 'Điều chuyển hàng giữa 2 ô kệ thành công! Đã tự động cập nhật số dư và ghi 2 bút toán đối ứng vào Sổ cái.',
+    });
+  };
 
   // Xem Sổ Cái từ bảng tồn kho thực tế (Tab 2)
   const handleViewLedgerFromTable = (item: StockItem) => {
@@ -68,7 +106,7 @@ export const InventoryBalancePage: React.FC = () => {
       balanceAfter: item.onHandQty,
       performedBy: 'Hệ Thống',
       notes: `Nhập lưu kho và xếp vào ô kệ: ${item.locationBarcode}`,
-      timestamp: new Date().toLocaleTimeString('vi-VN') + ' - 13/09/2026',
+      timestamp: new Date().toLocaleTimeString('vi-VN') + ' - ' + new Date().toLocaleDateString('vi-VN'),
       hashSignature: `0x${Array.from({ length: 32 }, () => Math.floor(Math.random() * 16).toString(16)).join('')}`,
     };
     setActiveLedgerEntry(entry);
@@ -85,28 +123,16 @@ export const InventoryBalancePage: React.FC = () => {
               <Zap className="w-5 h-5" />
             </div>
             <h1 className="text-xl sm:text-2xl font-extrabold text-slate-900 tracking-tight">
-              Quản Lý Tồn Kho & Xuất Hàng FEFO
+              Quản Lý Tồn Kho & Điều Chuyển Nội Bộ
             </h1>
           </div>
           <p className="text-xs sm:text-sm text-slate-600 font-medium mt-1 pl-13">
-            Theo dõi số lượng tồn kho theo vị trí ô kệ và điều phối đơn hàng xuất theo hạn sử dụng ưu tiên (First-Expired, First-Out).
+            Theo dõi số lượng tồn kho theo vị trí ô kệ, điều phối xuất hàng FEFO và điều chuyển hàng hóa linh hoạt.
           </p>
         </div>
 
         {/* Tab Gạt Cao Cấp & Nổi Bật */}
-        <div className="flex items-center bg-slate-100 p-1.5 rounded-2xl border border-slate-200 shadow-xs">
-          <button
-            onClick={() => setActiveTab('outbound')}
-            className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs sm:text-sm font-bold transition-all cursor-pointer ${
-              activeTab === 'outbound'
-                ? 'bg-white text-indigo-700 shadow-sm border border-slate-200 ring-1 ring-slate-200'
-                : 'text-slate-600 hover:text-slate-900 hover:bg-slate-200/60'
-            }`}
-          >
-            <Zap className="w-4 h-4 text-amber-500" />
-            <span>Xuất Hàng Theo Lô (FEFO)</span>
-          </button>
-
+        <div className="flex items-center bg-slate-100 p-1.5 rounded-2xl border border-slate-200 shadow-xs flex-wrap gap-1">
           <button
             onClick={() => setActiveTab('balance')}
             className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs sm:text-sm font-bold transition-all cursor-pointer ${
@@ -116,7 +142,36 @@ export const InventoryBalancePage: React.FC = () => {
             }`}
           >
             <Layers className="w-4 h-4 text-indigo-600" />
-            <span>Tra Cứu Tồn Kho Thực Tế</span>
+            <span>1. Tồn Kho Thực Tế</span>
+          </button>
+
+          <button
+            onClick={() => setActiveTab('transfer')}
+            className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs sm:text-sm font-bold transition-all cursor-pointer ${
+              activeTab === 'transfer'
+                ? 'bg-white text-indigo-700 shadow-sm border border-slate-200 ring-1 ring-slate-200'
+                : 'text-slate-600 hover:text-slate-900 hover:bg-slate-200/60'
+            }`}
+          >
+            <ArrowRightLeft className="w-4 h-4 text-indigo-600" />
+            <span>2. Lịch Sử Điều Chuyển</span>
+            {transfers.length > 0 && (
+              <span className="px-1.5 py-0.2 rounded-full text-2xs bg-indigo-100 text-indigo-800 font-mono font-bold">
+                {transfers.length}
+              </span>
+            )}
+          </button>
+
+          <button
+            onClick={() => setActiveTab('outbound')}
+            className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs sm:text-sm font-bold transition-all cursor-pointer ${
+              activeTab === 'outbound'
+                ? 'bg-white text-indigo-700 shadow-sm border border-slate-200 ring-1 ring-slate-200'
+                : 'text-slate-600 hover:text-slate-900 hover:bg-slate-200/60'
+            }`}
+          >
+            <Zap className="w-4 h-4 text-amber-500" />
+            <span>3. Xuất Hàng Theo Lô (FEFO)</span>
           </button>
         </div>
       </div>
@@ -138,22 +193,43 @@ export const InventoryBalancePage: React.FC = () => {
             )}
             <span>{notification.message}</span>
           </div>
-          <button onClick={() => setNotification(null)} className="text-slate-400 hover:text-slate-700 p-1">
+          <button onClick={() => setNotification(null)} className="text-slate-400 hover:text-slate-700 p-1 cursor-pointer">
             ✕
           </button>
         </div>
       )}
 
       {/* Hiển thị Tab tương ứng */}
-      {activeTab === 'outbound' ? (
-        <OutboundFefoWorkbench />
-      ) : (
+      {activeTab === 'balance' && (
         <StockBalanceTable
           stocks={stocks}
           onReserveItem={handleReserveFromTable}
           onViewLedger={handleViewLedgerFromTable}
+          onTransfer={handleOpenTransfer}
         />
       )}
+
+      {activeTab === 'transfer' && (
+        <StockTransferHistoryTable
+          transfers={transfers}
+          loading={loadingTransfers}
+        />
+      )}
+
+      {activeTab === 'outbound' && (
+        <OutboundFefoWorkbench />
+      )}
+
+      {/* Modal Lập Lệnh Điều Chuyển Hàng Nội Bộ */}
+      <StockTransferModal
+        isOpen={showTransferModal}
+        onClose={() => {
+          setShowTransferModal(false);
+          setTransferModalItem(null);
+        }}
+        sourceItem={transferModalItem}
+        onSuccess={handleTransferSuccess}
+      />
 
       {/* Modal Chứng Từ Thẻ Kho (Khi bấm từ Tab Bảng Tồn Kho Thực Tế) */}
       {showLedgerModal && activeLedgerEntry && (

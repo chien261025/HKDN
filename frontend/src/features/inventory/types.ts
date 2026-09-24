@@ -1,6 +1,8 @@
 export interface StockItem {
   id: number;
   productId: number;
+  locationId?: number;
+  batchId?: number;
   sku: string;
   name: string;
   locationBarcode: string;
@@ -11,6 +13,35 @@ export interface StockItem {
   availableQty: number;
   isExpiringSoon?: boolean;
 }
+
+export interface StockTransferDto {
+  id: number;
+  transferCode: string;
+  fromLocationId: number;
+  fromLocationBarcode: string;
+  toLocationId: number;
+  toLocationBarcode: string;
+  productId: number;
+  productSku: string;
+  productName: string;
+  batchId: number;
+  batchNumber: string;
+  quantity: number;
+  status: string;
+  notes?: string;
+  createdAt: string;
+  completedAt?: string;
+}
+
+export interface CreateStockTransferPayload {
+  productId: number;
+  fromLocationId: number;
+  toLocationId: number;
+  batchId: number;
+  quantity: number;
+  notes?: string;
+}
+
 
 export interface OrderItem {
   id: string;

@@ -1,17 +1,19 @@
 import React, { useState } from 'react';
-import { Search, TrendingDown, Lock, FileText, AlertTriangle } from 'lucide-react';
+import { Search, TrendingDown, Lock, FileText, AlertTriangle, ArrowRightLeft } from 'lucide-react';
 import { StockItem } from '../../types';
 
 interface StockBalanceTableProps {
   stocks: StockItem[];
   onReserveItem: (item: StockItem, qty: number) => void;
   onViewLedger?: (item: StockItem) => void;
+  onTransfer?: (item: StockItem) => void;
 }
 
 export const StockBalanceTable: React.FC<StockBalanceTableProps> = ({
   stocks,
   onReserveItem,
   onViewLedger,
+  onTransfer,
 }) => {
   const [searchQuery, setSearchQuery] = useState('');
   const [filterExpiring, setFilterExpiring] = useState(false);
@@ -118,6 +120,16 @@ export const StockBalanceTable: React.FC<StockBalanceTableProps> = ({
                         >
                           <FileText className="w-4 h-4 text-indigo-600" />
                           <span>Xem Phiếu</span>
+                        </button>
+                      )}
+                      {onTransfer && (
+                        <button
+                          onClick={() => onTransfer(item)}
+                          className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200 text-xs sm:text-sm font-bold transition-all cursor-pointer shadow-xs active:scale-95"
+                          title="Lập lệnh điều chuyển sang ô kệ khác"
+                        >
+                          <ArrowRightLeft className="w-4 h-4 text-indigo-600" />
+                          <span>Chuyển Kệ</span>
                         </button>
                       )}
                       <button

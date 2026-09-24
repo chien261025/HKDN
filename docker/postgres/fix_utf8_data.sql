@@ -35,3 +35,29 @@ UPDATE wms_stock_ledger SET notes = 'Khởi tạo số dư đầu kỳ vào ô k
 
 -- 8. Cập nhật Kiểm Kê Kho (Inventory Audit)
 UPDATE wms_inventory_audit SET notes = 'Kiểm kê định kỳ đầu tháng 9/2026 toàn bộ phân khu' WHERE id = 1;
+
+-- 9. Cập nhật Trigger đối soát sổ cái với UTF-8 chuẩn tiếng Việt
+CREATE OR REPLACE FUNCTION trg_validate_stock_ledger_balance()
+RETURNS TRIGGER AS $$
+DECLARE
+    v_current_stock INT;
+BEGIN
+    SELECT on_hand_qty INTO v_current_stock
+    FROM wms_inventory
+    WHERE location_id = NEW.location_id 
+      AND product_id = NEW.product_id 
+      AND batch_id = NEW.batch_id;
+
+    IF v_current_stock IS NULL THEN
+        v_current_stock := 0;
+    END IF;
+
+    IF NEW.balance_after <> v_current_stock THEN
+        RAISE EXCEPTION 'TOÀN VẸN SỔ CÁI BỊ VI PHẠM: balance_after (%) không khớp với số dư tồn kho thực tế (%) tại vị trí %!',
+            NEW.balance_after, v_current_stock, NEW.location_id;
+    END IF;
+
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
