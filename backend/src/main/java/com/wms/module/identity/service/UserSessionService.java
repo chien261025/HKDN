@@ -8,7 +8,7 @@ import java.util.List;
 
 public interface UserSessionService {
 
-    int MAX_CONCURRENT_SESSIONS = 2; // Giới hạn tối đa 2 thiết bị đồng thời chuẩn Shopee
+    int MAX_CONCURRENT_SESSIONS = 2; // Giới hạn tối đa 2 thiết bị đồng thời
 
     UserSession registerSession(User user, String jwtToken, String deviceName, String deviceType, String ipAddress, String locationName);
 

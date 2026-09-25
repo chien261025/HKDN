@@ -10,7 +10,7 @@ import java.time.Instant;
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-@Schema(description = "Chi tiết phiên đăng nhập thiết bị theo chuẩn Shopee/Google")
+@Schema(description = "Chi tiết phiên làm việc và thiết bị đăng nhập của người dùng")
 public class UserSessionResponse {
 
     @Schema(description = "Mã định danh duy nhất của phiên (UUID)", example = "3fa85f64-5717-4562-b3fc-2c963f66afa6")

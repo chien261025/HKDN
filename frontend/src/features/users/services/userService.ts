@@ -186,7 +186,7 @@ export const userService = {
   },
 
   /**
-   * Lấy danh sách thiết bị đang đăng nhập của tài khoản (Chuẩn Shopee)
+   * Lấy danh sách thiết bị đang đăng nhập của tài khoản
    */
   async getUserSessions(userId: string): Promise<import('../types').UserDeviceSession[]> {
     const res = await apiClient.get<ApiResponse<import('../types').UserDeviceSession[]>>(`/users/${userId}/sessions`);
@@ -215,5 +215,37 @@ export const userService = {
       throw new Error(res.data.message || 'Không thể đăng xuất các thiết bị khác');
     }
   },
+
+  /**
+   * Lấy danh sách thiết bị của phiên đăng nhập hiện tại
+   */
+  async getMySessions(): Promise<import('../types').UserDeviceSession[]> {
+    const res = await apiClient.get<ApiResponse<import('../types').UserDeviceSession[]>>('/users/me/sessions');
+    if (!res.data.success || !res.data.data) {
+      return [];
+    }
+    return res.data.data;
+  },
+
+  /**
+   * Đăng xuất phiên làm việc của một thiết bị cá nhân
+   */
+  async revokeMySession(sessionId: string): Promise<void> {
+    const res = await apiClient.delete<ApiResponse<string>>(`/users/me/sessions/${sessionId}`);
+    if (!res.data.success) {
+      throw new Error(res.data.message || 'Không thể đăng xuất thiết bị');
+    }
+  },
+
+  /**
+   * Đăng xuất khỏi tất cả các thiết bị khác của chính mình
+   */
+  async revokeMyOtherSessions(): Promise<void> {
+    const res = await apiClient.delete<ApiResponse<string>>('/users/me/sessions/others');
+    if (!res.data.success) {
+      throw new Error(res.data.message || 'Không thể đăng xuất các thiết bị khác');
+    }
+  },
 };
+
 

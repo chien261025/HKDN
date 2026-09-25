@@ -88,7 +88,7 @@ public class AuthController {
         // 2. Tạo JWT Token
         String token = jwtTokenProvider.generateToken(request.getUsername(), roleName);
 
-        // 3. Quản lý thiết bị & Phiên đồng thời chuẩn Shopee (Device Session Tracking & Limit)
+        // 3. Quản lý thiết bị & Phiên đồng thời (Device Session Tracking & Limit)
         if (user != null) {
             var deviceInfo = com.wms.module.identity.util.DeviceDetectorUtil.detectDevice(httpRequest);
             String clientIp = com.wms.module.identity.util.DeviceDetectorUtil.extractClientIp(httpRequest);

@@ -1,8 +1,9 @@
 import React, { useState } from 'react';
-import { X, User, KeyRound, CheckCircle2, AlertCircle } from 'lucide-react';
+import { X, User, KeyRound, Laptop, CheckCircle2, AlertCircle } from 'lucide-react';
 import { AuthSession } from '../../auth/types';
 import { ProfileInfoTab } from './profile/ProfileInfoTab';
 import { ChangePasswordTab } from './profile/ChangePasswordTab';
+import { ActiveSessionsTab } from './profile/ActiveSessionsTab';
 
 interface UserProfileModalProps {
   isOpen: boolean;
@@ -15,7 +16,7 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({
   onClose,
   session,
 }) => {
-  const [activeTab, setActiveTab] = useState<'INFO' | 'CHANGE_PASSWORD'>('INFO');
+  const [activeTab, setActiveTab] = useState<'INFO' | 'CHANGE_PASSWORD' | 'SESSIONS'>('INFO');
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
 
@@ -70,7 +71,7 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({
         </div>
 
         {/* Tab Navigation */}
-        <div className="flex border-b border-slate-200 bg-slate-50 text-sm font-bold px-5 pt-2">
+        <div className="flex border-b border-slate-200 bg-slate-50 text-sm font-bold px-5 pt-2 flex-wrap">
           <button
             onClick={() => {
               setActiveTab('INFO');
@@ -101,6 +102,21 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({
             <KeyRound className="w-4 h-4" />
             <span>Đổi Mật Khẩu</span>
           </button>
+          <button
+            onClick={() => {
+              setActiveTab('SESSIONS');
+              setErrorMessage(null);
+              setSuccessMessage(null);
+            }}
+            className={`pb-3 px-4 border-b-2 transition-all flex items-center gap-2 cursor-pointer ${
+              activeTab === 'SESSIONS'
+                ? 'border-indigo-600 text-indigo-600'
+                : 'border-transparent text-slate-500 hover:text-slate-800'
+            }`}
+          >
+            <Laptop className="w-4 h-4" />
+            <span>Thiết Bị Đăng Nhập</span>
+          </button>
         </div>
 
         {/* Feedback Alerts */}
@@ -119,11 +135,22 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({
         )}
 
         {/* Tab Contents */}
-        {activeTab === 'INFO' ? (
-          <ProfileInfoTab session={session} />
-        ) : (
+        {activeTab === 'INFO' && <ProfileInfoTab session={session} />}
+        {activeTab === 'CHANGE_PASSWORD' && (
           <ChangePasswordTab
             username={session.username}
+            onSuccess={(msg) => {
+              setSuccessMessage(msg);
+              setErrorMessage(null);
+            }}
+            onError={(msg) => {
+              setErrorMessage(msg);
+              setSuccessMessage(null);
+            }}
+          />
+        )}
+        {activeTab === 'SESSIONS' && (
+          <ActiveSessionsTab
             onSuccess={(msg) => {
               setSuccessMessage(msg);
               setErrorMessage(null);
@@ -138,3 +165,4 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({
     </div>
   );
 };
+
