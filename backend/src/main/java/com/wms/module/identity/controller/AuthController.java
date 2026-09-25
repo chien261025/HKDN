@@ -36,11 +36,14 @@ public class AuthController {
     private final RoleRepository roleRepository;
     private final JwtTokenProvider jwtTokenProvider;
     private final PasswordEncoder passwordEncoder;
+    private final com.wms.module.identity.service.UserSessionService userSessionService;
 
     @PostMapping("/login")
     @Operation(summary = "Đăng nhập hệ thống (Lấy JWT Token)",
                description = "Nhập tài khoản và mật khẩu. Tài khoản mẫu: manager01 / 123456 hoặc admin / 123456")
-    public ApiResponse<AuthTokenResponse> login(@Valid @RequestBody LoginRequest request) {
+    public ApiResponse<AuthTokenResponse> login(
+            @Valid @RequestBody LoginRequest request,
+            jakarta.servlet.http.HttpServletRequest httpRequest) {
         log.info("Yeu cau dang nhap tu: {}", request.getUsername());
 
         // 1. Kiểm tra tài khoản trong Database
@@ -84,6 +87,14 @@ public class AuthController {
 
         // 2. Tạo JWT Token
         String token = jwtTokenProvider.generateToken(request.getUsername(), roleName);
+
+        // 3. Quản lý thiết bị & Phiên đồng thời chuẩn Shopee (Device Session Tracking & Limit)
+        if (user != null) {
+            var deviceInfo = com.wms.module.identity.util.DeviceDetectorUtil.detectDevice(httpRequest);
+            String clientIp = com.wms.module.identity.util.DeviceDetectorUtil.extractClientIp(httpRequest);
+            String location = com.wms.module.identity.util.DeviceDetectorUtil.resolveLocation(clientIp);
+            userSessionService.registerSession(user, token, deviceInfo.deviceName(), deviceInfo.deviceType(), clientIp, location);
+        }
 
         AuthTokenResponse response = AuthTokenResponse.builder()
                 .accessToken(token)

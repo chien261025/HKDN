@@ -1,17 +1,21 @@
 import React, { useState } from 'react';
-import { Search, Filter, Shield, User, Smartphone, Lock, Unlock, KeyRound, CheckCircle2, AlertCircle, Clock, MapPin } from 'lucide-react';
+import { Search, Filter, Shield, User, Smartphone, Lock, Unlock, KeyRound, CheckCircle2, AlertCircle, Clock, MapPin, Pencil, ShieldCheck, Download } from 'lucide-react';
 import { UserAccount, UserRole, UserStatus } from '../types';
 
 interface UserListTableProps {
   users: UserAccount[];
-  onToggleStatus: (userId: string) => void;
+  onToggleStatus: (user: UserAccount) => void;
   onResetPassword: (user: UserAccount) => void;
+  onEditUser: (user: UserAccount) => void;
+  onViewSecurityLog: (user: UserAccount) => void;
 }
 
 export const UserListTable: React.FC<UserListTableProps> = ({
   users,
   onToggleStatus,
   onResetPassword,
+  onEditUser,
+  onViewSecurityLog,
 }) => {
   const [searchTerm, setSearchTerm] = useState('');
   const [roleFilter, setRoleFilter] = useState<string>('ALL');
@@ -23,8 +27,8 @@ export const UserListTable: React.FC<UserListTableProps> = ({
       u.username.toLowerCase().includes(term) ||
       u.fullName.toLowerCase().includes(term) ||
       u.email.toLowerCase().includes(term) ||
-      u.phone.includes(term) ||
-      u.assignedWarehouse.toLowerCase().includes(term);
+      (u.phone ? u.phone.includes(term) : false) ||
+      (u.assignedWarehouse ? u.assignedWarehouse.toLowerCase().includes(term) : false);
 
     const matchRole = roleFilter === 'ALL' || u.role === roleFilter;
     const matchStatus = statusFilter === 'ALL' || u.status === statusFilter;
@@ -32,55 +36,56 @@ export const UserListTable: React.FC<UserListTableProps> = ({
     return matchSearch && matchRole && matchStatus;
   });
 
+  const handleExportCsv = () => {
+    const headers = ['ID', 'Tên Đăng Nhập', 'Họ Và Tên', 'Email', 'Số Điện Thoại', 'Vai Trò', 'Kho Phụ Trách', 'Trạng Thái', 'Đăng Nhập Cuối', 'IP'];
+    const rows = filteredUsers.map((u) => [
+      u.id,
+      u.username,
+      `"${u.fullName.replace(/"/g, '""')}"`,
+      u.email,
+      u.phone || '',
+      u.role,
+      `"${(u.assignedWarehouse || '').replace(/"/g, '""')}"`,
+      u.status,
+      `"${u.lastLoginAt}"`,
+      u.lastLoginIp,
+    ]);
+    const csvContent = '\uFEFF' + [headers.join(','), ...rows.map((r) => r.join(','))].join('\n');
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.setAttribute('download', `WMS_User_Access_Audit_${new Date().toISOString().slice(0, 10)}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
   const getRoleBadge = (role: UserRole) => {
     switch (role) {
       case 'ROLE_ADMIN':
-        return (
-          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-bold bg-purple-50 text-purple-700 border border-purple-200 font-mono">
-            <Shield className="w-3.5 h-3.5 text-purple-600" />
-            ADMIN (Toàn quyền)
-          </span>
-        );
+        return <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-bold bg-purple-50 text-purple-700 border border-purple-200 font-mono"><Shield className="w-3.5 h-3.5 text-purple-600" />ADMIN (Toàn quyền)</span>;
       case 'ROLE_WAREHOUSE_MANAGER':
       case 'ROLE_MANAGER':
-        return (
-          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-bold bg-blue-50 text-blue-700 border border-blue-200 font-mono">
-            <User className="w-3.5 h-3.5 text-blue-600" />
-            QUẢN LÝ KHO (Manager)
-          </span>
-        );
+        return <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-bold bg-blue-50 text-blue-700 border border-blue-200 font-mono"><User className="w-3.5 h-3.5 text-blue-600" />QUẢN LÝ KHO (Manager)</span>;
       case 'ROLE_OPERATOR':
-        return (
-          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-bold bg-cyan-50 text-cyan-800 border border-cyan-200 font-mono">
-            <Smartphone className="w-3.5 h-3.5 text-cyan-600" />
-            THỦ KHO (PDA Mobile)
-          </span>
-        );
+        return <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-bold bg-cyan-50 text-cyan-800 border border-cyan-200 font-mono"><Smartphone className="w-3.5 h-3.5 text-cyan-600" />THỦ KHO (PDA Mobile)</span>;
       default:
-        return (
-          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-bold bg-slate-100 text-slate-700 border border-slate-200 font-mono">
-            {role}
-          </span>
-        );
+        return <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-bold bg-slate-100 text-slate-700 border border-slate-200 font-mono">{role}</span>;
     }
   };
 
-  const getStatusBadge = (status: UserStatus) => {
-    if (status === 'ACTIVE') {
-      return (
-        <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200">
-          <CheckCircle2 className="w-3.5 h-3.5" />
-          Hoạt Động
-        </span>
-      );
-    }
-    return (
-      <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-rose-50 text-rose-700 border border-rose-200">
-        <Lock className="w-3.5 h-3.5" />
-        Đã Khóa
+  const getStatusBadge = (status: UserStatus) => (
+    status === 'ACTIVE' ? (
+      <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200">
+        <CheckCircle2 className="w-3.5 h-3.5" /> Hoạt Động
       </span>
-    );
-  };
+    ) : (
+      <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-rose-50 text-rose-700 border border-rose-200">
+        <Lock className="w-3.5 h-3.5" /> Đã Khóa
+      </span>
+    )
+  );
 
   return (
     <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
@@ -126,6 +131,16 @@ export const UserListTable: React.FC<UserListTableProps> = ({
               <option value="LOCKED">Bị tạm khóa</option>
             </select>
           </div>
+
+          {/* Export CSV Button */}
+          <button
+            onClick={handleExportCsv}
+            title="Xuất danh sách người dùng ra file CSV"
+            className="flex items-center gap-1.5 px-3 py-2 bg-white hover:bg-slate-50 text-slate-700 border border-slate-300 rounded-xl text-sm font-semibold shadow-2xs transition-colors cursor-pointer"
+          >
+            <Download className="w-4 h-4 text-emerald-600" />
+            <span>Xuất CSV</span>
+          </button>
         </div>
       </div>
 
@@ -205,29 +220,48 @@ export const UserListTable: React.FC<UserListTableProps> = ({
 
                     {/* Security Actions */}
                     <td className="py-3.5 px-4 text-right">
-                      <div className="flex items-center justify-end gap-2">
+                      <div className="flex items-center justify-end gap-1.5">
+                        <button
+                          onClick={() => onEditUser(u)}
+                          title="Chỉnh sửa thông tin & vai trò"
+                          className="p-2 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 rounded-lg transition-colors border border-indigo-200 cursor-pointer"
+                        >
+                          <Pencil className="w-4 h-4" />
+                        </button>
                         <button
                           onClick={() => onResetPassword(u)}
-                          title="Reset mật khẩu người dùng"
-                          className="p-2 bg-amber-50 hover:bg-amber-100 text-amber-700 rounded-lg transition-colors border border-amber-200"
+                          title="Cấp lại mật khẩu bảo mật"
+                          className="p-2 bg-amber-50 hover:bg-amber-100 text-amber-700 rounded-lg transition-colors border border-amber-200 cursor-pointer"
                         >
                           <KeyRound className="w-4 h-4" />
                         </button>
                         <button
-                          onClick={() => onToggleStatus(u.id)}
-                          title={u.status === 'ACTIVE' ? 'Khóa tài khoản này' : 'Mở khóa tài khoản'}
-                          className={`p-2 rounded-lg transition-colors border ${
-                            u.status === 'ACTIVE'
-                              ? 'bg-rose-50 hover:bg-rose-100 text-rose-700 border-rose-200'
-                              : 'bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border-emerald-200'
-                          }`}
+                          onClick={() => onViewSecurityLog(u)}
+                          title="Xem nhật ký an ninh & Audit Trail"
+                          className="p-2 bg-sky-50 hover:bg-sky-100 text-sky-700 rounded-lg transition-colors border border-sky-200 cursor-pointer"
                         >
-                          {u.status === 'ACTIVE' ? (
-                            <Lock className="w-4 h-4" />
-                          ) : (
-                            <Unlock className="w-4 h-4" />
-                          )}
+                          <ShieldCheck className="w-4 h-4" />
                         </button>
+                        {u.username === 'admin' ? (
+                          <span
+                            title="Tài khoản Quản trị viên tối cao (Bất khả xâm phạm)"
+                            className="p-2 bg-slate-100 text-slate-400 rounded-lg border border-slate-200 cursor-not-allowed inline-flex"
+                          >
+                            <Lock className="w-4 h-4" />
+                          </span>
+                        ) : (
+                          <button
+                            onClick={() => onToggleStatus(u)}
+                            title={u.status === 'ACTIVE' ? 'Khóa tài khoản này' : 'Mở khóa tài khoản'}
+                            className={`p-2 rounded-lg transition-colors border cursor-pointer ${
+                              u.status === 'ACTIVE'
+                                ? 'bg-rose-50 hover:bg-rose-100 text-rose-700 border-rose-200'
+                                : 'bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border-emerald-200'
+                            }`}
+                          >
+                            {u.status === 'ACTIVE' ? <Lock className="w-4 h-4" /> : <Unlock className="w-4 h-4" />}
+                          </button>
+                        )}
                       </div>
                     </td>
                   </tr>

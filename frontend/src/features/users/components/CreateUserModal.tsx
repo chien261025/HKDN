@@ -228,8 +228,23 @@ export const CreateUserModal: React.FC<CreateUserModalProps> = ({
                 className="w-full px-3 py-2 bg-white border border-slate-300 rounded-xl text-slate-900 font-mono font-bold focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-600"
               />
             </div>
-            <p className="text-xs text-slate-500">
-              Mật khẩu mặc định là <span className="font-mono text-indigo-600 font-semibold">123456</span> hoặc mật khẩu bạn chỉ định trên. Mật khẩu được mã hóa BCrypt an toàn trong DB.
+            {/* Password Strength Indicator */}
+            <div className="space-y-1">
+              <div className="flex items-center justify-between text-2xs font-semibold">
+                <span className="text-slate-500">Độ an toàn mật khẩu:</span>
+                <span className={tempPassword.length >= 8 ? 'text-emerald-700 font-bold' : 'text-amber-700'}>
+                  {tempPassword.length >= 8 ? 'Chuẩn Enterprise (OWASP)' : 'Cơ bản (Khuyến nghị >= 8 ký tự)'}
+                </span>
+              </div>
+              <div className="w-full bg-slate-200 h-1.5 rounded-full overflow-hidden flex gap-0.5">
+                <div className={`h-full flex-1 ${tempPassword.length >= 4 ? 'bg-rose-500' : 'bg-transparent'}`} />
+                <div className={`h-full flex-1 ${tempPassword.length >= 6 ? 'bg-amber-500' : 'bg-transparent'}`} />
+                <div className={`h-full flex-1 ${tempPassword.length >= 8 ? 'bg-emerald-500' : 'bg-transparent'}`} />
+                <div className={`h-full flex-1 ${tempPassword.length >= 10 && /[!@#$%^&*]/.test(tempPassword) ? 'bg-indigo-600' : 'bg-transparent'}`} />
+              </div>
+            </div>
+            <p className="text-2xs text-slate-500 font-sans">
+              Mật khẩu được mã hóa một chiều bằng thuật toán <strong>BCrypt (10 rounds)</strong> trước khi ghi vào CSDL.
             </p>
           </div>
 

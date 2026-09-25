@@ -90,5 +90,32 @@ public class UserController {
         userService.changePassword(request);
         return ApiResponse.success("Đổi mật khẩu thành công! Vui lòng ghi nhớ mật khẩu mới cho các lần đăng nhập tiếp theo.", "SUCCESS");
     }
+
+    @PutMapping("/{id}")
+    @Operation(summary = "Cập nhật thông tin và vai trò tài khoản", description = "Admin cập nhật họ tên, email, vai trò và kho phụ trách")
+    public ApiResponse<UserResponse> updateUser(
+            @PathVariable Long id,
+            @Valid @RequestBody com.wms.module.identity.dto.request.UpdateUserRequest request) {
+        log.info("API cap nhat thong tin user id: {}", id);
+        UserResponse updated = userService.updateUser(id, request);
+        return ApiResponse.success("Cập nhật thông tin tài khoản thành công!", updated);
+    }
+
+    @PostMapping("/{id}/force-logout")
+    @Operation(summary = "Cưỡng chế hủy phiên đăng nhập (Force Logout)", description = "Thu hồi toàn bộ Token và đăng xuất tài khoản ngay lập tức")
+    public ApiResponse<String> forceLogout(@PathVariable Long id) {
+        log.info("API cuong che dang xuat user id: {}", id);
+        userService.forceLogout(id);
+        return ApiResponse.success("Đã cưỡng chế đăng xuất và thu hồi phiên làm việc của người dùng!", "LOGGED_OUT");
+    }
+
+    @GetMapping("/{id}/security-log")
+    @Operation(summary = "Xem nhật ký an ninh và lịch sử đăng nhập", description = "Truy vết lịch sử IP, thiết bị và đánh giá mức độ rủi ro")
+    public ApiResponse<com.wms.module.identity.dto.response.UserSecurityLogResponse> getSecurityLog(@PathVariable Long id) {
+        log.info("API lay security audit log user id: {}", id);
+        var logResponse = userService.getUserSecurityLog(id);
+        return ApiResponse.success("Lấy nhật ký an ninh thành công!", logResponse);
+    }
 }
+
 

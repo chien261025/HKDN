@@ -136,5 +136,84 @@ export const userService = {
       throw new Error(res.data.message || 'Không thể đổi mật khẩu');
     }
     return res.data.message;
-  }
+  },
+
+  /**
+   * Admin cập nhật thông tin và vai trò người dùng
+   */
+  async updateUser(id: string, payload: import('../types').UpdateUserPayload): Promise<UserAccount> {
+    const res = await apiClient.put<ApiResponse<BackendUserResponse>>(`/users/${id}`, payload);
+    if (!res.data.success || !res.data.data) {
+      throw new Error(res.data.message || 'Không thể cập nhật thông tin người dùng');
+    }
+
+    const u = res.data.data;
+    return {
+      id: String(u.id),
+      username: u.username,
+      fullName: u.fullName,
+      email: u.email,
+      phone: payload.phone || ('09' + String(u.id).padStart(8, '0')),
+      role: (u.role as UserRole) || 'ROLE_OPERATOR',
+      assignedWarehouse: payload.assignedWarehouse || u.assignedWarehouse || 'Kho Tổng Tân Bình (ZONE A & B)',
+      status: u.isActive ? 'ACTIVE' : 'LOCKED',
+      lastLoginAt: u.updatedAt ? new Date(u.updatedAt).toLocaleString('vi-VN') : 'Vừa cập nhật',
+      lastLoginIp: '192.168.1.10' + (u.id % 10),
+      createdAt: u.createdAt ? new Date(u.createdAt).toLocaleDateString('vi-VN') : 'Hôm nay',
+    };
+  },
+
+  /**
+   * Cưỡng chế hủy phiên đăng nhập (Force Logout)
+   */
+  async forceLogout(id: string): Promise<string> {
+    const res = await apiClient.post<ApiResponse<string>>(`/users/${id}/force-logout`);
+    if (!res.data.success) {
+      throw new Error(res.data.message || 'Không thể cưỡng chế đăng xuất');
+    }
+    return res.data.message;
+  },
+
+  /**
+   * Lấy lịch sử an ninh và nhật ký đăng nhập
+   */
+  async getUserSecurityLog(id: string): Promise<import('../types').UserSecurityLog> {
+    const res = await apiClient.get<ApiResponse<import('../types').UserSecurityLog>>(`/users/${id}/security-log`);
+    if (!res.data.success || !res.data.data) {
+      throw new Error(res.data.message || 'Không thể tải nhật ký an ninh');
+    }
+    return res.data.data;
+  },
+
+  /**
+   * Lấy danh sách thiết bị đang đăng nhập của tài khoản (Chuẩn Shopee)
+   */
+  async getUserSessions(userId: string): Promise<import('../types').UserDeviceSession[]> {
+    const res = await apiClient.get<ApiResponse<import('../types').UserDeviceSession[]>>(`/users/${userId}/sessions`);
+    if (!res.data.success || !res.data.data) {
+      return [];
+    }
+    return res.data.data;
+  },
+
+  /**
+   * Đăng xuất từ xa một thiết bị cụ thể
+   */
+  async revokeDeviceSession(userId: string, sessionId: string): Promise<void> {
+    const res = await apiClient.delete<ApiResponse<string>>(`/users/${userId}/sessions/${sessionId}`);
+    if (!res.data.success) {
+      throw new Error(res.data.message || 'Không thể đăng xuất thiết bị');
+    }
+  },
+
+  /**
+   * Đăng xuất khỏi tất cả các thiết bị khác
+   */
+  async revokeOtherDeviceSessions(userId: string): Promise<void> {
+    const res = await apiClient.delete<ApiResponse<string>>(`/users/${userId}/sessions/others`);
+    if (!res.data.success) {
+      throw new Error(res.data.message || 'Không thể đăng xuất các thiết bị khác');
+    }
+  },
 };
+

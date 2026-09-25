@@ -28,6 +28,7 @@ public class JwtTokenProvider {
         Date expiryDate = new Date(now.getTime() + expirationMs);
 
         return Jwts.builder()
+                .id(java.util.UUID.randomUUID().toString())
                 .subject(username)
                 .claim("role", role)
                 .issuedAt(now)

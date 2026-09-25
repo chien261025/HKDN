@@ -164,7 +164,7 @@ export const RbacMatrixTable: React.FC = () => {
               Bảng Tổng Hợp Phân Quyền Màn Hình & Thiết Bị (RBAC Master Matrix)
             </h2>
             <span className="text-xs font-mono px-2.5 py-0.5 rounded bg-purple-50 text-purple-700 border border-purple-200 font-bold">
-              12 MÀN HÌNH CHUẨN ĐỒ ÁN
+              12 MÀN HÌNH
             </span>
           </div>
           <p className="text-xs text-slate-600 mt-1">

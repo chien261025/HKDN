@@ -40,6 +40,9 @@ public class UserResponse {
     @Schema(description = "Kho hàng mặc định phụ trách", example = "Kho Tổng Tân Bình (ZONE A & B)")
     private String assignedWarehouse;
 
+    @Schema(description = "Số điện thoại liên hệ", example = "0900000002")
+    private String phone;
+
     @Schema(description = "Thời gian khởi tạo tài khoản")
     private Instant createdAt;
 

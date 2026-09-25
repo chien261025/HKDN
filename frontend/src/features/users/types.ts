@@ -39,3 +39,51 @@ export interface RbacModulePermission {
   operatorAllowed: boolean;
   description: string;
 }
+
+export interface UpdateUserPayload {
+  fullName: string;
+  email: string;
+  role?: string;
+  assignedWarehouse?: string;
+  phone?: string;
+}
+
+export interface LoginHistoryEntry {
+  timestamp: string;
+  ipAddress: string;
+  location: string;
+  userAgent: string;
+  status: string;
+}
+
+export interface UserSecurityLog {
+  userId: number;
+  username: string;
+  fullName: string;
+  role: string;
+  status: string;
+  isActive: boolean;
+  lastLoginAt: string;
+  lastLoginIp: string;
+  failedLoginAttempts: number;
+  riskLevel: string;
+  activeSessionsCount: number;
+  recentLogins: LoginHistoryEntry[];
+}
+
+export interface UserDeviceSession {
+  id: string;
+  userId: number;
+  username: string;
+  deviceName: string;
+  deviceType: 'DESKTOP' | 'MOBILE_PDA' | 'TABLET';
+  ipAddress: string;
+  locationName: string;
+  isActive: boolean;
+  isCurrentSession: boolean;
+  createdAt: string;
+  lastActiveAt: string;
+  revokedReason?: string;
+}
+
+

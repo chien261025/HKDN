@@ -50,3 +50,5 @@ Thumbs.db
 
 # Temporary Scratch Scripts #
 scratch/
+.m2/
+love-rain-3d/

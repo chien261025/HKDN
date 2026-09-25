@@ -13,4 +13,8 @@ public interface UserService {
     UserResponse updateUserRole(Long id, String newRole);
     void resetPassword(Long id, String newPassword);
     void changePassword(com.wms.module.identity.dto.request.ChangePasswordRequest request);
+    UserResponse updateUser(Long id, com.wms.module.identity.dto.request.UpdateUserRequest request);
+    void forceLogout(Long id);
+    com.wms.module.identity.dto.response.UserSecurityLogResponse getUserSecurityLog(Long id);
 }
+
