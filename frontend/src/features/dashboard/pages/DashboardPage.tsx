@@ -2,14 +2,20 @@ import React, { useState } from 'react';
 import { BinCell } from '../types';
 import { DashboardHeroHeader } from '../components/DashboardHeroHeader';
 import { DashboardKpiCards } from '../components/DashboardKpiCards';
+import { ThroughputChartWidget } from '../components/ThroughputChartWidget';
+import { ZoneCapacityChartWidget } from '../components/ZoneCapacityChartWidget';
+import { FulfillmentPipelineWidget } from '../components/FulfillmentPipelineWidget';
 import { WarehouseGridWidget } from '../components/WarehouseGridWidget';
+import { LiveActivityStreamWidget } from '../components/LiveActivityStreamWidget';
 import { ConcurrencyTestWidget } from '../components/ConcurrencyTestWidget';
 import { PutawayOptimizerWidget } from '../components/PutawayOptimizerWidget';
+import { Sliders, X } from 'lucide-react';
 
 export const DashboardPage: React.FC = () => {
   const [selectedBin, setSelectedBin] = useState<BinCell | null>(null);
+  const [showSimulation, setShowSimulation] = useState(false);
 
-  // Digital Twin Warehouse Grid Mock
+  // Digital Twin Warehouse Grid Data
   const warehouseGrid: BinCell[] = [
     {
       id: '1',
@@ -103,16 +109,31 @@ export const DashboardPage: React.FC = () => {
   ];
 
   return (
-    <div className="space-y-5 max-w-[1600px] mx-auto pb-10">
-      {/* 1. Header Banner */}
-      <DashboardHeroHeader />
+    <div className="space-y-5 max-w-[1600px] mx-auto pb-12">
+      {/* 1. Executive Operations Header */}
+      <DashboardHeroHeader
+        onToggleSimulation={() => setShowSimulation(!showSimulation)}
+        showSimulation={showSimulation}
+      />
 
-      {/* 2. 4 Thẻ KPI */}
+      {/* 2. Core Operational KPI Cards */}
       <DashboardKpiCards />
 
-      {/* 3. Bố Cục 2 Cột Chính */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 items-start">
-        {/* CỘT TRÁI (7 COLS): Lưới Ô Kệ Digital Twin */}
+      {/* 3. Visual Charts Row (Throughput Area Chart + Zone Capacity Donut) */}
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 items-stretch">
+        <div className="lg:col-span-7">
+          <ThroughputChartWidget />
+        </div>
+        <div className="lg:col-span-5">
+          <ZoneCapacityChartWidget />
+        </div>
+      </div>
+
+      {/* 4. Full-width Order Fulfillment Pipeline */}
+      <FulfillmentPipelineWidget />
+
+      {/* 5. Live Operations Row (Digital Twin Grid + Live Activity Feed) */}
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 items-stretch">
         <div className="lg:col-span-7">
           <WarehouseGridWidget
             grid={warehouseGrid}
@@ -120,13 +141,40 @@ export const DashboardPage: React.FC = () => {
             onSelectBin={setSelectedBin}
           />
         </div>
-
-        {/* CỘT PHẢI (5 COLS): 2 Widget Test Nghiệp Vụ */}
-        <div className="lg:col-span-5 space-y-4">
-          <ConcurrencyTestWidget />
-          <PutawayOptimizerWidget />
+        <div className="lg:col-span-5">
+          <LiveActivityStreamWidget />
         </div>
       </div>
+
+      {/* 6. Optional Simulation & Stress Testing Section (Expandable) */}
+      {showSimulation && (
+        <div className="p-6 rounded-2xl bg-slate-900 text-white border border-slate-800 space-y-4 animate-in fade-in duration-200 shadow-xl">
+          <div className="flex items-center justify-between pb-3 border-b border-slate-800">
+            <div className="flex items-center gap-2">
+              <Sliders className="w-5 h-5 text-indigo-400" />
+              <div>
+                <h3 className="text-base font-bold text-white">
+                  Khu Vực Kiểm Thử Thuật Toán & Giả Lập Tải
+                </h3>
+                <p className="text-xs text-slate-400">
+                  Thử nghiệm cơ chế khóa đồng thời chống âm kho và mô hình tính toán cất hàng thông minh
+                </p>
+              </div>
+            </div>
+            <button
+              onClick={() => setShowSimulation(false)}
+              className="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 transition-colors cursor-pointer"
+            >
+              <X className="w-5 h-5" />
+            </button>
+          </div>
+
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
+            <ConcurrencyTestWidget />
+            <PutawayOptimizerWidget />
+          </div>
+        </div>
+      )}
     </div>
   );
 };
