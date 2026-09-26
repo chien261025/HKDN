@@ -8,46 +8,50 @@ import { OrderDispatchDrawer } from './outbound/OrderDispatchDrawer';
 import { StockLedgerModal } from './StockLedgerModal';
 import { inventoryService } from '../services/inventoryService';
 
-export const OutboundFefoWorkbench: React.FC = () => {
-  // Chế độ hiển thị: 'table' (Bảng dữ liệu) hoặc 'kanban' (Bảng điều phối luồng hàng)
-  const [viewMode, setViewMode] = useState<'table' | 'kanban'>('table');
+const INITIAL_ORDERS: OrderItem[] = [
+  {
+    id: '1',
+    code: 'OUT-2026-001',
+    customer: 'Siêu thị Co.opmart Cống Quỳnh',
+    productSku: 'SKU-MILK-100',
+    productName: 'Sữa tươi tiệt trùng Vinamilk 100% 1L',
+    qty: 20,
+    status: 'PENDING',
+    locationBarcode: 'ZB-B01-R01-S01-B05',
+    batchNumber: 'BATCH-MILK-26A',
+    expiryDate: '2026-09-25',
+    daysRemaining: 13,
+    alternateBatch: {
+      batchNumber: 'BATCH-MILK-26B',
+      expiryDate: '2026-11-30',
+      daysRemaining: 81,
+      locationBarcode: 'ZB-B01-R01-S02-B06',
+      onHand: 200,
+    },
+  },
+  {
+    id: '2',
+    code: 'OUT-2026-002',
+    customer: 'Chuỗi Bán lẻ FPT Shop',
+    productSku: 'SKU-SAMS-S24',
+    productName: 'Điện thoại Samsung Galaxy S24 Ultra 256GB',
+    qty: 5,
+    status: 'PENDING',
+    locationBarcode: 'ZA-A01-R01-S01-B01',
+    batchNumber: 'BATCH-S24-01',
+    expiryDate: '2028-01-10',
+    daysRemaining: 487,
+  },
+];
 
-  // Danh sách đơn hàng xuất mẫu
-  const [orders, setOrders] = useState<OrderItem[]>([
-    {
-      id: '1',
-      code: 'OUT-2026-001',
-      customer: 'Siêu thị Co.opmart Cống Quỳnh',
-      productSku: 'SKU-MILK-100',
-      productName: 'Sữa tươi tiệt trùng Vinamilk 100% 1L',
-      qty: 20,
-      status: 'PENDING',
-      locationBarcode: 'ZB-B01-R01-S01-B05',
-      batchNumber: 'BATCH-MILK-26A',
-      expiryDate: '2026-09-25',
-      daysRemaining: 13,
-      alternateBatch: {
-        batchNumber: 'BATCH-MILK-26B',
-        expiryDate: '2026-11-30',
-        daysRemaining: 81,
-        locationBarcode: 'ZB-B01-R01-S02-B06',
-        onHand: 200,
-      },
-    },
-    {
-      id: '2',
-      code: 'OUT-2026-002',
-      customer: 'Chuỗi Bán lẻ FPT Shop',
-      productSku: 'SKU-SAMS-S24',
-      productName: 'Điện thoại Samsung Galaxy S24 Ultra 256GB',
-      qty: 5,
-      status: 'PENDING',
-      locationBarcode: 'ZA-A01-R01-S01-B01',
-      batchNumber: 'BATCH-S24-01',
-      expiryDate: '2028-01-10',
-      daysRemaining: 487,
-    },
-  ]);
+const INITIAL_INVENTORY_STATS: Record<string, InventoryStats> = {
+  '1': { onHand: 80, reserved: 0, available: 80 },
+  '2': { onHand: 25, reserved: 0, available: 25 },
+};
+
+export const OutboundFefoWorkbench: React.FC = () => {
+  const [viewMode, setViewMode] = useState<'table' | 'kanban'>('table');
+  const [orders, setOrders] = useState<OrderItem[]>(INITIAL_ORDERS);
 
   // Bộ lọc tìm kiếm & trạng thái
   const [searchQuery, setSearchQuery] = useState('');
@@ -57,10 +61,7 @@ export const OutboundFefoWorkbench: React.FC = () => {
   const [activeDrawerOrder, setActiveDrawerOrder] = useState<OrderItem | null>(null);
 
   // Tồn kho thực tế của các ô kệ
-  const [inventoryStats, setInventoryStats] = useState<Record<string, InventoryStats>>({
-    '1': { onHand: 80, reserved: 0, available: 80 },
-    '2': { onHand: 25, reserved: 0, available: 25 },
-  });
+  const [inventoryStats, setInventoryStats] = useState<Record<string, InventoryStats>>(INITIAL_INVENTORY_STATS);
 
   // Lịch sử giao dịch sổ cái
   const [ledgerHistory, setLedgerHistory] = useState<LedgerEntryData[]>([
@@ -173,38 +174,8 @@ export const OutboundFefoWorkbench: React.FC = () => {
 
   // Làm mới dữ liệu
   const handleReset = () => {
-    setOrders([
-      {
-        id: '1',
-        code: 'OUT-2026-001',
-        customer: 'Siêu thị Co.opmart Cống Quỳnh',
-        productSku: 'SKU-MILK-100',
-        productName: 'Sữa tươi tiệt trùng Vinamilk 100% 1L',
-        qty: 20,
-        status: 'PENDING',
-        locationBarcode: 'ZB-B01-R01-S01-B05',
-        batchNumber: 'BATCH-MILK-26A',
-        expiryDate: '2026-09-25',
-        daysRemaining: 13,
-      },
-      {
-        id: '2',
-        code: 'OUT-2026-002',
-        customer: 'Chuỗi Bán lẻ FPT Shop',
-        productSku: 'SKU-SAMS-S24',
-        productName: 'Điện thoại Samsung Galaxy S24 Ultra 256GB',
-        qty: 5,
-        status: 'PENDING',
-        locationBarcode: 'ZA-A01-R01-S01-B01',
-        batchNumber: 'BATCH-S24-01',
-        expiryDate: '2028-01-10',
-        daysRemaining: 487,
-      },
-    ]);
-    setInventoryStats({
-      '1': { onHand: 80, reserved: 0, available: 80 },
-      '2': { onHand: 25, reserved: 0, available: 25 },
-    });
+    setOrders(INITIAL_ORDERS);
+    setInventoryStats(INITIAL_INVENTORY_STATS);
     setActiveDrawerOrder(null);
   };
 

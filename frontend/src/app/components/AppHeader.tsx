@@ -73,13 +73,13 @@ export const AppHeader: React.FC<AppHeaderProps> = ({
 
       {/* Right quick telemetry & User profile */}
       <div className="flex items-center gap-3">
-        <div className="hidden lg:flex items-center gap-2 px-3 py-1.5 rounded-xl bg-emerald-50/80 border border-emerald-200 text-emerald-800 text-xs font-semibold shadow-2xs">
+        <div className="hidden lg:flex items-center gap-2 px-3 py-1.5 rounded-lg bg-emerald-50/70 border border-emerald-200 text-emerald-800 text-xs font-medium">
           <span className="relative flex h-2 w-2">
             <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
             <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
           </span>
-          <ShieldCheck className="w-4 h-4 text-emerald-600" />
-          <span>Chống Âm Kho: Pessimistic Lock</span>
+          <ShieldCheck className="w-3.5 h-3.5 text-emerald-600" />
+          <span>Bảo Vệ Tồn Kho: An Toàn</span>
         </div>
 
         <button className="relative p-2 text-slate-500 hover:text-slate-800 hover:bg-slate-100 rounded-xl border border-slate-200 transition-all">

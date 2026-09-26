@@ -115,48 +115,48 @@ export const InventoryBalancePage: React.FC = () => {
 
   return (
     <div className="space-y-5 max-w-[1600px] mx-auto pb-10">
-      {/* Header Nổi Bật & Bộ Chuyển Tab Cao Cấp */}
+      {/* Header & Bộ Chuyển Tab Doanh Nghiệp */}
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 pb-4 border-b border-slate-200">
         <div>
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-indigo-600 flex items-center justify-center text-white shadow-md shadow-indigo-200">
+            <div className="w-10 h-10 rounded-xl bg-indigo-600 flex items-center justify-center text-white shadow-xs">
               <Zap className="w-5 h-5" />
             </div>
-            <h1 className="text-xl sm:text-2xl font-extrabold text-slate-900 tracking-tight">
+            <h1 className="text-xl sm:text-2xl font-bold text-slate-900 tracking-tight">
               Quản Lý Tồn Kho & Điều Chuyển Nội Bộ
             </h1>
           </div>
-          <p className="text-xs sm:text-sm text-slate-600 font-medium mt-1 pl-13">
+          <p className="text-xs sm:text-sm text-slate-500 font-normal mt-1 pl-13">
             Theo dõi số lượng tồn kho theo vị trí ô kệ, điều phối xuất hàng FEFO và điều chuyển hàng hóa linh hoạt.
           </p>
         </div>
 
-        {/* Tab Gạt Cao Cấp & Nổi Bật */}
-        <div className="flex items-center bg-slate-100 p-1.5 rounded-2xl border border-slate-200 shadow-xs flex-wrap gap-1">
+        {/* Tab Gạt Tối Giản, Chuẩn Enterprise */}
+        <div className="flex items-center bg-slate-100/90 p-1 rounded-xl border border-slate-200/80 flex-wrap gap-1">
           <button
             onClick={() => setActiveTab('balance')}
-            className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs sm:text-sm font-bold transition-all cursor-pointer ${
+            className={`flex items-center gap-2 px-3.5 py-1.5 rounded-lg text-xs sm:text-sm transition-all cursor-pointer ${
               activeTab === 'balance'
-                ? 'bg-white text-indigo-700 shadow-sm border border-slate-200 ring-1 ring-slate-200'
-                : 'text-slate-600 hover:text-slate-900 hover:bg-slate-200/60'
+                ? 'bg-white text-slate-900 font-semibold shadow-xs border border-slate-200/80'
+                : 'text-slate-600 hover:text-slate-900 hover:bg-slate-200/50 font-medium'
             }`}
           >
             <Layers className="w-4 h-4 text-indigo-600" />
-            <span>1. Tồn Kho Thực Tế</span>
+            <span>Tồn Kho Thực Tế</span>
           </button>
 
           <button
             onClick={() => setActiveTab('transfer')}
-            className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs sm:text-sm font-bold transition-all cursor-pointer ${
+            className={`flex items-center gap-2 px-3.5 py-1.5 rounded-lg text-xs sm:text-sm transition-all cursor-pointer ${
               activeTab === 'transfer'
-                ? 'bg-white text-indigo-700 shadow-sm border border-slate-200 ring-1 ring-slate-200'
-                : 'text-slate-600 hover:text-slate-900 hover:bg-slate-200/60'
+                ? 'bg-white text-slate-900 font-semibold shadow-xs border border-slate-200/80'
+                : 'text-slate-600 hover:text-slate-900 hover:bg-slate-200/50 font-medium'
             }`}
           >
             <ArrowRightLeft className="w-4 h-4 text-indigo-600" />
-            <span>2. Lịch Sử Điều Chuyển</span>
+            <span>Lịch Sử Điều Chuyển</span>
             {transfers.length > 0 && (
-              <span className="px-1.5 py-0.2 rounded-full text-2xs bg-indigo-100 text-indigo-800 font-mono font-bold">
+              <span className="px-1.5 py-0.2 rounded-full text-2xs bg-indigo-100 text-indigo-700 font-mono font-semibold">
                 {transfers.length}
               </span>
             )}
@@ -164,14 +164,14 @@ export const InventoryBalancePage: React.FC = () => {
 
           <button
             onClick={() => setActiveTab('outbound')}
-            className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs sm:text-sm font-bold transition-all cursor-pointer ${
+            className={`flex items-center gap-2 px-3.5 py-1.5 rounded-lg text-xs sm:text-sm transition-all cursor-pointer ${
               activeTab === 'outbound'
-                ? 'bg-white text-indigo-700 shadow-sm border border-slate-200 ring-1 ring-slate-200'
-                : 'text-slate-600 hover:text-slate-900 hover:bg-slate-200/60'
+                ? 'bg-white text-slate-900 font-semibold shadow-xs border border-slate-200/80'
+                : 'text-slate-600 hover:text-slate-900 hover:bg-slate-200/50 font-medium'
             }`}
           >
             <Zap className="w-4 h-4 text-amber-500" />
-            <span>3. Xuất Hàng Theo Lô (FEFO)</span>
+            <span>Điều Phối Xuất (FEFO)</span>
           </button>
         </div>
       </div>

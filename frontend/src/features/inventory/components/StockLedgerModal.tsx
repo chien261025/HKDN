@@ -111,33 +111,33 @@ export const StockLedgerModal: React.FC<StockLedgerModalProps> = ({ entry, onClo
             </h4>
             <div className="rounded-xl border border-slate-200 overflow-hidden shadow-xs">
               <table className="w-full text-left text-xs sm:text-sm">
-                <thead className="bg-slate-100 text-xs text-slate-700 font-bold border-b border-slate-200 uppercase tracking-wider">
+                <thead className="bg-slate-50/80 text-xs text-slate-500 font-semibold border-b border-slate-200 uppercase tracking-wider">
                   <tr>
-                    <th className="py-3 px-3.5 w-10 text-center">STT</th>
-                    <th className="py-3 px-3.5">Tên Sản Phẩm</th>
-                    <th className="py-3 px-3.5">Mã SKU</th>
-                    <th className="py-3 px-3.5">Số Lô (Batch)</th>
-                    <th className="py-3 px-3.5">Hạn Sử Dụng</th>
-                    <th className="py-3 px-3.5">Vị Trí Ô Kệ</th>
-                    <th className="py-3 px-3.5 text-right">Số Lượng</th>
+                    <th className="py-2.5 px-3 w-10 text-center">STT</th>
+                    <th className="py-2.5 px-3 min-w-[200px]">Tên Sản Phẩm</th>
+                    <th className="py-2.5 px-3 min-w-[120px] whitespace-nowrap">Mã SKU</th>
+                    <th className="py-2.5 px-3 min-w-[130px] whitespace-nowrap">Số Lô (Batch)</th>
+                    <th className="py-2.5 px-3 min-w-[120px] whitespace-nowrap">Hạn Sử Dụng</th>
+                    <th className="py-2.5 px-3 min-w-[150px] whitespace-nowrap">Vị Trí Ô Kệ</th>
+                    <th className="py-2.5 px-3 text-right min-w-[100px] whitespace-nowrap">Số Lượng</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-slate-200 bg-white font-sans text-slate-800">
+                <tbody className="divide-y divide-slate-100 bg-white font-sans text-slate-800">
                   <tr>
-                    <td className="py-3.5 px-3.5 text-center text-slate-600 font-mono font-bold">1</td>
-                    <td className="py-3.5 px-3.5">
-                      <div className="font-bold text-slate-900 text-sm">{entry.productName}</div>
+                    <td className="py-3 px-3 text-center text-slate-500 font-mono text-xs">1</td>
+                    <td className="py-3 px-3">
+                      <div className="font-semibold text-slate-900 text-sm">{entry.productName}</div>
                     </td>
-                    <td className="py-3.5 px-3.5 font-mono font-semibold text-indigo-700">{entry.productSku}</td>
-                    <td className="py-3.5 px-3.5 font-mono font-semibold text-amber-700">{entry.batchNumber}</td>
-                    <td className="py-3.5 px-3.5 font-mono font-semibold text-rose-700">{entry.expiryDate}</td>
-                    <td className="py-3.5 px-3.5 font-mono text-xs">
-                      <span className="bg-slate-100 px-2.5 py-1 rounded-lg border border-slate-200 text-slate-800 font-bold">
+                    <td className="py-3 px-3 font-mono text-xs text-slate-500 whitespace-nowrap">{entry.productSku}</td>
+                    <td className="py-3 px-3 font-mono text-xs text-slate-700 whitespace-nowrap font-medium">{entry.batchNumber}</td>
+                    <td className="py-3 px-3 font-mono text-xs text-slate-700 whitespace-nowrap tabular-nums">{entry.expiryDate}</td>
+                    <td className="py-3 px-3 font-mono text-xs whitespace-nowrap">
+                      <span className="bg-slate-100/90 px-2 py-0.5 rounded-md border border-slate-200/80 text-slate-700 font-medium">
                         {entry.locationBarcode}
                       </span>
                     </td>
-                    <td className="py-3.5 px-3.5 text-right font-mono font-black text-slate-900 text-base">
-                      {Math.abs(entry.qtyChange)}
+                    <td className="py-3 px-3 text-right font-semibold text-slate-900 tabular-nums text-sm whitespace-nowrap">
+                      {Math.abs(entry.qtyChange).toLocaleString('vi-VN')} SP
                     </td>
                   </tr>
                 </tbody>
@@ -148,26 +148,26 @@ export const StockLedgerModal: React.FC<StockLedgerModalProps> = ({ entry, onClo
           {/* Biến Động Số Dư & Ghi Chú */}
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
             <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-200 text-center shadow-xs">
-              <span className="text-xs text-slate-500 font-bold block mb-0.5">Tồn Trước Khi Xuất</span>
-              <span className="text-xl font-black font-mono text-slate-800">{entry.balanceBefore}</span>
+              <span className="text-xs text-slate-500 font-medium block mb-0.5">Tồn Trước Biến Động</span>
+              <span className="text-lg font-bold text-slate-800 tabular-nums">{entry.balanceBefore.toLocaleString('vi-VN')}</span>
             </div>
 
             <div className={`p-3.5 rounded-xl border text-center shadow-xs ${
               isOutbound
-                ? 'bg-rose-50 border-rose-200 text-rose-700'
-                : 'bg-emerald-50 border-emerald-200 text-emerald-700'
+                ? 'bg-rose-50/70 border-rose-200 text-rose-700'
+                : 'bg-emerald-50/70 border-emerald-200 text-emerald-700'
             }`}>
-              <span className="text-xs block mb-0.5 font-bold uppercase tracking-wider">
+              <span className="text-xs block mb-0.5 font-semibold uppercase tracking-wider">
                 {isOutbound ? 'Số Lượng Xuất' : 'Số Lượng Nhập'}
               </span>
-              <span className="text-xl font-black font-mono">
-                {entry.qtyChange > 0 ? `+${entry.qtyChange}` : entry.qtyChange} SP
+              <span className="text-lg font-bold tabular-nums">
+                {entry.qtyChange > 0 ? `+${entry.qtyChange.toLocaleString('vi-VN')}` : entry.qtyChange.toLocaleString('vi-VN')} SP
               </span>
             </div>
 
             <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-200 text-center shadow-xs">
-              <span className="text-xs text-slate-500 font-bold block mb-0.5">Tồn Sau Khi Xuất</span>
-              <span className="text-xl font-black font-mono text-indigo-700">{entry.balanceAfter}</span>
+              <span className="text-xs text-slate-500 font-medium block mb-0.5">Tồn Sau Biến Động</span>
+              <span className="text-lg font-bold text-slate-900 tabular-nums">{entry.balanceAfter.toLocaleString('vi-VN')}</span>
             </div>
           </div>
 

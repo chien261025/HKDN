@@ -91,52 +91,52 @@ export const StockTransferModal: React.FC<StockTransferModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs animate-in fade-in">
-      <div className="bg-white rounded-3xl w-full max-w-lg shadow-2xl border border-slate-200 overflow-hidden">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-xs animate-in fade-in">
+      <div className="bg-white rounded-2xl w-full max-w-lg shadow-xl border border-slate-200 overflow-hidden">
         {/* Header */}
-        <div className="px-6 py-4 bg-slate-50 border-b border-slate-200 flex items-center justify-between">
+        <div className="px-5 py-4 bg-slate-50/80 border-b border-slate-200 flex items-center justify-between">
           <div className="flex items-center gap-2.5">
-            <div className="w-9 h-9 rounded-xl bg-indigo-100 text-indigo-700 flex items-center justify-center font-bold">
-              <ArrowRightLeft className="w-5 h-5" />
+            <div className="w-8 h-8 rounded-lg bg-indigo-50 text-indigo-600 flex items-center justify-center font-semibold border border-indigo-100">
+              <ArrowRightLeft className="w-4 h-4" />
             </div>
             <div>
-              <h2 className="text-base font-extrabold text-slate-900">Lập Lệnh Điều Chuyển Hàng Nội Bộ</h2>
-              <p className="text-2xs text-slate-500 font-medium">Di chuyển giữa các ô kệ trong kho bãi</p>
+              <h2 className="text-sm font-semibold text-slate-900">Lập Lệnh Điều Chuyển Hàng Nội Bộ</h2>
+              <p className="text-2xs text-slate-500">Di chuyển giữa các ô kệ trong kho bãi</p>
             </div>
           </div>
           <button
             onClick={onClose}
-            className="p-1.5 rounded-xl text-slate-400 hover:text-slate-700 hover:bg-slate-200 transition-colors cursor-pointer"
+            className="p-1.5 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-colors cursor-pointer"
           >
-            <X className="w-5 h-5" />
+            <X className="w-4 h-4" />
           </button>
         </div>
 
         {/* Form Body */}
-        <form onSubmit={handleSubmit} className="p-6 space-y-4 text-xs">
+        <form onSubmit={handleSubmit} className="p-5 space-y-4 text-xs">
           {errorMsg && (
-            <div className="p-3 rounded-xl bg-rose-50 border border-rose-200 text-rose-800 flex items-center gap-2 font-medium animate-in fade-in">
+            <div className="p-3 rounded-lg bg-rose-50 border border-rose-200 text-rose-800 flex items-center gap-2 font-medium animate-in fade-in">
               <AlertCircle className="w-4 h-4 flex-shrink-0 text-rose-600" />
               <span>{errorMsg}</span>
             </div>
           )}
 
           {/* Chi tiết mặt hàng nguồn */}
-          <div className="p-3.5 rounded-2xl bg-indigo-50/70 border border-indigo-100 space-y-2">
+          <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-200 space-y-2">
             <div className="flex items-center justify-between">
-              <span className="font-bold text-slate-900 text-sm">{sourceItem.name}</span>
-              <span className="font-mono text-2xs font-bold px-2 py-0.5 rounded-md bg-indigo-100 text-indigo-800">
+              <span className="font-semibold text-slate-900 text-sm">{sourceItem.name}</span>
+              <span className="font-mono text-2xs font-medium px-2 py-0.5 rounded-md bg-white text-slate-600 border border-slate-200">
                 {sourceItem.sku}
               </span>
             </div>
-            <div className="grid grid-cols-2 gap-2 text-slate-600 font-mono text-2xs pt-1 border-t border-indigo-100">
-              <div>Số Lô: <strong className="text-slate-800">{sourceItem.batchNumber}</strong></div>
-              <div>Hạn dùng: <strong className="text-rose-700">{sourceItem.expiryDate}</strong></div>
-              <div className="flex items-center gap-1 col-span-2">
-                <MapPin className="w-3.5 h-3.5 text-indigo-600" />
-                <span>Ô nguồn hiện tại: </span>
-                <strong className="text-indigo-700 font-bold">{sourceItem.locationBarcode}</strong>
-                <span className="text-slate-400">(Khả dụng: {maxQty} cái)</span>
+            <div className="grid grid-cols-2 gap-2 text-slate-600 font-mono text-2xs pt-1.5 border-t border-slate-200/80">
+              <div>Số Lô: <strong className="text-slate-800 font-semibold">{sourceItem.batchNumber}</strong></div>
+              <div>Hạn dùng: <strong className="text-rose-600 font-semibold">{sourceItem.expiryDate}</strong></div>
+              <div className="flex items-center gap-1.5 col-span-2 whitespace-nowrap">
+                <MapPin className="w-3.5 h-3.5 text-slate-400" />
+                <span className="text-slate-500">Ô nguồn hiện tại: </span>
+                <strong className="text-slate-800 font-semibold">{sourceItem.locationBarcode}</strong>
+                <span className="text-slate-400">(Khả dụng: {maxQty} SP)</span>
               </div>
             </div>
           </div>
