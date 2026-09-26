@@ -5,6 +5,8 @@ import { DashboardKpiCards } from '../components/DashboardKpiCards';
 import { ThroughputChartWidget } from '../components/ThroughputChartWidget';
 import { ZoneCapacityChartWidget } from '../components/ZoneCapacityChartWidget';
 import { FulfillmentPipelineWidget } from '../components/FulfillmentPipelineWidget';
+import { FefoRiskAndAgingWidget } from '../components/FefoRiskAndAgingWidget';
+import { WorkforceFleetWidget } from '../components/WorkforceFleetWidget';
 import { WarehouseGridWidget } from '../components/WarehouseGridWidget';
 import { LiveActivityStreamWidget } from '../components/LiveActivityStreamWidget';
 import { ConcurrencyTestWidget } from '../components/ConcurrencyTestWidget';
@@ -132,7 +134,17 @@ export const DashboardPage: React.FC = () => {
       {/* 4. Full-width Order Fulfillment Pipeline */}
       <FulfillmentPipelineWidget />
 
-      {/* 5. Live Operations Row (Digital Twin Grid + Live Activity Feed) */}
+      {/* 5. Risk & Workforce Layer (FEFO Expiry Risk & Workforce PDA Fleet) */}
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 items-stretch">
+        <div className="lg:col-span-7">
+          <FefoRiskAndAgingWidget />
+        </div>
+        <div className="lg:col-span-5">
+          <WorkforceFleetWidget />
+        </div>
+      </div>
+
+      {/* 6. Live Operations Row (Digital Twin Grid + Live Activity Feed) */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 items-stretch">
         <div className="lg:col-span-7">
           <WarehouseGridWidget

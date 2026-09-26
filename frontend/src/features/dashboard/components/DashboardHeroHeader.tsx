@@ -8,6 +8,7 @@ import {
   Clock,
   Sliders,
   CheckCircle2,
+  RefreshCw,
 } from 'lucide-react';
 
 interface DashboardHeroHeaderProps {
@@ -38,6 +39,10 @@ export const DashboardHeroHeader: React.FC<DashboardHeroHeaderProps> = ({
             <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-blue-50 text-blue-700 text-[11px] font-semibold border border-blue-200">
               <Clock className="w-3.5 h-3.5 text-blue-500" />
               Ca 1: 06:00 - 14:00
+            </span>
+            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-slate-100 text-slate-600 text-[11px] font-semibold border border-slate-200">
+              <RefreshCw className="w-3 h-3 text-slate-500" />
+              Tự động cập nhật: 30s
             </span>
           </div>
 
