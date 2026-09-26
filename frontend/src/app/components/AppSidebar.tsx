@@ -79,10 +79,7 @@ export const AppSidebar: React.FC<AppSidebarProps> = ({
       >
         <div className={`flex items-center gap-3 ${isSidebarCollapsed ? 'justify-center' : ''}`}>
           <div className="relative flex-shrink-0">
-            <div className="w-10 h-10 rounded-xl bg-indigo-600 flex items-center justify-center text-white font-black text-xl shadow-md shadow-indigo-100">
-              W
-            </div>
-            <span className="absolute -bottom-0.5 -right-0.5 w-3 h-3 bg-emerald-500 border-2 border-white rounded-full"></span>
+            <img src="/favicon.svg" alt="Smart WMS" className="w-10 h-10 rounded-xl shadow-xs" />
           </div>
           {!isSidebarCollapsed && (
             <div className="overflow-hidden">
@@ -243,6 +240,13 @@ export const AppSidebar: React.FC<AppSidebarProps> = ({
           {!isSidebarCollapsed && <span>Mở Camera Quét Barcode</span>}
         </button>
       </div>
+
+      {/* Copyright mark */}
+      {!isSidebarCollapsed && (
+        <div className="px-4 py-2 border-t border-slate-100 text-center text-[10px] text-slate-400 font-medium">
+          © 2026 Smart WMS • Bản quyền đã bảo hộ
+        </div>
+      )}
     </aside>
   );
 };

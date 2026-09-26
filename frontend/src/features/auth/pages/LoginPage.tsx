@@ -94,9 +94,7 @@ export const LoginPage: React.FC = () => {
       <div className="w-full max-w-[460px] bg-white border border-slate-200 rounded-3xl p-7 sm:p-9 shadow-xl shadow-slate-200/50 relative z-10 space-y-6 animate-in fade-in zoom-in-95 duration-200">
         {/* Brand Header */}
         <div className="text-center space-y-2">
-          <div className="inline-flex items-center justify-center w-12 h-12 rounded-2xl bg-indigo-600 text-white font-black text-xl shadow-md shadow-indigo-200 mx-auto">
-            W
-          </div>
+          <img src="/favicon.svg" alt="Smart WMS" className="w-14 h-14 rounded-2xl shadow-md mx-auto" />
           <div>
             <h1 className="text-2xl font-black text-slate-900 tracking-tight">SMART WMS</h1>
             <p className="text-sm text-slate-500 mt-0.5 font-medium">Hệ Thống Quản Lý Kho Hàng Thông Minh</p>
@@ -146,7 +144,7 @@ export const LoginPage: React.FC = () => {
 
       {/* Footer */}
       <footer className="text-center text-xs text-slate-500 mt-6 font-medium">
-        Smart WMS • Hệ Thống Nội Bộ Doanh Nghiệp
+        © 2026 Smart WMS Pro • Bản quyền đã bảo hộ
       </footer>
     </div>
   );
