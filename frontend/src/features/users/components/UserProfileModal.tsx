@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useTransition } from 'react';
 import { X, User, KeyRound, Laptop, CheckCircle2, AlertCircle } from 'lucide-react';
 import { AuthSession } from '../../auth/types';
 import { ProfileInfoTab } from './profile/ProfileInfoTab';
@@ -17,8 +17,17 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({
   session,
 }) => {
   const [activeTab, setActiveTab] = useState<'INFO' | 'CHANGE_PASSWORD' | 'SESSIONS'>('INFO');
+  const [, startTransition] = useTransition();
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
+
+  const handleTabChange = (tab: 'INFO' | 'CHANGE_PASSWORD' | 'SESSIONS') => {
+    setErrorMessage(null);
+    setSuccessMessage(null);
+    startTransition(() => {
+      setActiveTab(tab);
+    });
+  };
 
   if (!isOpen) return null;
 
@@ -71,16 +80,12 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({
         </div>
 
         {/* Tab Navigation */}
-        <div className="flex border-b border-slate-200 bg-slate-50 text-sm font-bold px-5 pt-2 flex-wrap shrink-0">
+        <div className="flex border-b border-slate-200 bg-slate-50 text-sm font-semibold px-5 pt-2 flex-wrap shrink-0 gap-1">
           <button
-            onClick={() => {
-              setActiveTab('INFO');
-              setErrorMessage(null);
-              setSuccessMessage(null);
-            }}
-            className={`pb-3 px-4 border-b-2 transition-all flex items-center gap-2 cursor-pointer ${
+            onClick={() => handleTabChange('INFO')}
+            className={`pb-2.5 px-3 border-b-2 transition-all duration-200 ease-out flex items-center gap-2 cursor-pointer ${
               activeTab === 'INFO'
-                ? 'border-indigo-600 text-indigo-600'
+                ? 'border-indigo-600 text-indigo-600 font-bold'
                 : 'border-transparent text-slate-500 hover:text-slate-800'
             }`}
           >
@@ -88,14 +93,10 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({
             <span>Hồ Sơ Cá Nhân</span>
           </button>
           <button
-            onClick={() => {
-              setActiveTab('CHANGE_PASSWORD');
-              setErrorMessage(null);
-              setSuccessMessage(null);
-            }}
-            className={`pb-3 px-4 border-b-2 transition-all flex items-center gap-2 cursor-pointer ${
+            onClick={() => handleTabChange('CHANGE_PASSWORD')}
+            className={`pb-2.5 px-3 border-b-2 transition-all duration-200 ease-out flex items-center gap-2 cursor-pointer ${
               activeTab === 'CHANGE_PASSWORD'
-                ? 'border-indigo-600 text-indigo-600'
+                ? 'border-indigo-600 text-indigo-600 font-bold'
                 : 'border-transparent text-slate-500 hover:text-slate-800'
             }`}
           >
@@ -103,14 +104,10 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({
             <span>Đổi Mật Khẩu</span>
           </button>
           <button
-            onClick={() => {
-              setActiveTab('SESSIONS');
-              setErrorMessage(null);
-              setSuccessMessage(null);
-            }}
-            className={`pb-3 px-4 border-b-2 transition-all flex items-center gap-2 cursor-pointer ${
+            onClick={() => handleTabChange('SESSIONS')}
+            className={`pb-2.5 px-3 border-b-2 transition-all duration-200 ease-out flex items-center gap-2 cursor-pointer ${
               activeTab === 'SESSIONS'
-                ? 'border-indigo-600 text-indigo-600'
+                ? 'border-indigo-600 text-indigo-600 font-bold'
                 : 'border-transparent text-slate-500 hover:text-slate-800'
             }`}
           >
@@ -134,34 +131,36 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({
           </div>
         )}
 
-        {/* Scrollable Tab Contents */}
+        {/* Scrollable Tab Contents with GPU transition */}
         <div className="overflow-y-auto flex-1">
-          {activeTab === 'INFO' && <ProfileInfoTab session={session} />}
-          {activeTab === 'CHANGE_PASSWORD' && (
-            <ChangePasswordTab
-              username={session.username}
-              onSuccess={(msg) => {
-                setSuccessMessage(msg);
-                setErrorMessage(null);
-              }}
-              onError={(msg) => {
-                setErrorMessage(msg);
-                setSuccessMessage(null);
-              }}
-            />
-          )}
-          {activeTab === 'SESSIONS' && (
-            <ActiveSessionsTab
-              onSuccess={(msg) => {
-                setSuccessMessage(msg);
-                setErrorMessage(null);
-              }}
-              onError={(msg) => {
-                setErrorMessage(msg);
-                setSuccessMessage(null);
-              }}
-            />
-          )}
+          <div key={activeTab} className="tab-panel-transition">
+            {activeTab === 'INFO' && <ProfileInfoTab session={session} />}
+            {activeTab === 'CHANGE_PASSWORD' && (
+              <ChangePasswordTab
+                username={session.username}
+                onSuccess={(msg) => {
+                  setSuccessMessage(msg);
+                  setErrorMessage(null);
+                }}
+                onError={(msg) => {
+                  setErrorMessage(msg);
+                  setSuccessMessage(null);
+                }}
+              />
+            )}
+            {activeTab === 'SESSIONS' && (
+              <ActiveSessionsTab
+                onSuccess={(msg) => {
+                  setSuccessMessage(msg);
+                  setErrorMessage(null);
+                }}
+                onError={(msg) => {
+                  setErrorMessage(msg);
+                  setSuccessMessage(null);
+                }}
+              />
+            )}
+          </div>
         </div>
       </div>
     </div>

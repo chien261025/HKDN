@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useTransition } from 'react';
 import { Zap, Layers, ArrowRightLeft, CheckCircle2, AlertCircle } from 'lucide-react';
 import { StockItem, StockTransferDto } from '../types';
 import { OutboundFefoWorkbench } from '../components/OutboundFefoWorkbench';
@@ -10,6 +10,13 @@ import { inventoryService } from '../services/inventoryService';
 
 export const InventoryBalancePage: React.FC = () => {
   const [activeTab, setActiveTab] = useState<'outbound' | 'balance' | 'transfer'>('balance');
+  const [, startTransition] = useTransition();
+
+  const handleTabChange = (tab: 'outbound' | 'balance' | 'transfer') => {
+    startTransition(() => {
+      setActiveTab(tab);
+    });
+  };
   const [stocks, setStocks] = useState<StockItem[]>([]);
   const [transfers, setTransfers] = useState<StockTransferDto[]>([]);
   const [loadingTransfers, setLoadingTransfers] = useState(false);
@@ -134,11 +141,11 @@ export const InventoryBalancePage: React.FC = () => {
         {/* Tab Gạt Tối Giản, Chuẩn Enterprise */}
         <div className="flex items-center bg-slate-100/90 p-1 rounded-xl border border-slate-200/80 flex-wrap gap-1">
           <button
-            onClick={() => setActiveTab('balance')}
-            className={`flex items-center gap-2 px-3.5 py-1.5 rounded-lg text-xs sm:text-sm transition-all cursor-pointer ${
+            onClick={() => handleTabChange('balance')}
+            className={`tab-pill-btn flex items-center gap-2 px-3.5 py-1.5 rounded-lg text-xs sm:text-sm cursor-pointer ${
               activeTab === 'balance'
                 ? 'bg-white text-slate-900 font-semibold shadow-xs border border-slate-200/80'
-                : 'text-slate-600 hover:text-slate-900 hover:bg-slate-200/50 font-medium'
+                : 'text-slate-600 hover:text-slate-900 hover:bg-slate-200/50 font-medium border border-transparent'
             }`}
           >
             <Layers className="w-4 h-4 text-indigo-600" />
@@ -146,11 +153,11 @@ export const InventoryBalancePage: React.FC = () => {
           </button>
 
           <button
-            onClick={() => setActiveTab('transfer')}
-            className={`flex items-center gap-2 px-3.5 py-1.5 rounded-lg text-xs sm:text-sm transition-all cursor-pointer ${
+            onClick={() => handleTabChange('transfer')}
+            className={`tab-pill-btn flex items-center gap-2 px-3.5 py-1.5 rounded-lg text-xs sm:text-sm cursor-pointer ${
               activeTab === 'transfer'
                 ? 'bg-white text-slate-900 font-semibold shadow-xs border border-slate-200/80'
-                : 'text-slate-600 hover:text-slate-900 hover:bg-slate-200/50 font-medium'
+                : 'text-slate-600 hover:text-slate-900 hover:bg-slate-200/50 font-medium border border-transparent'
             }`}
           >
             <ArrowRightLeft className="w-4 h-4 text-indigo-600" />
@@ -163,11 +170,11 @@ export const InventoryBalancePage: React.FC = () => {
           </button>
 
           <button
-            onClick={() => setActiveTab('outbound')}
-            className={`flex items-center gap-2 px-3.5 py-1.5 rounded-lg text-xs sm:text-sm transition-all cursor-pointer ${
+            onClick={() => handleTabChange('outbound')}
+            className={`tab-pill-btn flex items-center gap-2 px-3.5 py-1.5 rounded-lg text-xs sm:text-sm cursor-pointer ${
               activeTab === 'outbound'
                 ? 'bg-white text-slate-900 font-semibold shadow-xs border border-slate-200/80'
-                : 'text-slate-600 hover:text-slate-900 hover:bg-slate-200/50 font-medium'
+                : 'text-slate-600 hover:text-slate-900 hover:bg-slate-200/50 font-medium border border-transparent'
             }`}
           >
             <Zap className="w-4 h-4 text-amber-500" />
@@ -199,26 +206,28 @@ export const InventoryBalancePage: React.FC = () => {
         </div>
       )}
 
-      {/* Hiển thị Tab tương ứng */}
-      {activeTab === 'balance' && (
-        <StockBalanceTable
-          stocks={stocks}
-          onReserveItem={handleReserveFromTable}
-          onViewLedger={handleViewLedgerFromTable}
-          onTransfer={handleOpenTransfer}
-        />
-      )}
+      {/* Hiển thị Tab tương ứng với GPU-Accelerated Transition mượt mà */}
+      <div key={activeTab} className="tab-panel-transition">
+        {activeTab === 'balance' && (
+          <StockBalanceTable
+            stocks={stocks}
+            onReserveItem={handleReserveFromTable}
+            onViewLedger={handleViewLedgerFromTable}
+            onTransfer={handleOpenTransfer}
+          />
+        )}
 
-      {activeTab === 'transfer' && (
-        <StockTransferHistoryTable
-          transfers={transfers}
-          loading={loadingTransfers}
-        />
-      )}
+        {activeTab === 'transfer' && (
+          <StockTransferHistoryTable
+            transfers={transfers}
+            loading={loadingTransfers}
+          />
+        )}
 
-      {activeTab === 'outbound' && (
-        <OutboundFefoWorkbench />
-      )}
+        {activeTab === 'outbound' && (
+          <OutboundFefoWorkbench />
+        )}
+      </div>
 
       {/* Modal Lập Lệnh Điều Chuyển Hàng Nội Bộ */}
       <StockTransferModal
