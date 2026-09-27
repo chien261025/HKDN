@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { Layers, CheckCircle2, ScanLine, ArrowRight, MapPin, Scale, AlertCircle, RefreshCw } from 'lucide-react';
-import { operatorService, LocationDto, ProductDto } from '../../services/operatorService';
+import { Layers, CheckCircle2, ScanLine, ArrowRight, MapPin, AlertCircle } from 'lucide-react';
+import { operatorService, LocationDto } from '../../services/operatorService';
 
 interface PutawayTabProps {
   onOpenScanner: () => void;
@@ -24,14 +24,11 @@ export const PutawayTab: React.FC<PutawayTabProps> = ({
   scannedCode,
   onClearScannedCode,
 }) => {
-  const [products, setProducts] = useState<ProductDto[]>([]);
-  const [locations, setLocations] = useState<LocationDto[]>([]);
   const [loading, setLoading] = useState(false);
   const [activeTask, setActiveTask] = useState<ActivePutawayTask | null>(null);
   const [scannedBin, setScannedBin] = useState('');
   const [feedback, setFeedback] = useState<{ msg: string; type: 'success' | 'error' } | null>(null);
 
-  // Danh sách kiện hàng mẫu chờ cất từ khu đệm Staging
   const [stagingQueue, setStagingQueue] = useState<ActivePutawayTask[]>([
     {
       id: 'put-01',
@@ -63,26 +60,6 @@ export const PutawayTab: React.FC<PutawayTabProps> = ({
   ]);
 
   useEffect(() => {
-    const init = async () => {
-      setLoading(true);
-      try {
-        const [prods, locs] = await Promise.all([
-          operatorService.getProducts(),
-          operatorService.getLocations(),
-        ]);
-        setProducts(prods);
-        setLocations(locs);
-      } catch (err: any) {
-        setFeedback({ msg: 'Không thể tải sơ đồ vị trí: ' + err.message, type: 'error' });
-      } finally {
-        setLoading(false);
-      }
-    };
-    init();
-  }, []);
-
-  // Xử lý khi quét mã vạch từ máy quét hoặc camera
-  useEffect(() => {
     if (scannedCode) {
       setScannedBin(scannedCode);
       setFeedback({ msg: `[PDA] Đã ghi nhận mã ô kệ: ${scannedCode}`, type: 'success' });
@@ -90,23 +67,12 @@ export const PutawayTab: React.FC<PutawayTabProps> = ({
     }
   }, [scannedCode, onClearScannedCode]);
 
-  // Kích hoạt thuật toán Backend gợi ý vị trí cất hàng tối ưu
   const handleRequestSuggestion = async (task: ActivePutawayTask) => {
     setLoading(true);
     setFeedback(null);
     try {
-      const suggested = await operatorService.suggestPutawayLocation(
-        task.preferredZone,
-        task.weightKg
-      );
-
-      const updatedTask: ActivePutawayTask = {
-        ...task,
-        suggestedLocation: suggested,
-        status: 'SUGGESTED',
-      };
-
-      setActiveTask(updatedTask);
+      const suggested = await operatorService.suggestPutawayLocation(task.preferredZone, task.weightKg);
+      setActiveTask({ ...task, suggestedLocation: suggested, status: 'SUGGESTED' });
       setFeedback({
         msg: `Thuật toán gợi ý vị trí: ${suggested.binBarcode} (Tầng ${suggested.shelf}, Tải trọng tối đa: ${suggested.maxWeightKg}kg)`,
         type: 'success',
@@ -118,13 +84,10 @@ export const PutawayTab: React.FC<PutawayTabProps> = ({
     }
   };
 
-  // Xác nhận cất hàng vào ô kệ
   const handleConfirmPlacement = () => {
     if (!activeTask || !activeTask.suggestedLocation) return;
-
     const targetBarcode = activeTask.suggestedLocation.binBarcode;
 
-    // Kiểm tra đối soát mã vạch ô kệ
     if (scannedBin.trim() && scannedBin.trim() !== targetBarcode) {
       setFeedback({
         msg: `Cảnh báo: Bạn đang quét ô ${scannedBin}, trong khi thuật toán chỉ định ô ${targetBarcode}!`,
@@ -133,7 +96,6 @@ export const PutawayTab: React.FC<PutawayTabProps> = ({
       return;
     }
 
-    // Hoàn tất cất hàng
     setStagingQueue((prev) =>
       prev.map((t) => (t.id === activeTask.id ? { ...t, status: 'COMPLETED' } : t))
     );
@@ -151,7 +113,6 @@ export const PutawayTab: React.FC<PutawayTabProps> = ({
 
   return (
     <div className="space-y-4 pb-20">
-      {/* Header Banner */}
       <div className="p-4 rounded-2xl bg-white border border-slate-200 flex items-center justify-between shadow-xs">
         <div className="flex items-center gap-3">
           <div className="p-2.5 rounded-xl bg-indigo-50 text-indigo-700 border border-indigo-200">
@@ -164,13 +125,11 @@ export const PutawayTab: React.FC<PutawayTabProps> = ({
             <p className="text-xs text-slate-500 font-medium">Thuật toán phân tích tải trọng & Zone tự động</p>
           </div>
         </div>
-
         <span className="text-xs font-mono font-bold px-2.5 py-1 rounded-lg bg-indigo-50 text-indigo-800 border border-indigo-200">
           {pendingQueue.length} KIỆN CHỜ
         </span>
       </div>
 
-      {/* Feedback Banner */}
       {feedback && (
         <div
           className={`p-3.5 rounded-xl text-xs flex items-center gap-2 font-medium shadow-2xs animate-in fade-in ${
@@ -188,7 +147,6 @@ export const PutawayTab: React.FC<PutawayTabProps> = ({
         </div>
       )}
 
-      {/* Nhiệm vụ đang thực hiện (Active Putaway Task) */}
       {activeTask && activeTask.suggestedLocation && (
         <div className="bg-white rounded-2xl p-5 border-2 border-indigo-500 shadow-md space-y-4 animate-in fade-in">
           <div className="flex items-center justify-between pb-3 border-b border-slate-100">
@@ -203,12 +161,11 @@ export const PutawayTab: React.FC<PutawayTabProps> = ({
             <div className="font-bold text-slate-900 text-sm">{activeTask.productName}</div>
             <div className="text-xs text-slate-500 mt-1 flex items-center gap-3 font-mono">
               <span>SKU: {activeTask.sku}</span>
-              <span>Số lượng: {activeTask.qty} cái</span>
-              <span>Tổng nặng: {activeTask.weightKg}kg</span>
+              <span>• {activeTask.qty} cái</span>
+              <span>• {activeTask.weightKg}kg</span>
             </div>
           </div>
 
-          {/* Vị trí gợi ý từ Backend */}
           <div className="p-3.5 rounded-xl bg-indigo-50/80 border border-indigo-200 flex items-center justify-between">
             <div>
               <div className="text-xs font-bold text-indigo-900">Vị Trí Ô Kệ Chỉ Định:</div>
@@ -222,7 +179,6 @@ export const PutawayTab: React.FC<PutawayTabProps> = ({
             <MapPin className="w-6 h-6 text-indigo-600" />
           </div>
 
-          {/* Ô nhập / Quét mã vạch vị trí */}
           <div className="space-y-2">
             <label className="text-xs font-bold text-slate-700">Xác Nhận Quét Mã Ô Kệ:</label>
             <div className="flex gap-2">
@@ -244,7 +200,6 @@ export const PutawayTab: React.FC<PutawayTabProps> = ({
             </div>
           </div>
 
-          {/* Nút bấm xác nhận */}
           <div className="flex items-center gap-2 pt-2">
             <button
               type="button"
@@ -265,7 +220,6 @@ export const PutawayTab: React.FC<PutawayTabProps> = ({
         </div>
       )}
 
-      {/* Danh sách kiện hàng chờ cất */}
       <div className="space-y-3">
         <div className="flex items-center justify-between px-1">
           <span className="text-xs font-bold text-slate-700 uppercase tracking-wider">
@@ -284,10 +238,8 @@ export const PutawayTab: React.FC<PutawayTabProps> = ({
                 <span className="font-bold text-slate-900 text-sm">{task.productName}</span>
                 <div className="flex items-center gap-2 mt-1 text-xs text-slate-500 font-mono">
                   <span>SKU: {task.sku}</span>
-                  <span>•</span>
-                  <span>{task.qty} cái</span>
-                  <span>•</span>
-                  <span className="text-indigo-700 font-bold">{task.weightKg}kg</span>
+                  <span>• {task.qty} cái</span>
+                  <span>• <span className="text-indigo-700 font-bold">{task.weightKg}kg</span></span>
                 </div>
               </div>
               <span className="px-2 py-0.5 rounded-full text-xs font-bold bg-slate-100 text-slate-700">
@@ -309,7 +261,6 @@ export const PutawayTab: React.FC<PutawayTabProps> = ({
           </div>
         ))}
 
-        {/* Kiện hàng đã hoàn tất cất */}
         {completedQueue.length > 0 && (
           <div className="pt-2">
             <span className="text-xs font-bold text-slate-600 uppercase tracking-wider px-1">

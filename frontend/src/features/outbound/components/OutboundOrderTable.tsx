@@ -8,7 +8,8 @@ import {
   Lock,
   Truck,
   ArrowRight,
-  Flame
+  Flame,
+  Navigation
 } from 'lucide-react';
 import { OutboundOrder } from '../types';
 
@@ -17,6 +18,7 @@ interface OutboundOrderTableProps {
   onSelectOrder: (order: OutboundOrder) => void;
   onAllocateAndLock: (orderId: string) => void;
   onDispatchOrder: (orderId: string) => void;
+  onOpenPickPath?: (order: OutboundOrder) => void;
 }
 
 export const OutboundOrderTable: React.FC<OutboundOrderTableProps> = ({
@@ -24,6 +26,7 @@ export const OutboundOrderTable: React.FC<OutboundOrderTableProps> = ({
   onSelectOrder,
   onAllocateAndLock,
   onDispatchOrder,
+  onOpenPickPath,
 }) => {
   return (
     <div className="bg-white rounded-2xl border border-slate-300 shadow-sm overflow-hidden">
@@ -173,6 +176,17 @@ export const OutboundOrderTable: React.FC<OutboundOrderTableProps> = ({
                         >
                           <Truck className="w-3.5 h-3.5 text-emerald-700" />
                           <span>Xuất Kho</span>
+                        </button>
+                      )}
+
+                      {onOpenPickPath && (
+                        <button
+                          onClick={() => onOpenPickPath(order)}
+                          className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200 rounded-lg text-xs font-semibold transition-colors cursor-pointer shadow-2xs"
+                          title="Xem lộ trình nhặt hàng tối ưu trên sơ đồ 2D"
+                        >
+                          <Navigation className="w-3.5 h-3.5 text-indigo-600" />
+                          <span>Lộ Trình</span>
                         </button>
                       )}
 

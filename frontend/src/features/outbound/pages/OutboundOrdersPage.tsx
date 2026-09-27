@@ -3,6 +3,7 @@ import { OutboundHeader } from '../components/OutboundHeader';
 import { OutboundOrderTable } from '../components/OutboundOrderTable';
 import { CreateOutboundModal } from '../components/CreateOutboundModal';
 import { OutboundDetailModal } from '../components/OutboundDetailModal';
+import { PickPathVisualizerModal } from '../components/PickPathVisualizerModal';
 import { OutboundOrder } from '../types';
 import { outboundService } from '../services/outboundService';
 
@@ -10,6 +11,7 @@ export const OutboundOrdersPage: React.FC = () => {
   const [orders, setOrders] = useState<OutboundOrder[]>([]);
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [selectedOrder, setSelectedOrder] = useState<OutboundOrder | null>(null);
+  const [pickPathOrder, setPickPathOrder] = useState<OutboundOrder | null>(null);
 
   useEffect(() => {
     outboundService.getOutboundOrders().then(setOrders);
@@ -78,6 +80,7 @@ export const OutboundOrdersPage: React.FC = () => {
         onSelectOrder={(order) => setSelectedOrder(order)}
         onAllocateAndLock={handleAllocateAndLock}
         onDispatchOrder={handleDispatchOrder}
+        onOpenPickPath={(order) => setPickPathOrder(order)}
       />
 
       {/* Create Modal */}
@@ -93,6 +96,19 @@ export const OutboundOrdersPage: React.FC = () => {
         <OutboundDetailModal
           order={selectedOrder}
           onClose={() => setSelectedOrder(null)}
+          onOpenPickPath={(order) => {
+            setSelectedOrder(null);
+            setPickPathOrder(order);
+          }}
+        />
+      )}
+
+      {/* Smart Pick-Path Routing Modal */}
+      {pickPathOrder && (
+        <PickPathVisualizerModal
+          isOpen={Boolean(pickPathOrder)}
+          onClose={() => setPickPathOrder(null)}
+          order={pickPathOrder}
         />
       )}
     </div>

@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { PackageCheck, CheckCircle2, ScanLine, MapPin, Calendar, Clock, ArrowRight, RefreshCw, Truck, AlertCircle } from 'lucide-react';
-import { operatorService, OutboundOrderDto, PickListItemResponseDto, ProductDto } from '../../services/operatorService';
+import { PackageCheck, CheckCircle2, ScanLine, MapPin, Calendar, RefreshCw, Truck, AlertCircle } from 'lucide-react';
+import { operatorService, OutboundOrderDto, PickListItemResponseDto } from '../../services/operatorService';
 
 interface PickingFefoTabProps {
   onOpenScanner: () => void;
@@ -14,7 +14,6 @@ export const PickingFefoTab: React.FC<PickingFefoTabProps> = ({
   onClearScannedCode,
 }) => {
   const [orders, setOrders] = useState<OutboundOrderDto[]>([]);
-  const [products, setProducts] = useState<ProductDto[]>([]);
   const [selectedOrder, setSelectedOrder] = useState<OutboundOrderDto | null>(null);
   const [pickSteps, setPickSteps] = useState<PickListItemResponseDto[]>([]);
   const [loading, setLoading] = useState(false);
@@ -24,13 +23,8 @@ export const PickingFefoTab: React.FC<PickingFefoTabProps> = ({
   const loadData = async () => {
     setLoading(true);
     try {
-      const [orderList, prodList] = await Promise.all([
-        operatorService.getOutboundOrders(),
-        operatorService.getProducts(),
-      ]);
+      const orderList = await operatorService.getOutboundOrders();
       setOrders(orderList);
-      setProducts(prodList);
-      // Nếu chưa chọn đơn, tự động chọn đơn PENDING đầu tiên
       if (!selectedOrder && orderList.length > 0) {
         const firstPending = orderList.find((o) => o.status !== 'DISPATCHED') || orderList[0];
         setSelectedOrder(firstPending);
@@ -46,7 +40,6 @@ export const PickingFefoTab: React.FC<PickingFefoTabProps> = ({
     loadData();
   }, []);
 
-  // Khi chọn một đơn SO, tự động tính lộ trình FEFO cho mặt hàng đầu tiên trong đơn
   const handleSelectOrder = async (order: OutboundOrderDto) => {
     setSelectedOrder(order);
     setPickSteps([]);
@@ -59,7 +52,7 @@ export const PickingFefoTab: React.FC<PickingFefoTabProps> = ({
         const steps = await operatorService.getFefoPickList(item.productId, item.requestedQty);
         setPickSteps(steps.map((s) => ({ ...s, picked: false })));
         setNotice({
-          msg: `Đã kích hoạt thuật toán FEFO: Gợi ý ${steps.length} vị trí lấy hàng ưu tiên date cũ nhất.`,
+          msg: `Đã kích hoạt FEFO: Gợi ý ${steps.length} vị trí lấy hàng ưu tiên date cũ nhất.`,
           type: 'success',
         });
       } catch (err: any) {
@@ -70,10 +63,8 @@ export const PickingFefoTab: React.FC<PickingFefoTabProps> = ({
     }
   };
 
-  // Xử lý khi quét mã vạch bằng camera hoặc máy quét PDA
   useEffect(() => {
     if (scannedCode) {
-      // Tìm bước có binBarcode trùng với mã vừa quét
       const matchedIdx = pickSteps.findIndex(
         (s) => !s.picked && (s.binBarcode === scannedCode || s.productSku === scannedCode)
       );
@@ -88,7 +79,7 @@ export const PickingFefoTab: React.FC<PickingFefoTabProps> = ({
         });
       } else {
         setNotice({
-          msg: `[PDA] Đã quét mã: ${scannedCode}. Không khớp với ô kệ hoặc sản phẩm cần nhặt hiện tại.`,
+          msg: `[PDA] Đã quét mã: ${scannedCode}. Không khớp với ô kệ hoặc sản phẩm cần nhặt.`,
           type: 'error',
         });
       }
@@ -96,19 +87,17 @@ export const PickingFefoTab: React.FC<PickingFefoTabProps> = ({
     }
   }, [scannedCode, pickSteps, onClearScannedCode]);
 
-  // Xác nhận nhặt từng bước
   const handleConfirmStep = (index: number) => {
     const updated = [...pickSteps];
     updated[index].picked = true;
     setPickSteps(updated);
     setNotice({
-      msg: `Đã nhặt thành công ${updated[index].pickQty} cái tại ô ${updated[index].binBarcode} (Lô ${updated[index].batchNumber})!`,
+      msg: `Đã nhặt xong ${updated[index].pickQty} cái tại ô ${updated[index].binBarcode} (Lô ${updated[index].batchNumber})!`,
       type: 'success',
     });
     setTimeout(() => setNotice(null), 3000);
   };
 
-  // Xác nhận xuất kho và bàn giao vận chuyển (DISPATCH)
   const handleConfirmDispatch = async () => {
     if (!selectedOrder) return;
     setDispatching(true);
@@ -120,7 +109,7 @@ export const PickingFefoTab: React.FC<PickingFefoTabProps> = ({
         prev.map((o) => (o.id === selectedOrder.id ? { ...o, status: 'DISPATCHED' } : o))
       );
       setNotice({
-        msg: `Thành công: Đơn xuất ${selectedOrder.orderCode} đã hoàn tất kiểm đếm và bàn giao cho đơn vị vận chuyển (DISPATCHED)!`,
+        msg: `Thành công: Đơn xuất ${selectedOrder.orderCode} đã hoàn tất kiểm đếm và bàn giao vận chuyển (DISPATCHED)!`,
         type: 'success',
       });
       setPickSteps([]);
@@ -136,7 +125,6 @@ export const PickingFefoTab: React.FC<PickingFefoTabProps> = ({
 
   return (
     <div className="space-y-4 pb-20">
-      {/* Header Banner */}
       <div className="p-4 rounded-2xl bg-white border border-slate-200 flex items-center justify-between shadow-xs">
         <div className="flex items-center gap-3">
           <div className="p-2.5 rounded-xl bg-amber-50 text-amber-700 border border-amber-200">
@@ -149,7 +137,6 @@ export const PickingFefoTab: React.FC<PickingFefoTabProps> = ({
             <p className="text-xs text-slate-500 font-medium">Thuật toán ưu tiên lô cận HSD xuất trước</p>
           </div>
         </div>
-
         <button
           onClick={loadData}
           disabled={loading}
@@ -160,7 +147,6 @@ export const PickingFefoTab: React.FC<PickingFefoTabProps> = ({
         </button>
       </div>
 
-      {/* Thông báo phản hồi */}
       {notice && (
         <div
           className={`p-3.5 rounded-xl text-xs flex items-center gap-2 font-medium shadow-2xs animate-in fade-in ${
@@ -178,7 +164,6 @@ export const PickingFefoTab: React.FC<PickingFefoTabProps> = ({
         </div>
       )}
 
-      {/* Chọn đơn hàng xuất SO */}
       <div className="bg-white rounded-2xl p-4 border border-slate-200 space-y-2 shadow-xs">
         <div className="flex items-center justify-between">
           <span className="text-xs font-bold text-slate-800 uppercase">Chọn Đơn Xuất Kho (SO)</span>
@@ -206,21 +191,18 @@ export const PickingFefoTab: React.FC<PickingFefoTabProps> = ({
                 }`}>
                   {o.status}
                 </span>
-                <span className="text-2xs text-slate-400 font-mono">
-                  {o.items?.length || 0} món
-                </span>
+                <span className="text-2xs text-slate-400 font-mono">{o.items?.length || 0} món</span>
               </div>
             </button>
           ))}
         </div>
       </div>
 
-      {/* Chi tiết lộ trình FEFO */}
       {selectedOrder && (
         <div className="space-y-3">
           <div className="flex items-center justify-between px-1">
             <span className="text-xs font-bold text-slate-700 uppercase tracking-wider">
-              Lộ Trình Nhặt Hàng FEFO: {selectedOrder.orderCode}
+              Lộ Trình Nhặt FEFO: {selectedOrder.orderCode}
             </span>
             <button
               type="button"
@@ -254,17 +236,13 @@ export const PickingFefoTab: React.FC<PickingFefoTabProps> = ({
               <div
                 key={idx}
                 className={`rounded-2xl p-4 border transition-all shadow-xs ${
-                  step.picked
-                    ? 'bg-slate-50 border-slate-200 opacity-70'
-                    : 'bg-white border-amber-300 ring-2 ring-amber-50'
+                  step.picked ? 'bg-slate-50 border-slate-200 opacity-70' : 'bg-white border-amber-300 ring-2 ring-amber-50'
                 }`}
               >
                 <div className="flex items-center justify-between pb-2 border-b border-slate-100 text-xs">
-                  <span className="font-mono font-bold text-amber-800">
-                    Bước {step.stepOrder || idx + 1}: Di chuyển đến ô kệ
-                  </span>
+                  <span className="font-mono font-bold text-amber-800">Bước {step.stepOrder || idx + 1}: Di chuyển đến ô</span>
                   <span className="text-xs font-mono text-slate-500 font-medium">
-                    Cần lấy: <strong className="text-indigo-700 text-sm font-bold">{step.pickQty}</strong> cái
+                    Lấy: <strong className="text-indigo-700 text-sm font-bold">{step.pickQty}</strong> cái
                   </span>
                 </div>
 
@@ -276,7 +254,6 @@ export const PickingFefoTab: React.FC<PickingFefoTabProps> = ({
                       {step.binBarcode}
                     </div>
                   </div>
-
                   <div className="text-right">
                     <div className="text-2xs font-mono text-slate-500 uppercase">Hạn dùng (FEFO):</div>
                     <div className="text-xs font-mono font-bold text-rose-700 flex items-center gap-1 mt-0.5">
@@ -314,7 +291,6 @@ export const PickingFefoTab: React.FC<PickingFefoTabProps> = ({
             ))
           )}
 
-          {/* Nút Xuất Kho Bàn Giao Vận Chuyển khi đã nhặt xong */}
           {allStepsPicked && selectedOrder.status !== 'DISPATCHED' && (
             <div className="pt-2 animate-in fade-in">
               <button
@@ -323,11 +299,7 @@ export const PickingFefoTab: React.FC<PickingFefoTabProps> = ({
                 onClick={handleConfirmDispatch}
                 className="w-full py-3 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-2xl text-xs flex items-center justify-center gap-2 shadow-md shadow-emerald-200 transition-all cursor-pointer"
               >
-                {dispatching ? (
-                  <RefreshCw className="w-4 h-4 animate-spin" />
-                ) : (
-                  <Truck className="w-4 h-4" />
-                )}
+                {dispatching ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Truck className="w-4 h-4" />}
                 <span>Xác Nhận Xuất Kho & Bàn Giao Vận Chuyển (Dispatch)</span>
               </button>
             </div>

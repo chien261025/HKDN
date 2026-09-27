@@ -1,13 +1,14 @@
 import React from 'react';
-import { X, Lock, MapPin, Calendar, CheckCircle2, Printer, ShieldCheck, ArrowRight, Package } from 'lucide-react';
+import { X, Lock, MapPin, Calendar, CheckCircle2, Printer, ShieldCheck, ArrowRight, Package, Navigation } from 'lucide-react';
 import { OutboundOrder } from '../types';
 
 interface OutboundDetailModalProps {
   order: OutboundOrder | null;
   onClose: () => void;
+  onOpenPickPath?: (order: OutboundOrder) => void;
 }
 
-export const OutboundDetailModal: React.FC<OutboundDetailModalProps> = ({ order, onClose }) => {
+export const OutboundDetailModal: React.FC<OutboundDetailModalProps> = ({ order, onClose, onOpenPickPath }) => {
   if (!order) return null;
 
   return (
@@ -124,14 +125,26 @@ export const OutboundDetailModal: React.FC<OutboundDetailModalProps> = ({ order,
         </div>
 
         {/* Footer */}
-        <div className="p-4 sm:p-5 border-t border-slate-200 flex items-center justify-between bg-slate-50">
-          <button
-            onClick={() => alert(`Bắt đầu in phiếu nhặt hàng Pick List cho đơn: ${order.soCode}`)}
-            className="flex items-center gap-2 px-4 py-2 bg-white hover:bg-slate-100 text-slate-800 border border-slate-300 rounded-xl text-sm font-bold transition-colors cursor-pointer shadow-xs"
-          >
-            <Printer className="w-4 h-4 text-slate-600" />
-            <span>In Lệnh Nhặt Hàng (Pick List)</span>
-          </button>
+        <div className="p-4 sm:p-5 border-t border-slate-200 flex items-center justify-between bg-slate-50 flex-wrap gap-2">
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => alert(`Bắt đầu in phiếu nhặt hàng Pick List cho đơn: ${order.soCode}`)}
+              className="flex items-center gap-2 px-3.5 py-2 bg-white hover:bg-slate-100 text-slate-800 border border-slate-300 rounded-xl text-xs sm:text-sm font-semibold transition-colors cursor-pointer shadow-xs"
+            >
+              <Printer className="w-4 h-4 text-slate-600" />
+              <span>In Lệnh Nhặt Hàng</span>
+            </button>
+
+            {onOpenPickPath && (
+              <button
+                onClick={() => onOpenPickPath(order)}
+                className="flex items-center gap-2 px-3.5 py-2 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200 rounded-xl text-xs sm:text-sm font-bold transition-all shadow-xs cursor-pointer"
+              >
+                <Navigation className="w-4 h-4 text-indigo-600" />
+                <span>Sơ Đồ Lộ Trình 2D</span>
+              </button>
+            )}
+          </div>
 
           <button
             onClick={onClose}
