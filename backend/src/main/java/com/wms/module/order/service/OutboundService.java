@@ -12,11 +12,15 @@ import com.wms.module.masterdata.entity.Product;
 import com.wms.module.masterdata.repository.LocationRepository;
 import com.wms.module.masterdata.repository.ProductRepository;
 import com.wms.module.order.dto.response.PickListItemResponse;
+import com.wms.module.order.entity.OutboundOrder;
+import com.wms.module.order.entity.OutboundOrderItem;
+import com.wms.module.order.repository.OutboundOrderRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.Instant;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
@@ -31,6 +35,37 @@ public class OutboundService {
     private final InventoryRepository inventoryRepository;
     private final LocationRepository locationRepository;
     private final InventoryLockService inventoryLockService;
+    private final OutboundOrderRepository outboundOrderRepository;
+
+    @Transactional(readOnly = true)
+    public List<OutboundOrder> getAllOutboundOrders() {
+        return outboundOrderRepository.findAll();
+    }
+
+    @Transactional
+    public OutboundOrder createOutboundOrder(OutboundOrder order) {
+        if (order.getOrderCode() == null || order.getOrderCode().isBlank()) {
+            order.setOrderCode("SO-" + System.currentTimeMillis() % 1000000);
+        }
+        order.setStatus("PENDING");
+        order.setCreatedAt(Instant.now());
+        order.setUpdatedAt(Instant.now());
+        if (order.getItems() != null) {
+            for (OutboundOrderItem item : order.getItems()) {
+                item.setOutboundOrder(order);
+            }
+        }
+        return outboundOrderRepository.save(order);
+    }
+
+    @Transactional
+    public OutboundOrder dispatchOutboundOrder(Long id) {
+        OutboundOrder order = outboundOrderRepository.findById(id)
+                .orElseThrow(() -> new BusinessException(ErrorCode.NOT_FOUND, "Không tìm thấy đơn xuất: " + id));
+        order.setStatus("DISPATCHED");
+        order.setUpdatedAt(Instant.now());
+        return outboundOrderRepository.save(order);
+    }
 
     /**
      * THUẬT TOÁN XUẤT HÀNG THEO CHIẾN LƯỢC FEFO (FIRST EXPIRED, FIRST OUT):
@@ -45,7 +80,6 @@ public class OutboundService {
         Product product = productRepository.findById(productId)
                 .orElseThrow(() -> new BusinessException(ErrorCode.NOT_FOUND, "Không tìm thấy sản phẩm"));
 
-        // 1. Lấy danh sách lô còn hạn, sắp xếp hạn gần nhất lên trước
         List<ProductBatch> activeBatches = productBatchRepository.findActiveBatchesOrderByExpiryAsc(productId, LocalDate.now());
         if (activeBatches.isEmpty()) {
             throw new BusinessException(ErrorCode.INSUFFICIENT_STOCK, "Sản phẩm không có lô hàng nào còn hạn sử dụng!");
@@ -55,13 +89,9 @@ public class OutboundService {
         int remainingToPick = totalRequiredQty;
         int stepOrder = 1;
 
-        // 2. Duyệt từng lô theo thứ tự FEFO
         for (ProductBatch batch : activeBatches) {
             if (remainingToPick <= 0) break;
 
-            // Tìm các ô kệ chứa lô này (Giả lập logic quét tồn)
-            // Trong thực tế sẽ query Inventory theo productId và batchId
-            // Ở đây tạm dùng inventoryRepository
             List<Inventory> inventories = inventoryRepository.findAll().stream()
                     .filter(i -> i.getProductId().equals(productId) && i.getBatchId().equals(batch.getId()))
                     .filter(i -> i.getAvailableQty() > 0)
@@ -73,7 +103,6 @@ public class OutboundService {
                 int available = inv.getAvailableQty();
                 int takeQty = Math.min(available, remainingToPick);
 
-                // Khóa và giữ trước hàng (Reserve) an toàn trong Database
                 inventoryLockService.reserveStock(productId, inv.getLocationId(), batch.getId(), takeQty);
 
                 Location loc = locationRepository.findById(inv.getLocationId()).orElse(null);

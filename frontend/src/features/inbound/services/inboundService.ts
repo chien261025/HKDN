@@ -9,8 +9,8 @@ export const inboundService = {
         return res.data.data.map((o: any) => ({
           id: String(o.id),
           poCode: o.orderCode || `PO-${o.id}`,
-          supplierCode: o.supplierId === 1 ? 'SUP-VINAMILK' : o.supplierId === 2 ? 'SUP-SAMSUNG' : 'SUP-UNILEVER',
-          supplierName: o.supplierId === 1 ? 'Công ty Cổ phần Sữa Việt Nam (Vinamilk)' : o.supplierId === 2 ? 'Công ty TNHH Điện tử Samsung Vina' : 'Unilever Việt Nam',
+          supplierCode: o.supplier?.code || (o.supplierId === 1 ? 'SUP-VINAMILK' : o.supplierId === 2 ? 'SUP-SAMSUNG' : 'SUP-UNILEVER'),
+          supplierName: o.supplier?.name || (o.supplierId === 1 ? 'Công ty Cổ phần Sữa Việt Nam (Vinamilk)' : o.supplierId === 2 ? 'Công ty TNHH Điện tử Samsung Vina' : 'Unilever Việt Nam'),
           expectedDeliveryDate: o.createdAt ? new Date(o.createdAt).toISOString().split('T')[0] : '2026-09-25',
           createdAt: o.createdAt ? new Date(o.createdAt).toLocaleString('vi-VN') : '',
           status: (o.status || 'PENDING') as InboundStatus,
@@ -19,14 +19,14 @@ export const inboundService = {
           items: (o.items && o.items.length > 0)
             ? o.items.map((i: any) => ({
                 id: String(i.id),
-                sku: i.productId === 1 ? 'SKU-MILK-100' : i.productId === 2 ? 'SKU-SAMS-S24' : 'SKU-OMO-MATIC',
-                productName: i.productId === 1 ? 'Sữa tươi tiệt trùng Vinamilk 100% 1L' : i.productId === 2 ? 'Điện thoại Samsung Galaxy S24 Ultra' : 'Nước giặt OMO Matic 3.6kg',
+                sku: i.product?.sku || (i.productId === 1 ? 'SKU-MILK-100' : i.productId === 2 ? 'SKU-SAMS-S24' : 'SKU-OMO-MATIC'),
+                productName: i.product?.name || (i.productId === 1 ? 'Sữa tươi tiệt trùng Vinamilk 100% 1L' : i.productId === 2 ? 'Điện thoại Samsung Galaxy S24 Ultra' : 'Nước giặt OMO Matic 3.6kg'),
                 expectedQty: i.expectedQty || 0,
                 receivedQty: i.receivedQty || 0,
                 stockedQty: o.status === 'STOCKED' ? (i.expectedQty || 0) : 0,
                 batchNumber: i.batchNumber || 'BATCH-NEW',
                 expiryDate: i.expiryDate || '',
-                unit: i.productId === 1 ? 'Hộp' : i.productId === 2 ? 'Chiếc' : 'Túi',
+                unit: i.product?.unit || (i.productId === 1 ? 'Hộp' : i.productId === 2 ? 'Chiếc' : 'Túi'),
               }))
             : [],
         }));
@@ -38,19 +38,19 @@ export const inboundService = {
     }
   },
 
-  async createInboundOrder(order: Partial<InboundOrder>): Promise<InboundOrder> {
+  async createInboundOrder(order: Partial<InboundOrder> & { supplierId?: number }): Promise<InboundOrder> {
     try {
       const payload = {
         orderCode: order.poCode || 'PO-' + Date.now(),
         warehouseId: 1,
-        supplierId: order.supplierCode === 'SUP-VINAMILK' ? 1 : order.supplierCode === 'SUP-SAMSUNG' ? 2 : 3,
+        supplierId: order.supplierId || (order.supplierCode === 'SUP-VINAMILK' ? 1 : order.supplierCode === 'SUP-SAMSUNG' ? 2 : 3),
         status: 'PENDING',
         notes: order.notes,
-        items: (order.items || []).map((it) => ({
-          productId: it.sku.includes('MILK') ? 1 : it.sku.includes('SAMS') ? 2 : 3,
+        items: (order.items || []).map((it: any) => ({
+          productId: it.productId || (it.sku?.includes('MILK') ? 1 : it.sku?.includes('SAMS') ? 2 : 3),
           expectedQty: it.expectedQty,
-          batchNumber: it.batchNumber || 'BATCH-' + Date.now(),
-          expiryDate: it.expiryDate,
+          batchNumber: it.batchNumber || 'BATCH-' + Date.now().toString().slice(-4),
+          expiryDate: it.expiryDate || '2026-12-31',
           unitPrice: 50000,
         })),
       };

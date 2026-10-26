@@ -1,6 +1,8 @@
-import React, { useState } from 'react';
-import { X, Plus, Trash2, Building2, PackageCheck, AlertTriangle } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { X, Plus, Trash2, PackageCheck } from 'lucide-react';
 import { OutboundOrder, CustomerOption } from '../types';
+import { productService } from '../../products/services/productService';
+import { ProductItem } from '../../products/types';
 
 interface CreateOutboundModalProps {
   onClose: () => void;
@@ -18,19 +20,45 @@ export const CreateOutboundModal: React.FC<CreateOutboundModalProps> = ({
   onCreateOrder,
 }) => {
   const [customerCode, setCustomerCode] = useState('CUST-WMT');
-  const [requiredDate, setRequiredDate] = useState('2026-09-11');
+  const [requiredDate, setRequiredDate] = useState('2026-11-15');
   const [priority, setPriority] = useState<'NORMAL' | 'HIGH' | 'URGENT'>('HIGH');
   const [notes, setNotes] = useState('Xuất ưu tiên hàng date ngắn theo FEFO, đóng pallet cẩn thận.');
+  const [availableProducts, setAvailableProducts] = useState<ProductItem[]>([]);
 
-  const [items, setItems] = useState<Array<{ sku: string; productName: string; requestedQty: number; unit: string }>>([
-    { sku: 'SKU-MILK-100', productName: 'Sữa tươi Vinamilk 100% 1L', requestedQty: 20, unit: 'Thùng' },
+  const [items, setItems] = useState<Array<{ productId?: number; sku: string; productName: string; requestedQty: number; unit: string }>>([
+    { sku: 'SKU-MILK-100', productName: 'Sữa tươi Vinamilk 100% 1L', requestedQty: 20, unit: 'Hộp' },
   ]);
 
+  useEffect(() => {
+    productService.getProducts().then((prods) => {
+      if (prods && prods.length > 0) {
+        setAvailableProducts(prods);
+        setItems([
+          {
+            productId: Number(prods[0].id),
+            sku: prods[0].sku,
+            productName: prods[0].name,
+            requestedQty: 20,
+            unit: prods[0].unit,
+          },
+        ]);
+      }
+    });
+  }, []);
+
   const handleAddItem = () => {
-    setItems((prev) => [
-      ...prev,
-      { sku: 'SKU-OMO-MATIC', productName: 'Nước giặt OMO Matic 3.6kg', requestedQty: 15, unit: 'Can' },
-    ]);
+    if (availableProducts.length > 0) {
+      const p = availableProducts[items.length % availableProducts.length];
+      setItems((prev) => [
+        ...prev,
+        { productId: Number(p.id), sku: p.sku, productName: p.name, requestedQty: 10, unit: p.unit },
+      ]);
+    } else {
+      setItems((prev) => [
+        ...prev,
+        { sku: 'SKU-OMO-MATIC', productName: 'Nước giặt OMO Matic 3.6kg', requestedQty: 15, unit: 'Túi' },
+      ]);
+    }
   };
 
   const handleRemoveItem = (index: number) => {
@@ -54,6 +82,7 @@ export const CreateOutboundModal: React.FC<CreateOutboundModalProps> = ({
       notes,
       items: items.map((it, idx) => ({
         id: `item-${idx + 1}`,
+        productId: it.productId,
         sku: it.sku,
         productName: it.productName,
         requestedQty: it.requestedQty,
@@ -71,7 +100,6 @@ export const CreateOutboundModal: React.FC<CreateOutboundModalProps> = ({
   return (
     <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4 z-50 animate-in fade-in duration-200">
       <div className="bg-white rounded-2xl max-w-xl w-full border border-slate-200 shadow-2xl overflow-hidden text-slate-900">
-        {/* Header */}
         <div className="p-5 border-b border-slate-200 flex items-center justify-between bg-slate-50">
           <div className="flex items-center gap-2.5">
             <PackageCheck className="w-5 h-5 text-indigo-600" />
@@ -82,9 +110,7 @@ export const CreateOutboundModal: React.FC<CreateOutboundModalProps> = ({
           </button>
         </div>
 
-        {/* Form */}
         <form onSubmit={handleSubmit} className="p-6 space-y-4 text-sm">
-          {/* Khách hàng */}
           <div>
             <label className="text-slate-700 font-bold block mb-1.5">Khách Hàng / Đối Tác Nhận:</label>
             <select
@@ -100,7 +126,6 @@ export const CreateOutboundModal: React.FC<CreateOutboundModalProps> = ({
             </select>
           </div>
 
-          {/* Ngày giao & Mức ưu tiên */}
           <div className="grid grid-cols-2 gap-3.5">
             <div>
               <label className="text-slate-700 font-bold block mb-1.5">Hạn Giao Hàng:</label>
@@ -127,7 +152,6 @@ export const CreateOutboundModal: React.FC<CreateOutboundModalProps> = ({
             </div>
           </div>
 
-          {/* Mặt hàng cần xuất */}
           <div className="space-y-2">
             <div className="flex items-center justify-between">
               <label className="text-slate-700 font-bold">Mặt Hàng Cần Xuất ({items.length}):</label>
@@ -149,26 +173,28 @@ export const CreateOutboundModal: React.FC<CreateOutboundModalProps> = ({
                       value={it.sku}
                       onChange={(e) => {
                         const newSku = e.target.value;
-                        let newName = 'Sữa tươi Vinamilk 100% 1L';
-                        let newUnit = 'Thùng';
-                        if (newSku === 'SKU-OMO-MATIC') {
-                          newName = 'Nước giặt OMO Matic 3.6kg';
-                          newUnit = 'Can';
-                        } else if (newSku === 'SKU-SAMS-S24') {
-                          newName = 'Samsung Galaxy S24 Ultra';
-                          newUnit = 'Hộp';
-                        }
+                        const matched = availableProducts.find((p) => p.sku === newSku);
                         setItems((prev) =>
                           prev.map((item, i) =>
-                            i === idx ? { ...item, sku: newSku, productName: newName, unit: newUnit } : item
+                            i === idx
+                              ? {
+                                  ...item,
+                                  productId: matched ? Number(matched.id) : undefined,
+                                  sku: newSku,
+                                  productName: matched ? matched.name : item.productName,
+                                  unit: matched ? matched.unit : item.unit,
+                                }
+                              : item
                           )
                         );
                       }}
                       className="w-full p-2 rounded-lg bg-white border border-slate-300 text-slate-900 text-xs font-semibold focus:outline-none focus:border-indigo-600"
                     >
-                      <option value="SKU-MILK-100">Sữa tươi Vinamilk 100% 1L</option>
-                      <option value="SKU-OMO-MATIC">Nước giặt OMO Matic 3.6kg</option>
-                      <option value="SKU-SAMS-S24">Samsung Galaxy S24 Ultra</option>
+                      {availableProducts.map((p) => (
+                        <option key={p.id} value={p.sku}>
+                          {p.name} ({p.sku})
+                        </option>
+                      ))}
                     </select>
                   </div>
 
@@ -203,7 +229,6 @@ export const CreateOutboundModal: React.FC<CreateOutboundModalProps> = ({
             </div>
           </div>
 
-          {/* Ghi chú */}
           <div>
             <label className="text-slate-700 font-bold block mb-1.5">Ghi Chú Đơn Xuất:</label>
             <input
@@ -214,7 +239,6 @@ export const CreateOutboundModal: React.FC<CreateOutboundModalProps> = ({
             />
           </div>
 
-          {/* Footer buttons */}
           <div className="flex gap-3 pt-3 border-t border-slate-200">
             <button
               type="button"
@@ -227,7 +251,7 @@ export const CreateOutboundModal: React.FC<CreateOutboundModalProps> = ({
               type="submit"
               className="flex-1 py-3 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold shadow-md shadow-indigo-200 cursor-pointer transition-all"
             >
-              Phát Hành Đơn SO
+              Tạo Đơn & Phân Bổ FEFO
             </button>
           </div>
         </form>
@@ -235,4 +259,3 @@ export const CreateOutboundModal: React.FC<CreateOutboundModalProps> = ({
     </div>
   );
 };
-

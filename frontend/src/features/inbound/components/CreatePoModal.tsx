@@ -1,32 +1,62 @@
-import React, { useState } from 'react';
-import { X, Plus, Trash2, Calendar, Building2, Package, Check } from 'lucide-react';
-import { InboundOrder, InboundOrderItem, SupplierOption } from '../types';
+import React, { useState, useEffect } from 'react';
+import { X, Plus, Trash2, Building2 } from 'lucide-react';
+import { InboundOrder, InboundOrderItem } from '../types';
+import { productService } from '../../products/services/productService';
+import { ProductItem, SupplierItem } from '../../products/types';
 
 interface CreatePoModalProps {
   onClose: () => void;
   onCreateOrder: (order: InboundOrder) => void;
 }
 
-const SUPPLIERS: SupplierOption[] = [
-  { code: 'SUP-VNM', name: 'Công ty Cổ phần Sữa Việt Nam (Vinamilk)', phone: '028-5415-5555', address: 'Quận 7, TP.HCM' },
-  { code: 'SUP-ULV', name: 'Unilever Việt Nam Quốc Tế', phone: '028-3823-6655', address: 'KCN Tây Bắc Củ Chi' },
-  { code: 'SUP-SEC', name: 'Samsung Electronics Vietnam Co., Ltd', phone: '0222-369-6000', address: 'KCN Yên Phong, Bắc Ninh' },
-];
-
 export const CreatePoModal: React.FC<CreatePoModalProps> = ({ onClose, onCreateOrder }) => {
-  const [supplierCode, setSupplierCode] = useState('SUP-VNM');
-  const [expectedDate, setExpectedDate] = useState('2026-09-12');
+  const [suppliers, setSuppliers] = useState<SupplierItem[]>([]);
+  const [availableProducts, setAvailableProducts] = useState<ProductItem[]>([]);
+  const [supplierCode, setSupplierCode] = useState('');
+  const [expectedDate, setExpectedDate] = useState('2026-10-30');
   const [notes, setNotes] = useState('Giao hàng buổi sáng trước 11h. Xe tải có bửng nâng hạ.');
 
-  const [items, setItems] = useState<Array<{ sku: string; productName: string; expectedQty: number; unit: string }>>([
-    { sku: 'SKU-MILK-100', productName: 'Sữa tươi Vinamilk 100% 1L', expectedQty: 100, unit: 'Thùng' },
+  const [items, setItems] = useState<Array<{ productId?: number; sku: string; productName: string; expectedQty: number; unit: string }>>([
+    { sku: 'SKU-MILK-100', productName: 'Sữa tươi Vinamilk 100% 1L', expectedQty: 100, unit: 'Hộp' },
   ]);
 
+  useEffect(() => {
+    productService.getSuppliers().then((supps) => {
+      if (supps && supps.length > 0) {
+        setSuppliers(supps);
+        setSupplierCode(supps[0].code);
+      }
+    });
+
+    productService.getProducts().then((prods) => {
+      if (prods && prods.length > 0) {
+        setAvailableProducts(prods);
+        setItems([
+          {
+            productId: Number(prods[0].id),
+            sku: prods[0].sku,
+            productName: prods[0].name,
+            expectedQty: 50,
+            unit: prods[0].unit,
+          },
+        ]);
+      }
+    });
+  }, []);
+
   const handleAddItem = () => {
-    setItems((prev) => [
-      ...prev,
-      { sku: 'SKU-OMO-MATIC', productName: 'Nước giặt OMO Matic 3.6kg', expectedQty: 50, unit: 'Can' },
-    ]);
+    if (availableProducts.length > 0) {
+      const p = availableProducts[items.length % availableProducts.length];
+      setItems((prev) => [
+        ...prev,
+        { productId: Number(p.id), sku: p.sku, productName: p.name, expectedQty: 50, unit: p.unit },
+      ]);
+    } else {
+      setItems((prev) => [
+        ...prev,
+        { sku: 'SKU-OMO-MATIC', productName: 'Nước giặt OMO Matic 3.6kg', expectedQty: 50, unit: 'Túi' },
+      ]);
+    }
   };
 
   const handleRemoveItem = (index: number) => {
@@ -35,20 +65,22 @@ export const CreatePoModal: React.FC<CreatePoModalProps> = ({ onClose, onCreateO
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    const selectedSupplier = SUPPLIERS.find((s) => s.code === supplierCode) || SUPPLIERS[0];
+    const selectedSupplier = suppliers.find((s) => s.code === supplierCode) || suppliers[0];
     const poNumber = `PO-2026-${Math.floor(100 + Math.random() * 900)}`;
 
-    const newOrder: InboundOrder = {
+    const newOrder: InboundOrder & { supplierId?: number } = {
       id: `po-${Date.now()}`,
       poCode: poNumber,
-      supplierName: selectedSupplier.name,
-      supplierCode: selectedSupplier.code,
+      supplierId: selectedSupplier ? Number(selectedSupplier.id) : 1,
+      supplierName: selectedSupplier ? selectedSupplier.name : 'Nhà Cung Cấp Tổng Hợp',
+      supplierCode: selectedSupplier ? selectedSupplier.code : supplierCode,
       expectedDeliveryDate: expectedDate,
       createdAt: 'Vừa xong',
       status: 'PENDING',
       notes,
       items: items.map((it, idx) => ({
         id: `item-${idx + 1}`,
+        productId: it.productId,
         sku: it.sku,
         productName: it.productName,
         expectedQty: it.expectedQty,
@@ -66,7 +98,6 @@ export const CreatePoModal: React.FC<CreatePoModalProps> = ({ onClose, onCreateO
   return (
     <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4 z-50 animate-in fade-in duration-200">
       <div className="bg-white rounded-2xl max-w-xl w-full border border-slate-200 shadow-2xl overflow-hidden text-slate-900">
-        {/* Header */}
         <div className="p-5 border-b border-slate-200 flex items-center justify-between bg-slate-50">
           <div className="flex items-center gap-2.5">
             <Building2 className="w-5 h-5 text-indigo-600" />
@@ -77,9 +108,7 @@ export const CreatePoModal: React.FC<CreatePoModalProps> = ({ onClose, onCreateO
           </button>
         </div>
 
-        {/* Form */}
         <form onSubmit={handleSubmit} className="p-6 space-y-4 text-sm">
-          {/* Nhà cung cấp */}
           <div>
             <label className="text-slate-700 font-bold block mb-1.5">Chọn Nhà Cung Cấp:</label>
             <select
@@ -87,15 +116,14 @@ export const CreatePoModal: React.FC<CreatePoModalProps> = ({ onClose, onCreateO
               onChange={(e) => setSupplierCode(e.target.value)}
               className="w-full p-2.5 rounded-xl bg-white border border-slate-300 text-slate-900 font-medium focus:outline-none focus:border-indigo-600 focus:ring-2 focus:ring-indigo-100"
             >
-              {SUPPLIERS.map((s) => (
-                <option key={s.code} value={s.code}>
+              {suppliers.map((s) => (
+                <option key={s.id} value={s.code}>
                   {s.name} ({s.code})
                 </option>
               ))}
             </select>
           </div>
 
-          {/* Ngày dự kiến */}
           <div className="grid grid-cols-2 gap-3.5">
             <div>
               <label className="text-slate-700 font-bold block mb-1.5">Ngày Giao Hàng Dự Kiến:</label>
@@ -113,13 +141,12 @@ export const CreatePoModal: React.FC<CreatePoModalProps> = ({ onClose, onCreateO
               <input
                 type="text"
                 disabled
-                value="Kho Trung Tâm (Khu A & B)"
+                value="Kho Tổng Tân Bình (Khu A & B)"
                 className="w-full p-2.5 rounded-xl bg-slate-100 border border-slate-300 text-slate-600 font-medium"
               />
             </div>
           </div>
 
-          {/* Danh sách mặt hàng */}
           <div className="space-y-2">
             <div className="flex items-center justify-between">
               <label className="text-slate-700 font-bold">Danh Sách Mặt Hàng Đặt Nhập ({items.length}):</label>
@@ -141,26 +168,28 @@ export const CreatePoModal: React.FC<CreatePoModalProps> = ({ onClose, onCreateO
                       value={it.sku}
                       onChange={(e) => {
                         const newSku = e.target.value;
-                        let newName = 'Sữa tươi Vinamilk 100% 1L';
-                        let newUnit = 'Thùng';
-                        if (newSku === 'SKU-OMO-MATIC') {
-                          newName = 'Nước giặt OMO Matic 3.6kg';
-                          newUnit = 'Can';
-                        } else if (newSku === 'SKU-SAMS-S24') {
-                          newName = 'Samsung Galaxy S24 Ultra';
-                          newUnit = 'Hộp';
-                        }
+                        const matched = availableProducts.find((p) => p.sku === newSku);
                         setItems((prev) =>
                           prev.map((item, i) =>
-                            i === idx ? { ...item, sku: newSku, productName: newName, unit: newUnit } : item
+                            i === idx
+                              ? {
+                                  ...item,
+                                  productId: matched ? Number(matched.id) : undefined,
+                                  sku: newSku,
+                                  productName: matched ? matched.name : item.productName,
+                                  unit: matched ? matched.unit : item.unit,
+                                }
+                              : item
                           )
                         );
                       }}
                       className="w-full p-2 rounded-lg bg-white border border-slate-300 text-slate-900 text-xs font-semibold focus:outline-none focus:border-indigo-600"
                     >
-                      <option value="SKU-MILK-100">Sữa tươi Vinamilk 100% 1L</option>
-                      <option value="SKU-OMO-MATIC">Nước giặt OMO Matic 3.6kg</option>
-                      <option value="SKU-SAMS-S24">Samsung Galaxy S24 Ultra</option>
+                      {availableProducts.map((p) => (
+                        <option key={p.id} value={p.sku}>
+                          {p.name} ({p.sku})
+                        </option>
+                      ))}
                     </select>
                   </div>
 
@@ -195,7 +224,6 @@ export const CreatePoModal: React.FC<CreatePoModalProps> = ({ onClose, onCreateO
             </div>
           </div>
 
-          {/* Ghi chú */}
           <div>
             <label className="text-slate-700 font-bold block mb-1.5">Ghi Chú Đơn Hàng:</label>
             <input
@@ -206,7 +234,6 @@ export const CreatePoModal: React.FC<CreatePoModalProps> = ({ onClose, onCreateO
             />
           </div>
 
-          {/* Nút hành động */}
           <div className="flex gap-3 pt-3 border-t border-slate-200">
             <button
               type="button"
@@ -227,4 +254,3 @@ export const CreatePoModal: React.FC<CreatePoModalProps> = ({ onClose, onCreateO
     </div>
   );
 };
-

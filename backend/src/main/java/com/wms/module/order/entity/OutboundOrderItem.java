@@ -29,6 +29,10 @@ public class OutboundOrderItem {
     @Column(name = "product_id", nullable = false)
     private Long productId;
 
+    @ManyToOne(fetch = FetchType.EAGER)
+    @JoinColumn(name = "product_id", insertable = false, updatable = false)
+    private com.wms.module.masterdata.entity.Product product;
+
     @Column(name = "requested_qty", nullable = false)
     private Integer requestedQty;
 

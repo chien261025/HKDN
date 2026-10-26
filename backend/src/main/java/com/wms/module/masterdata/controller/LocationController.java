@@ -1,10 +1,9 @@
 package com.wms.module.masterdata.controller;
 
-import com.wms.common.exception.BusinessException;
-import com.wms.common.exception.ErrorCode;
 import com.wms.common.response.ApiResponse;
+import com.wms.module.masterdata.dto.LocationOccupancyDto;
 import com.wms.module.masterdata.entity.Location;
-import com.wms.module.masterdata.repository.LocationRepository;
+import com.wms.module.masterdata.service.LocationService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -21,13 +20,19 @@ import java.util.List;
 @Tag(name = "2. Master Data - Sơ đồ Vị trí Kho (Locations)", description = "APIs quản lý ô kệ, phân khu Zone, Dãy Aisle, Kệ Rack, Tầng Shelf")
 public class LocationController {
 
-    private final LocationRepository locationRepository;
+    private final LocationService locationService;
 
     @GetMapping
     @Operation(summary = "Lấy toàn bộ danh sách ô kệ trong kho", description = "Trả về danh sách tất cả các ô kệ vật lý (Aisle, Rack, Shelf, Bin Barcode)")
     public ApiResponse<List<Location>> getAllLocations() {
-        List<Location> locations = locationRepository.findAll();
-        return ApiResponse.success("Lấy danh sách ô kệ thành công!", locations);
+        return ApiResponse.success("Lấy danh sách ô kệ thành công!", locationService.getAllLocations());
+    }
+
+    @GetMapping("/occupancy")
+    @Operation(summary = "Sơ đồ ô kệ kèm dữ liệu tồn kho thực tế (Digital Twin)",
+               description = "Trả về trạng thái thực tế của từng ô kệ: EMPTY, OCCUPIED, EXPIRING, RESERVED kèm chi tiết sản phẩm, lô hàng và hạn dùng")
+    public ApiResponse<List<LocationOccupancyDto>> getLocationOccupancy() {
+        return ApiResponse.success("Lấy sơ đồ ô kệ thời gian thực thành công!", locationService.getLocationOccupancy());
     }
 
     @GetMapping("/zone/{zoneCode}")
@@ -35,8 +40,7 @@ public class LocationController {
     public ApiResponse<List<Location>> getLocationsByZone(
             @Parameter(description = "Mã phân khu (ZONE_A hoặc ZONE_B)", example = "ZONE_A")
             @PathVariable String zoneCode) {
-        List<Location> locations = locationRepository.findByZoneCode(zoneCode);
-        return ApiResponse.success("Lấy danh sách ô kệ theo Zone " + zoneCode + " thành công!", locations);
+        return ApiResponse.success("Lấy danh sách ô kệ theo Zone " + zoneCode + " thành công!", locationService.getLocationsByZone(zoneCode));
     }
 
     @GetMapping("/barcode/{binBarcode}")
@@ -44,8 +48,6 @@ public class LocationController {
     public ApiResponse<Location> getLocationByBarcode(
             @Parameter(description = "Mã vạch trên kệ", example = "ZA-A01-R01-S01-B01")
             @PathVariable String binBarcode) {
-        Location location = locationRepository.findByBinBarcode(binBarcode)
-                .orElseThrow(() -> new BusinessException(ErrorCode.NOT_FOUND, "Không tìm thấy ô kệ có mã vạch: " + binBarcode));
-        return ApiResponse.success(location);
+        return ApiResponse.success(locationService.getLocationByBarcode(binBarcode));
     }
 }

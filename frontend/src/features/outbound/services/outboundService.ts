@@ -21,12 +21,12 @@ export const outboundService = {
           items: (o.items && o.items.length > 0)
             ? o.items.map((i: any) => ({
                 id: String(i.id),
-                sku: i.productId === 1 ? 'SKU-MILK-100' : i.productId === 2 ? 'SKU-SAMS-S24' : 'SKU-OMO-MATIC',
-                productName: i.productId === 1 ? 'Sữa tươi tiệt trùng Vinamilk 100% 1L' : i.productId === 2 ? 'Điện thoại Samsung Galaxy S24 Ultra' : 'Nước giặt OMO Matic 3.6kg',
+                sku: i.product?.sku || (i.productId === 1 ? 'SKU-MILK-100' : i.productId === 2 ? 'SKU-SAMS-S24' : 'SKU-OMO-MATIC'),
+                productName: i.product?.name || (i.productId === 1 ? 'Sữa tươi tiệt trùng Vinamilk 100% 1L' : i.productId === 2 ? 'Điện thoại Samsung Galaxy S24 Ultra' : 'Nước giặt OMO Matic 3.6kg'),
                 requestedQty: i.requestedQty || 0,
                 allocatedQty: i.allocatedQty || i.requestedQty || 0,
                 pickedQty: i.pickedQty || 0,
-                unit: i.productId === 1 ? 'Hộp' : i.productId === 2 ? 'Chiếc' : 'Túi',
+                unit: i.product?.unit || (i.productId === 1 ? 'Hộp' : i.productId === 2 ? 'Chiếc' : 'Túi'),
                 allocations: [],
               }))
             : [],
@@ -47,8 +47,8 @@ export const outboundService = {
         customerName: order.customerName,
         status: 'PENDING',
         notes: order.notes,
-        items: (order.items || []).map((it) => ({
-          productId: it.sku.includes('MILK') ? 1 : it.sku.includes('SAMS') ? 2 : 3,
+        items: (order.items || []).map((it: any) => ({
+          productId: it.productId || (it.sku?.includes('MILK') ? 1 : it.sku?.includes('SAMS') ? 2 : 3),
           requestedQty: it.requestedQty,
           allocatedQty: it.allocatedQty || 0,
           pickedQty: 0,

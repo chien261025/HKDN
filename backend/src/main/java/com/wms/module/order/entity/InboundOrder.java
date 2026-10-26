@@ -30,6 +30,10 @@ public class InboundOrder {
     @Column(name = "supplier_id")
     private Long supplierId;
 
+    @ManyToOne(fetch = FetchType.EAGER)
+    @JoinColumn(name = "supplier_id", insertable = false, updatable = false)
+    private com.wms.module.masterdata.entity.Supplier supplier;
+
     @Column(nullable = false, length = 30)
     @Builder.Default
     private String status = "PENDING"; // PENDING, RECEIVED, STOCKED, CANCELLED
