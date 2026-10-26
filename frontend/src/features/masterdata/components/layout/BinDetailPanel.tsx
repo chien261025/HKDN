@@ -1,6 +1,6 @@
 import React from 'react';
 import { BinLocation } from '../../types';
-import { Info, Scale, ShieldCheck, ArrowRight, Package, Calendar, MapPin, ExternalLink } from 'lucide-react';
+import { Info, Scale, ShieldCheck, ArrowRight, Package, Calendar, MapPin, ExternalLink, Printer } from 'lucide-react';
 import { Link } from 'react-router-dom';
 
 interface BinDetailPanelProps {
@@ -45,6 +45,15 @@ export const BinDetailPanel: React.FC<BinDetailPanelProps> = ({
             </span>
           </div>
         </div>
+
+        {/* Quick link to Labels */}
+        <Link
+          to="/labels"
+          className="w-full py-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold text-xs flex items-center justify-center gap-2 transition-all border border-slate-300"
+        >
+          <Printer className="w-4 h-4 text-indigo-600" />
+          <span>Trung Tâm In Mã Vạch & QR</span>
+        </Link>
       </div>
     );
   }
@@ -163,14 +172,24 @@ export const BinDetailPanel: React.FC<BinDetailPanelProps> = ({
         </div>
       )}
 
-      {/* Action Button */}
-      <Link
-        to="/inventory"
-        className="w-full py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-sm flex items-center justify-center gap-2 transition-all shadow-md shadow-indigo-600/20"
-      >
-        <span>Xem Tồn Kho & Điều Phối Xuất</span>
-        <ExternalLink className="w-4 h-4" />
-      </Link>
+      {/* Action Button Group */}
+      <div className="flex items-center gap-2 pt-1">
+        <Link
+          to="/inventory"
+          className="flex-1 py-2.5 px-3 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs flex items-center justify-center gap-1.5 transition-all shadow-md shadow-indigo-600/20"
+        >
+          <span>Xem Tồn Kho</span>
+          <ExternalLink className="w-3.5 h-3.5" />
+        </Link>
+        <Link
+          to="/labels"
+          className="flex-1 py-2.5 px-3 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs flex items-center justify-center gap-1.5 transition-all border border-slate-300"
+          title="In nhãn Barcode & QR Code cho ô kệ"
+        >
+          <Printer className="w-3.5 h-3.5 text-indigo-600" />
+          <span>In Tem Ô Kệ</span>
+        </Link>
+      </div>
     </div>
   );
 };

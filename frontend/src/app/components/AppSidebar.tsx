@@ -15,7 +15,8 @@ import {
   Smartphone,
   Truck,
   PackageCheck,
-  ClipboardCheck
+  ClipboardCheck,
+  Printer
 } from 'lucide-react';
 import { AuthSession } from '../../features/auth/types';
 
@@ -57,6 +58,7 @@ export const AppSidebar: React.FC<AppSidebarProps> = ({
     { name: 'Sơ Đồ Vị Trí Ô Kệ', path: '/layout', icon: Layers },
     { name: 'Quản Lý Tồn Kho', path: '/inventory', icon: Package },
     { name: 'Kiểm Kê Kho Hàng', path: '/audit', icon: ClipboardCheck },
+    { name: 'In Tem Mã Vạch & QR', path: '/labels', icon: Printer, badge: 'NEW' },
     { name: 'Trợ Lý AI Tra Cứu', path: '/smartquery', icon: Bot, badge: 'AI' },
     { name: 'Báo Cáo & Thống Kê', path: '/reports', icon: FileSpreadsheet },
     { name: 'Giao Diện Quét Mã PDA', path: '/operator', icon: Smartphone, badge: 'PDA' },
@@ -69,25 +71,25 @@ export const AppSidebar: React.FC<AppSidebarProps> = ({
     <aside
       className={`${
         isSidebarCollapsed ? 'w-20' : 'w-72'
-      } bg-white text-slate-800 flex flex-col border-r border-slate-200 shadow-sm relative z-20 transition-all duration-300 ease-in-out`}
+      } bg-[#0c1222] text-slate-300 flex flex-col border-r border-slate-800/80 shadow-2xl relative z-20 transition-all duration-300 ease-in-out`}
     >
       {/* Brand Header */}
       <div
-        className={`border-b border-slate-200 flex items-center transition-all bg-white ${
+        className={`border-b border-slate-800/80 flex items-center transition-all bg-[#080d19] ${
           isSidebarCollapsed ? 'p-3 flex-col gap-2 justify-center' : 'p-4 justify-between'
         }`}
       >
         <div className={`flex items-center gap-3 ${isSidebarCollapsed ? 'justify-center' : ''}`}>
           <div className="relative flex-shrink-0">
-            <img src="/favicon.svg" alt="Smart WMS" className="w-10 h-10 rounded-xl shadow-xs" />
+            <img src="/favicon.svg" alt="Smart WMS" className="w-10 h-10 rounded-xl shadow-md ring-1 ring-white/10" />
           </div>
           {!isSidebarCollapsed && (
             <div className="overflow-hidden">
               <div className="flex items-center gap-2">
-                <h1 className="font-black text-slate-900 text-lg tracking-tight whitespace-nowrap">SMART WMS</h1>
-                <span className="text-xs font-bold px-2 py-0.5 rounded-full bg-indigo-50 text-indigo-700 border border-indigo-200">PRO</span>
+                <h1 className="font-black text-white text-lg tracking-tight whitespace-nowrap">SMART WMS</h1>
+                <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-indigo-500/20 text-indigo-300 border border-indigo-500/30">PRO</span>
               </div>
-              <p className="text-xs text-slate-600 font-semibold whitespace-nowrap">Hệ Thống Quản Lý Kho</p>
+              <p className="text-xs text-slate-400 font-medium whitespace-nowrap">Hệ Thống Quản Lý Kho</p>
             </div>
           )}
         </div>
@@ -95,11 +97,11 @@ export const AppSidebar: React.FC<AppSidebarProps> = ({
         {/* Nút thu nhỏ / mở rộng sidebar */}
         <button
           onClick={onToggleSidebar}
-          className="p-1.5 rounded-lg text-slate-500 hover:text-slate-900 hover:bg-slate-100 transition-colors cursor-pointer"
+          className="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800/80 transition-colors cursor-pointer"
           title={isSidebarCollapsed ? "Mở rộng menu (Ctrl+B)" : "Thu gọn menu (Ctrl+B)"}
         >
           {isSidebarCollapsed ? (
-            <ChevronRight className="w-5 h-5 text-indigo-600" />
+            <ChevronRight className="w-5 h-5 text-indigo-400" />
           ) : (
             <ChevronLeft className="w-5 h-5" />
           )}
@@ -108,18 +110,18 @@ export const AppSidebar: React.FC<AppSidebarProps> = ({
 
       {/* Quick System Status */}
       <div
-        className={`bg-slate-50 border-b border-slate-200 flex items-center text-xs ${
+        className={`bg-[#0a0f1d] border-b border-slate-800/60 flex items-center text-xs ${
           isSidebarCollapsed ? 'py-2 justify-center' : 'px-4 py-2.5 justify-between'
         }`}
         title={`Hệ thống Online • ${currentTime}`}
       >
-        <div className="flex items-center gap-2 text-emerald-800 font-bold">
-          <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse"></span>
-          {!isSidebarCollapsed && <span>Hệ Thống Online</span>}
+        <div className="flex items-center gap-2 text-emerald-400 font-bold">
+          <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+          {!isSidebarCollapsed && <span className="text-slate-300">Hệ Thống Online</span>}
         </div>
         {!isSidebarCollapsed && (
-          <div className="flex items-center gap-1.5 font-mono text-slate-600 text-xs font-semibold">
-            <Clock className="w-3.5 h-3.5 text-slate-500" />
+          <div className="flex items-center gap-1.5 font-mono text-slate-400 text-xs font-medium">
+            <Clock className="w-3.5 h-3.5 text-slate-400" />
             <span>{currentTime}</span>
           </div>
         )}
@@ -128,7 +130,7 @@ export const AppSidebar: React.FC<AppSidebarProps> = ({
       {/* Menu Navigation */}
       <nav className="flex-1 p-3 space-y-1.5 overflow-y-auto overflow-x-hidden">
         {!isSidebarCollapsed && (
-          <p className="px-3 py-2 text-xs font-extrabold text-slate-500 uppercase tracking-wider">
+          <p className="px-3 py-1.5 text-[11px] font-bold text-slate-400 uppercase tracking-wider">
             Phân Hệ Điều Hành
           </p>
         )}
@@ -144,18 +146,20 @@ export const AppSidebar: React.FC<AppSidebarProps> = ({
                 title={`${item.name} (${item.badge})`}
                 className={`group relative flex items-center justify-center w-11 h-11 mx-auto rounded-xl transition-all ${
                   isActive
-                    ? 'bg-indigo-600 text-white shadow-md shadow-indigo-200'
-                    : 'text-slate-700 hover:text-slate-900 hover:bg-slate-100'
+                    ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-600/40 ring-1 ring-indigo-400/50'
+                    : 'text-slate-400 hover:text-white hover:bg-slate-800/70'
                 }`}
               >
                 <Icon className="w-5 h-5" />
 
                 {/* Tooltip nổi khi rê chuột vào chế độ thu nhỏ */}
-                <div className="absolute left-full ml-3 px-3 py-1.5 bg-slate-900 text-white text-xs font-bold rounded-lg shadow-xl whitespace-nowrap opacity-0 pointer-events-none group-hover:opacity-100 group-hover:pointer-events-auto transition-opacity z-50 flex items-center gap-2">
+                <div className="absolute left-full ml-3 px-3 py-1.5 bg-slate-900 border border-slate-750 text-white text-xs font-bold rounded-lg shadow-2xl whitespace-nowrap opacity-0 pointer-events-none group-hover:opacity-100 group-hover:pointer-events-auto transition-opacity z-50 flex items-center gap-2">
                   <span>{item.name}</span>
-                  <span className="text-xs font-mono px-1.5 py-0.5 rounded bg-slate-800 text-indigo-300">
-                    {item.badge}
-                  </span>
+                  {item.badge && (
+                    <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-slate-800 text-indigo-300 border border-slate-700">
+                      {item.badge}
+                    </span>
+                  )}
                 </div>
               </Link>
             );
@@ -167,23 +171,25 @@ export const AppSidebar: React.FC<AppSidebarProps> = ({
               to={item.path}
               className={`group flex items-center justify-between px-3 py-2.5 rounded-xl text-sm font-semibold transition-all relative ${
                 isActive
-                  ? 'bg-indigo-50 text-indigo-700 font-bold border border-indigo-300 shadow-xs'
-                  : 'text-slate-700 hover:text-slate-900 hover:bg-slate-100 border border-transparent'
+                  ? 'bg-gradient-to-r from-indigo-600 to-indigo-700 text-white font-bold shadow-md shadow-indigo-900/50 border border-indigo-400/30'
+                  : 'text-slate-400 hover:text-white hover:bg-slate-800/60 border border-transparent'
               }`}
             >
               <div className="flex items-center gap-3 truncate">
                 <div className={`p-1.5 rounded-lg transition-colors flex-shrink-0 ${
-                  isActive ? 'bg-indigo-600 text-white' : 'bg-slate-100 text-slate-700 group-hover:text-indigo-600 group-hover:bg-indigo-50'
+                  isActive
+                    ? 'bg-white/20 text-white'
+                    : 'bg-slate-800/80 text-slate-400 group-hover:text-indigo-400 group-hover:bg-slate-800'
                 }`}>
-                  <Icon className="w-4.5 h-4.5" />
+                  <Icon className="w-4 h-4" />
                 </div>
                 <span className="truncate text-sm">{item.name}</span>
               </div>
               {item.badge && (
-                <span className={`text-[10px] font-mono font-semibold px-1.5 py-0.5 rounded flex-shrink-0 ${
+                <span className={`text-[10px] font-mono font-bold px-1.5 py-0.5 rounded flex-shrink-0 ${
                   isActive 
-                    ? 'bg-indigo-600 text-white' 
-                    : 'bg-slate-100 text-slate-600 border border-slate-200 group-hover:text-slate-900'
+                    ? 'bg-white/20 text-white' 
+                    : 'bg-slate-800 text-slate-400 border border-slate-700/80 group-hover:text-slate-300'
                 }`}>
                   {item.badge}
                 </span>
@@ -195,24 +201,24 @@ export const AppSidebar: React.FC<AppSidebarProps> = ({
 
       {/* Streamlined System Status */}
       {!isSidebarCollapsed ? (
-        <div className="px-3.5 py-2.5 mx-3 mb-2 rounded-lg bg-slate-50 border border-slate-200/80 text-xs flex items-center justify-between">
+        <div className="px-3.5 py-2.5 mx-3 mb-2 rounded-xl bg-[#090e1a] border border-slate-800 text-xs flex items-center justify-between">
           <div className="flex items-center gap-2">
             <span className="relative flex h-2 w-2">
               <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-              <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+              <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-400"></span>
             </span>
-            <span className="text-slate-600 font-medium text-xs">Hệ Thống Trực Tuyến</span>
+            <span className="text-slate-400 font-medium text-xs">Hệ Thống Trực Tuyến</span>
           </div>
-          <span className="font-mono text-[11px] text-slate-400 font-medium">v2.4 Pro</span>
+          <span className="font-mono text-[11px] text-indigo-400 font-bold">v2.4 Pro</span>
         </div>
       ) : (
         <div className="py-2 mx-auto mb-2 text-center" title="Hệ Thống Trực Tuyến">
-          <span className="w-2 h-2 rounded-full bg-emerald-500 inline-block"></span>
+          <span className="w-2 h-2 rounded-full bg-emerald-400 inline-block"></span>
         </div>
       )}
 
       {/* Quét Barcode Action Button */}
-      <div className={`border-t border-slate-200 ${isSidebarCollapsed ? 'p-3 flex justify-center' : 'p-3'}`}>
+      <div className={`border-t border-slate-800/80 ${isSidebarCollapsed ? 'p-3 flex justify-center' : 'p-3'}`}>
         <button
           onClick={onOpenScanner}
           title="Mở Camera Quét Mã Barcode"
@@ -220,17 +226,17 @@ export const AppSidebar: React.FC<AppSidebarProps> = ({
             isSidebarCollapsed
               ? 'w-10 h-10 justify-center'
               : 'w-full justify-center gap-2 py-2 px-3'
-          } flex items-center bg-white hover:bg-slate-50 text-slate-700 hover:text-slate-900 border border-slate-200 rounded-lg text-xs font-medium transition-all shadow-2xs group cursor-pointer`}
+          } flex items-center bg-slate-800/80 hover:bg-slate-750 text-slate-200 hover:text-white border border-slate-700 rounded-xl text-xs font-semibold transition-all shadow-sm group cursor-pointer`}
         >
-          <ScanLine className="w-4 h-4 text-indigo-600 group-hover:scale-105 transition-transform flex-shrink-0" />
+          <ScanLine className="w-4 h-4 text-indigo-400 group-hover:scale-105 transition-transform flex-shrink-0" />
           {!isSidebarCollapsed && <span>Mở Camera Quét Barcode</span>}
         </button>
       </div>
 
       {/* Copyright mark */}
       {!isSidebarCollapsed && (
-        <div className="px-4 py-2 border-t border-slate-100 text-center text-[10px] text-slate-400 font-medium">
-          © 2026 Smart WMS • Bản quyền đã bảo hộ
+        <div className="px-4 py-2 border-t border-slate-800/50 text-center text-[10px] text-slate-400 font-medium">
+          © 2026 Smart WMS • Enterprise Edition
         </div>
       )}
     </aside>

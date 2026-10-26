@@ -14,10 +14,11 @@ export const DashboardKpiCards: React.FC = () => {
   return (
     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
       {/* Card 1: Inbound Throughput */}
-      <div className="bg-white rounded-2xl p-5 border border-slate-200/90 hover:border-slate-300 hover:shadow-md transition-all shadow-xs group">
+      <div className="group relative bg-white rounded-2xl p-5 border border-slate-200/90 hover:border-slate-300 hover:shadow-lg transition-all duration-200 shadow-xs overflow-hidden">
+        <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-emerald-400 to-emerald-600 opacity-90" />
         <div className="flex items-center justify-between">
-          <span className="text-xs font-semibold uppercase tracking-wider text-slate-500">
-            Lưu Lượng Nhập Kho Hôm Nay
+          <span className="text-xs font-bold uppercase tracking-wider text-slate-500">
+            Lưu Lượng Nhập Hôm Nay
           </span>
           <div className="w-9 h-9 rounded-xl bg-emerald-50 text-emerald-600 border border-emerald-100 flex items-center justify-center group-hover:scale-105 transition-transform">
             <ArrowDownLeft className="w-4.5 h-4.5" />
@@ -29,7 +30,7 @@ export const DashboardKpiCards: React.FC = () => {
             <span className="text-xs font-semibold text-slate-400">kiện / 48 đơn</span>
           </div>
           <div className="flex items-center gap-1.5 mt-2.5">
-            <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md bg-emerald-50 text-emerald-700 text-xs font-semibold border border-emerald-100">
+            <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md bg-emerald-50 text-emerald-700 text-xs font-bold border border-emerald-100">
               <TrendingUp className="w-3.5 h-3.5" />
               +14.2%
             </span>
@@ -39,10 +40,11 @@ export const DashboardKpiCards: React.FC = () => {
       </div>
 
       {/* Card 2: Outbound Throughput */}
-      <div className="bg-white rounded-2xl p-5 border border-slate-200/90 hover:border-slate-300 hover:shadow-md transition-all shadow-xs group">
+      <div className="group relative bg-white rounded-2xl p-5 border border-slate-200/90 hover:border-slate-300 hover:shadow-lg transition-all duration-200 shadow-xs overflow-hidden">
+        <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-indigo-500 to-indigo-600 opacity-90" />
         <div className="flex items-center justify-between">
-          <span className="text-xs font-semibold uppercase tracking-wider text-slate-500">
-            Lưu Lượng Xuất Kho Hôm Nay
+          <span className="text-xs font-bold uppercase tracking-wider text-slate-500">
+            Lưu Lượng Xuất Hôm Nay
           </span>
           <div className="w-9 h-9 rounded-xl bg-indigo-50 text-indigo-600 border border-indigo-100 flex items-center justify-center group-hover:scale-105 transition-transform">
             <ArrowUpRight className="w-4.5 h-4.5" />
@@ -54,7 +56,7 @@ export const DashboardKpiCards: React.FC = () => {
             <span className="text-xs font-semibold text-slate-400">kiện / 126 đơn</span>
           </div>
           <div className="flex items-center gap-1.5 mt-2.5">
-            <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md bg-indigo-50 text-indigo-700 text-xs font-semibold border border-indigo-100">
+            <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md bg-indigo-50 text-indigo-700 text-xs font-bold border border-indigo-100">
               <CheckCircle2 className="w-3.5 h-3.5" />
               98.2%
             </span>
@@ -64,9 +66,10 @@ export const DashboardKpiCards: React.FC = () => {
       </div>
 
       {/* Card 3: Storage Utilization */}
-      <div className="bg-white rounded-2xl p-5 border border-slate-200/90 hover:border-slate-300 hover:shadow-md transition-all shadow-xs group">
+      <div className="group relative bg-white rounded-2xl p-5 border border-slate-200/90 hover:border-slate-300 hover:shadow-lg transition-all duration-200 shadow-xs overflow-hidden">
+        <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-blue-500 to-cyan-500 opacity-90" />
         <div className="flex items-center justify-between">
-          <span className="text-xs font-semibold uppercase tracking-wider text-slate-500">
+          <span className="text-xs font-bold uppercase tracking-wider text-slate-500">
             Tỷ Lệ Lấp Đầy Ô Kệ
           </span>
           <div className="w-9 h-9 rounded-xl bg-blue-50 text-blue-600 border border-blue-100 flex items-center justify-center group-hover:scale-105 transition-transform">
@@ -76,7 +79,7 @@ export const DashboardKpiCards: React.FC = () => {
         <div className="mt-3">
           <div className="flex items-baseline gap-2">
             <span className="text-3xl font-extrabold text-slate-900 tracking-tight font-mono">78.5%</span>
-            <span className="text-xs font-medium text-slate-400">công suất</span>
+            <span className="text-xs font-semibold text-slate-400">công suất</span>
           </div>
           <div className="w-full h-2 bg-slate-100 rounded-full mt-3 overflow-hidden">
             <div
@@ -91,9 +94,10 @@ export const DashboardKpiCards: React.FC = () => {
       </div>
 
       {/* Card 4: Inventory Health & FEFO */}
-      <div className="bg-white rounded-2xl p-5 border border-slate-200/90 hover:border-slate-300 hover:shadow-md transition-all shadow-xs group">
+      <div className="group relative bg-white rounded-2xl p-5 border border-slate-200/90 hover:border-slate-300 hover:shadow-lg transition-all duration-200 shadow-xs overflow-hidden">
+        <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-amber-400 to-amber-500 opacity-90" />
         <div className="flex items-center justify-between">
-          <span className="text-xs font-semibold uppercase tracking-wider text-slate-500">
+          <span className="text-xs font-bold uppercase tracking-wider text-slate-500">
             Cảnh Báo Hạn Dùng (FEFO)
           </span>
           <div className="w-9 h-9 rounded-xl bg-amber-50 text-amber-600 border border-amber-100 flex items-center justify-center group-hover:scale-105 transition-transform">
@@ -106,7 +110,7 @@ export const DashboardKpiCards: React.FC = () => {
             <span className="text-xs font-bold text-amber-700 uppercase">Lô Cận Date</span>
           </div>
           <div className="flex items-center gap-1.5 mt-2.5">
-            <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md bg-amber-50 text-amber-800 text-xs font-semibold border border-amber-200">
+            <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md bg-amber-50 text-amber-800 text-xs font-bold border border-amber-200">
               <AlertTriangle className="w-3.5 h-3.5 text-amber-600" />
               &lt; 30 ngày
             </span>

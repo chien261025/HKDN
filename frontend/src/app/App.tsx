@@ -105,7 +105,7 @@ const AppContent: React.FC = () => {
 
         {/* Dynamic Route View */}
         <main className="flex-1 overflow-y-auto p-6 bg-slate-100/70 relative">
-          <AppRoutes />
+          <AppRoutes onOpenScanner={() => setShowScanner(true)} />
         </main>
       </div>
 

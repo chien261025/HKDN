@@ -5,3 +5,5 @@ export * from './StatCard';
 export * from './InputField';
 export * from './SelectField';
 export * from './EmptyState';
+export * from './BarcodeSvg';
+export * from './QrCodeSvg';

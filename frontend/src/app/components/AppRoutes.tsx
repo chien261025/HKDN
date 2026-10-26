@@ -11,9 +11,14 @@ import { OutboundOrdersPage } from '../../features/outbound/pages/OutboundOrders
 import { AuditManagementPage } from '../../features/audit/pages/AuditManagementPage';
 import { ProductsPage } from '../../features/products/pages/ProductsPage';
 import { UsersManagementPage } from '../../features/users/pages/UsersManagementPage';
+import { BarcodePrintingPage } from '../../features/labels/pages/BarcodePrintingPage';
 import { ProtectedRoute } from '../../features/auth/components/ProtectedRoute';
 
-export const AppRoutes: React.FC = () => {
+interface AppRoutesProps {
+  onOpenScanner?: () => void;
+}
+
+export const AppRoutes: React.FC<AppRoutesProps> = ({ onOpenScanner }) => {
   return (
     <Routes>
       <Route path="/" element={<DashboardPage />} />
@@ -31,6 +36,7 @@ export const AppRoutes: React.FC = () => {
       <Route path="/layout" element={<LocationLayoutPage />} />
       <Route path="/inventory" element={<InventoryBalancePage />} />
       <Route path="/audit" element={<AuditManagementPage />} />
+      <Route path="/labels" element={<BarcodePrintingPage onOpenScanner={onOpenScanner} />} />
       <Route path="/smartquery" element={<SmartAssistantPage />} />
       <Route path="/reports" element={<ReportsPage />} />
       <Route path="/operator" element={<OperatorPortalPage />} />
