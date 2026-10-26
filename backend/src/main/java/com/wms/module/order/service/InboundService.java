@@ -2,8 +2,15 @@ package com.wms.module.order.service;
 
 import com.wms.common.exception.BusinessException;
 import com.wms.common.exception.ErrorCode;
+import com.wms.module.inventory.entity.Inventory;
+import com.wms.module.inventory.entity.ProductBatch;
+import com.wms.module.inventory.entity.StockLedger;
+import com.wms.module.inventory.repository.InventoryRepository;
+import com.wms.module.inventory.repository.ProductBatchRepository;
+import com.wms.module.inventory.repository.StockLedgerRepository;
 import com.wms.module.masterdata.entity.Location;
 import com.wms.module.masterdata.repository.LocationRepository;
+import com.wms.module.order.dto.request.ExecutePutawayRequest;
 import com.wms.module.order.entity.InboundOrder;
 import com.wms.module.order.entity.InboundOrderItem;
 import com.wms.module.order.repository.InboundOrderRepository;
@@ -14,6 +21,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.time.Instant;
+import java.time.LocalDate;
 import java.util.List;
 
 @Slf4j
@@ -23,6 +31,9 @@ public class InboundService {
 
     private final LocationRepository locationRepository;
     private final InboundOrderRepository inboundOrderRepository;
+    private final ProductBatchRepository productBatchRepository;
+    private final InventoryRepository inventoryRepository;
+    private final StockLedgerRepository stockLedgerRepository;
 
     @Transactional(readOnly = true)
     public List<InboundOrder> getAllInboundOrders() {
@@ -95,5 +106,89 @@ public class InboundService {
                 .findFirst()
                 .orElseThrow(() -> new BusinessException(ErrorCode.LOCATION_FULL, 
                         "Khu vực " + preferredZone + " không còn ô kệ nào đủ tải trọng " + itemTotalWeightKg + "kg"));
+    }
+
+    @Transactional
+    public InboundOrder executePutaway(ExecutePutawayRequest request) {
+        log.info("Thuc hien cat hang Put-away: OrderId={}, ProductId={}, Loc={}, Qty={}",
+                request.getOrderId(), request.getProductId(), request.getLocationId(), request.getQuantity());
+
+        InboundOrder order = inboundOrderRepository.findById(request.getOrderId())
+                .orElseThrow(() -> new BusinessException(ErrorCode.NOT_FOUND, "Không tìm thấy đơn nhập: " + request.getOrderId()));
+
+        Location location = locationRepository.findById(request.getLocationId())
+                .orElseThrow(() -> new BusinessException(ErrorCode.NOT_FOUND, "Không tìm thấy ô kệ: " + request.getLocationId()));
+
+        String batchNumber = request.getBatchNumber();
+        if (batchNumber == null || batchNumber.isBlank()) {
+            batchNumber = "BATCH-PO" + order.getId() + "-" + (System.currentTimeMillis() % 10000);
+        }
+
+        final String finalBatchNumber = batchNumber;
+        ProductBatch batch = productBatchRepository.findByProductIdAndBatchNumber(request.getProductId(), finalBatchNumber)
+                .orElseGet(() -> {
+                    LocalDate expiry = request.getExpiryDate() != null ? request.getExpiryDate() : LocalDate.now().plusYears(1);
+                    ProductBatch newBatch = ProductBatch.builder()
+                            .productId(request.getProductId())
+                            .batchNumber(finalBatchNumber)
+                            .manufactureDate(LocalDate.now())
+                            .expiryDate(expiry)
+                            .status("ACTIVE")
+                            .supplierId(order.getSupplierId())
+                            .build();
+                    return productBatchRepository.save(newBatch);
+                });
+
+        Inventory inventory = inventoryRepository.findByProductIdAndLocationIdAndBatchId(
+                request.getProductId(), request.getLocationId(), batch.getId())
+                .orElseGet(() -> Inventory.builder()
+                        .productId(request.getProductId())
+                        .locationId(request.getLocationId())
+                        .batchId(batch.getId())
+                        .onHandQty(0)
+                        .reservedQty(0)
+                        .lastUpdatedAt(Instant.now())
+                        .build());
+
+        inventory.setOnHandQty(inventory.getOnHandQty() + request.getQuantity());
+        inventoryRepository.saveAndFlush(inventory);
+
+        StockLedger ledger = StockLedger.builder()
+                .transactionType("INBOUND")
+                .referenceCode(order.getOrderCode())
+                .locationId(request.getLocationId())
+                .productId(request.getProductId())
+                .batchId(batch.getId())
+                .qtyChange(request.getQuantity())
+                .balanceAfter(inventory.getOnHandQty())
+                .performedBy(1L)
+                .notes("Cất hàng từ khu đệm Staging lên ô kệ " + location.getBinBarcode())
+                .createdAt(Instant.now())
+                .build();
+        stockLedgerRepository.save(ledger);
+
+        if (order.getItems() != null) {
+            boolean allStocked = true;
+            for (InboundOrderItem item : order.getItems()) {
+                if (request.getOrderItemId() != null && request.getOrderItemId().equals(item.getId())) {
+                    item.setReceivedQty(request.getQuantity());
+                    item.setStatus("COMPLETED");
+                } else if (item.getProductId() != null && item.getProductId().equals(request.getProductId())) {
+                    item.setReceivedQty(request.getQuantity());
+                    item.setStatus("COMPLETED");
+                }
+                if (!"COMPLETED".equalsIgnoreCase(item.getStatus())) {
+                    allStocked = false;
+                }
+            }
+            if (allStocked) {
+                order.setStatus("STOCKED");
+            }
+        } else {
+            order.setStatus("STOCKED");
+        }
+
+        order.setUpdatedAt(Instant.now());
+        return inboundOrderRepository.save(order);
     }
 }

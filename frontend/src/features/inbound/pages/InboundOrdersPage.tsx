@@ -21,12 +21,14 @@ export const InboundOrdersPage: React.FC = () => {
   };
 
   const handleAdvanceStatus = async (orderId: string) => {
-    await inboundService.receiveOrder(orderId);
-    setOrders((prev) =>
-      prev.map((order) => {
-        if (order.id !== orderId) return order;
+    const targetOrder = orders.find((o) => o.id === orderId);
+    if (!targetOrder) return;
 
-        if (order.status === 'PENDING') {
+    if (targetOrder.status === 'PENDING') {
+      await inboundService.receiveOrder(orderId);
+      setOrders((prev) =>
+        prev.map((order) => {
+          if (order.id !== orderId) return order;
           return {
             ...order,
             status: 'RECEIVED',
@@ -37,20 +39,36 @@ export const InboundOrdersPage: React.FC = () => {
               expiryDate: '2026-12-30',
             })),
           };
-        } else if (order.status === 'RECEIVED') {
+        })
+      );
+    } else if (targetOrder.status === 'RECEIVED') {
+      const firstItem = targetOrder.items[0];
+      const prodId = firstItem?.sku?.includes('MILK') ? 1 : firstItem?.sku?.includes('SAMS') ? 2 : 3;
+      const targetLoc = prodId === 1 ? 5 : 1;
+
+      await inboundService.executePutaway({
+        orderId: Number(targetOrder.id),
+        productId: prodId,
+        locationId: targetLoc,
+        quantity: firstItem ? (firstItem.receivedQty || firstItem.expectedQty) : 10,
+        batchNumber: firstItem?.batchNumber,
+      });
+
+      setOrders((prev) =>
+        prev.map((order) => {
+          if (order.id !== orderId) return order;
           return {
             ...order,
             status: 'STOCKED',
             items: order.items.map((it) => ({
               ...it,
-              stockedQty: it.receivedQty,
-              putawayLocation: 'ZA-A01-R01-S01-B02',
+              stockedQty: it.receivedQty || it.expectedQty,
+              putawayLocation: targetLoc === 5 ? 'WH01-ZB-B01-R01-S01-B05' : 'WH01-ZA-A01-R01-S01-B01',
             })),
           };
-        }
-        return order;
-      })
-    );
+        })
+      );
+    }
   };
 
   return (

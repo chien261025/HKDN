@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { PackageCheck, CheckCircle2, ScanLine, MapPin, Calendar, RefreshCw, Truck, AlertCircle } from 'lucide-react';
 import { operatorService, OutboundOrderDto, PickListItemResponseDto } from '../../services/operatorService';
+import { PickingOrderSelector } from './PickingOrderSelector';
+import { PickingStepCard } from './PickingStepCard';
 
 interface PickingFefoTabProps {
   onOpenScanner: () => void;
@@ -164,39 +166,11 @@ export const PickingFefoTab: React.FC<PickingFefoTabProps> = ({
         </div>
       )}
 
-      <div className="bg-white rounded-2xl p-4 border border-slate-200 space-y-2 shadow-xs">
-        <div className="flex items-center justify-between">
-          <span className="text-xs font-bold text-slate-800 uppercase">Chọn Đơn Xuất Kho (SO)</span>
-          <span className="text-xs font-mono font-bold text-amber-700 bg-amber-50 px-2 py-0.5 rounded-lg border border-amber-200">
-            {pendingOrders.length} ĐƠN CHỜ
-          </span>
-        </div>
-
-        <div className="grid grid-cols-2 gap-2 pt-1">
-          {orders.slice(0, 4).map((o) => (
-            <button
-              key={o.id}
-              onClick={() => handleSelectOrder(o)}
-              className={`p-2.5 rounded-xl text-left border transition-all text-xs cursor-pointer ${
-                selectedOrder?.id === o.id
-                  ? 'border-amber-500 bg-amber-50/60 ring-2 ring-amber-100'
-                  : 'border-slate-200 bg-slate-50 hover:bg-slate-100'
-              }`}
-            >
-              <div className="font-mono font-bold text-slate-900">{o.orderCode}</div>
-              <div className="text-xs text-slate-500 mt-0.5 truncate">{o.customerName || 'Khách hàng'}</div>
-              <div className="mt-1 flex items-center justify-between">
-                <span className={`text-2xs font-bold px-1.5 py-0.5 rounded ${
-                  o.status === 'DISPATCHED' ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-100 text-amber-800'
-                }`}>
-                  {o.status}
-                </span>
-                <span className="text-2xs text-slate-400 font-mono">{o.items?.length || 0} món</span>
-              </div>
-            </button>
-          ))}
-        </div>
-      </div>
+      <PickingOrderSelector
+        orders={orders}
+        selectedOrder={selectedOrder}
+        onSelectOrder={handleSelectOrder}
+      />
 
       {selectedOrder && (
         <div className="space-y-3">
@@ -233,61 +207,12 @@ export const PickingFefoTab: React.FC<PickingFefoTabProps> = ({
             </div>
           ) : (
             pickSteps.map((step, idx) => (
-              <div
+              <PickingStepCard
                 key={idx}
-                className={`rounded-2xl p-4 border transition-all shadow-xs ${
-                  step.picked ? 'bg-slate-50 border-slate-200 opacity-70' : 'bg-white border-amber-300 ring-2 ring-amber-50'
-                }`}
-              >
-                <div className="flex items-center justify-between pb-2 border-b border-slate-100 text-xs">
-                  <span className="font-mono font-bold text-amber-800">Bước {step.stepOrder || idx + 1}: Di chuyển đến ô</span>
-                  <span className="text-xs font-mono text-slate-500 font-medium">
-                    Lấy: <strong className="text-indigo-700 text-sm font-bold">{step.pickQty}</strong> cái
-                  </span>
-                </div>
-
-                <div className="mt-3 p-3 rounded-xl bg-slate-50 border border-slate-200 flex items-center justify-between">
-                  <div>
-                    <div className="text-2xs font-mono text-slate-500 uppercase">Vị trí ô kệ:</div>
-                    <div className="font-mono text-sm font-black text-indigo-700 flex items-center gap-1.5 mt-0.5">
-                      <MapPin className="w-4 h-4 text-indigo-600" />
-                      {step.binBarcode}
-                    </div>
-                  </div>
-                  <div className="text-right">
-                    <div className="text-2xs font-mono text-slate-500 uppercase">Hạn dùng (FEFO):</div>
-                    <div className="text-xs font-mono font-bold text-rose-700 flex items-center gap-1 mt-0.5">
-                      <Calendar className="w-3.5 h-3.5" />
-                      {step.expiryDate}
-                    </div>
-                  </div>
-                </div>
-
-                <div className="mt-2.5 text-xs">
-                  <div className="font-bold text-slate-900">{step.productName || 'Sản phẩm chỉ định'}</div>
-                  <div className="text-2xs font-mono text-slate-500 mt-0.5">
-                    Lô: <strong className="text-amber-800">{step.batchNumber}</strong>
-                  </div>
-                </div>
-
-                <div className="mt-3 pt-2.5 border-t border-slate-100">
-                  {step.picked ? (
-                    <div className="flex items-center gap-2 text-emerald-700 text-xs font-bold font-mono">
-                      <CheckCircle2 className="w-4 h-4 text-emerald-600" />
-                      <span>ĐÃ NHẶT XONG {step.pickQty} CÁI</span>
-                    </div>
-                  ) : (
-                    <button
-                      type="button"
-                      onClick={() => handleConfirmStep(idx)}
-                      className="w-full py-2 bg-amber-500 hover:bg-amber-600 text-slate-950 font-bold rounded-xl text-xs flex items-center justify-center gap-2 shadow-sm transition-all cursor-pointer"
-                    >
-                      <ScanLine className="w-4 h-4" />
-                      <span>Xác Nhận Đã Nhặt Bước {idx + 1}</span>
-                    </button>
-                  )}
-                </div>
-              </div>
+                step={step}
+                index={idx}
+                onConfirmStep={handleConfirmStep}
+              />
             ))
           )}
 

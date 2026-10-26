@@ -7,6 +7,8 @@ import com.wms.module.inventory.entity.ProductBatch;
 import com.wms.module.inventory.repository.InventoryRepository;
 import com.wms.module.inventory.repository.ProductBatchRepository;
 import com.wms.module.inventory.service.InventoryLockService;
+import com.wms.module.inventory.entity.StockLedger;
+import com.wms.module.inventory.repository.StockLedgerRepository;
 import com.wms.module.masterdata.entity.Location;
 import com.wms.module.masterdata.entity.Product;
 import com.wms.module.masterdata.repository.LocationRepository;
@@ -36,6 +38,7 @@ public class OutboundService {
     private final LocationRepository locationRepository;
     private final InventoryLockService inventoryLockService;
     private final OutboundOrderRepository outboundOrderRepository;
+    private final StockLedgerRepository stockLedgerRepository;
 
     @Transactional(readOnly = true)
     public List<OutboundOrder> getAllOutboundOrders() {
@@ -62,6 +65,42 @@ public class OutboundService {
     public OutboundOrder dispatchOutboundOrder(Long id) {
         OutboundOrder order = outboundOrderRepository.findById(id)
                 .orElseThrow(() -> new BusinessException(ErrorCode.NOT_FOUND, "Không tìm thấy đơn xuất: " + id));
+
+        if (order.getItems() != null) {
+            for (OutboundOrderItem item : order.getItems()) {
+                int qtyToDeduct = item.getRequestedQty();
+                List<Inventory> inventories = inventoryRepository.findAll().stream()
+                        .filter(inv -> inv.getProductId().equals(item.getProductId()) && inv.getOnHandQty() > 0)
+                        .sorted((a, b) -> Integer.compare(b.getReservedQty(), a.getReservedQty()))
+                        .toList();
+
+                for (Inventory inv : inventories) {
+                    if (qtyToDeduct <= 0) break;
+                    int deduct = Math.min(qtyToDeduct, inv.getOnHandQty());
+                    inv.setOnHandQty(inv.getOnHandQty() - deduct);
+                    inv.setReservedQty(Math.max(0, inv.getReservedQty() - deduct));
+                    inv.setLastUpdatedAt(Instant.now());
+                    inventoryRepository.saveAndFlush(inv);
+
+                    StockLedger ledger = StockLedger.builder()
+                            .transactionType("OUTBOUND")
+                            .referenceCode(order.getOrderCode())
+                            .locationId(inv.getLocationId())
+                            .productId(item.getProductId())
+                            .batchId(inv.getBatchId())
+                            .qtyChange(-deduct)
+                            .balanceAfter(inv.getOnHandQty())
+                            .performedBy(1L)
+                            .notes("Bàn giao vận chuyển đơn xuất SO: " + order.getOrderCode())
+                            .createdAt(Instant.now())
+                            .build();
+                    stockLedgerRepository.save(ledger);
+
+                    qtyToDeduct -= deduct;
+                }
+            }
+        }
+
         order.setStatus("DISPATCHED");
         order.setUpdatedAt(Instant.now());
         return outboundOrderRepository.save(order);

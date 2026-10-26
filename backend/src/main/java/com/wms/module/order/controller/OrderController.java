@@ -46,6 +46,13 @@ public class OrderController {
         return ApiResponse.success("Tiếp nhận đơn hàng nhập kho thành công!", inboundService.receiveInboundOrder(id));
     }
 
+    @PostMapping("/inbound/putaway")
+    @Operation(summary = "Thực hiện cất hàng lên ô kệ (Put-away Execution)",
+               description = "Chuyển hàng từ khu đệm Staging lên ô kệ, tăng số lượng On-hand và ghi sổ cái bất biến.")
+    public ApiResponse<InboundOrder> executePutaway(@Valid @RequestBody com.wms.module.order.dto.request.ExecutePutawayRequest request) {
+        return ApiResponse.success("Cất hàng lên ô kệ thành công!", inboundService.executePutaway(request));
+    }
+
     @GetMapping("/outbound")
     @Operation(summary = "Lấy danh sách đơn xuất hàng SO", description = "Trả về toàn bộ danh sách đơn bán hàng xuất kho")
     public ApiResponse<List<OutboundOrder>> getAllOutboundOrders() {

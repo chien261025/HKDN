@@ -31,4 +31,6 @@ public interface ProductBatchRepository extends JpaRepository<ProductBatch, Long
             @Param("today") LocalDate today,
             @Param("targetDate") LocalDate targetDate
     );
+
+    java.util.Optional<ProductBatch> findByProductIdAndBatchNumber(Long productId, String batchNumber);
 }

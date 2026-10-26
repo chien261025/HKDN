@@ -105,4 +105,19 @@ export const inboundService = {
       return null;
     }
   },
+
+  async executePutaway(payload: {
+    orderId: number;
+    productId: number;
+    locationId: number;
+    quantity: number;
+    batchNumber?: string;
+    expiryDate?: string;
+  }): Promise<void> {
+    try {
+      await apiClient.post('/orders/inbound/putaway', payload);
+    } catch (err) {
+      console.warn('Could not call putaway API on backend:', err);
+    }
+  },
 };

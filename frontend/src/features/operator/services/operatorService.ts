@@ -114,6 +114,22 @@ export const operatorService = {
   },
 
   /**
+   * Thực hiện cất hàng lên ô kệ (Put-away Execution)
+   */
+  async executePutaway(payload: {
+    orderId: number;
+    orderItemId?: number;
+    productId: number;
+    locationId: number;
+    quantity: number;
+    batchNumber?: string;
+    expiryDate?: string;
+  }): Promise<InboundOrderDto> {
+    const res = await apiClient.post<{ success: boolean; data: InboundOrderDto }>('/orders/inbound/putaway', payload);
+    return res.data.data;
+  },
+
+  /**
    * Lấy danh sách các đơn xuất kho SO từ database
    */
   async getOutboundOrders(): Promise<OutboundOrderDto[]> {

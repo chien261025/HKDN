@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { Layers, CheckCircle2, ScanLine, ArrowRight, MapPin, AlertCircle } from 'lucide-react';
-import { operatorService, LocationDto } from '../../services/operatorService';
+import { Layers, CheckCircle2, ArrowRight } from 'lucide-react';
+import { operatorService } from '../../services/operatorService';
+import { PutawayActiveTaskCard, ActivePutawayTask } from './PutawayActiveTaskCard';
 
 interface PutawayTabProps {
   onOpenScanner: () => void;
@@ -8,16 +9,35 @@ interface PutawayTabProps {
   onClearScannedCode?: () => void;
 }
 
-interface ActivePutawayTask {
-  id: string;
-  sku: string;
-  productName: string;
-  weightKg: number;
-  qty: number;
-  preferredZone: string;
-  suggestedLocation?: LocationDto;
-  status: 'PENDING' | 'SUGGESTED' | 'COMPLETED';
-}
+const DEFAULT_STAGING_TASKS: ActivePutawayTask[] = [
+  {
+    id: 'put-01',
+    sku: 'SKU-OMO-MATIC',
+    productName: 'Nước giặt OMO Matic 3.6kg',
+    weightKg: 150.0,
+    qty: 40,
+    preferredZone: 'ZONE_A',
+    status: 'PENDING',
+  },
+  {
+    id: 'put-02',
+    sku: 'SKU-MILK-100',
+    productName: 'Sữa tươi tiệt trùng Vinamilk 100% 1L',
+    weightKg: 30.0,
+    qty: 30,
+    preferredZone: 'ZONE_B',
+    status: 'PENDING',
+  },
+  {
+    id: 'put-03',
+    sku: 'SKU-SAMS-S24',
+    productName: 'Điện thoại Samsung Galaxy S24 Ultra',
+    weightKg: 5.0,
+    qty: 10,
+    preferredZone: 'ZONE_A',
+    status: 'PENDING',
+  },
+];
 
 export const PutawayTab: React.FC<PutawayTabProps> = ({
   onOpenScanner,
@@ -28,36 +48,50 @@ export const PutawayTab: React.FC<PutawayTabProps> = ({
   const [activeTask, setActiveTask] = useState<ActivePutawayTask | null>(null);
   const [scannedBin, setScannedBin] = useState('');
   const [feedback, setFeedback] = useState<{ msg: string; type: 'success' | 'error' } | null>(null);
+  const [stagingQueue, setStagingQueue] = useState<ActivePutawayTask[]>(DEFAULT_STAGING_TASKS);
 
-  const [stagingQueue, setStagingQueue] = useState<ActivePutawayTask[]>([
-    {
-      id: 'put-01',
-      sku: 'SKU-OMO-MATIC',
-      productName: 'Nước giặt OMO Matic 3.6kg',
-      weightKg: 150.0,
-      qty: 40,
-      preferredZone: 'ZONE_A',
-      status: 'PENDING',
-    },
-    {
-      id: 'put-02',
-      sku: 'SKU-MILK-100',
-      productName: 'Sữa tươi tiệt trùng Vinamilk 100% 1L',
-      weightKg: 30.0,
-      qty: 30,
-      preferredZone: 'ZONE_B',
-      status: 'PENDING',
-    },
-    {
-      id: 'put-03',
-      sku: 'SKU-SAMS-S24',
-      productName: 'Điện thoại Samsung Galaxy S24 Ultra',
-      weightKg: 5.0,
-      qty: 10,
-      preferredZone: 'ZONE_A',
-      status: 'PENDING',
-    },
-  ]);
+  useEffect(() => {
+    const fetchReceivedOrders = async () => {
+      try {
+        const [orders, products] = await Promise.all([
+          operatorService.getInboundOrders(),
+          operatorService.getProducts(),
+        ]);
+        const receivedOrders = orders.filter((o) => o.status === 'RECEIVED');
+        if (receivedOrders.length > 0) {
+          const dynamicTasks: ActivePutawayTask[] = [];
+          for (const o of receivedOrders) {
+            for (const item of o.items || []) {
+              const prod = products.find((p) => p.id === item.productId);
+              const sku = prod?.sku || (item.productId === 1 ? 'SKU-MILK-100' : item.productId === 2 ? 'SKU-SAMS-S24' : 'SKU-OMO-MATIC');
+              const name = prod?.name || (item.productId === 1 ? 'Sữa tươi tiệt trùng Vinamilk 100% 1L' : item.productId === 2 ? 'Điện thoại Samsung Galaxy S24 Ultra' : 'Nước giặt OMO Matic 3.6kg');
+              const zone = sku.includes('MILK') ? 'ZONE_B' : 'ZONE_A';
+              const weight = sku.includes('OMO') ? 150.0 : sku.includes('MILK') ? 30.0 : 5.0;
+
+              dynamicTasks.push({
+                id: `po-${o.id}-it-${item.id}`,
+                orderId: o.id,
+                orderItemId: item.id,
+                productId: item.productId,
+                sku,
+                productName: name,
+                weightKg: weight,
+                qty: item.receivedQty || item.expectedQty,
+                preferredZone: zone,
+                status: 'PENDING',
+              });
+            }
+          }
+          if (dynamicTasks.length > 0) {
+            setStagingQueue(dynamicTasks);
+          }
+        }
+      } catch (err) {
+        console.warn('Could not load received orders for putaway:', err);
+      }
+    };
+    fetchReceivedOrders();
+  }, []);
 
   useEffect(() => {
     if (scannedCode) {
@@ -74,7 +108,7 @@ export const PutawayTab: React.FC<PutawayTabProps> = ({
       const suggested = await operatorService.suggestPutawayLocation(task.preferredZone, task.weightKg);
       setActiveTask({ ...task, suggestedLocation: suggested, status: 'SUGGESTED' });
       setFeedback({
-        msg: `Thuật toán gợi ý vị trí: ${suggested.binBarcode} (Tầng ${suggested.shelf}, Tải trọng tối đa: ${suggested.maxWeightKg}kg)`,
+        msg: `Thuật toán gợi ý vị trí: ${suggested.binBarcode} (Tầng ${suggested.shelf}, Tải trọng: ${suggested.maxWeightKg}kg)`,
         type: 'success',
       });
     } catch (err: any) {
@@ -84,7 +118,7 @@ export const PutawayTab: React.FC<PutawayTabProps> = ({
     }
   };
 
-  const handleConfirmPlacement = () => {
+  const handleConfirmPlacement = async () => {
     if (!activeTask || !activeTask.suggestedLocation) return;
     const targetBarcode = activeTask.suggestedLocation.binBarcode;
 
@@ -94,6 +128,20 @@ export const PutawayTab: React.FC<PutawayTabProps> = ({
         type: 'error',
       });
       return;
+    }
+
+    if (activeTask.orderId && activeTask.productId && activeTask.suggestedLocation) {
+      try {
+        await operatorService.executePutaway({
+          orderId: activeTask.orderId,
+          orderItemId: activeTask.orderItemId,
+          productId: activeTask.productId,
+          locationId: activeTask.suggestedLocation.id,
+          quantity: activeTask.qty,
+        });
+      } catch (err: any) {
+        console.warn('Backend putaway sync notice:', err);
+      }
     }
 
     setStagingQueue((prev) =>
@@ -141,83 +189,21 @@ export const PutawayTab: React.FC<PutawayTabProps> = ({
           {feedback.type === 'success' ? (
             <CheckCircle2 className="w-4 h-4 flex-shrink-0 text-emerald-600" />
           ) : (
-            <AlertCircle className="w-4 h-4 flex-shrink-0 text-rose-600" />
+            <span className="w-4 h-4 flex-shrink-0 text-rose-600 font-bold">!</span>
           )}
           <span>{feedback.msg}</span>
         </div>
       )}
 
       {activeTask && activeTask.suggestedLocation && (
-        <div className="bg-white rounded-2xl p-5 border-2 border-indigo-500 shadow-md space-y-4 animate-in fade-in">
-          <div className="flex items-center justify-between pb-3 border-b border-slate-100">
-            <span className="text-xs font-black text-indigo-900 uppercase">Đang Thực Hiện Cất Hàng</span>
-            <span className="px-2 py-0.5 rounded-full text-xs font-bold bg-indigo-100 text-indigo-800 font-mono">
-              THUẬT TOÁN CHỈ ĐỊNH
-            </span>
-          </div>
-
-          <div>
-            <span className="text-xs text-slate-500 font-medium">Mặt hàng:</span>
-            <div className="font-bold text-slate-900 text-sm">{activeTask.productName}</div>
-            <div className="text-xs text-slate-500 mt-1 flex items-center gap-3 font-mono">
-              <span>SKU: {activeTask.sku}</span>
-              <span>• {activeTask.qty} cái</span>
-              <span>• {activeTask.weightKg}kg</span>
-            </div>
-          </div>
-
-          <div className="p-3.5 rounded-xl bg-indigo-50/80 border border-indigo-200 flex items-center justify-between">
-            <div>
-              <div className="text-xs font-bold text-indigo-900">Vị Trí Ô Kệ Chỉ Định:</div>
-              <div className="font-mono font-black text-indigo-700 text-base mt-0.5">
-                {activeTask.suggestedLocation.binBarcode}
-              </div>
-              <div className="text-xs text-indigo-600 mt-0.5">
-                Phân khu {activeTask.suggestedLocation.zoneCode} • Tầng đáy {activeTask.suggestedLocation.shelf}
-              </div>
-            </div>
-            <MapPin className="w-6 h-6 text-indigo-600" />
-          </div>
-
-          <div className="space-y-2">
-            <label className="text-xs font-bold text-slate-700">Xác Nhận Quét Mã Ô Kệ:</label>
-            <div className="flex gap-2">
-              <input
-                type="text"
-                placeholder="VD: WH01-ZA-A01-R01-S01-B01"
-                value={scannedBin}
-                onChange={(e) => setScannedBin(e.target.value)}
-                className="flex-1 px-3 py-2 text-xs font-mono uppercase bg-slate-50 border border-slate-300 rounded-xl focus:outline-none focus:border-indigo-600 font-semibold"
-              />
-              <button
-                type="button"
-                onClick={onOpenScanner}
-                className="px-3 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-bold flex items-center gap-1.5 transition-colors cursor-pointer"
-              >
-                <ScanLine className="w-4 h-4" />
-                <span>Quét</span>
-              </button>
-            </div>
-          </div>
-
-          <div className="flex items-center gap-2 pt-2">
-            <button
-              type="button"
-              onClick={() => setActiveTask(null)}
-              className="flex-1 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-semibold transition-colors"
-            >
-              Hủy Bỏ
-            </button>
-            <button
-              type="button"
-              onClick={handleConfirmPlacement}
-              className="flex-2 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-bold shadow-md shadow-indigo-200 transition-all flex items-center justify-center gap-2 cursor-pointer"
-            >
-              <CheckCircle2 className="w-4 h-4" />
-              <span>Xác Nhận Đã Đặt Vào Kệ</span>
-            </button>
-          </div>
-        </div>
+        <PutawayActiveTaskCard
+          activeTask={activeTask}
+          scannedBin={scannedBin}
+          onChangeScannedBin={setScannedBin}
+          onOpenScanner={onOpenScanner}
+          onCancel={() => setActiveTask(null)}
+          onConfirm={handleConfirmPlacement}
+        />
       )}
 
       <div className="space-y-3">
