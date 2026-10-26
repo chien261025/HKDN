@@ -1,14 +1,31 @@
-import React, { useState } from 'react';
-import { Printer, MapPin, Tag, ScanLine, Info } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { Printer, MapPin, Tag, ScanLine, Info, Truck } from 'lucide-react';
+import { useSearchParams } from 'react-router-dom';
 import { BinLabelPrintSection } from '../components/BinLabelPrintSection';
 import { BatchLabelPrintSection } from '../components/BatchLabelPrintSection';
+import { CustomLabelPrintSection } from '../components/CustomLabelPrintSection';
 
 interface BarcodePrintingPageProps {
   onOpenScanner?: () => void;
 }
 
 export const BarcodePrintingPage: React.FC<BarcodePrintingPageProps> = ({ onOpenScanner }) => {
-  const [activeTab, setActiveTab] = useState<'BINS' | 'BATCHES'>('BINS');
+  const [searchParams] = useSearchParams();
+  const tabParam = searchParams.get('tab');
+
+  const [activeTab, setActiveTab] = useState<'BINS' | 'BATCHES' | 'PALLETS'>(
+    tabParam === 'BATCHES' ? 'BATCHES' : tabParam === 'PALLETS' ? 'PALLETS' : 'BINS'
+  );
+
+  useEffect(() => {
+    if (tabParam === 'BATCHES' || tabParam === 'PALLETS' || tabParam === 'BINS') {
+      setActiveTab(tabParam);
+    } else if (searchParams.get('sku')) {
+      setActiveTab('BATCHES');
+    } else if (searchParams.get('bin')) {
+      setActiveTab('BINS');
+    }
+  }, [tabParam, searchParams]);
 
   return (
     <div className="space-y-5 max-w-7xl mx-auto pb-12">
@@ -29,7 +46,7 @@ export const BarcodePrintingPage: React.FC<BarcodePrintingPageProps> = ({ onOpen
               </span>
             </div>
             <p className="text-xs sm:text-sm text-slate-600 font-medium mt-0.5">
-              Tạo và in nhãn dán ô kệ, tem định danh lô hàng theo chuẩn Code128 & QR Code 2D
+              Tạo và in nhãn dán ô kệ, tem định danh lô hàng, thẻ Pallet A6 theo chuẩn Code128 & QR Code 2D
             </p>
           </div>
         </div>
@@ -52,7 +69,7 @@ export const BarcodePrintingPage: React.FC<BarcodePrintingPageProps> = ({ onOpen
             className="flex items-center gap-2 px-4 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs sm:text-sm font-bold shadow-md shadow-indigo-600/20 transition-all cursor-pointer"
           >
             <Printer className="w-4 h-4" />
-            <span>In Bản Này (Ctrl+P)</span>
+            <span>In Toàn Bộ (Ctrl+P)</span>
           </button>
         </div>
       </div>
@@ -61,12 +78,12 @@ export const BarcodePrintingPage: React.FC<BarcodePrintingPageProps> = ({ onOpen
       <div className="p-3.5 rounded-xl bg-indigo-50/70 border border-indigo-200 text-indigo-900 text-xs flex items-center gap-2.5 font-medium no-print">
         <Info className="w-4 h-4 text-indigo-700 flex-shrink-0" />
         <span>
-          <strong>Mẹo Demo Đồ Án:</strong> Bạn có thể in các nhãn ô kệ và lô hàng ra giấy A4 hoặc dùng máy in tem nhãn nhiệt. Camera điện thoại và webcam đều quét nhận diện được cả mã vạch 1D Code128 lẫn QR 2D!
+          <strong>Mẹo In Ấn Chuẩn Công Nghiệp:</strong> Các tem nhãn đã được tối ưu CSS in ấn (`@media print`). Bạn có thể in trực tiếp ra giấy A4 (khổ 3 cột) hoặc xuất sang máy in nhiệt decal (Zebra/Xprinter) chuẩn xác không bị tràn lề!
         </span>
       </div>
 
       {/* Modern Segmented Pill Tabs Selector (Hidden on print) */}
-      <div className="inline-flex items-center bg-slate-100 p-1.5 rounded-xl border border-slate-200/80 gap-1 no-print">
+      <div className="inline-flex flex-wrap items-center bg-slate-100 p-1.5 rounded-xl border border-slate-200/80 gap-1 no-print">
         <button
           type="button"
           onClick={() => setActiveTab('BINS')}
@@ -90,13 +107,27 @@ export const BarcodePrintingPage: React.FC<BarcodePrintingPageProps> = ({ onOpen
           }`}
         >
           <Tag className="w-4 h-4 text-emerald-600" />
-          <span>2. Tem Lô Hàng & Hạn Dùng (Product Batches)</span>
+          <span>2. Tem Lô Hàng & Hạn Dùng (FEFO Batches)</span>
+        </button>
+
+        <button
+          type="button"
+          onClick={() => setActiveTab('PALLETS')}
+          className={`flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+            activeTab === 'PALLETS'
+              ? 'bg-white text-cyan-700 shadow-xs border border-slate-200'
+              : 'text-slate-600 hover:text-slate-900 border border-transparent'
+          }`}
+        >
+          <Truck className="w-4 h-4 text-cyan-600" />
+          <span>3. Tem Pallet A6 & Tạo Tem Tự Do (Custom)</span>
         </button>
       </div>
 
       {/* Tab Content */}
       {activeTab === 'BINS' && <BinLabelPrintSection />}
       {activeTab === 'BATCHES' && <BatchLabelPrintSection />}
+      {activeTab === 'PALLETS' && <CustomLabelPrintSection />}
     </div>
   );
 };

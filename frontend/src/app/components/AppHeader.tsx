@@ -2,7 +2,6 @@ import React from 'react';
 import {
   Search,
   ShieldCheck,
-  Bell,
   LogOut,
   PanelLeftClose,
   PanelLeftOpen,
@@ -10,6 +9,7 @@ import {
 } from 'lucide-react';
 import { useLocation } from 'react-router-dom';
 import { AuthSession } from '../../features/auth/types';
+import { NotificationCenterDropdown } from '../../features/notifications/components/NotificationCenterDropdown';
 
 interface AppHeaderProps {
   isSidebarCollapsed: boolean;
@@ -111,10 +111,7 @@ export const AppHeader: React.FC<AppHeaderProps> = ({
           <span>Sổ Cái Khép Kín: 100% Khớp</span>
         </div>
 
-        <button className="relative p-2 text-slate-500 hover:text-slate-800 hover:bg-slate-100 rounded-xl border border-slate-200 transition-all cursor-pointer">
-          <Bell className="w-4.5 h-4.5" />
-          <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-rose-500 rounded-full ring-2 ring-white"></span>
-        </button>
+        <NotificationCenterDropdown />
 
         {/* Profile badge with safe UTF-8 fallback */}
         <div className="flex items-center gap-3 pl-3 border-l border-slate-200">

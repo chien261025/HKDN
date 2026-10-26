@@ -39,10 +39,15 @@ public class SecurityConfig {
                                 "/auth/**",
                                 "/users/**",
                                 "/masterdata/**",
+                                "/products/**",
+                                "/suppliers/**",
+                                "/locations/**",
                                 "/inventory/**",
                                 "/orders/**",
                                 "/smartquery/**",
-                                "/reports/**"
+                                "/reports/**",
+                                "/notifications/**",
+                                "/ws/**"
                         ).permitAll()
                         .anyRequest().authenticated()
                 );

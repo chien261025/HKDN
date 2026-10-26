@@ -7,18 +7,21 @@ import {
   Eye,
   Layers,
   User,
-  Scale
+  Scale,
+  ScanLine,
 } from 'lucide-react';
 import { AuditSession } from '../types';
 
 interface AuditSessionsListProps {
   sessions: AuditSession[];
   onSelectSession: (session: AuditSession) => void;
+  onOpenCountingModal?: (session: AuditSession) => void;
 }
 
 export const AuditSessionsList: React.FC<AuditSessionsListProps> = ({
   sessions,
   onSelectSession,
+  onOpenCountingModal,
 }) => {
   return (
     <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
@@ -128,13 +131,29 @@ export const AuditSessionsList: React.FC<AuditSessionsListProps> = ({
 
                   {/* Thao tác */}
                   <td className="py-3.5 px-4 text-right">
-                    <button
-                      onClick={() => onSelectSession(session)}
-                      className="inline-flex items-center gap-1.5 px-3.5 py-1.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-200 rounded-lg text-xs font-bold transition-all shadow-xs"
-                    >
-                      <Scale className="w-3.5 h-3.5" />
-                      <span>Đối Soát & Cân Đối</span>
-                    </button>
+                    <div className="flex items-center justify-end gap-2">
+                      {isCounting && onOpenCountingModal && (
+                        <button
+                          onClick={() => onOpenCountingModal(session)}
+                          className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-slate-900 hover:bg-slate-800 text-white rounded-lg text-xs font-bold transition-all shadow-xs"
+                        >
+                          <ScanLine className="w-3.5 h-3.5 text-emerald-400" />
+                          <span>Quét Đếm (PDA)</span>
+                        </button>
+                      )}
+
+                      <button
+                        onClick={() => onSelectSession(session)}
+                        className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all shadow-xs border ${
+                          isReconciled
+                            ? 'bg-slate-100 hover:bg-slate-200 text-slate-700 border-slate-200'
+                            : 'bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border-emerald-200'
+                        }`}
+                      >
+                        <Scale className="w-3.5 h-3.5" />
+                        <span>{isReconciled ? 'Xem Sổ Cái' : 'Đối Soát & Cân Đối'}</span>
+                      </button>
+                    </div>
                   </td>
                 </tr>
               );

@@ -50,7 +50,7 @@ export const AuditHeader: React.FC<AuditHeaderProps> = ({
       {/* 4 KPI Progress Cards */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
         {/* Total Sessions */}
-        <div className="bg-white rounded-xl p-4 border border-slate-200 shadow-sm flex items-center justify-between">
+        <div className="bg-white rounded-xl p-4 border border-slate-200 shadow-sm flex items-center justify-between relative overflow-hidden before:absolute before:top-0 before:left-0 before:right-0 before:h-1 before:bg-slate-400">
           <div>
             <div className="text-xs font-bold text-slate-500 uppercase tracking-wider">Tổng Đợt Kiểm Kê</div>
             <div className="text-2xl font-black text-slate-900 font-mono mt-1">{sessions.length}</div>
@@ -61,7 +61,7 @@ export const AuditHeader: React.FC<AuditHeaderProps> = ({
         </div>
 
         {/* Counting in progress */}
-        <div className="bg-white rounded-xl p-4 border border-slate-200 shadow-sm flex items-center justify-between">
+        <div className="bg-white rounded-xl p-4 border border-slate-200 shadow-sm flex items-center justify-between relative overflow-hidden before:absolute before:top-0 before:left-0 before:right-0 before:h-1 before:bg-blue-600">
           <div>
             <div className="text-xs font-bold text-blue-700 uppercase tracking-wider">Đang Đếm Thực Địa</div>
             <div className="text-2xl font-black text-blue-900 font-mono mt-1">{countingCount} đợt</div>
@@ -72,7 +72,7 @@ export const AuditHeader: React.FC<AuditHeaderProps> = ({
         </div>
 
         {/* Pending Review */}
-        <div className="bg-white rounded-xl p-4 border border-slate-200 shadow-sm flex items-center justify-between">
+        <div className="bg-white rounded-xl p-4 border border-slate-200 shadow-sm flex items-center justify-between relative overflow-hidden before:absolute before:top-0 before:left-0 before:right-0 before:h-1 before:bg-amber-500">
           <div>
             <div className="text-xs font-bold text-amber-700 uppercase tracking-wider">Chờ Đối Soát Duyệt</div>
             <div className="text-2xl font-black text-amber-700 font-mono mt-1">{pendingReviewCount} đợt</div>
@@ -83,7 +83,7 @@ export const AuditHeader: React.FC<AuditHeaderProps> = ({
         </div>
 
         {/* Reconciled */}
-        <div className="bg-white rounded-xl p-4 border border-slate-200 shadow-sm flex items-center justify-between">
+        <div className="bg-white rounded-xl p-4 border border-slate-200 shadow-sm flex items-center justify-between relative overflow-hidden before:absolute before:top-0 before:left-0 before:right-0 before:h-1 before:bg-emerald-500">
           <div>
             <div className="text-xs font-bold text-emerald-700 uppercase tracking-wider">Đã Cân Đối Sổ Cái</div>
             <div className="text-2xl font-black text-emerald-700 font-mono mt-1">{reconciledCount} đợt</div>

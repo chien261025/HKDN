@@ -219,5 +219,43 @@
   color: #f8fafc !important;
 }
 
+@keyframes shrinkWidth {
+  from {
+    width: 100%;
+  }
+  to {
+    width: 0%;
+  }
+}
 
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
 
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+/* Industrial Print Media Query for Labels & Decals */
+@media print {
+  body {
+    background-color: #ffffff !important;
+    color: #000000 !important;
+  }
+  .no-print, header, nav, aside {
+    display: none !important;
+  }
+  .print-single-label, .print-pallet-label {
+    page-break-inside: avoid !important;
+    break-inside: avoid !important;
+    margin: 4px auto !important;
+    border: 2px solid #000000 !important;
+    box-shadow: none !important;
+  }
+  .print-label-sheet {
+    display: flex !important;
+    flex-wrap: wrap !important;
+    gap: 8px !important;
+  }
+}

@@ -182,7 +182,7 @@ export const BinDetailPanel: React.FC<BinDetailPanelProps> = ({
           <ExternalLink className="w-3.5 h-3.5" />
         </Link>
         <Link
-          to="/labels"
+          to={`/labels?bin=${selectedBin.barcode}&tab=BINS`}
           className="flex-1 py-2.5 px-3 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs flex items-center justify-center gap-1.5 transition-all border border-slate-300"
           title="In nhãn Barcode & QR Code cho ô kệ"
         >

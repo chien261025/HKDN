@@ -1,6 +1,8 @@
-import React, { useState } from 'react';
-import { Layers, Printer, CheckSquare, Square } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { Layers, Printer, CheckSquare, Square, Search, RefreshCw } from 'lucide-react';
+import { useSearchParams } from 'react-router-dom';
 import { BinLabelCard, BinLabelData } from './BinLabelCard';
+import { apiClient } from '../../../services/api';
 
 export const SAMPLE_BIN_LABELS: BinLabelData[] = [
   {
@@ -60,14 +62,57 @@ export const SAMPLE_BIN_LABELS: BinLabelData[] = [
 ];
 
 export const BinLabelPrintSection: React.FC = () => {
+  const [searchParams] = useSearchParams();
+  const targetBinParam = searchParams.get('bin');
+
+  const [binsList, setBinsList] = useState<BinLabelData[]>(SAMPLE_BIN_LABELS);
   const [selectedZone, setSelectedZone] = useState<string>('ALL');
+  const [searchQuery, setSearchQuery] = useState<string>('');
+  const [isLoading, setIsLoading] = useState<boolean>(false);
   const [selectedBins, setSelectedBins] = useState<string[]>(
-    SAMPLE_BIN_LABELS.map((b) => b.binBarcode)
+    targetBinParam ? [targetBinParam] : SAMPLE_BIN_LABELS.map((b) => b.binBarcode)
   );
 
-  const filteredLabels = SAMPLE_BIN_LABELS.filter(
-    (b) => selectedZone === 'ALL' || b.zoneCode === selectedZone
-  );
+  useEffect(() => {
+    const fetchRealLocations = async () => {
+      setIsLoading(true);
+      try {
+        const res = await apiClient.get<{ success: boolean; data: any[] }>('/masterdata/locations');
+        if (res.data?.data && res.data.data.length > 0) {
+          const mapped: BinLabelData[] = res.data.data.map((item) => ({
+            binBarcode: item.binBarcode,
+            zoneCode: item.zoneCode || 'ZONE_A',
+            aisle: item.aisle || 'A01',
+            rack: item.rack || 'R01',
+            shelf: item.shelf || 'S01',
+            bin: item.bin || 'B01',
+            maxWeightKg: item.maxWeightKg || 500,
+          }));
+          setBinsList(mapped);
+          if (targetBinParam) {
+            setSelectedBins([targetBinParam]);
+          } else {
+            setSelectedBins(mapped.map((b) => b.binBarcode));
+          }
+        }
+      } catch (err) {
+        console.warn('Lỗi khi tải locations từ API, dùng dữ liệu mẫu:', err);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    fetchRealLocations();
+  }, [targetBinParam]);
+
+  const filteredLabels = binsList.filter((b) => {
+    const matchZone = selectedZone === 'ALL' || b.zoneCode === selectedZone;
+    const matchQuery =
+      !searchQuery ||
+      b.binBarcode.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      b.aisle.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      b.bin.toLowerCase().includes(searchQuery.toLowerCase());
+    return matchZone && matchQuery;
+  });
 
   const toggleSelectBin = (barcode: string) => {
     setSelectedBins((prev) =>
@@ -83,10 +128,6 @@ export const BinLabelPrintSection: React.FC = () => {
     setSelectedBins([]);
   };
 
-  const handlePrint = () => {
-    window.print();
-  };
-
   return (
     <div className="space-y-4">
       {/* Control Toolbar */}
@@ -97,18 +138,32 @@ export const BinLabelPrintSection: React.FC = () => {
           </div>
           <div>
             <h3 className="text-xs font-bold text-slate-900 uppercase">Cấu hình in nhãn ô kệ</h3>
-            <p className="text-xs text-slate-500 font-medium">Lựa chọn phân khu và các ô kệ cần in tem dán</p>
+            <p className="text-xs text-slate-500 font-medium">
+              {isLoading ? 'Đang nạp từ cơ sở dữ liệu...' : `Tổng ${binsList.length} vị trí ô kệ trong kho`}
+            </p>
           </div>
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
+          {/* Search box */}
+          <div className="relative">
+            <Search className="w-3.5 h-3.5 text-slate-400 absolute left-2.5 top-1/2 -translate-y-1/2" />
+            <input
+              type="text"
+              placeholder="Tìm mã vạch, dãy..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="pl-8 pr-3 py-1.5 bg-slate-50 border border-slate-300 rounded-xl text-xs font-medium focus:border-indigo-600"
+            />
+          </div>
+
           {/* Zone filter */}
           <select
             value={selectedZone}
             onChange={(e) => setSelectedZone(e.target.value)}
-            className="px-3 py-2 bg-slate-50 border border-slate-300 rounded-xl text-xs font-semibold focus:outline-none focus:border-indigo-600"
+            className="px-3 py-1.5 bg-slate-50 border border-slate-300 rounded-xl text-xs font-semibold focus:border-indigo-600"
           >
-            <option value="ALL">Tất cả phân khu (Khu A & B)</option>
+            <option value="ALL">Tất cả phân khu</option>
             <option value="ZONE_A">Khu A (Khô & Thiết bị)</option>
             <option value="ZONE_B">Khu B (Kho mát 2-8°C)</option>
           </select>
@@ -117,14 +172,14 @@ export const BinLabelPrintSection: React.FC = () => {
           <button
             type="button"
             onClick={selectAll}
-            className="px-3 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-bold transition-colors cursor-pointer"
+            className="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-bold transition-colors cursor-pointer"
           >
             Chọn tất cả ({filteredLabels.length})
           </button>
           <button
             type="button"
             onClick={deselectAll}
-            className="px-3 py-2 bg-slate-100 hover:bg-slate-200 text-slate-500 rounded-xl text-xs font-medium transition-colors cursor-pointer"
+            className="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-500 rounded-xl text-xs font-medium transition-colors cursor-pointer"
           >
             Bỏ chọn
           </button>
@@ -132,7 +187,7 @@ export const BinLabelPrintSection: React.FC = () => {
           {/* Print button */}
           <button
             type="button"
-            onClick={handlePrint}
+            onClick={() => window.print()}
             className="flex items-center gap-2 px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-bold shadow-md shadow-indigo-200 transition-all cursor-pointer"
           >
             <Printer className="w-4 h-4" />
@@ -152,7 +207,6 @@ export const BinLabelPrintSection: React.FC = () => {
                 isSelected ? 'opacity-100 ring-2 ring-indigo-500 rounded-xl' : 'opacity-40 no-print'
               }`}
             >
-              {/* Checkbox badge (Hidden on print) */}
               <button
                 type="button"
                 onClick={() => toggleSelectBin(label.binBarcode)}

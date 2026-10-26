@@ -10,6 +10,8 @@ import { UserProfileModal } from '../features/users/components/UserProfileModal'
 import { AppSidebar } from './components/AppSidebar';
 import { AppHeader } from './components/AppHeader';
 import { AppRoutes } from './components/AppRoutes';
+import { NotificationProvider } from '../features/notifications/context/NotificationContext';
+import { ToastNotificationContainer } from '../features/notifications/components/ToastNotificationContainer';
 
 const AppContent: React.FC = () => {
   const [showScanner, setShowScanner] = useState(false);
@@ -133,7 +135,10 @@ const AppContent: React.FC = () => {
 export const App: React.FC = () => {
   return (
     <BrowserRouter>
-      <AppContent />
+      <NotificationProvider>
+        <AppContent />
+        <ToastNotificationContainer />
+      </NotificationProvider>
     </BrowserRouter>
   );
 };

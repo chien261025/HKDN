@@ -192,6 +192,20 @@ public class AuthController {
         return ApiResponse.success(accounts);
     }
 
+    @GetMapping("/me")
+    @Operation(summary = "Lấy hồ sơ cá nhân của người dùng hiện tại", description = "Trả về thông tin chi tiết tài khoản từ JWT Bearer token")
+    public ApiResponse<User> getMyProfile(jakarta.servlet.http.HttpServletRequest httpRequest) {
+        String authHeader = httpRequest.getHeader("Authorization");
+        if (authHeader == null || !authHeader.startsWith("Bearer ")) {
+            throw new BusinessException(ErrorCode.UNAUTHORIZED, "Chưa cung cấp Bearer token!");
+        }
+        String token = authHeader.substring(7);
+        String username = jwtTokenProvider.getUsernameFromToken(token);
+        User user = userRepository.findByUsername(username)
+                .orElseThrow(() -> new BusinessException(ErrorCode.NOT_FOUND, "Không tìm thấy tài khoản: " + username));
+        return ApiResponse.success("Lấy thông tin tài khoản thành công!", user);
+    }
+
     @PostMapping("/forgot-password/reset")
     @Operation(summary = "Đặt lại mật khẩu sau khi xác thực OTP", description = "Xác thực tài khoản và cập nhật mật khẩu mới mã hóa BCrypt")
     public ApiResponse<String> resetForgottenPassword(@Valid @RequestBody com.wms.module.identity.dto.request.ForgotPasswordResetRequest request) {

@@ -1,8 +1,10 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Package, Printer, Plus, Minus, Tag } from 'lucide-react';
+import { useSearchParams } from 'react-router-dom';
 import { ProductBatchLabelCard, ProductBatchLabelData } from './ProductBatchLabelCard';
+import { apiClient } from '../../../services/api';
 
-const SAMPLE_PRODUCTS: ProductBatchLabelData[] = [
+const FALLBACK_PRODUCTS: ProductBatchLabelData[] = [
   {
     productName: 'Sữa tươi tiệt trùng Vinamilk 100% 1L',
     sku: 'SKU-MILK-100',
@@ -36,13 +38,47 @@ const SAMPLE_PRODUCTS: ProductBatchLabelData[] = [
 ];
 
 export const BatchLabelPrintSection: React.FC = () => {
-  const [selectedProduct, setSelectedProduct] = useState<ProductBatchLabelData>(SAMPLE_PRODUCTS[0]);
-  const [batchNumber, setBatchNumber] = useState(selectedProduct.batchNumber);
-  const [expiryDate, setExpiryDate] = useState(selectedProduct.expiryDate || '');
+  const [searchParams] = useSearchParams();
+  const targetSkuParam = searchParams.get('sku');
+
+  const [productsList, setProductsList] = useState<ProductBatchLabelData[]>(FALLBACK_PRODUCTS);
+  const [selectedProduct, setSelectedProduct] = useState<ProductBatchLabelData>(FALLBACK_PRODUCTS[0]);
+  const [batchNumber, setBatchNumber] = useState(FALLBACK_PRODUCTS[0].batchNumber);
+  const [expiryDate, setExpiryDate] = useState(FALLBACK_PRODUCTS[0].expiryDate || '');
   const [printCopies, setPrintCopies] = useState<number>(4);
 
+  useEffect(() => {
+    const fetchRealProducts = async () => {
+      try {
+        const res = await apiClient.get<{ success: boolean; data: any[] }>('/masterdata/products');
+        if (res.data?.data && res.data.data.length > 0) {
+          const mapped: ProductBatchLabelData[] = res.data.data.map((item) => ({
+            productName: item.name,
+            sku: item.sku,
+            barcode: item.barcode || item.sku,
+            batchNumber: `BATCH-${item.sku.replace(/SKU-/i, '')}-01`,
+            manufactureDate: '2026-01-01',
+            expiryDate: item.sku.includes('MILK') ? '2026-10-30' : '2027-12-31',
+            storageZone: item.sku.includes('MILK') ? 'ZONE_B (MÁT 2-8°C)' : 'ZONE_A (KHÔ)',
+            supplierName: 'Smart WMS Authorized Supplier',
+          }));
+          setProductsList(mapped);
+
+          const matched = targetSkuParam ? mapped.find((p) => p.sku === targetSkuParam) : null;
+          const chosen = matched || mapped[0];
+          setSelectedProduct(chosen);
+          setBatchNumber(chosen.batchNumber);
+          setExpiryDate(chosen.expiryDate || '');
+        }
+      } catch (err) {
+        console.warn('Lỗi tải sản phẩm từ API, dùng dữ liệu fallback:', err);
+      }
+    };
+    fetchRealProducts();
+  }, [targetSkuParam]);
+
   const handleProductChange = (sku: string) => {
-    const prod = SAMPLE_PRODUCTS.find((p) => p.sku === sku);
+    const prod = productsList.find((p) => p.sku === sku);
     if (prod) {
       setSelectedProduct(prod);
       setBatchNumber(prod.batchNumber);
@@ -54,10 +90,6 @@ export const BatchLabelPrintSection: React.FC = () => {
     ...selectedProduct,
     batchNumber,
     expiryDate,
-  };
-
-  const handlePrint = () => {
-    window.print();
   };
 
   return (
@@ -77,7 +109,7 @@ export const BatchLabelPrintSection: React.FC = () => {
 
           <button
             type="button"
-            onClick={handlePrint}
+            onClick={() => window.print()}
             className="flex items-center gap-2 px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold shadow-md shadow-emerald-200 transition-all cursor-pointer"
           >
             <Printer className="w-4 h-4" />
@@ -94,7 +126,7 @@ export const BatchLabelPrintSection: React.FC = () => {
               onChange={(e) => handleProductChange(e.target.value)}
               className="w-full mt-1 px-3 py-2 bg-slate-50 border border-slate-300 rounded-xl text-xs font-semibold focus:outline-none focus:border-emerald-600"
             >
-              {SAMPLE_PRODUCTS.map((p) => (
+              {productsList.map((p) => (
                 <option key={p.sku} value={p.sku}>
                   {p.productName} ({p.sku})
                 </option>

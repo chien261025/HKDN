@@ -49,6 +49,13 @@ public class InventoryController {
         return ApiResponse.success("Lấy danh sách đợt kiểm kê thành công!", audits);
     }
 
+    @GetMapping("/audit/{id}")
+    @Operation(summary = "Xem chi tiết một đợt kiểm kê kho", description = "Trả về thông tin phiên kiểm kê kèm danh sách ô kệ và kết quả đếm")
+    public ApiResponse<com.wms.module.inventory.entity.InventoryAudit> getAuditById(@PathVariable Long id) {
+        com.wms.module.inventory.entity.InventoryAudit audit = inventoryAuditService.getAuditById(id);
+        return ApiResponse.success("Lấy thông tin đợt kiểm kê thành công!", audit);
+    }
+
     @PostMapping("/audit")
     @Operation(summary = "Khởi tạo đợt kiểm kê mù mới", description = "Tạo phiên kiểm kê mới cho kho hàng")
     public ApiResponse<com.wms.module.inventory.entity.InventoryAudit> createAudit(@RequestBody com.wms.module.inventory.entity.InventoryAudit audit) {
@@ -56,11 +63,24 @@ public class InventoryController {
         return ApiResponse.success("Khởi tạo đợt kiểm kê thành công!", saved);
     }
 
+    @PostMapping("/audit/{id}/count")
+    @Operation(summary = "Ghi nhận kết quả đếm kiểm kê thực tế tại ô kệ", 
+               description = "Cập nhật số lượng đếm thực tế của kiểm kê mù, tính toán chênh lệch")
+    public ApiResponse<com.wms.module.inventory.entity.InventoryAudit> recordCount(
+            @PathVariable Long id,
+            @Valid @RequestBody com.wms.module.inventory.dto.request.RecordCountRequest request
+    ) {
+        com.wms.module.inventory.entity.InventoryAudit saved = inventoryAuditService.recordCount(
+                id, request.getItemId(), request.getCountedQty(), request.getNotes()
+        );
+        return ApiResponse.success("Ghi nhận số lượng đếm kiểm kê thành công!", saved);
+    }
+
     @PutMapping("/audit/{id}/reconcile")
-    @Operation(summary = "Phê duyệt đối soát cân chỉnh kiểm kê", description = "Duyệt kết quả kiểm kê và chuyển trạng thái sang APPROVED")
+    @Operation(summary = "Phê duyệt đối soát cân chỉnh kiểm kê", description = "Duyệt kết quả kiểm kê, tự động sinh phiếu điều chỉnh kho và ghi sổ cái bất biến")
     public ApiResponse<com.wms.module.inventory.entity.InventoryAudit> reconcileAudit(@PathVariable Long id) {
         com.wms.module.inventory.entity.InventoryAudit saved = inventoryAuditService.reconcileAudit(id);
-        return ApiResponse.success("Phê duyệt cân chỉnh kiểm kê thành công!", saved);
+        return ApiResponse.success("Phê duyệt cân chỉnh kiểm kê và ghi sổ cái thành công!", saved);
     }
 
     @PostMapping("/reserve")

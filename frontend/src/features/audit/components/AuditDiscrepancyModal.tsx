@@ -15,7 +15,17 @@ export const AuditDiscrepancyModal: React.FC<AuditDiscrepancyModalProps> = ({
 }) => {
   if (!session) return null;
 
+  const [isApproving, setIsApproving] = useState(false);
   const isReconciled = session.status === 'RECONCILED';
+
+  const handleApprove = async () => {
+    setIsApproving(true);
+    try {
+      await onApproveAdjustment(session.id);
+    } finally {
+      setIsApproving(false);
+    }
+  };
 
   return (
     <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm flex items-center justify-center p-4 z-50 animate-in fade-in duration-200">
@@ -174,14 +184,20 @@ export const AuditDiscrepancyModal: React.FC<AuditDiscrepancyModalProps> = ({
           </button>
 
           <div className="flex items-center gap-3">
-            {!isReconciled && (
+            {!isReconciled ? (
               <button
-                onClick={() => onApproveAdjustment(session.id)}
-                className="flex items-center gap-2 px-5 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl text-sm shadow-md shadow-emerald-600/20 transition-all active:scale-95"
+                onClick={handleApprove}
+                disabled={isApproving}
+                className="flex items-center gap-2 px-5 py-2.5 bg-emerald-600 hover:bg-emerald-700 disabled:opacity-60 text-white font-bold rounded-xl text-sm shadow-md shadow-emerald-600/20 transition-all active:scale-95"
               >
                 <CheckCircle2 className="w-4 h-4" />
-                <span>Duyệt Cân Đối Kho & Ghi Sổ Cái</span>
+                <span>{isApproving ? 'Đang Ghi Sổ Cái...' : 'Duyệt Cân Đối Kho & Ghi Sổ Cái'}</span>
               </button>
+            ) : (
+              <div className="flex items-center gap-2 px-4 py-2 bg-emerald-50 text-emerald-800 rounded-xl text-xs font-bold border border-emerald-200">
+                <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+                <span>Đã ghi nhận bút toán Stock Ledger ADJUSTMENT</span>
+              </div>
             )}
 
             <button
