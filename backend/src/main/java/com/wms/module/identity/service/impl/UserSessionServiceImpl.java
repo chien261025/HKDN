@@ -6,6 +6,7 @@ import com.wms.module.identity.dto.response.UserSessionResponse;
 import com.wms.module.identity.entity.User;
 import com.wms.module.identity.entity.UserSession;
 import com.wms.module.identity.repository.UserSessionRepository;
+import com.wms.module.identity.service.RedisJwtBlacklistService;
 import com.wms.module.identity.service.UserSessionService;
 import com.wms.module.masterdata.entity.Warehouse;
 import com.wms.module.masterdata.repository.WarehouseRepository;
@@ -16,6 +17,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
+import java.time.Duration;
 import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
@@ -28,6 +30,7 @@ public class UserSessionServiceImpl implements UserSessionService {
 
     private final UserSessionRepository sessionRepository;
     private final WarehouseRepository warehouseRepository;
+    private final RedisJwtBlacklistService redisJwtBlacklistService;
 
     @Override
     @Transactional
@@ -41,7 +44,8 @@ public class UserSessionServiceImpl implements UserSessionService {
                 oldest.setRevokedReason("KICKED_FIFO_BY_NEW_DEVICE");
                 oldest.setLastActiveAt(Instant.now());
                 sessionRepository.save(oldest);
-                log.warn("Nguoi dung {} vuot qua gioi han {} thiet bi dong thoi. Cuong che thu hoi phien cu: [{}]",
+                redisJwtBlacklistService.blacklistToken(oldest.getTokenHash(), Duration.ofHours(24), "KICKED_FIFO_BY_NEW_DEVICE");
+                log.warn("Nguoi dung {} vuot qua gioi han {} thiet bi. Da thu hoi phien cu tren Redis: [{}]",
                         user.getUsername(), MAX_CONCURRENT_SESSIONS, oldest.getDeviceName());
             }
         }
@@ -66,57 +70,59 @@ public class UserSessionServiceImpl implements UserSessionService {
     @Override
     @Transactional(readOnly = true)
     public List<UserSessionResponse> getUserSessions(Long userId, String currentToken) {
-        String currentHash = hashToken(currentToken);
-        List<Warehouse> warehouses = warehouseRepository.findAll();
-        return sessionRepository.findByUserIdOrderByLastActiveAtDesc(userId).stream()
-                .map(s -> {
-                    Warehouse matched = matchWarehouse(s.getIpAddress(), warehouses);
-                    boolean isWh = (matched != null);
-                    String whName = isWh ? matched.getName() : null;
-                    String netLabel = isWh 
-                            ? "Mạng Nội Bộ (" + matched.getCode() + ")" 
-                            : "Mạng Ngoài / Di Động (Remote)";
-                    return UserSessionResponse.builder()
-                            .id(s.getId())
-                            .userId(s.getUser().getId())
-                            .username(s.getUser().getUsername())
-                            .deviceName(s.getDeviceName())
-                            .deviceType(s.getDeviceType())
-                            .ipAddress(s.getIpAddress())
-                            .locationName(s.getLocationName())
-                            .isActive(Boolean.TRUE.equals(s.getIsActive()))
-                            .isCurrentSession(currentHash != null && currentHash.equals(s.getTokenHash()))
-                            .createdAt(s.getCreatedAt())
-                            .lastActiveAt(s.getLastActiveAt())
-                            .revokedReason(s.getRevokedReason())
-                            .isWarehouseNetwork(isWh)
-                            .warehouseName(whName)
-                            .networkLabel(netLabel)
-                            .build();
-                })
-                .toList();
+        String currentHash = (currentToken != null && !currentToken.isBlank()) ? hashToken(currentToken) : "";
+        List<UserSession> sessions = sessionRepository.findByUserIdOrderByLastActiveAtDesc(userId);
+
+        return sessions.stream().map(s -> {
+            boolean isCurrent = s.getTokenHash() != null && s.getTokenHash().equals(currentHash);
+            return UserSessionResponse.builder()
+                    .id(s.getId())
+                    .userId(userId)
+                    .deviceName(s.getDeviceName())
+                    .deviceType(s.getDeviceType())
+                    .ipAddress(s.getIpAddress())
+                    .locationName(s.getLocationName())
+                    .createdAt(s.getCreatedAt())
+                    .lastActiveAt(s.getLastActiveAt())
+                    .isCurrentSession(isCurrent)
+                    .isActive(s.getIsActive())
+                    .revokedReason(s.getRevokedReason())
+                    .build();
+        }).toList();
     }
 
     @Override
     @Transactional
     public void revokeSession(Long userId, String sessionId) {
-        UserSession session = sessionRepository.findByIdAndUserId(sessionId, userId)
-                .orElseThrow(() -> new BusinessException(ErrorCode.NOT_FOUND, "Không tìm thấy phiên làm việc: " + sessionId));
+        UserSession session = sessionRepository.findById(sessionId)
+                .orElseThrow(() -> new BusinessException(ErrorCode.NOT_FOUND, "Không tìm thấy phiên làm việc"));
+
+        if (!session.getUser().getId().equals(userId)) {
+            throw new BusinessException(ErrorCode.FORBIDDEN, "Bạn không có quyền thu hồi phiên này");
+        }
+
         session.setIsActive(false);
-        session.setRevokedReason("USER_REMOTE_LOGOUT");
+        session.setRevokedReason("USER_MANUAL_REVOKE");
         session.setLastActiveAt(Instant.now());
         sessionRepository.save(session);
-        log.info("Da thu hoi phien thiet bi: {} cua user: {}", sessionId, userId);
+        redisJwtBlacklistService.blacklistToken(session.getTokenHash(), Duration.ofHours(24), "USER_MANUAL_REVOKE");
     }
 
     @Override
     @Transactional
     public void revokeOtherSessions(Long userId, String currentToken) {
         String currentHash = hashToken(currentToken);
-        Optional<UserSession> current = sessionRepository.findFirstByTokenHashOrderByCreatedAtDesc(currentHash);
-        String excludeId = current.map(UserSession::getId).orElse("NONE");
-        sessionRepository.revokeOtherSessions(userId, excludeId, "USER_LOGOUT_ALL_OTHERS", Instant.now());
-        log.info("Da dang xuat tat ca thiet bi khac cua user id: {}", userId);
+        List<UserSession> activeSessions = sessionRepository.findByUserIdAndIsActiveTrueOrderByLastActiveAtAsc(userId);
+
+        for (UserSession s : activeSessions) {
+            if (!s.getTokenHash().equals(currentHash)) {
+                s.setIsActive(false);
+                s.setRevokedReason("REVOKED_OTHER_SESSIONS");
+                s.setLastActiveAt(Instant.now());
+                sessionRepository.save(s);
+                redisJwtBlacklistService.blacklistToken(s.getTokenHash(), Duration.ofHours(24), "REVOKED_OTHER_SESSIONS");
+            }
+        }
     }
 
     @Override
@@ -124,6 +130,9 @@ public class UserSessionServiceImpl implements UserSessionService {
     public void revokeCurrentToken(String jwtToken) {
         if (jwtToken == null || jwtToken.isBlank()) return;
         String hash = hashToken(jwtToken);
+        redisJwtBlacklistService.blacklistToken(jwtToken, Duration.ofHours(24), "USER_LOGOUT");
+        redisJwtBlacklistService.blacklistToken(hash, Duration.ofHours(24), "USER_LOGOUT");
+
         sessionRepository.findFirstByTokenHashOrderByCreatedAtDesc(hash)
                 .ifPresent(session -> {
                     session.setIsActive(false);
@@ -137,15 +146,25 @@ public class UserSessionServiceImpl implements UserSessionService {
     @Override
     @Transactional
     public void revokeAllSessions(Long userId, String reason) {
+        List<UserSession> activeSessions = sessionRepository.findByUserIdAndIsActiveTrueOrderByLastActiveAtAsc(userId);
+        for (UserSession s : activeSessions) {
+            redisJwtBlacklistService.blacklistToken(s.getTokenHash(), Duration.ofHours(24), reason);
+        }
         sessionRepository.revokeAllSessions(userId, reason, Instant.now());
-        log.info("Da thu hoi toan bo session cua user id: {} voi ly do: {}", userId, reason);
+        log.info("Da thu hoi toan bo session cua user id: {} tren CSDL va Redis voi ly do: {}", userId, reason);
     }
 
     @Override
     @Transactional(readOnly = true)
     public boolean isTokenRevoked(String jwtToken) {
         if (jwtToken == null || jwtToken.isBlank()) return true;
+        if (redisJwtBlacklistService.isBlacklisted(jwtToken)) {
+            return true;
+        }
         String hash = hashToken(jwtToken);
+        if (redisJwtBlacklistService.isBlacklisted(hash)) {
+            return true;
+        }
         return sessionRepository.findFirstByTokenHashOrderByCreatedAtDesc(hash)
                 .map(s -> Boolean.FALSE.equals(s.getIsActive()))
                 .orElse(false);
@@ -192,25 +211,8 @@ public class UserSessionServiceImpl implements UserSessionService {
     @Transactional
     public void updateWarehouseTrustedIps(Long warehouseId, String trustedIps) {
         Warehouse warehouse = warehouseRepository.findById(warehouseId)
-                .orElseThrow(() -> new BusinessException(ErrorCode.NOT_FOUND, "Không tìm thấy kho: " + warehouseId));
+                .orElseThrow(() -> new BusinessException(ErrorCode.NOT_FOUND, "Không tìm thấy kho"));
         warehouse.setTrustedIps(trustedIps);
         warehouseRepository.save(warehouse);
-        log.info("Da cap nhat trusted_ips cho kho {}: {}", warehouse.getCode(), trustedIps);
-    }
-
-    private Warehouse matchWarehouse(String sessionIp, List<Warehouse> warehouses) {
-        if (sessionIp == null || sessionIp.isBlank() || warehouses == null) return null;
-        String cleanIp = sessionIp.trim();
-        for (Warehouse w : warehouses) {
-            if (w.getTrustedIps() == null || w.getTrustedIps().isBlank()) continue;
-            String[] ips = w.getTrustedIps().split("[,; ]+");
-            for (String ip : ips) {
-                String target = ip.trim();
-                if (!target.isEmpty() && (cleanIp.equals(target) || cleanIp.startsWith(target))) {
-                    return w;
-                }
-            }
-        }
-        return null;
     }
 }

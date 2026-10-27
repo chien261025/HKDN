@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
-import { X, Plus, Shield, Loader2, AlertCircle, CheckCircle2 } from 'lucide-react';
+import { X, Plus, Shield, Loader2, AlertCircle } from 'lucide-react';
 import { UserAccount, UserRole } from '../types';
 import { userService } from '../services/userService';
+import { TempPasswordGenerator } from './TempPasswordGenerator';
 
 interface CreateUserModalProps {
   isOpen: boolean;
@@ -25,15 +26,6 @@ export const CreateUserModal: React.FC<CreateUserModalProps> = ({
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   if (!isOpen) return null;
-
-  const handleGeneratePassword = () => {
-    const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnpqrstuvwxyz23456789!@#$';
-    let result = '';
-    for (let i = 0; i < 10; i++) {
-      result += chars.charAt(Math.floor(Math.random() * chars.length));
-    }
-    setTempPassword(result);
-  };
 
   const resetForm = () => {
     setUsername('');
@@ -69,7 +61,6 @@ export const CreateUserModal: React.FC<CreateUserModalProps> = ({
         role: role,
       });
 
-      // Bổ sung kho phụ trách nếu có
       createdUser.assignedWarehouse = assignedWarehouse;
       if (phone.trim()) {
         createdUser.phone = phone.trim();
@@ -77,9 +68,10 @@ export const CreateUserModal: React.FC<CreateUserModalProps> = ({
 
       onAddUser(createdUser);
       handleClose();
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('Lỗi khởi tạo tài khoản:', err);
-      setErrorMessage(err.message || 'Không thể khởi tạo tài khoản. Vui lòng thử lại!');
+      const msg = err instanceof Error ? err.message : 'Không thể khởi tạo tài khoản. Vui lòng thử lại!';
+      setErrorMessage(msg);
     } finally {
       setIsSubmitting(false);
     }
@@ -102,7 +94,7 @@ export const CreateUserModal: React.FC<CreateUserModalProps> = ({
           <button
             type="button"
             onClick={handleClose}
-            className="p-1.5 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-200 transition-colors"
+            className="p-1.5 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-200 transition-colors cursor-pointer"
           >
             <X className="w-5 h-5" />
           </button>
@@ -204,49 +196,12 @@ export const CreateUserModal: React.FC<CreateUserModalProps> = ({
             </div>
           </div>
 
-          {/* Temporary Password */}
-          <div className="p-4 bg-slate-50 rounded-xl border border-slate-200 space-y-2">
-            <div className="flex items-center justify-between">
-              <label className="text-slate-700 font-semibold text-xs">
-                Mật Khẩu Khởi Tạo Ban Đầu
-              </label>
-              <button
-                type="button"
-                onClick={handleGeneratePassword}
-                disabled={isSubmitting}
-                className="text-xs text-indigo-600 hover:underline font-semibold font-mono"
-              >
-                + Tự động tạo ngẫu nhiên
-              </button>
-            </div>
-            <div className="relative">
-              <input
-                type="text"
-                value={tempPassword}
-                onChange={(e) => setTempPassword(e.target.value)}
-                disabled={isSubmitting}
-                className="w-full px-3 py-2 bg-white border border-slate-300 rounded-xl text-slate-900 font-mono font-bold focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-600"
-              />
-            </div>
-            {/* Password Strength Indicator */}
-            <div className="space-y-1">
-              <div className="flex items-center justify-between text-2xs font-semibold">
-                <span className="text-slate-500">Độ an toàn mật khẩu:</span>
-                <span className={tempPassword.length >= 8 ? 'text-emerald-700 font-bold' : 'text-amber-700'}>
-                  {tempPassword.length >= 8 ? 'Chuẩn Enterprise (OWASP)' : 'Cơ bản (Khuyến nghị >= 8 ký tự)'}
-                </span>
-              </div>
-              <div className="w-full bg-slate-200 h-1.5 rounded-full overflow-hidden flex gap-0.5">
-                <div className={`h-full flex-1 ${tempPassword.length >= 4 ? 'bg-rose-500' : 'bg-transparent'}`} />
-                <div className={`h-full flex-1 ${tempPassword.length >= 6 ? 'bg-amber-500' : 'bg-transparent'}`} />
-                <div className={`h-full flex-1 ${tempPassword.length >= 8 ? 'bg-emerald-500' : 'bg-transparent'}`} />
-                <div className={`h-full flex-1 ${tempPassword.length >= 10 && /[!@#$%^&*]/.test(tempPassword) ? 'bg-indigo-600' : 'bg-transparent'}`} />
-              </div>
-            </div>
-            <p className="text-2xs text-slate-500 font-sans">
-              Mật khẩu được mã hóa một chiều bằng thuật toán <strong>BCrypt (10 rounds)</strong> trước khi ghi vào CSDL.
-            </p>
-          </div>
+          {/* Temporary Password Component */}
+          <TempPasswordGenerator
+            value={tempPassword}
+            onChange={setTempPassword}
+            disabled={isSubmitting}
+          />
 
           {/* Footer */}
           <div className="flex items-center justify-end gap-3 pt-4 border-t border-slate-200">
@@ -254,14 +209,14 @@ export const CreateUserModal: React.FC<CreateUserModalProps> = ({
               type="button"
               onClick={handleClose}
               disabled={isSubmitting}
-              className="px-4 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl transition-colors font-semibold text-sm"
+              className="px-4 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl transition-colors font-semibold text-sm cursor-pointer"
             >
               Hủy Bỏ
             </button>
             <button
               type="submit"
               disabled={isSubmitting}
-              className="flex items-center gap-2 px-5 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-bold shadow-md shadow-indigo-600/20 transition-all active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed text-sm"
+              className="flex items-center gap-2 px-5 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-bold shadow-md shadow-indigo-600/20 transition-all active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed text-sm cursor-pointer"
             >
               {isSubmitting ? (
                 <>

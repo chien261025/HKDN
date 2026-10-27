@@ -2,12 +2,17 @@ package com.wms.module.identity.service.impl;
 
 import com.wms.common.exception.BusinessException;
 import com.wms.common.exception.ErrorCode;
+import com.wms.module.identity.dto.request.ChangePasswordRequest;
 import com.wms.module.identity.dto.request.CreateUserRequest;
+import com.wms.module.identity.dto.request.UpdateUserRequest;
 import com.wms.module.identity.dto.response.UserResponse;
+import com.wms.module.identity.dto.response.UserSecurityLogResponse;
 import com.wms.module.identity.entity.Role;
 import com.wms.module.identity.entity.User;
+import com.wms.module.identity.mapper.UserMapper;
 import com.wms.module.identity.repository.RoleRepository;
 import com.wms.module.identity.repository.UserRepository;
+import com.wms.module.identity.repository.UserSessionRepository;
 import com.wms.module.identity.service.UserService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -30,14 +35,15 @@ public class UserServiceImpl implements UserService {
     private final UserRepository userRepository;
     private final RoleRepository roleRepository;
     private final PasswordEncoder passwordEncoder;
-    private final com.wms.module.identity.repository.UserSessionRepository sessionRepository;
+    private final UserSessionRepository sessionRepository;
+    private final UserMapper userMapper;
 
     @Override
     @Transactional(readOnly = true)
     public List<UserResponse> getAllUsers() {
         return userRepository.findAll(Sort.by(Sort.Direction.ASC, "id"))
                 .stream()
-                .map(this::mapToResponse)
+                .map(userMapper::toResponse)
                 .collect(Collectors.toList());
     }
 
@@ -46,7 +52,7 @@ public class UserServiceImpl implements UserService {
     public UserResponse getUserById(Long id) {
         User user = userRepository.findById(id)
                 .orElseThrow(() -> new BusinessException(ErrorCode.NOT_FOUND, "Không tìm thấy người dùng với ID: " + id));
-        return mapToResponse(user);
+        return userMapper.toResponse(user);
     }
 
     @Override
@@ -63,11 +69,11 @@ public class UserServiceImpl implements UserService {
             throw new BusinessException(ErrorCode.BAD_REQUEST, "Địa chỉ email '" + cleanEmail + "' đã được sử dụng!");
         }
 
-        String roleName = normalizeRoleName(request.getRole());
+        String roleName = userMapper.normalizeRoleName(request.getRole());
         Role role = roleRepository.findByName(roleName).orElseGet(() ->
                 roleRepository.save(Role.builder()
                         .name(roleName)
-                        .description(getRoleDescription(roleName))
+                        .description(userMapper.getRoleDescription(roleName))
                         .build())
         );
 
@@ -83,8 +89,8 @@ public class UserServiceImpl implements UserService {
                 .build();
 
         User savedUser = userRepository.save(newUser);
-        log.info("Admin da tao moi thanh cong user: {} voi vai tro: {}", cleanUsername, roleName);
-        return mapToResponse(savedUser);
+        log.info("Admin da tao moi user: {} voi vai tro: {}", cleanUsername, roleName);
+        return userMapper.toResponse(savedUser);
     }
 
     @Override
@@ -93,7 +99,6 @@ public class UserServiceImpl implements UserService {
         User user = userRepository.findById(id)
                 .orElseThrow(() -> new BusinessException(ErrorCode.NOT_FOUND, "Không tìm thấy tài khoản với ID: " + id));
 
-        // Bảo vệ tài khoản admin chính không bị khóa
         if ("admin".equalsIgnoreCase(user.getUsername()) && Boolean.FALSE.equals(isActive)) {
             throw new BusinessException(ErrorCode.BAD_REQUEST, "Không thể khóa tài khoản Quản trị viên tối cao (admin)!");
         }
@@ -103,7 +108,7 @@ public class UserServiceImpl implements UserService {
         User updated = userRepository.save(user);
 
         log.info("Cap nhat trang thai user {} -> isActive: {}", user.getUsername(), isActive);
-        return mapToResponse(updated);
+        return userMapper.toResponse(updated);
     }
 
     @Override
@@ -112,11 +117,11 @@ public class UserServiceImpl implements UserService {
         User user = userRepository.findById(id)
                 .orElseThrow(() -> new BusinessException(ErrorCode.NOT_FOUND, "Không tìm thấy tài khoản với ID: " + id));
 
-        String roleName = normalizeRoleName(newRole);
+        String roleName = userMapper.normalizeRoleName(newRole);
         Role role = roleRepository.findByName(roleName).orElseGet(() ->
                 roleRepository.save(Role.builder()
                         .name(roleName)
-                        .description(getRoleDescription(roleName))
+                        .description(userMapper.getRoleDescription(roleName))
                         .build())
         );
 
@@ -125,7 +130,7 @@ public class UserServiceImpl implements UserService {
         User updated = userRepository.save(user);
 
         log.info("Cap nhat vai tro user {} -> {}", user.getUsername(), roleName);
-        return mapToResponse(updated);
+        return userMapper.toResponse(updated);
     }
 
     @Override
@@ -139,20 +144,17 @@ public class UserServiceImpl implements UserService {
         user.setUpdatedAt(Instant.now());
         userRepository.save(user);
 
-        // Hủy toàn bộ phiên cũ để tránh bị chiếm quyền sử dụng token cũ
         sessionRepository.revokeAllSessions(user.getId(), "ADMIN_RESET_PASSWORD_REVOKE", Instant.now());
         log.info("Da reset mat khau va huy toan bo phien cu cua user: {}", user.getUsername());
     }
 
     @Override
     @Transactional
-    public void changePassword(com.wms.module.identity.dto.request.ChangePasswordRequest request) {
+    public void changePassword(ChangePasswordRequest request) {
         User user = userRepository.findByUsername(request.getUsername())
                 .orElseThrow(() -> new BusinessException(ErrorCode.NOT_FOUND, "Không tìm thấy người dùng: " + request.getUsername()));
 
-        // Kiểm tra mật khẩu hiện tại
         boolean matches = passwordEncoder.matches(request.getCurrentPassword(), user.getPasswordHash());
-
         if (!matches) {
             throw new BusinessException(ErrorCode.BAD_REQUEST, "Mật khẩu hiện tại không chính xác!");
         }
@@ -165,14 +167,13 @@ public class UserServiceImpl implements UserService {
         user.setUpdatedAt(Instant.now());
         userRepository.save(user);
 
-        // Hủy toàn bộ phiên cũ trên các thiết bị khác khi đổi mật khẩu
         sessionRepository.revokeAllSessions(user.getId(), "USER_CHANGE_PASSWORD_REVOKE", Instant.now());
         log.info("Nguoi dung {} da doi mat khau va huy toan bo phien cu thanh cong", user.getUsername());
     }
 
     @Override
     @Transactional
-    public UserResponse updateUser(Long id, com.wms.module.identity.dto.request.UpdateUserRequest request) {
+    public UserResponse updateUser(Long id, UpdateUserRequest request) {
         User user = userRepository.findById(id)
                 .orElseThrow(() -> new BusinessException(ErrorCode.NOT_FOUND, "Không tìm thấy người dùng: " + id));
 
@@ -188,15 +189,15 @@ public class UserServiceImpl implements UserService {
             if ("admin".equalsIgnoreCase(user.getUsername()) && !"ROLE_ADMIN".equalsIgnoreCase(request.getRole())) {
                 throw new BusinessException(ErrorCode.BAD_REQUEST, "Không thể hạ quyền Quản trị viên tối cao (root admin)!");
             }
-            String roleName = normalizeRoleName(request.getRole());
+            String roleName = userMapper.normalizeRoleName(request.getRole());
             Role role = roleRepository.findByName(roleName).orElseGet(() ->
-                    roleRepository.save(Role.builder().name(roleName).description(getRoleDescription(roleName)).build()));
+                    roleRepository.save(Role.builder().name(roleName).description(userMapper.getRoleDescription(roleName)).build()));
             user.setRoles(new HashSet<>(Set.of(role)));
         }
 
         user.setUpdatedAt(Instant.now());
         log.info("Cap nhat thong tin user: {}", user.getUsername());
-        return mapToResponse(userRepository.save(user));
+        return userMapper.toResponse(userRepository.save(user));
     }
 
     @Override
@@ -212,67 +213,13 @@ public class UserServiceImpl implements UserService {
 
     @Override
     @Transactional(readOnly = true)
-    public com.wms.module.identity.dto.response.UserSecurityLogResponse getUserSecurityLog(Long id) {
+    public UserSecurityLogResponse getUserSecurityLog(Long id) {
         User user = userRepository.findById(id)
                 .orElseThrow(() -> new BusinessException(ErrorCode.NOT_FOUND, "Không tìm thấy tài khoản: " + id));
 
-        String role = user.getRoles() != null && !user.getRoles().isEmpty() ? user.getRoles().iterator().next().getName() : "ROLE_OPERATOR";
-        boolean active = Boolean.TRUE.equals(user.getIsActive());
-
         var dbSessions = sessionRepository.findByUserIdOrderByLastActiveAtDesc(user.getId());
-        List<com.wms.module.identity.dto.response.UserSecurityLogResponse.LoginHistoryEntry> history;
-        if (!dbSessions.isEmpty()) {
-            history = dbSessions.stream().limit(5).map(s -> new com.wms.module.identity.dto.response.UserSecurityLogResponse.LoginHistoryEntry(
-                    s.getCreatedAt().toString().replace("T", " ").substring(0, 16),
-                    s.getIpAddress(), s.getLocationName(), s.getDeviceName(),
-                    Boolean.TRUE.equals(s.getIsActive()) ? "SUCCESS" : "REVOKED (" + (s.getRevokedReason() != null ? s.getRevokedReason() : "KICKED") + ")"
-            )).toList();
-        } else {
-            history = List.of(new com.wms.module.identity.dto.response.UserSecurityLogResponse.LoginHistoryEntry(
-                    "Hôm nay, " + java.time.LocalTime.now().toString().substring(0, 5),
-                    "192.168.1.10" + (user.getId() % 10), "Kho Tân Bình, TP.HCM (LAN)", "Chrome 128 / Windows 11 Enterprise", "SUCCESS"));
-        }
-
         long activeCount = sessionRepository.countByUserIdAndIsActiveTrue(user.getId());
-        if (activeCount == 0 && active) activeCount = 1;
 
-        return com.wms.module.identity.dto.response.UserSecurityLogResponse.builder()
-                .userId(user.getId()).username(user.getUsername()).fullName(user.getFullName()).role(role)
-                .status(active ? "ACTIVE" : "LOCKED").isActive(active).lastLoginAt(user.getUpdatedAt())
-                .lastLoginIp(!dbSessions.isEmpty() ? dbSessions.get(0).getIpAddress() : "192.168.1.10" + (user.getId() % 10))
-                .failedLoginAttempts(0).riskLevel("SAFE")
-                .activeSessionsCount((int) activeCount).recentLogins(history).build();
-    }
-
-
-    private UserResponse mapToResponse(User user) {
-        String roleName = (user.getRoles() != null && !user.getRoles().isEmpty())
-                ? user.getRoles().iterator().next().getName() : "ROLE_OPERATOR";
-        boolean active = Boolean.TRUE.equals(user.getIsActive());
-
-        return UserResponse.builder()
-                .id(user.getId()).username(user.getUsername()).fullName(user.getFullName())
-                .email(user.getEmail()).role(roleName).roleDescription(getRoleDescription(roleName))
-                .isActive(active).status(active ? "ACTIVE" : "LOCKED")
-                .assignedWarehouse("Kho Tổng Tân Bình (ZONE A & B)")
-                .phone("090000000" + user.getId())
-                .createdAt(user.getCreatedAt()).updatedAt(user.getUpdatedAt())
-                .build();
-    }
-
-    private String normalizeRoleName(String role) {
-        if (role == null || role.isBlank()) return "ROLE_OPERATOR";
-        String normalized = role.trim().toUpperCase();
-        if (!normalized.startsWith("ROLE_")) normalized = "ROLE_" + normalized;
-        return "ROLE_MANAGER".equals(normalized) ? "ROLE_WAREHOUSE_MANAGER" : normalized;
-    }
-
-    private String getRoleDescription(String roleName) {
-        return switch (roleName) {
-            case "ROLE_ADMIN" -> "Quản Trị Viên (Toàn quyền)";
-            case "ROLE_WAREHOUSE_MANAGER" -> "Quản Lý Kho (Điều hành)";
-            case "ROLE_OPERATOR" -> "Thủ Kho (PDA Mobile)";
-            default -> "Nhân viên vận hành";
-        };
+        return userMapper.toSecurityLogResponse(user, dbSessions, activeCount);
     }
 }

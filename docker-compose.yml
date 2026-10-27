@@ -51,7 +51,19 @@ services:
     networks:
       - wms-net
 
-  # 4. Backend Spring Boot 3
+  # 4. Redis In-Memory Cache (Rate-Limiting & JWT Blacklist Distributed)
+  wms-redis:
+    image: redis:7-alpine
+    container_name: wms-redis
+    restart: always
+    ports:
+      - "6379:6379"
+    volumes:
+      - wms_redisdata:/data
+    networks:
+      - wms-net
+
+  # 5. Backend Spring Boot 3
   wms-backend:
     build:
       context: ./backend
@@ -62,6 +74,7 @@ services:
       - wms-postgres
       - wms-rabbitmq
       - wms-minio
+      - wms-redis
     environment:
       SPRING_PROFILES_ACTIVE: prod
       DB_HOST: wms-postgres
@@ -69,23 +82,26 @@ services:
       DB_NAME: wms_db
       DB_USER: postgres
       DB_PASSWORD: password123
+      REDIS_HOST: wms-redis
+      REDIS_PORT: 6379
       RABBITMQ_HOST: wms-rabbitmq
       RABBITMQ_PORT: 5672
       RABBITMQ_USER: guest
       RABBITMQ_PASS: guest
       MINIO_ENDPOINT: http://wms-minio:9000
-      MAIL_HOST: smtp.gmail.com
-      MAIL_PORT: 587
-      MAIL_USERNAME: phanvandien1000@gmail.com
-      MAIL_PASSWORD: qnqtqlvicgdmogjd
-      MAIL_SMTP_AUTH: "true"
-      MAIL_SMTP_STARTTLS: "true"
+      MAIL_HOST: ${MAIL_HOST:-smtp.gmail.com}
+      MAIL_PORT: ${MAIL_PORT:-587}
+      MAIL_USERNAME: ${MAIL_USERNAME:-phanvandien1000@gmail.com}
+      MAIL_PASSWORD: ${MAIL_PASSWORD:-qnqtqlvicgdmogjd}
+      MAIL_SMTP_AUTH: ${MAIL_SMTP_AUTH:-true}
+      MAIL_SMTP_STARTTLS: ${MAIL_SMTP_STARTTLS:-true}
+      JWT_SECRET_KEY: ${JWT_SECRET_KEY:-404E635266556A586E3272357538782F413F4428472B4B6250645367566B5970}
     ports:
       - "8080:8080"
     networks:
       - wms-net
 
-  # 5. Frontend React 18 + Nginx
+  # 6. Frontend React 18 + Nginx
   wms-frontend:
     build:
       context: ./frontend
@@ -103,6 +119,7 @@ volumes:
   wms_pgdata:
   wms_mqdata:
   wms_miniodata:
+  wms_redisdata:
 
 networks:
   wms-net:

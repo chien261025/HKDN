@@ -42,8 +42,8 @@ spring:
   mail:
     host: ${MAIL_HOST:smtp.gmail.com}
     port: ${MAIL_PORT:587}
-    username: ${MAIL_USERNAME:phanvandien1000@gmail.com}
-    password: ${MAIL_PASSWORD:qnqtqlvicgdmogjd}
+    username: ${MAIL_USERNAME:}
+    password: ${MAIL_PASSWORD:}
     properties:
       mail:
         smtp:
@@ -51,17 +51,23 @@ spring:
           starttls:
             enable: ${MAIL_SMTP_STARTTLS:true}
 
+  data:
+    redis:
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:6379}
+      timeout: 2000ms
+
 # Cấu hình MinIO S3
 minio:
   endpoint: ${MINIO_ENDPOINT:http://localhost:9000}
   access-key: ${MINIO_ACCESS_KEY:minioadmin}
   secret-key: ${MINIO_SECRET_KEY:minioadmin}
-  bucket-name: wms-reports
+  bucket-name: ${MINIO_BUCKET:wms-reports}
 
 # Cấu hình Bảo mật JWT
 jwt:
-  secret-key: 404E635266556A586E3272357538782F413F4428472B4B6250645367566B5970
-  expiration-ms: 86400000 # 24 giờ
+  secret-key: ${JWT_SECRET_KEY:404E635266556A586E3272357538782F413F4428472B4B6250645367566B5970}
+  expiration-ms: ${JWT_EXPIRATION_MS:86400000} # 24 giờ
 
 # Cấu hình Trợ lý AI (OpenAI/Claude hoặc mô hình cục bộ)
 ai:
