@@ -16,6 +16,24 @@ interface ApiResponse<T> {
   timestamp: string;
 }
 
+/** Helper map từ backend user model sang frontend user account view model */
+export const mapBackendUserToAccount = (
+  u: BackendUserResponse,
+  overrides?: Partial<UserAccount>
+): UserAccount => ({
+  id: String(u.id),
+  username: u.username,
+  fullName: overrides?.fullName || u.fullName,
+  email: overrides?.email || u.email,
+  phone: overrides?.phone || ('09' + String(u.id).padStart(8, '0')),
+  role: (overrides?.role as UserRole) || (u.role as UserRole) || 'ROLE_OPERATOR',
+  assignedWarehouse: overrides?.assignedWarehouse || u.assignedWarehouse || 'Kho Tổng Tân Bình (ZONE A & B)',
+  status: (overrides?.status as UserStatus) || (u.status as UserStatus) || (u.isActive ? 'ACTIVE' : 'LOCKED'),
+  lastLoginAt: u.updatedAt ? new Date(u.updatedAt).toLocaleString('vi-VN') : 'Vừa cập nhật',
+  lastLoginIp: '192.168.1.10' + (u.id % 10),
+  createdAt: u.createdAt ? new Date(u.createdAt).toLocaleDateString('vi-VN') : 'Hôm nay',
+});
+
 export const userService = {
   /**
    * Lấy danh sách tất cả tài khoản từ cơ sở dữ liệu
@@ -26,19 +44,7 @@ export const userService = {
       throw new Error(res.data.message || 'Không thể tải danh sách tài khoản');
     }
 
-    return res.data.data.map((u) => ({
-      id: String(u.id),
-      username: u.username,
-      fullName: u.fullName,
-      email: u.email,
-      phone: '09' + String(u.id).padStart(8, '0'),
-      role: (u.role as UserRole) || 'ROLE_OPERATOR',
-      assignedWarehouse: u.assignedWarehouse || 'Kho Tổng Tân Bình (ZONE A & B)',
-      status: (u.status as UserStatus) || (u.isActive ? 'ACTIVE' : 'LOCKED'),
-      lastLoginAt: u.updatedAt ? new Date(u.updatedAt).toLocaleString('vi-VN') : 'Mới khởi tạo',
-      lastLoginIp: '192.168.1.10' + (u.id % 10),
-      createdAt: u.createdAt ? new Date(u.createdAt).toLocaleDateString('vi-VN') : 'Hôm nay',
-    }));
+    return res.data.data.map(u => mapBackendUserToAccount(u));
   },
 
   /**
@@ -50,20 +56,11 @@ export const userService = {
       throw new Error(res.data.message || 'Không thể tạo người dùng mới');
     }
 
-    const u = res.data.data;
-    return {
-      id: String(u.id),
-      username: u.username,
-      fullName: u.fullName,
-      email: u.email,
-      phone: '09' + String(u.id).padStart(8, '0'),
-      role: (u.role as UserRole) || 'ROLE_OPERATOR',
-      assignedWarehouse: u.assignedWarehouse || 'Kho Tổng Tân Bình (ZONE A & B)',
-      status: (u.status as UserStatus) || 'ACTIVE',
-      lastLoginAt: 'Vừa tạo mới',
-      lastLoginIp: '192.168.1.100',
-      createdAt: new Date().toLocaleDateString('vi-VN'),
-    };
+    return mapBackendUserToAccount(res.data.data, {
+      fullName: payload.fullName,
+      email: payload.email,
+      role: payload.role as UserRole,
+    });
   },
 
   /**
@@ -75,20 +72,9 @@ export const userService = {
       throw new Error(res.data.message || 'Không thể cập nhật trạng thái');
     }
 
-    const u = res.data.data;
-    return {
-      id: String(u.id),
-      username: u.username,
-      fullName: u.fullName,
-      email: u.email,
-      phone: '09' + String(u.id).padStart(8, '0'),
-      role: (u.role as UserRole) || 'ROLE_OPERATOR',
-      assignedWarehouse: u.assignedWarehouse || 'Kho Tổng Tân Bình (ZONE A & B)',
-      status: u.isActive ? 'ACTIVE' : 'LOCKED',
-      lastLoginAt: u.updatedAt ? new Date(u.updatedAt).toLocaleString('vi-VN') : 'Vừa cập nhật',
-      lastLoginIp: '192.168.1.10' + (u.id % 10),
-      createdAt: u.createdAt ? new Date(u.createdAt).toLocaleDateString('vi-VN') : 'Hôm nay',
-    };
+    return mapBackendUserToAccount(res.data.data, {
+      status: isActive ? 'ACTIVE' : 'LOCKED',
+    });
   },
 
   /**
@@ -100,20 +86,9 @@ export const userService = {
       throw new Error(res.data.message || 'Không thể cập nhật vai trò');
     }
 
-    const u = res.data.data;
-    return {
-      id: String(u.id),
-      username: u.username,
-      fullName: u.fullName,
-      email: u.email,
-      phone: '09' + String(u.id).padStart(8, '0'),
-      role: (u.role as UserRole) || 'ROLE_OPERATOR',
-      assignedWarehouse: u.assignedWarehouse || 'Kho Tổng Tân Bình (ZONE A & B)',
-      status: u.isActive ? 'ACTIVE' : 'LOCKED',
-      lastLoginAt: u.updatedAt ? new Date(u.updatedAt).toLocaleString('vi-VN') : 'Vừa cập nhật',
-      lastLoginIp: '192.168.1.10' + (u.id % 10),
-      createdAt: u.createdAt ? new Date(u.createdAt).toLocaleDateString('vi-VN') : 'Hôm nay',
-    };
+    return mapBackendUserToAccount(res.data.data, {
+      role: role as UserRole,
+    });
   },
 
   /**
@@ -147,20 +122,13 @@ export const userService = {
       throw new Error(res.data.message || 'Không thể cập nhật thông tin người dùng');
     }
 
-    const u = res.data.data;
-    return {
-      id: String(u.id),
-      username: u.username,
-      fullName: u.fullName,
-      email: u.email,
-      phone: payload.phone || ('09' + String(u.id).padStart(8, '0')),
-      role: (u.role as UserRole) || 'ROLE_OPERATOR',
-      assignedWarehouse: payload.assignedWarehouse || u.assignedWarehouse || 'Kho Tổng Tân Bình (ZONE A & B)',
-      status: u.isActive ? 'ACTIVE' : 'LOCKED',
-      lastLoginAt: u.updatedAt ? new Date(u.updatedAt).toLocaleString('vi-VN') : 'Vừa cập nhật',
-      lastLoginIp: '192.168.1.10' + (u.id % 10),
-      createdAt: u.createdAt ? new Date(u.createdAt).toLocaleDateString('vi-VN') : 'Hôm nay',
-    };
+    return mapBackendUserToAccount(res.data.data, {
+      fullName: payload.fullName,
+      email: payload.email,
+      phone: payload.phone,
+      assignedWarehouse: payload.assignedWarehouse,
+      role: payload.role as UserRole,
+    });
   },
 
   /**

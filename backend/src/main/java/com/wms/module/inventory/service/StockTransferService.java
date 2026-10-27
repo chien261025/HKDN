@@ -37,6 +37,7 @@ public class StockTransferService {
     private final ProductRepository productRepository;
     private final ProductBatchRepository productBatchRepository;
     private final com.wms.module.notification.service.NotificationService notificationService;
+    private final com.wms.module.identity.repository.UserRepository userRepository;
 
     /**
      * Thực hiện điều chuyển tồn kho giữa 2 ô kệ với Khóa bi quan và ghi sổ cái bất biến
@@ -114,6 +115,8 @@ public class StockTransferService {
                 : String.format("Điều chuyển từ ô %s sang ô %s", fromLoc.getBinBarcode(), toLoc.getBinBarcode());
 
         Instant now = Instant.now();
+        Long currentUserId = com.wms.module.identity.util.SecurityUtils.getCurrentUserIdOrDefault(userRepository, 1L);
+
         StockTransfer transfer = StockTransfer.builder()
                 .transferCode(transferCode)
                 .warehouseId(warehouseId)
@@ -123,8 +126,8 @@ public class StockTransferService {
                 .batchId(request.getBatchId())
                 .quantity(request.getQuantity())
                 .status("COMPLETED")
-                .createdBy(1L)
-                .completedBy(1L)
+                .createdBy(currentUserId)
+                .completedBy(currentUserId)
                 .notes(notes)
                 .createdAt(now)
                 .completedAt(now)
@@ -141,7 +144,7 @@ public class StockTransferService {
                 .batchId(request.getBatchId())
                 .qtyChange(-request.getQuantity())
                 .balanceAfter(sourceInv.getOnHandQty())
-                .performedBy(1L)
+                .performedBy(currentUserId)
                 .notes("Xuất điều chuyển sang ô " + toLoc.getBinBarcode())
                 .createdAt(now)
                 .build();
@@ -156,7 +159,7 @@ public class StockTransferService {
                 .batchId(request.getBatchId())
                 .qtyChange(request.getQuantity())
                 .balanceAfter(targetInv.getOnHandQty())
-                .performedBy(1L)
+                .performedBy(currentUserId)
                 .notes("Nhập nhận điều chuyển từ ô " + fromLoc.getBinBarcode())
                 .createdAt(now)
                 .build();

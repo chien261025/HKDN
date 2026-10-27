@@ -22,23 +22,22 @@ import java.util.Map;
 @Tag(name = "4. Lõi Tồn Kho & Khóa Đồng Thời (Core Inventory)", description = "APIs tra cứu tồn thực tế và test Pessimistic Locking chống âm kho")
 public class InventoryController {
 
-    private final InventoryRepository inventoryRepository;
+    private final com.wms.module.inventory.service.InventoryQueryService inventoryQueryService;
     private final InventoryLockService inventoryLockService;
-    private final com.wms.module.inventory.repository.StockLedgerRepository stockLedgerRepository;
     private final com.wms.module.inventory.service.InventoryAuditService inventoryAuditService;
     private final com.wms.module.inventory.service.StockTransferService stockTransferService;
 
     @GetMapping
     @Operation(summary = "Xem bảng cân đối tồn kho thực tế", description = "Trả về số lượng On-hand (vật lý), Reserved (đang giữ), Available (khả dụng)")
     public ApiResponse<List<Inventory>> getInventoryBalances() {
-        List<Inventory> inventories = inventoryRepository.findAll();
+        List<Inventory> inventories = inventoryQueryService.getAllBalances();
         return ApiResponse.success("Lấy số dư tồn kho thành công!", inventories);
     }
 
     @GetMapping("/ledger")
     @Operation(summary = "Lấy lịch sử sổ cái thẻ kho bất biến", description = "Trả về 50 biến động thẻ kho gần nhất (Nhập, Xuất, Điều chỉnh)")
     public ApiResponse<List<com.wms.module.inventory.entity.StockLedger>> getRecentStockLedger() {
-        List<com.wms.module.inventory.entity.StockLedger> ledgers = stockLedgerRepository.findTop50ByOrderByCreatedAtDesc();
+        List<com.wms.module.inventory.entity.StockLedger> ledgers = inventoryQueryService.getRecentLedgers(50);
         return ApiResponse.success("Lấy sổ cái thẻ kho thành công!", ledgers);
     }
 
@@ -97,7 +96,7 @@ public class InventoryController {
                 request.getRequestedQty()
         );
 
-        Inventory updated = inventoryRepository.findByProductIdAndLocationIdAndBatchId(
+        Inventory updated = inventoryQueryService.getInventory(
                 request.getProductId(), request.getLocationId(), request.getBatchId()).orElseThrow();
 
         return ApiResponse.success("Khóa và giữ hàng thành công!", Map.of(

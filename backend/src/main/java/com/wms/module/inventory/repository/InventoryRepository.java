@@ -8,6 +8,7 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
+import java.util.List;
 import java.util.Optional;
 
 @Repository
@@ -26,4 +27,10 @@ public interface InventoryRepository extends JpaRepository<Inventory, Long> {
     );
 
     Optional<Inventory> findByProductIdAndLocationIdAndBatchId(Long productId, Long locationId, Long batchId);
+
+    List<Inventory> findByProductId(Long productId);
+
+    List<Inventory> findByProductIdAndBatchId(Long productId, Long batchId);
+
+    List<Inventory> findByProductIdAndOnHandQtyGreaterThanOrderByReservedQtyDesc(Long productId, Integer minOnHandQty);
 }
