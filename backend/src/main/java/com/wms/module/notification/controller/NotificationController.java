@@ -28,6 +28,13 @@ public class NotificationController {
         return ApiResponse.success("Lấy thông báo thành công!", notificationService.getRecentNotifications());
     }
 
+    @GetMapping("/unread-count")
+    @Operation(summary = "Lấy số lượng thông báo chưa đọc", description = "Đếm số thông báo có isRead = false")
+    public ApiResponse<java.util.Map<String, Long>> getUnreadCount() {
+        long count = notificationService.getUnreadCount();
+        return ApiResponse.success("Lấy số thông báo chưa đọc thành công!", java.util.Map.of("unreadCount", count));
+    }
+
     @PutMapping("/{id}/read")
     @Operation(summary = "Đánh dấu thông báo đã đọc", description = "Cập nhật trạng thái isRead của một thông báo")
     public ApiResponse<String> markAsRead(@PathVariable String id) {

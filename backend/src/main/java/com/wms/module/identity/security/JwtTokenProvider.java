@@ -47,6 +47,19 @@ public class JwtTokenProvider {
         return claims.getSubject();
     }
 
+    public String getRoleFromToken(String token) {
+        try {
+            Claims claims = Jwts.parser()
+                    .verifyWith(getSigningKey())
+                    .build()
+                    .parseSignedClaims(token)
+                    .getPayload();
+            return claims.get("role", String.class);
+        } catch (Exception e) {
+            return "ROLE_OPERATOR";
+        }
+    }
+
     public boolean validateToken(String token) {
         try {
             Jwts.parser()

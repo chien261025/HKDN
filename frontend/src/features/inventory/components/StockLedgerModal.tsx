@@ -43,9 +43,6 @@ export const StockLedgerModal: React.FC<StockLedgerModalProps> = ({ entry, onClo
   return (
     <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4 z-50 animate-in fade-in duration-200 print:bg-white print:p-0 print:static">
       <div className="printable-voucher bg-white rounded-2xl max-w-3xl w-full border border-slate-200 shadow-2xl overflow-hidden text-slate-900 relative">
-        {/* Top vivid accent line */}
-        <div className="h-1.5 w-full bg-gradient-to-r from-indigo-600 via-blue-600 to-indigo-700 print:hidden"></div>
-
         {/* Modal Header */}
         <div className="p-5 border-b border-slate-200 flex items-start justify-between bg-slate-50/90">
           <div className="flex items-center gap-3.5">

@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Layers, CheckCircle2, ArrowRight } from 'lucide-react';
 import { operatorService } from '../../services/operatorService';
 import { PutawayActiveTaskCard, ActivePutawayTask } from './PutawayActiveTaskCard';
+import { soundEffects } from '../../utils/soundEffects';
 
 interface PutawayTabProps {
   onOpenScanner: () => void;
@@ -95,6 +96,7 @@ export const PutawayTab: React.FC<PutawayTabProps> = ({
 
   useEffect(() => {
     if (scannedCode) {
+      soundEffects.playSuccessBeep();
       setScannedBin(scannedCode);
       setFeedback({ msg: `[PDA] Đã ghi nhận mã ô kệ: ${scannedCode}`, type: 'success' });
       onClearScannedCode?.();
@@ -106,12 +108,14 @@ export const PutawayTab: React.FC<PutawayTabProps> = ({
     setFeedback(null);
     try {
       const suggested = await operatorService.suggestPutawayLocation(task.preferredZone, task.weightKg);
+      soundEffects.playSuccessBeep();
       setActiveTask({ ...task, suggestedLocation: suggested, status: 'SUGGESTED' });
       setFeedback({
         msg: `Thuật toán gợi ý vị trí: ${suggested.binBarcode} (Tầng ${suggested.shelf}, Tải trọng: ${suggested.maxWeightKg}kg)`,
         type: 'success',
       });
     } catch (err: any) {
+      soundEffects.playErrorBuzz();
       setFeedback({ msg: 'Lỗi chạy thuật toán cất hàng: ' + err.message, type: 'error' });
     } finally {
       setLoading(false);
@@ -123,6 +127,7 @@ export const PutawayTab: React.FC<PutawayTabProps> = ({
     const targetBarcode = activeTask.suggestedLocation.binBarcode;
 
     if (scannedBin.trim() && scannedBin.trim() !== targetBarcode) {
+      soundEffects.playErrorBuzz();
       setFeedback({
         msg: `Cảnh báo: Bạn đang quét ô ${scannedBin}, trong khi thuật toán chỉ định ô ${targetBarcode}!`,
         type: 'error',
@@ -147,6 +152,7 @@ export const PutawayTab: React.FC<PutawayTabProps> = ({
     setStagingQueue((prev) =>
       prev.map((t) => (t.id === activeTask.id ? { ...t, status: 'COMPLETED' } : t))
     );
+    soundEffects.playCompleteChime();
     setFeedback({
       msg: `Thành công: Đã cất ${activeTask.qty} cái ${activeTask.productName} vào ô ${targetBarcode} an toàn!`,
       type: 'success',

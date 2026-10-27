@@ -48,4 +48,13 @@ public class UserSessionResponse {
 
     @Schema(description = "Lý do thu hồi phiên nếu bị ngắt", example = "KICKED_FIFO_BY_NEW_DEVICE")
     private String revokedReason;
+
+    @Schema(description = "Có thuộc mạng IP nội bộ kho hay không", example = "true")
+    private Boolean isWarehouseNetwork;
+
+    @Schema(description = "Tên kho tương ứng nếu thuộc mạng nội bộ", example = "Kho Tổng Tân Bình - TP.HCM")
+    private String warehouseName;
+
+    @Schema(description = "Nhãn phân loại mạng (Mạng Nội Bộ Kho / Mạng Ngoài)", example = "Mạng Nội Bộ (WH01)")
+    private String networkLabel;
 }

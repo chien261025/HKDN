@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Package, Truck, CheckCircle2, ScanLine, ArrowRight, RefreshCw, Clock, Layers } from 'lucide-react';
 import { operatorService, InboundOrderDto, ProductDto } from '../../services/operatorService';
+import { soundEffects } from '../../utils/soundEffects';
 
 interface InboundStagingTabProps {
   onOpenScanner: () => void;
@@ -44,11 +45,13 @@ export const InboundStagingTab: React.FC<InboundStagingTabProps> = ({
     if (scannedCode) {
       const matchedProd = products.find((p) => p.barcode === scannedCode || p.sku === scannedCode);
       if (matchedProd) {
+        soundEffects.playSuccessBeep();
         setNotice({
           msg: `[PDA] Đã nhận diện kiện hàng: ${matchedProd.name} (${matchedProd.sku})!`,
           type: 'success',
         });
       } else {
+        soundEffects.playSuccessBeep();
         setNotice({
           msg: `[PDA] Đã quét mã: ${scannedCode}. Vui lòng chọn đơn PO tương ứng.`,
           type: 'success',
@@ -63,6 +66,7 @@ export const InboundStagingTab: React.FC<InboundStagingTabProps> = ({
     setNotice(null);
     try {
       await operatorService.confirmReceiveInboundOrder(order.id);
+      soundEffects.playCompleteChime();
       setOrders((prev) =>
         prev.map((o) => (o.id === order.id ? { ...o, status: 'RECEIVED' } : o))
       );
@@ -71,6 +75,7 @@ export const InboundStagingTab: React.FC<InboundStagingTabProps> = ({
         type: 'success',
       });
     } catch (err: any) {
+      soundEffects.playErrorBuzz();
       setNotice({ msg: 'Lỗi tiếp nhận đơn: ' + err.message, type: 'error' });
     } finally {
       setReceivingId(null);

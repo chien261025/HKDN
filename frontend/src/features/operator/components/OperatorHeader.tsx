@@ -1,5 +1,6 @@
 import React from 'react';
 import { Smartphone, Wifi, BatteryCharging, User, ScanLine, ArrowLeft, LogOut } from 'lucide-react';
+import { authService } from '../../auth/services/authService';
 import { Link } from 'react-router-dom';
 
 interface OperatorHeaderProps {
@@ -16,9 +17,7 @@ export const OperatorHeader: React.FC<OperatorHeaderProps> = ({ onOpenScanner })
   };
 
   const handleLogout = () => {
-    localStorage.removeItem('smart_wms_token');
-    localStorage.removeItem('smart_wms_session');
-    window.location.href = '/login';
+    authService.logout();
   };
 
   const initials = session.fullName

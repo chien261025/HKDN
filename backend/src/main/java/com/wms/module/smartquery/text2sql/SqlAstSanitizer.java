@@ -45,12 +45,12 @@ public class SqlAstSanitizer {
                 throw new BusinessException(ErrorCode.FORBIDDEN, "Trợ lý AI chỉ được phép thực hiện câu lệnh SELECT!");
             }
 
-            PlainSelect plainSelect = select.getPlainSelect();
-            if (plainSelect != null && plainSelect.getLimit() == null) {
-                // Tự động ép LIMIT 50 nếu câu lệnh chưa có limit
-                plainSelect.setLimit(new net.sf.jsqlparser.statement.select.Limit().withRowCount(
-                        new net.sf.jsqlparser.expression.LongValue(50)
-                ));
+            if (select.getSelectBody() instanceof PlainSelect plainSelect) {
+                if (plainSelect.getLimit() == null) {
+                    plainSelect.setLimit(new net.sf.jsqlparser.statement.select.Limit().withRowCount(
+                            new net.sf.jsqlparser.expression.LongValue(50)
+                    ));
+                }
             }
 
             return select.toString();

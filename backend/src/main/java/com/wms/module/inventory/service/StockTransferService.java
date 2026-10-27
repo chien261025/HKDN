@@ -36,6 +36,7 @@ public class StockTransferService {
     private final LocationRepository locationRepository;
     private final ProductRepository productRepository;
     private final ProductBatchRepository productBatchRepository;
+    private final com.wms.module.notification.service.NotificationService notificationService;
 
     /**
      * Thực hiện điều chuyển tồn kho giữa 2 ô kệ với Khóa bi quan và ghi sổ cái bất biến
@@ -162,6 +163,18 @@ public class StockTransferService {
         stockLedgerRepository.save(inLedger);
 
         log.info("Dieu chuyen ton kho thanh cong! Ma phieu: {}", transferCode);
+
+        if (notificationService != null) {
+            notificationService.broadcast(com.wms.module.notification.dto.NotificationMessage.builder()
+                    .type("STOCK_TRANSFER")
+                    .title("Điều Chuyển Ô Kệ " + transferCode)
+                    .message(String.format("Đã chuyển %d cái %s từ ô %s sang ô %s.",
+                            request.getQuantity(), product.getName(), fromLoc.getBinBarcode(), toLoc.getBinBarcode()))
+                    .severity("INFO")
+                    .referenceCode(transferCode)
+                    .link("/inventory")
+                    .build());
+        }
 
         return mapToResponse(savedTransfer, fromLoc.getBinBarcode(), toLoc.getBinBarcode(),
                 product.getSku(), product.getName(), batch.getBatchNumber());

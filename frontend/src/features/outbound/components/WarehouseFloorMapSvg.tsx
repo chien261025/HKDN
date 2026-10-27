@@ -57,17 +57,17 @@ export const WarehouseFloorMapSvg: React.FC<WarehouseFloorMapSvgProps> = ({
   return (
     <div className="relative w-full aspect-[16/10] bg-[#070d19] rounded-2xl overflow-hidden border-2 border-slate-700/80 shadow-2xl select-none">
       {/* HUD Header */}
-      <div className="absolute top-3.5 left-4 z-10 flex items-center gap-2 bg-slate-900/90 backdrop-blur-md px-3.5 py-1.5 rounded-xl border border-indigo-500/40 shadow-lg">
-        <Compass className="w-4 h-4 text-cyan-400 animate-spin" style={{ animationDuration: '10s' }} />
-        <span className="text-xs font-bold text-slate-100 tracking-wide">
-          SƠ ĐỒ MẶT BẰNG 2D • SMART PICK-PATH
+      <div className="absolute top-3.5 left-4 z-10 flex items-center gap-2 bg-slate-900/90 backdrop-blur-md px-3.5 py-1.5 rounded-xl border border-slate-700 shadow-lg">
+        <Compass className="w-4 h-4 text-indigo-400" />
+        <span className="text-xs font-semibold text-slate-100 tracking-wide">
+          SƠ ĐỒ MẶT BẰNG 2D • ĐỊNH TUYẾN LẤY HÀNG
         </span>
       </div>
 
       <div className="absolute top-3.5 right-4 z-10 flex items-center gap-2 bg-slate-900/90 backdrop-blur-md px-3.5 py-1.5 rounded-xl border border-slate-700 shadow-lg text-xs font-mono">
-        <span className="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-ping"></span>
-        <span className="text-emerald-400 font-bold">
-          {isOptimal ? '⚡ LỘ TRÌNH S-SHAPE TSP (TỐI ƯU)' : '⚠️ LỐI ĐI TỰ DO (CHƯA TỐI ƯU)'}
+        <span className={`w-2 h-2 rounded-full ${isOptimal ? 'bg-emerald-400' : 'bg-amber-400'}`}></span>
+        <span className={`font-semibold ${isOptimal ? 'text-emerald-400' : 'text-amber-400'}`}>
+          {isOptimal ? 'LỘ TRÌNH S-SHAPE TSP (TỐI ƯU)' : 'LỐI ĐI TỰ DO (CHƯA TỐI ƯU)'}
         </span>
       </div>
 

@@ -246,6 +246,13 @@ export const userService = {
       throw new Error(res.data.message || 'Không thể đăng xuất các thiết bị khác');
     }
   },
+
+  /**
+   * Cập nhật vị trí GPS/IP thực tế của phiên hiện tại
+   */
+  async updateCurrentLocation(payload: { location: string; ip: string }): Promise<void> {
+    await apiClient.put('/users/me/sessions/current-location', payload);
+  },
 };
 
 

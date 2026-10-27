@@ -42,6 +42,7 @@ public class UserController {
     }
 
     @PostMapping
+    @org.springframework.security.access.prepost.PreAuthorize("hasRole('ADMIN')")
     @Operation(summary = "Thêm người dùng mới từ trang Quản trị", description = "Admin khởi tạo tài khoản mới với mật khẩu và phân quyền ban đầu")
     public ApiResponse<UserResponse> createUser(@Valid @RequestBody CreateUserRequest request) {
         log.info("API tao moi nguoi dung: {}", request.getUsername());
@@ -50,6 +51,7 @@ public class UserController {
     }
 
     @PutMapping("/{id}/status")
+    @org.springframework.security.access.prepost.PreAuthorize("hasRole('ADMIN')")
     @Operation(summary = "Khóa hoặc Mở khóa tài khoản người dùng", description = "Cập nhật trạng thái isActive (true = Hoạt động, false = Tạm khóa)")
     public ApiResponse<UserResponse> updateUserStatus(
             @PathVariable Long id,
@@ -63,6 +65,7 @@ public class UserController {
     }
 
     @PutMapping("/{id}/role")
+    @org.springframework.security.access.prepost.PreAuthorize("hasRole('ADMIN')")
     @Operation(summary = "Cập nhật vai trò phân quyền người dùng", description = "Gán vai trò mới theo RBAC: ROLE_ADMIN, ROLE_WAREHOUSE_MANAGER, ROLE_OPERATOR")
     public ApiResponse<UserResponse> updateUserRole(
             @PathVariable Long id,
@@ -73,6 +76,7 @@ public class UserController {
     }
 
     @PutMapping("/{id}/reset-password")
+    @org.springframework.security.access.prepost.PreAuthorize("hasRole('ADMIN')")
     @Operation(summary = "Khôi phục mật khẩu tài khoản về mặc định", description = "Đặt lại mật khẩu thành 123456 hoặc mật khẩu mới chỉ định")
     public ApiResponse<String> resetPassword(
             @PathVariable Long id,
@@ -85,13 +89,21 @@ public class UserController {
 
     @PutMapping("/change-password")
     @Operation(summary = "Người dùng tự đổi mật khẩu cá nhân", description = "Xác thực mật khẩu cũ và đổi sang mật khẩu mới")
-    public ApiResponse<String> changePassword(@Valid @RequestBody com.wms.module.identity.dto.request.ChangePasswordRequest request) {
+    public ApiResponse<String> changePassword(
+            @Valid @RequestBody com.wms.module.identity.dto.request.ChangePasswordRequest request,
+            java.security.Principal principal) {
+        if (principal != null && !principal.getName().equalsIgnoreCase(request.getUsername())) {
+            throw new com.wms.common.exception.BusinessException(
+                    com.wms.common.exception.ErrorCode.FORBIDDEN,
+                    "Bạn không được phép đổi mật khẩu của tài khoản khác!");
+        }
         log.info("API nguoi dung {} doi mat khau", request.getUsername());
         userService.changePassword(request);
         return ApiResponse.success("Đổi mật khẩu thành công! Vui lòng ghi nhớ mật khẩu mới cho các lần đăng nhập tiếp theo.", "SUCCESS");
     }
 
     @PutMapping("/{id}")
+    @org.springframework.security.access.prepost.PreAuthorize("hasRole('ADMIN')")
     @Operation(summary = "Cập nhật thông tin và vai trò tài khoản", description = "Admin cập nhật họ tên, email, vai trò và kho phụ trách")
     public ApiResponse<UserResponse> updateUser(
             @PathVariable Long id,
@@ -102,6 +114,7 @@ public class UserController {
     }
 
     @PostMapping("/{id}/force-logout")
+    @org.springframework.security.access.prepost.PreAuthorize("hasRole('ADMIN')")
     @Operation(summary = "Cưỡng chế hủy phiên đăng nhập (Force Logout)", description = "Thu hồi toàn bộ Token và đăng xuất tài khoản ngay lập tức")
     public ApiResponse<String> forceLogout(@PathVariable Long id) {
         log.info("API cuong che dang xuat user id: {}", id);

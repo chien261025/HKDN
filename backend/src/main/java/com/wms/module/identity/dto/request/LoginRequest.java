@@ -19,4 +19,10 @@ public class LoginRequest {
     @NotBlank(message = "Mật khẩu không được để trống")
     @Schema(description = "Mật khẩu (Mặc định demo: 123456)", example = "123456")
     private String password;
+
+    @Schema(description = "Vị trí địa lý thực tế (GPS / Tỉnh Thành)", example = "TP. Hồ Chí Minh, VN")
+    private String clientLocation;
+
+    @Schema(description = "Địa chỉ IP thực tế của client", example = "171.243.48.41")
+    private String clientIp;
 }

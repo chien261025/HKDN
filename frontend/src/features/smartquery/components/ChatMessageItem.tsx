@@ -43,7 +43,7 @@ export const ChatMessageItem: React.FC<ChatMessageItemProps> = ({
             ? 'bg-rose-50 text-rose-600 border border-rose-200'
             : 'bg-indigo-50 text-indigo-600 border border-indigo-200'
         }`}>
-          {isRejected ? <ShieldAlert className="w-5 h-5" /> : <Sparkles className="w-5 h-5" />}
+          {isRejected ? <ShieldAlert className="w-5 h-5" /> : <Database className="w-5 h-5" />}
         </div>
       )}
 
@@ -65,11 +65,11 @@ export const ChatMessageItem: React.FC<ChatMessageItemProps> = ({
             {isUser ? (
               <>
                 <User className="w-4 h-4 text-indigo-200" />
-                <span className="text-white">Quản Trị Viên</span>
+                <span className="text-white">Người Sử Dụng</span>
               </>
             ) : (
               <>
-                <span className="text-indigo-700 font-extrabold text-sm">Trợ Lý AI WMS</span>
+                <span className="text-indigo-700 font-bold text-sm">Hệ Thống Phân Tích Kho</span>
                 {message.executionTimeMs && (
                   <span className="text-slate-500 font-mono text-xs flex items-center gap-1">
                     <Clock className="w-3.5 h-3.5 text-slate-400" /> {message.executionTimeMs}ms
@@ -93,7 +93,7 @@ export const ChatMessageItem: React.FC<ChatMessageItemProps> = ({
           <div className="p-4 rounded-xl bg-rose-100/70 border border-rose-300 space-y-2">
             <div className="flex items-center gap-2 text-rose-800 font-bold text-xs uppercase tracking-wide">
               <AlertTriangle className="w-4 h-4 text-rose-600 flex-shrink-0" />
-              <span>CHẶN ĐỨNG BỞI BỘ LỌC AST JSqlParser (Anti-Injection)</span>
+              <span>Chính Sách Bảo Mật: Câu Lệnh Bị Từ Chối (Read-Only)</span>
             </div>
             <p className="text-xs text-rose-900 leading-normal font-medium">
               {message.astRejectionReason || 'Truy vấn vi phạm chính sách bảo mật: Hệ thống chỉ chấp nhận câu lệnh SELECT đọc số liệu. Các hành động thay đổi dữ liệu hoặc cấu trúc bảng đều bị cấm triệt để.'}

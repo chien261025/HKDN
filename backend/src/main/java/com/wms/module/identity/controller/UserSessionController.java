@@ -91,6 +91,32 @@ public class UserSessionController {
         return ApiResponse.success("Đã đăng xuất khỏi tất cả các thiết bị khác thành công!");
     }
 
+    @PutMapping("/me/sessions/current-location")
+    @Operation(summary = "Cập nhật vị trí GPS/IP thực tế cho phiên hiện tại")
+    public ApiResponse<String> updateCurrentLocation(
+            @RequestBody java.util.Map<String, String> payload,
+            HttpServletRequest request) {
+        String token = extractBearerToken(request);
+        Long userId = resolveCurrentUserId(token);
+        sessionService.updateSessionLocation(userId, token, payload.get("location"), payload.get("ip"));
+        return ApiResponse.success("Cập nhật vị trí thành công!");
+    }
+
+    @GetMapping("/trusted-networks")
+    @Operation(summary = "Lấy danh sách dải IP mạng nội bộ của các nhà kho")
+    public ApiResponse<List<com.wms.module.masterdata.entity.Warehouse>> getTrustedNetworks() {
+        return ApiResponse.success("Lấy danh sách mạng kho thành công", sessionService.getTrustedNetworks());
+    }
+
+    @PutMapping("/trusted-networks/{warehouseId}")
+    @Operation(summary = "Cập nhật dải IP tin cậy cho một nhà kho")
+    public ApiResponse<String> updateTrustedNetwork(
+            @PathVariable Long warehouseId,
+            @RequestBody java.util.Map<String, String> body) {
+        sessionService.updateWarehouseTrustedIps(warehouseId, body.get("trustedIps"));
+        return ApiResponse.success("Cập nhật dải IP mạng kho thành công!");
+    }
+
     private Long resolveCurrentUserId(String token) {
         if (token == null) {
             throw new IllegalArgumentException("Không tìm thấy phiên xác thực!");

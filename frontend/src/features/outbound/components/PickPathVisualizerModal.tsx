@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { X, Navigation, CheckCircle2, ArrowRight, Printer, Smartphone, Zap, Route, Timer, Footprints, Play, Pause, RotateCcw } from 'lucide-react';
+import { X, Navigation, CheckCircle2, ArrowRight, Printer, Smartphone, TrendingUp, Route, Timer, Footprints, Play, Pause, RotateCcw } from 'lucide-react';
 import { OutboundOrder } from '../types';
 import { WarehouseFloorMapSvg, PickWaypoint } from './WarehouseFloorMapSvg';
 
@@ -97,7 +97,7 @@ export const PickPathVisualizerModal: React.FC<PickPathVisualizerModalProps> = (
 
           <div className="bg-white p-3 rounded-xl border border-slate-200 shadow-xs">
             <span className="text-slate-500 flex items-center gap-1.5 font-medium">
-              <Zap className="w-4 h-4 text-amber-500" /> Hiệu suất tiết kiệm
+              <TrendingUp className="w-4 h-4 text-emerald-600" /> Hiệu suất tiết kiệm
             </span>
             <div className="text-lg font-extrabold text-emerald-600 tabular-nums mt-1">
               {isOptimal ? '56.0% Chi Phí Di Chuyển' : '0% (Đi tự do)'}
@@ -114,15 +114,15 @@ export const PickPathVisualizerModal: React.FC<PickPathVisualizerModalProps> = (
                   isOptimal ? 'bg-indigo-600 text-white shadow-sm' : 'text-slate-600 hover:text-slate-900'
                 }`}
               >
-                ⚡ S-Shape TSP (Tối ưu)
+                S-Shape TSP (Tối ưu)
               </button>
               <button
                 onClick={() => setIsOptimal(false)}
                 className={`flex-1 py-1.5 rounded-md text-xs font-bold transition-all cursor-pointer ${
-                  !isOptimal ? 'bg-rose-600 text-white shadow-sm' : 'text-slate-600 hover:text-slate-900'
+                  !isOptimal ? 'bg-slate-700 text-white shadow-sm' : 'text-slate-600 hover:text-slate-900'
                 }`}
               >
-                ⚠️ Ngẫu Nhiên
+                Lối Đi Tự Do
               </button>
             </div>
           </div>

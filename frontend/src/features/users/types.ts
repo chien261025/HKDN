@@ -84,6 +84,9 @@ export interface UserDeviceSession {
   createdAt: string;
   lastActiveAt: string;
   revokedReason?: string;
+  isWarehouseNetwork?: boolean;
+  warehouseName?: string;
+  networkLabel?: string;
 }
 
 

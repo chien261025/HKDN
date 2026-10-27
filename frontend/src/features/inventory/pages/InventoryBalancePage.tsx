@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useTransition } from 'react';
-import { Zap, Layers, ArrowRightLeft, CheckCircle2, AlertCircle } from 'lucide-react';
+import { Package, Clock, Layers, ArrowRightLeft, CheckCircle2, AlertCircle } from 'lucide-react';
 import { StockItem, StockTransferDto } from '../types';
 import { OutboundFefoWorkbench } from '../components/OutboundFefoWorkbench';
 import { StockBalanceTable } from '../components/balance/StockBalanceTable';
@@ -127,7 +127,7 @@ export const InventoryBalancePage: React.FC = () => {
         <div>
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-xl bg-indigo-600 flex items-center justify-center text-white shadow-xs">
-              <Zap className="w-5 h-5" />
+              <Package className="w-5 h-5" />
             </div>
             <h1 className="text-xl sm:text-2xl font-bold text-slate-900 tracking-tight">
               Quản Lý Tồn Kho & Điều Chuyển Nội Bộ
@@ -177,7 +177,7 @@ export const InventoryBalancePage: React.FC = () => {
                 : 'text-slate-600 hover:text-slate-900 hover:bg-slate-200/50 font-medium border border-transparent'
             }`}
           >
-            <Zap className="w-4 h-4 text-amber-500" />
+            <Clock className="w-4 h-4 text-indigo-600" />
             <span>Điều Phối Xuất (FEFO)</span>
           </button>
         </div>

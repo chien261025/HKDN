@@ -75,8 +75,10 @@ export const ProfileInfoTab: React.FC<ProfileInfoTabProps> = ({ session }) => {
         </div>
         <div className="flex items-center justify-between border-t border-slate-200 pt-2.5">
           <span className="text-slate-500 font-medium">Hạn Chót Phiên JWT:</span>
-          <span className="font-mono text-slate-600">
-            {session.expiresAt ? new Date(session.expiresAt).toLocaleTimeString('vi-VN') : '8 Giờ'} (Auto-refresh)
+          <span className="font-mono text-slate-700 text-xs sm:text-sm">
+            {session.expiresAt
+              ? `${new Date(session.expiresAt).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' })} ngày ${new Date(session.expiresAt).toLocaleDateString('vi-VN')} (24h)`
+              : '24 Giờ (Auto-refresh)'}
           </span>
         </div>
       </div>

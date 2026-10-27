@@ -1,9 +1,12 @@
 import { apiClient } from '../../../services/api';
 import { AuthSession } from '../types';
+import { getRealLocation } from './geolocationService';
 
 export interface LoginPayload {
   username: string;
   password: string;
+  clientLocation?: string;
+  clientIp?: string;
 }
 
 export interface RegisterPayload {
@@ -35,7 +38,11 @@ export const authService = {
    * Gọi API đăng nhập backend để nhận JWT Token
    */
   async login(payload: LoginPayload, warehouse?: string): Promise<AuthTokenData> {
-    const response = await apiClient.post<ApiResponse<AuthTokenData>>('/auth/login', payload);
+    const response = await apiClient.post<ApiResponse<AuthTokenData>>('/auth/login', {
+      ...payload,
+      clientLocation: payload.clientLocation,
+      clientIp: payload.clientIp,
+    });
     
     if (!response.data.success || !response.data.data) {
       throw new Error(response.data.message || 'Đăng nhập không thành công!');
@@ -56,6 +63,18 @@ export const authService = {
     };
     
     localStorage.setItem('smart_wms_session', JSON.stringify(session));
+
+    // Cập nhật vị trí GPS/IP thực tế trong nền sau khi đã vào hệ thống
+    setTimeout(() => {
+      getRealLocation().then(async (geo) => {
+        if (geo.locationName) {
+          await apiClient.put('/users/me/sessions/current-location', {
+            location: geo.locationName,
+            ip: geo.ipAddress
+          }).catch(() => {});
+        }
+      }).catch(() => {});
+    }, 1000);
 
     return data;
   },
@@ -90,12 +109,30 @@ export const authService = {
   },
 
   /**
-   * Đăng xuất khỏi hệ thống
+   * Đăng xuất khỏi hệ thống và hủy phiên trên server
    */
-  logout(): void {
-    localStorage.removeItem('smart_wms_token');
-    localStorage.removeItem('smart_wms_session');
-    window.location.href = '/login';
+  async logout(): Promise<void> {
+    try {
+      await apiClient.post('/auth/logout');
+    } catch (err) {
+      console.warn('[AUTH] Đăng xuất ngoại tuyến hoặc server không phản hồi:', err);
+    } finally {
+      localStorage.removeItem('smart_wms_token');
+      localStorage.removeItem('smart_wms_session');
+      window.location.href = '/login?logged_out=true';
+    }
+  },
+
+  /**
+   * Kiểm tra phiên đăng nhập hiện tại có bị thu hồi từ xa không
+   */
+  async checkSessionStatus(): Promise<{ active: boolean; reason?: string; maxConcurrentDevices: number }> {
+    try {
+      const res = await apiClient.get<ApiResponse<{ active: boolean; reason?: string; maxConcurrentDevices: number }>>('/auth/session-status');
+      return res.data.data;
+    } catch {
+      return { active: true, maxConcurrentDevices: 2 };
+    }
   },
 
   /**
@@ -165,16 +202,73 @@ export const authService = {
   },
 
   /**
+   * Yêu cầu backend gửi mã xác thực OTP qua Email thực tế
+   */
+  async sendForgotPasswordOtp(identifier: string): Promise<{ email: string; emailSent: boolean; expiresInSeconds: number }> {
+    try {
+      const res = await apiClient.post<ApiResponse<{ email: string; emailSent: boolean; expiresInSeconds: number }>>('/auth/forgot-password/send-otp', {
+        identifier: identifier.trim(),
+      });
+      if (!res.data.success || !res.data.data) {
+        throw new Error(res.data.message || 'Không thể gửi mã xác thực');
+      }
+      return res.data.data;
+    } catch (err: any) {
+      throw new Error(err.response?.data?.message || err.message || 'Không thể gửi mã xác thực');
+    }
+  },
+
+  /**
+   * Kiểm tra mã xác thực OTP với backend
+   */
+  async verifyForgotPasswordOtp(identifier: string, otpCode: string): Promise<boolean> {
+    try {
+      const res = await apiClient.post<ApiResponse<boolean>>('/auth/forgot-password/verify-otp', {
+        identifier: identifier.trim(),
+        otpCode: otpCode.trim(),
+      });
+      if (!res.data.success) {
+        throw new Error(res.data.message || 'Mã OTP không chính xác!');
+      }
+      return true;
+    } catch (err: any) {
+      throw new Error(err.response?.data?.message || err.message || 'Mã OTP không chính xác hoặc đã hết hạn!');
+    }
+  },
+
+  /**
    * Đặt lại mật khẩu sau khi xác thực OTP thành công
    */
-  async resetForgottenPassword(identifier: string, newPassword: string): Promise<string> {
-    const res = await apiClient.post<ApiResponse<string>>('/auth/forgot-password/reset', {
-      identifier: identifier.trim(),
-      newPassword: newPassword.trim(),
-    });
-    if (!res.data.success) {
-      throw new Error(res.data.message || 'Không thể đặt lại mật khẩu');
+  async resetForgottenPassword(identifier: string, newPassword: string, otpCode?: string): Promise<string> {
+    try {
+      const res = await apiClient.post<ApiResponse<string>>('/auth/forgot-password/reset', {
+        identifier: identifier.trim(),
+        newPassword: newPassword.trim(),
+        otpCode: otpCode?.trim(),
+      });
+      if (!res.data.success) {
+        throw new Error(res.data.message || 'Không thể đặt lại mật khẩu');
+      }
+      return res.data.message;
+    } catch (err: any) {
+      throw new Error(err.response?.data?.message || err.message || 'Không thể đặt lại mật khẩu');
     }
-    return res.data.message;
+  },
+
+  /**
+   * Kiểm tra trạng thái tạm khóa của tài khoản, IP hoặc Thiết bị
+   */
+  async checkLockout(username?: string, deviceFingerprint?: string): Promise<{ blocked: boolean; remainingSeconds: number; lockLevel?: number; clientIp?: string }> {
+    try {
+      const res = await apiClient.get<ApiResponse<{ blocked: boolean; remainingSeconds: number; lockLevel?: number; clientIp?: string }>>('/auth/lockout-status', {
+        params: {
+          username: username?.trim(),
+          deviceFingerprint: deviceFingerprint || undefined
+        }
+      });
+      return res.data.data || { blocked: false, remainingSeconds: 0 };
+    } catch {
+      return { blocked: false, remainingSeconds: 0 };
+    }
   }
 };

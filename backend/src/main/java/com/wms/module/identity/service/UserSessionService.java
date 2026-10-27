@@ -18,5 +18,14 @@ public interface UserSessionService {
 
     void revokeOtherSessions(Long userId, String currentToken);
 
+    void revokeCurrentToken(String jwtToken);
+
+    void revokeAllSessions(Long userId, String reason);
+
     boolean isTokenRevoked(String jwtToken);
+    void updateSessionLocation(Long userId, String token, String location, String ip);
+    List<com.wms.module.masterdata.entity.Warehouse> getTrustedNetworks();
+    void updateWarehouseTrustedIps(Long warehouseId, String trustedIps);
 }
+
+

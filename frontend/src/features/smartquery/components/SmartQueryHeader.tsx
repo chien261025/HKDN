@@ -1,5 +1,5 @@
 import React from 'react';
-import { Bot, ShieldCheck, Cpu, Trash2, CheckCircle2 } from 'lucide-react';
+import { Search, ShieldCheck, Trash2, CheckCircle2 } from 'lucide-react';
 
 interface SmartQueryHeaderProps {
   onClearHistory: () => void;
@@ -11,45 +11,42 @@ export const SmartQueryHeader: React.FC<SmartQueryHeaderProps> = ({
   messageCount,
 }) => {
   return (
-    <div className="bg-white rounded-2xl p-5 border border-slate-200 shadow-sm flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
-      {/* Left Title & Status */}
-      <div className="flex items-center gap-4">
-        <div className="w-12 h-12 rounded-xl bg-gradient-to-tr from-indigo-600 via-indigo-700 to-indigo-800 flex items-center justify-center text-white shadow-md shadow-indigo-100 flex-shrink-0">
-          <Bot className="w-6 h-6 text-white" />
+    <div className="bg-white rounded-xl p-4 sm:p-5 border border-slate-200 shadow-xs flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+      {/* Title & Status */}
+      <div className="flex items-center gap-3.5">
+        <div className="w-10 h-10 rounded-lg bg-indigo-600 flex items-center justify-center text-white shadow-xs flex-shrink-0">
+          <Search className="w-5 h-5 text-white" />
         </div>
         <div>
-          <div className="flex items-center gap-2.5 flex-wrap">
-            <h1 className="text-lg md:text-xl font-black text-slate-900 tracking-tight">
-              Trợ Lý AI Smart Query (Text-to-SQL AST)
+          <div className="flex items-center gap-2 flex-wrap">
+            <h1 className="text-base sm:text-lg font-bold text-slate-900 tracking-tight">
+              Truy Vấn Dữ Liệu Tự Động (Smart Query)
             </h1>
-            <span className="inline-flex items-center gap-1.5 text-xs font-bold font-mono bg-cyan-50 text-cyan-800 px-3 py-1 rounded-full border border-cyan-200">
-              <Cpu className="w-3.5 h-3.5 text-cyan-600" /> JSqlParser Engine
-            </span>
-            <span className="inline-flex items-center gap-1.5 text-xs font-bold font-mono bg-emerald-50 text-emerald-800 px-3 py-1 rounded-full border border-emerald-200">
-              <ShieldCheck className="w-3.5 h-3.5 text-emerald-600" /> Anti-SQL Injection
+            <span className="inline-flex items-center gap-1 text-[11px] font-medium bg-emerald-50 text-emerald-700 px-2.5 py-0.5 rounded-md border border-emerald-200">
+              <ShieldCheck className="w-3 h-3 text-emerald-600" /> Read-Only Sandbox
             </span>
           </div>
-          <p className="text-sm text-slate-500 mt-1 font-medium">
-            Hỏi đáp kho bằng tiếng Việt tự nhiên • Kiểm duyệt an toàn cú pháp AST • Tự động tiêm LIMIT 50 chống quá tải RAM
+          <p className="text-xs text-slate-500 mt-0.5">
+            Tra cứu thông tin kho vận nhanh qua câu hỏi tự nhiên • Kiểm soát an toàn cú pháp qua bộ phân tích AST
           </p>
         </div>
       </div>
 
       {/* Right Controls */}
-      <div className="flex items-center gap-2.5 self-end md:self-auto">
-        <div className="hidden lg:flex items-center gap-2 px-3.5 py-2 rounded-xl bg-slate-50 border border-slate-200 text-xs font-mono text-slate-700">
-          <CheckCircle2 className="w-4 h-4 text-emerald-600" />
-          <span>AST Sandbox: <strong className="text-emerald-700 font-bold">READ ONLY</strong></span>
+      <div className="flex items-center gap-2 self-end md:self-auto">
+        <div className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-slate-50 border border-slate-200 text-xs text-slate-600">
+          <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
+          <span>Giới hạn 50 dòng kết quả</span>
         </div>
 
         {messageCount > 1 && (
           <button
             onClick={onClearHistory}
-            className="flex items-center gap-2 px-3.5 py-2 rounded-xl bg-slate-50 hover:bg-rose-50 border border-slate-200 hover:border-rose-300 text-slate-600 hover:text-rose-700 text-xs font-bold transition-all shadow-2xs cursor-pointer"
-            title="Xóa lịch sử hội thoại"
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-slate-50 hover:bg-slate-100 border border-slate-200 text-slate-600 text-xs font-medium transition-colors cursor-pointer"
+            title="Làm mới lịch sử hội thoại"
           >
-            <Trash2 className="w-4 h-4" />
-            <span className="hidden sm:inline">Xóa Lịch Sử</span>
+            <Trash2 className="w-3.5 h-3.5 text-slate-500" />
+            <span>Làm Mới</span>
           </button>
         )}
       </div>

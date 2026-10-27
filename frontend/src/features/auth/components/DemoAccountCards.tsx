@@ -1,5 +1,5 @@
 import React from 'react';
-import { Shield, User, Smartphone, ArrowRight, Sparkles } from 'lucide-react';
+import { Shield, User, Smartphone, ArrowRight } from 'lucide-react';
 import { DemoAccount } from '../types';
 
 interface DemoAccountCardsProps {
@@ -10,53 +10,52 @@ interface DemoAccountCardsProps {
 export const DEMO_ACCOUNTS: DemoAccount[] = [
   {
     role: 'ROLE_ADMIN',
-    roleTitle: 'Quản Trị Viên (Admin)',
-    badge: 'TOÀN QUYỀN',
-    color: 'from-purple-600/30 via-indigo-600/20 to-slate-900 border-purple-500/50 text-purple-300',
+    roleTitle: 'Quản Trị Viên',
+    badge: 'ADMIN',
+    color: 'bg-slate-800/60 hover:bg-slate-800 text-slate-200 border-slate-700 hover:border-indigo-500/60',
     username: 'admin',
     fullName: 'Nguyễn Quản Trị',
     targetRoute: '/',
-    deviceType: 'Desktop PC / Command Center',
-    description: 'Truy cập toàn quyền: Phân quyền RBAC, Sơ đồ kho, Báo cáo & Kiểm toán hệ thống',
+    deviceType: 'Desktop / Trung Tâm Điều Hành',
+    description: 'Toàn quyền cấu hình: Quản lý người dùng, phân quyền RBAC, sơ đồ kho Digital Twin',
   },
   {
     role: 'ROLE_WAREHOUSE_MANAGER',
-    roleTitle: 'Trưởng Kho (Manager)',
-    badge: 'ĐIỀU HÀNH KHO',
-    color: 'from-blue-600/30 via-cyan-600/20 to-slate-900 border-blue-500/50 text-cyan-300',
+    roleTitle: 'Trưởng Kho',
+    badge: 'MANAGER',
+    color: 'bg-slate-800/60 hover:bg-slate-800 text-slate-200 border-slate-700 hover:border-indigo-500/60',
     username: 'manager01',
     fullName: 'Trần Trưởng Kho',
     targetRoute: '/',
-    deviceType: 'Desktop PC / Dashboard',
-    description: 'Điều phối xuất nhập kho, Phân bổ lô FEFO, Cân đối tồn kho & Báo cáo ngầm RabbitMQ',
+    deviceType: 'Desktop / Quản Lý Nghiệp Vụ',
+    description: 'Điều phối xuất nhập PO/SO, phân bổ lô FEFO, kiểm soát cân đối tồn kho & sổ cái',
   },
   {
     role: 'ROLE_OPERATOR',
-    roleTitle: 'Thủ Kho Hiện Trường (Operator)',
-    badge: 'PDA MOBILE',
-    color: 'from-cyan-600/30 via-emerald-600/20 to-slate-900 border-emerald-500/50 text-emerald-300',
+    roleTitle: 'Thủ Kho Hiện Trường',
+    badge: 'OPERATOR',
+    color: 'bg-slate-800/60 hover:bg-slate-800 text-slate-200 border-slate-700 hover:border-emerald-500/60',
     username: 'operator01',
     fullName: 'Lê Thủ Kho',
     targetRoute: '/operator',
-    deviceType: 'Mobile PDA / Máy Quét Cầm Tay',
-    description: 'Giao diện Mobile/PDA: Quét Barcode nhận hàng, Gợi ý cất hàng, Lộ trình nhặt FEFO',
+    deviceType: 'Thiết Bị Cầm Tay / Mobile PDA',
+    description: 'Cổng quét mã: Quét nhận hàng Staging, cất kệ Put-away, bốc hàng FEFO & chuyển ô',
   },
 ];
 
 export const DemoAccountCards: React.FC<DemoAccountCardsProps> = ({ onSelectDemo, isLoading }) => {
   return (
-    <div className="space-y-3 pt-3 border-t border-slate-800">
+    <div className="space-y-2.5 pt-3 border-t border-slate-800">
       <div className="flex items-center justify-between">
-        <div className="flex items-center gap-1.5 text-xs font-bold text-slate-200">
-          <Sparkles className="w-4 h-4 text-amber-400 animate-pulse" />
-          <span>Tài Khoản Demo Hội Đồng Phản Biện (1 Chạm Vào Ngay)</span>
-        </div>
-        <span className="text-[10px] font-mono text-cyan-400 bg-cyan-950/60 px-2 py-0.5 rounded border border-cyan-800/40">
-          Pass: 123456
+        <span className="text-xs font-semibold text-slate-300">
+          Chọn nhanh tài khoản phân quyền (RBAC)
+        </span>
+        <span className="text-[11px] font-mono text-slate-400">
+          Mật khẩu chung: <code className="text-indigo-300 font-bold">123456</code>
         </span>
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
         {DEMO_ACCOUNTS.map((acc) => {
           const Icon = acc.role === 'ROLE_ADMIN' ? Shield : acc.role === 'ROLE_OPERATOR' ? Smartphone : User;
 
@@ -66,32 +65,30 @@ export const DemoAccountCards: React.FC<DemoAccountCardsProps> = ({ onSelectDemo
               type="button"
               disabled={isLoading}
               onClick={() => onSelectDemo(acc)}
-              className={`p-3.5 rounded-2xl bg-gradient-to-b ${acc.color} border text-left hover:scale-[1.02] active:scale-[0.98] transition-all group relative overflow-hidden shadow-lg cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed`}
+              className={`p-3 rounded-xl border text-left transition-all group relative cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed ${acc.color}`}
             >
-              <div className="flex items-center justify-between mb-2">
-                <div className="flex items-center gap-2">
-                  <div className="p-1.5 rounded-lg bg-black/40 text-white">
-                    <Icon className="w-3.5 h-3.5" />
-                  </div>
-                  <span className="font-extrabold text-xs text-white">{acc.roleTitle.split(' ')[0]}</span>
+              <div className="flex items-center justify-between mb-1.5">
+                <div className="flex items-center gap-1.5">
+                  <Icon className="w-3.5 h-3.5 text-indigo-400" />
+                  <span className="font-bold text-xs text-white">{acc.roleTitle}</span>
                 </div>
-                <span className="text-[9px] font-mono font-black px-1.5 py-0.5 rounded bg-black/60 border border-white/20 text-slate-200">
+                <span className="text-[10px] font-mono font-semibold px-1.5 py-0.2 rounded bg-slate-900 text-slate-400 border border-slate-750">
                   {acc.badge}
                 </span>
               </div>
 
-              <div className="font-mono text-xs text-white font-black flex items-center gap-1">
-                <span>@{acc.username}</span>
-                <span className="text-slate-400 font-normal">({acc.fullName})</span>
-              </div>
-              <div className="text-[11px] text-slate-300 mt-1 line-clamp-2 leading-relaxed">
-                {acc.description}
+              <div className="font-mono text-xs text-indigo-300 font-medium">
+                @{acc.username}
               </div>
 
-              <div className="mt-2.5 pt-2 border-t border-white/10 flex items-center justify-between text-[10px] text-slate-300 font-mono">
-                <span className="text-slate-400">{acc.deviceType}</span>
-                <span className="flex items-center gap-1 font-bold text-cyan-300 group-hover:translate-x-1 transition-transform">
-                  <span>Đăng Nhập</span>
+              <p className="text-[11px] text-slate-400 mt-1 line-clamp-2 leading-relaxed">
+                {acc.description}
+              </p>
+
+              <div className="mt-2 pt-2 border-t border-slate-700/60 flex items-center justify-between text-[10px] text-slate-400">
+                <span className="truncate max-w-[120px]">{acc.deviceType}</span>
+                <span className="flex items-center gap-0.5 text-indigo-400 font-medium group-hover:translate-x-0.5 transition-transform flex-shrink-0">
+                  <span>Chọn</span>
                   <ArrowRight className="w-3 h-3" />
                 </span>
               </div>

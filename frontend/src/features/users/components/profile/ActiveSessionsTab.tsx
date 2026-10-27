@@ -1,10 +1,11 @@
 import React, { useEffect, useState } from 'react';
 import {
   Laptop, Smartphone, Tablet, Monitor, MapPin, Clock,
-  LogOut, Loader2, CheckCircle2, ShieldCheck, RefreshCw, AlertTriangle, History
+  LogOut, Loader2, CheckCircle2, ShieldCheck, RefreshCw, AlertTriangle, History, Building2, Globe
 } from 'lucide-react';
 import { userService } from '../../services/userService';
 import { UserDeviceSession } from '../../types';
+import { getRealLocation } from '../../../auth/services/geolocationService';
 
 interface ActiveSessionsTabProps {
   onSuccess: (msg: string) => void;
@@ -25,6 +26,18 @@ export const ActiveSessionsTab: React.FC<ActiveSessionsTabProps> = ({ onSuccess,
     try {
       const data = await userService.getMySessions();
       setSessions(data);
+
+      // Tự động định vị và cập nhật vị trí thực tế trong nền 100% không cần bấm
+      const current = data.find((s) => s.isCurrentSession);
+      if (current && (!current.locationName || !current.locationName.includes('°B') || current.locationName.includes('Trụ Sở WMS') || current.ipAddress?.startsWith('172.') || current.ipAddress === '127.0.0.1')) {
+        getRealLocation().then(async (geo) => {
+          if (geo.locationName && geo.locationName !== current.locationName) {
+            await userService.updateCurrentLocation({ location: geo.locationName, ip: geo.ipAddress });
+            const refreshed = await userService.getMySessions();
+            setSessions(refreshed);
+          }
+        }).catch(() => {});
+      }
     } catch (err: any) {
       onError(err.message || 'Không thể tải danh sách thiết bị');
     } finally {
@@ -62,21 +75,36 @@ export const ActiveSessionsTab: React.FC<ActiveSessionsTabProps> = ({ onSuccess,
     }
   };
 
-  const getDeviceIcon = (deviceType?: string) => {
-    const t = deviceType?.toUpperCase();
+  const getDeviceIcon = (type?: string) => {
+    const t = type?.toUpperCase();
     if (t === 'MOBILE') return <Smartphone className="w-4 h-4 text-indigo-600" />;
     if (t === 'TABLET') return <Tablet className="w-4 h-4 text-indigo-600" />;
-    if (t === 'DESKTOP') return <Monitor className="w-4 h-4 text-indigo-600" />;
-    return <Laptop className="w-4 h-4 text-indigo-600" />;
+    return t === 'DESKTOP' ? <Monitor className="w-4 h-4 text-indigo-600" /> : <Laptop className="w-4 h-4 text-indigo-600" />;
   };
 
-  const formatReason = (reason?: string) => {
-    if (!reason) return 'Đã kết thúc phiên';
-    if (reason.includes('KICKED')) return 'Hết phiên (Đăng nhập máy mới)';
-    if (reason.includes('LOGOUT_ALL')) return 'Đã đăng xuất đồng loạt';
-    if (reason.includes('REMOTE_LOGOUT')) return 'Đăng xuất từ xa qua cài đặt';
-    if (reason.includes('FORCE_LOGOUT')) return 'Quản trị viên ngắt phiên';
-    return 'Đã đăng xuất';
+  const formatReason = (r?: string) => {
+    if (!r) return 'Đã kết thúc phiên';
+    if (r.includes('KICKED')) return 'Hết phiên (Đăng nhập máy mới)';
+    if (r.includes('REMOTE_LOGOUT')) return 'Đăng xuất từ xa qua cài đặt';
+    if (r.includes('FORCE_LOGOUT')) return 'Quản trị viên ngắt phiên';
+    return r.includes('LOGOUT_ALL') ? 'Đã đăng xuất đồng loạt' : 'Đã đăng xuất';
+  };
+
+  const renderNetworkTag = (s: UserDeviceSession) => {
+    if (s.isWarehouseNetwork) {
+      return (
+        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-300">
+          <Building2 className="w-3 h-3 text-emerald-700 shrink-0" />
+          <span>{s.warehouseName ? s.warehouseName.split('-')[0].trim() : (s.networkLabel || 'Mạng Nội Bộ Kho')}</span>
+        </span>
+      );
+    }
+    return (
+      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-bold bg-amber-100 text-amber-900 border border-amber-300">
+        <Globe className="w-3 h-3 text-amber-700 shrink-0" />
+        <span>{s.networkLabel || 'Mạng Ngoài (Remote)'}</span>
+      </span>
+    );
   };
 
   const activeSessions = sessions.filter((s) => s.isActive);
@@ -99,29 +127,17 @@ export const ActiveSessionsTab: React.FC<ActiveSessionsTabProps> = ({ onSuccess,
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-slate-100">
         <div>
           <h3 className="text-sm font-extrabold text-slate-900 flex items-center gap-2">
-            <ShieldCheck className="w-4 h-4 text-indigo-600" />
-            Thiết Bị & Phiên Đăng Nhập
+            <ShieldCheck className="w-4 h-4 text-indigo-600" /> Thiết Bị & Phiên Đăng Nhập
           </h3>
-          <p className="text-xs text-slate-500 mt-0.5">
-            Quản lý các thiết bị đang có quyền truy cập vào tài khoản của bạn.
-          </p>
+          <p className="text-xs text-slate-500 mt-0.5">Quản lý các thiết bị đang có quyền truy cập vào tài khoản của bạn.</p>
         </div>
         <div className="flex items-center gap-2">
-          <button
-            onClick={() => loadSessions(true)}
-            disabled={refreshing}
-            className="p-1.5 rounded-lg border border-slate-200 text-slate-600 hover:bg-slate-100 transition-colors disabled:opacity-50 cursor-pointer"
-            title="Làm mới"
-          >
+          <button onClick={() => loadSessions(true)} disabled={refreshing} className="p-1.5 rounded-lg border border-slate-200 text-slate-600 hover:bg-slate-100 transition-colors disabled:opacity-50 cursor-pointer" title="Làm mới">
             <RefreshCw className={`w-3.5 h-3.5 ${refreshing ? 'animate-spin' : ''}`} />
           </button>
           {otherActiveSessions.length > 0 && !showConfirmOthers && (
-            <button
-              onClick={() => setShowConfirmOthers(true)}
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold text-rose-600 bg-rose-50 hover:bg-rose-100 border border-rose-200 transition-all cursor-pointer"
-            >
-              <LogOut className="w-3.5 h-3.5" />
-              <span>Đăng xuất thiết bị khác ({otherActiveSessions.length})</span>
+            <button onClick={() => setShowConfirmOthers(true)} className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold text-rose-600 bg-rose-50 hover:bg-rose-100 border border-rose-200 transition-all cursor-pointer">
+              <LogOut className="w-3.5 h-3.5" /> <span>Đăng xuất thiết bị khác ({otherActiveSessions.length})</span>
             </button>
           )}
         </div>
@@ -135,45 +151,29 @@ export const ActiveSessionsTab: React.FC<ActiveSessionsTabProps> = ({ onSuccess,
             <span>Xác nhận đăng xuất khỏi tất cả các thiết bị khác?</span>
           </div>
           <div className="flex items-center gap-2 pt-1">
-            <button
-              onClick={handleRevokeOthers}
-              disabled={revokingOthers}
-              className="px-3 py-1 bg-rose-600 hover:bg-rose-700 text-white rounded-lg text-xs font-bold transition-colors disabled:opacity-50 flex items-center gap-1.5 cursor-pointer"
-            >
-              {revokingOthers && <Loader2 className="w-3 h-3 animate-spin" />}
-              <span>Đồng ý</span>
+            <button onClick={handleRevokeOthers} disabled={revokingOthers} className="px-3 py-1 bg-rose-600 hover:bg-rose-700 text-white rounded-lg text-xs font-bold transition-colors disabled:opacity-50 flex items-center gap-1.5 cursor-pointer">
+              {revokingOthers && <Loader2 className="w-3 h-3 animate-spin" />} <span>Đồng ý</span>
             </button>
-            <button
-              onClick={() => setShowConfirmOthers(false)}
-              disabled={revokingOthers}
-              className="px-3 py-1 bg-white hover:bg-slate-100 text-slate-700 border border-slate-300 rounded-lg text-xs font-semibold cursor-pointer"
-            >
+            <button onClick={() => setShowConfirmOthers(false)} disabled={revokingOthers} className="px-3 py-1 bg-white hover:bg-slate-100 text-slate-700 border border-slate-300 rounded-lg text-xs font-semibold cursor-pointer">
               Hủy
             </button>
           </div>
         </div>
       )}
 
-      {/* Sub-tabs */}
-      <div className="flex items-center gap-1 p-1 bg-slate-100 rounded-xl text-xs font-bold w-fit">
-        <button
-          onClick={() => setViewMode('ACTIVE')}
-          className={`px-3 py-1.5 rounded-lg transition-all flex items-center gap-1.5 cursor-pointer ${
-            viewMode === 'ACTIVE' ? 'bg-white text-indigo-700 shadow-xs' : 'text-slate-500 hover:text-slate-800'
-          }`}
-        >
-          <ShieldCheck className="w-3.5 h-3.5" />
-          <span>Đang hoạt động ({activeSessions.length})</span>
-        </button>
-        <button
-          onClick={() => setViewMode('HISTORY')}
-          className={`px-3 py-1.5 rounded-lg transition-all flex items-center gap-1.5 cursor-pointer ${
-            viewMode === 'HISTORY' ? 'bg-white text-indigo-700 shadow-xs' : 'text-slate-500 hover:text-slate-800'
-          }`}
-        >
-          <History className="w-3.5 h-3.5" />
-          <span>Lịch sử phiên ({inactiveSessions.length})</span>
-        </button>
+      {/* Sub-tabs & Policy Counter */}
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <div className="flex items-center gap-1 p-1 bg-slate-100 rounded-xl text-xs font-bold w-fit">
+          <button onClick={() => setViewMode('ACTIVE')} className={`px-3 py-1.5 rounded-lg transition-all flex items-center gap-1.5 cursor-pointer ${viewMode === 'ACTIVE' ? 'bg-white text-indigo-700 shadow-xs' : 'text-slate-500 hover:text-slate-800'}`}>
+            <ShieldCheck className="w-3.5 h-3.5" /> <span>Đang hoạt động ({activeSessions.length})</span>
+          </button>
+          <button onClick={() => setViewMode('HISTORY')} className={`px-3 py-1.5 rounded-lg transition-all flex items-center gap-1.5 cursor-pointer ${viewMode === 'HISTORY' ? 'bg-white text-indigo-700 shadow-xs' : 'text-slate-500 hover:text-slate-800'}`}>
+            <History className="w-3.5 h-3.5" /> <span>Lịch sử phiên ({inactiveSessions.length})</span>
+          </button>
+        </div>
+        <span className={`font-mono text-xs font-bold px-2.5 py-1 rounded-lg border ${activeSessions.length >= 2 ? 'bg-amber-50 text-amber-800 border-amber-200' : 'bg-emerald-50 text-emerald-800 border-emerald-200'}`}>
+          {activeSessions.length}/2 Thiết Bị Tối Đa
+        </span>
       </div>
 
       {/* Active Tab View */}
@@ -182,9 +182,7 @@ export const ActiveSessionsTab: React.FC<ActiveSessionsTabProps> = ({ onSuccess,
           {currentSession && (
             <div className="p-3.5 rounded-xl border border-emerald-200 bg-emerald-50/40 flex items-center justify-between gap-3 shadow-xs">
               <div className="flex items-center gap-3">
-                <div className="p-2 rounded-xl bg-emerald-100 text-emerald-800 shrink-0">
-                  {getDeviceIcon(currentSession.deviceType)}
-                </div>
+                <div className="p-2 rounded-xl bg-emerald-100 text-emerald-800 shrink-0">{getDeviceIcon(currentSession.deviceType)}</div>
                 <div>
                   <div className="flex items-center gap-2 flex-wrap">
                     <span className="font-extrabold text-slate-900 text-sm">{currentSession.deviceName}</span>
@@ -195,14 +193,15 @@ export const ActiveSessionsTab: React.FC<ActiveSessionsTabProps> = ({ onSuccess,
                       </span>
                       Thiết bị này
                     </span>
+                    {renderNetworkTag(currentSession)}
                   </div>
                   <div className="flex items-center gap-3 text-xs text-slate-500 flex-wrap pt-0.5">
-                    <span className="flex items-center gap-1 font-mono">
-                      <MapPin className="w-3 h-3 text-slate-400" />
-                      {currentSession.locationName || 'Nội bộ (LAN)'} ({currentSession.ipAddress})
+                    <span className="flex items-center gap-1 font-mono text-slate-700">
+                      <MapPin className="w-3.5 h-3.5 text-emerald-600" />
+                      {currentSession.locationName || 'Đang xác định vị trí...'} ({currentSession.ipAddress})
                     </span>
                     <span className="flex items-center gap-1">
-                      <Clock className="w-3 h-3 text-slate-400" /> Đang sử dụng
+                      <Clock className="w-3.5 h-3.5 text-slate-400" /> Đang sử dụng
                     </span>
                   </div>
                 </div>
@@ -223,7 +222,10 @@ export const ActiveSessionsTab: React.FC<ActiveSessionsTabProps> = ({ onSuccess,
                   <div className="flex items-center gap-3">
                     <div className="p-2 rounded-xl bg-slate-100 text-slate-700 shrink-0">{getDeviceIcon(s.deviceType)}</div>
                     <div>
-                      <div className="font-bold text-slate-900 text-sm">{s.deviceName}</div>
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <div className="font-bold text-slate-900 text-sm">{s.deviceName}</div>
+                        {renderNetworkTag(s)}
+                      </div>
                       <div className="flex items-center gap-3 text-xs text-slate-500 flex-wrap pt-0.5">
                         <span className="flex items-center gap-1 font-mono">
                           <MapPin className="w-3 h-3 text-slate-400" /> {s.locationName || 'Mạng LAN'} ({s.ipAddress})
@@ -234,11 +236,7 @@ export const ActiveSessionsTab: React.FC<ActiveSessionsTabProps> = ({ onSuccess,
                       </div>
                     </div>
                   </div>
-                  <button
-                    onClick={() => handleRevokeSingle(s.id)}
-                    disabled={revokingId === s.id}
-                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold text-rose-600 hover:bg-rose-50 border border-slate-200 hover:border-rose-200 transition-colors disabled:opacity-50 cursor-pointer shrink-0"
-                  >
+                  <button onClick={() => handleRevokeSingle(s.id)} disabled={revokingId === s.id} className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold text-rose-600 hover:bg-rose-50 border border-slate-200 hover:border-rose-200 transition-colors disabled:opacity-50 cursor-pointer shrink-0">
                     {revokingId === s.id ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <LogOut className="w-3.5 h-3.5" />}
                     <span>Đăng xuất</span>
                   </button>

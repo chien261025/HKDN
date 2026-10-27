@@ -194,5 +194,48 @@ export const operatorService = {
     const res = await apiClient.post('/inventory/audit', payload);
     return res.data;
   },
+
+  /**
+   * Lấy số dư tồn kho chi tiết tại các ô kệ
+   */
+  async getInventories(): Promise<any[]> {
+    const res = await apiClient.get<{ success: boolean; data: any[] }>('/inventory');
+    return res.data.data || [];
+  },
+
+  /**
+   * Thực hiện điều chuyển tồn kho giữa 2 ô kệ từ thiết bị PDA
+   */
+  async executeTransfer(payload: {
+    productId: number;
+    fromLocationId: number;
+    toLocationId: number;
+    batchId: number;
+    quantity: number;
+    notes?: string;
+  }): Promise<any> {
+    const res = await apiClient.post('/inventory/transfers', payload);
+    return res.data.data;
+  },
+
+  /**
+   * Ghi nhận số lượng đếm kiểm kê thực tế cho 1 ô kệ & sản phẩm
+   */
+  async recordAuditCount(
+    auditId: number,
+    locationId: number,
+    productId: number,
+    actualQuantity: number,
+    notes?: string
+  ): Promise<any> {
+    const res = await apiClient.post(`/inventory/audit/${auditId}/count`, {
+      locationId,
+      productId,
+      actualQuantity,
+      notes,
+    });
+    return res.data.data;
+  },
 };
+
 

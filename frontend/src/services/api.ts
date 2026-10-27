@@ -1,5 +1,6 @@
 import axios from 'axios';
 import { STORAGE_KEYS, APP_CONFIG } from '../constants';
+import { getDeviceFingerprint } from '../features/auth/utils/deviceFingerprint';
 
 export const apiClient = axios.create({
   baseURL: '/api',
@@ -9,9 +10,10 @@ export const apiClient = axios.create({
   timeout: APP_CONFIG.API_TIMEOUT_MS,
 });
 
-// Request Interceptor: Tự động đính kèm JWT Token vào Header Authorization
+// Request Interceptor: Tự động đính kèm Device Fingerprint và JWT Token
 apiClient.interceptors.request.use(
   (config) => {
+    config.headers['X-Device-Fingerprint'] = getDeviceFingerprint();
     const token = localStorage.getItem(STORAGE_KEYS.TOKEN);
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;

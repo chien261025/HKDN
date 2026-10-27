@@ -1,7 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { X, KeyRound, AlertCircle } from 'lucide-react';
 import { authService } from '../services/authService';
-import { SimulatedNotificationBanner } from './forgot-password/SimulatedNotificationBanner';
 import { StepIdentifier } from './forgot-password/StepIdentifier';
 import { StepOtp } from './forgot-password/StepOtp';
 import { StepNewPassword } from './forgot-password/StepNewPassword';
@@ -22,14 +21,11 @@ export const ForgotPasswordModal: React.FC<ForgotPasswordModalProps> = ({
 }) => {
   const [step, setStep] = useState<Step>('INPUT_IDENTIFIER');
   const [identifier, setIdentifier] = useState('');
-  const [channel, setChannel] = useState<'SMS' | 'EMAIL'>('SMS');
-  const [phoneNumber, setPhoneNumber] = useState('+84 988 567 890');
 
-  // OTP State
-  const [generatedOtp, setGeneratedOtp] = useState('');
+  // Target email and OTP digits
+  const [targetEmail, setTargetEmail] = useState('');
   const [otpDigits, setOtpDigits] = useState(['', '', '', '', '', '']);
   const [countdown, setCountdown] = useState(180);
-  const [showSimulatedSms, setShowSimulatedSms] = useState(false);
   const otpInputRefs = useRef<(HTMLInputElement | null)[]>([]);
 
   // New Password State
@@ -56,11 +52,9 @@ export const ForgotPasswordModal: React.FC<ForgotPasswordModalProps> = ({
   const handleResetAll = () => {
     setStep('INPUT_IDENTIFIER');
     setIdentifier('');
-    setPhoneNumber('+84 988 567 890');
-    setGeneratedOtp('');
+    setTargetEmail('');
     setOtpDigits(['', '', '', '', '', '']);
     setCountdown(180);
-    setShowSimulatedSms(false);
     setNewPassword('');
     setConfirmPassword('');
     setErrorMessage(null);
@@ -68,40 +62,55 @@ export const ForgotPasswordModal: React.FC<ForgotPasswordModalProps> = ({
   };
 
   /**
-   * Bước 1: Gửi mã xác thực OTP
+   * Bước 1: Gửi mã xác thực OTP qua Email hoặc SMS
    */
-  const handleSendOtp = (e: React.FormEvent) => {
+  const handleSendOtp = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!identifier.trim()) {
-      setErrorMessage('Vui lòng nhập Tên đăng nhập hoặc Email công vụ!');
-      return;
-    }
-
-    if (channel === 'SMS' && !phoneNumber.trim()) {
-      setErrorMessage('Vui lòng nhập số điện thoại để nhận tin nhắn SMS!');
+      setErrorMessage('Vui lòng nhập tên đăng nhập hoặc email.');
       return;
     }
 
     setIsSubmitting(true);
     setErrorMessage(null);
 
-    const randomOtp = Math.floor(100000 + Math.random() * 900000).toString();
-    setGeneratedOtp(randomOtp);
-    setCountdown(180);
-
-    setTimeout(() => {
+    try {
+      const res = await authService.sendForgotPasswordOtp(identifier.trim());
       setIsSubmitting(false);
+      setTargetEmail(res.email || identifier.trim());
+      setCountdown(res.expiresInSeconds || 180);
       setStep('ENTER_OTP');
-      setShowSimulatedSms(true);
 
       setTimeout(() => {
         otpInputRefs.current[0]?.focus();
       }, 100);
-    }, 600);
+    } catch (err: any) {
+      setIsSubmitting(false);
+      setErrorMessage(err.message || 'Không thể gửi mã xác thực. Vui lòng kiểm tra lại tài khoản hoặc email!');
+    }
   };
 
   /**
-   * Xử lý nhập OTP
+   * Gọi xác thực OTP với máy chủ (Tự động hoặc khi bấm nút)
+   */
+  const executeVerifyOtp = async (code: string) => {
+    if (code.length < 6 || isSubmitting) return;
+
+    setIsSubmitting(true);
+    setErrorMessage(null);
+
+    try {
+      await authService.verifyForgotPasswordOtp(identifier.trim(), code);
+      setIsSubmitting(false);
+      setStep('NEW_PASSWORD');
+    } catch (err: any) {
+      setIsSubmitting(false);
+      setErrorMessage(err.message || 'Mã xác thực không chính xác hoặc đã hết hạn.');
+    }
+  };
+
+  /**
+   * Xử lý nhập OTP & Tự động gửi khi điền đủ 6 số
    */
   const handleOtpChange = (index: number, value: string) => {
     if (!/^\d*$/.test(value)) return;
@@ -113,6 +122,26 @@ export const ForgotPasswordModal: React.FC<ForgotPasswordModalProps> = ({
     if (value && index < 5) {
       otpInputRefs.current[index + 1]?.focus();
     }
+
+    // Tự động gửi xác thực ngay khi điền đủ 6 số
+    const fullCode = newOtp.join('');
+    if (fullCode.length === 6 && !newOtp.includes('')) {
+      executeVerifyOtp(fullCode);
+    }
+  };
+
+  const handleOtpPaste = (pasted: string) => {
+    const digits = pasted.split('').slice(0, 6);
+    const newOtp = [...otpDigits];
+    digits.forEach((d, i) => {
+      newOtp[i] = d;
+    });
+    setOtpDigits(newOtp);
+    if (digits.length === 6) {
+      executeVerifyOtp(digits.join(''));
+    } else {
+      otpInputRefs.current[digits.length]?.focus();
+    }
   };
 
   const handleOtpKeyDown = (index: number, e: React.KeyboardEvent<HTMLInputElement>) => {
@@ -121,32 +150,19 @@ export const ForgotPasswordModal: React.FC<ForgotPasswordModalProps> = ({
     }
   };
 
-  const handleAutoFillOtp = () => {
-    const digits = generatedOtp.split('');
-    setOtpDigits(digits);
-    setErrorMessage(null);
-  };
-
   /**
-   * Bước 2: Xác thực OTP
+   * Bước 2: Xác thực OTP với máy chủ khi submit form
    */
   const handleVerifyOtp = (e: React.FormEvent) => {
     e.preventDefault();
     const enteredCode = otpDigits.join('');
 
     if (enteredCode.length < 6) {
-      setErrorMessage('Vui lòng nhập đủ 6 chữ số của mã OTP!');
+      setErrorMessage('Vui lòng nhập đủ 6 chữ số của mã xác thực.');
       return;
     }
 
-    if (enteredCode !== generatedOtp) {
-      setErrorMessage('Mã xác thực OTP không chính xác. Vui lòng kiểm tra lại!');
-      return;
-    }
-
-    setErrorMessage(null);
-    setShowSimulatedSms(false);
-    setStep('NEW_PASSWORD');
+    executeVerifyOtp(enteredCode);
   };
 
   /**
@@ -157,26 +173,27 @@ export const ForgotPasswordModal: React.FC<ForgotPasswordModalProps> = ({
     setErrorMessage(null);
 
     if (newPassword.length < 6) {
-      setErrorMessage('Mật khẩu mới phải có tối thiểu 6 ký tự!');
+      setErrorMessage('Mật khẩu mới phải có tối thiểu 6 ký tự.');
       return;
     }
 
     if (newPassword !== confirmPassword) {
-      setErrorMessage('Xác nhận mật khẩu mới không khớp!');
+      setErrorMessage('Xác nhận mật khẩu mới không khớp.');
       return;
     }
 
     setIsSubmitting(true);
 
     try {
-      await authService.resetForgottenPassword(identifier.trim(), newPassword.trim());
+      const enteredCode = otpDigits.join('');
+      await authService.resetForgottenPassword(identifier.trim(), newPassword.trim(), enteredCode);
       setStep('SUCCESS');
       if (onPrefillUsername) {
         onPrefillUsername(identifier.trim());
       }
     } catch (err: any) {
       console.error('Lỗi đặt lại mật khẩu:', err);
-      setErrorMessage(err.message || 'Không thể cập nhật mật khẩu. Vui lòng thử lại!');
+      setErrorMessage(err.message || 'Không thể cập nhật mật khẩu. Vui lòng thử lại sau.');
     } finally {
       setIsSubmitting(false);
     }
@@ -184,22 +201,8 @@ export const ForgotPasswordModal: React.FC<ForgotPasswordModalProps> = ({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-sm p-4 overflow-y-auto animate-in fade-in duration-200">
-      {/* Push Notification Simulator */}
-      {showSimulatedSms && (
-        <SimulatedNotificationBanner
-          channel={channel}
-          phoneNumber={phoneNumber}
-          identifier={identifier}
-          generatedOtp={generatedOtp}
-          onAutoFillOtp={handleAutoFillOtp}
-          onClose={() => setShowSimulatedSms(false)}
-        />
-      )}
-
       {/* Main Modal */}
       <div className="bg-white border border-slate-200 rounded-2xl w-full max-w-md shadow-2xl overflow-hidden my-8 relative">
-        <div className="h-1.5 w-full bg-gradient-to-r from-indigo-600 via-blue-600 to-indigo-700"></div>
-
         {/* Modal Header */}
         <div className="p-5 border-b border-slate-200 flex items-center justify-between bg-slate-50/80">
           <div className="flex items-center gap-3">
@@ -207,8 +210,8 @@ export const ForgotPasswordModal: React.FC<ForgotPasswordModalProps> = ({
               <KeyRound className="w-5 h-5" />
             </div>
             <div>
-              <h3 className="text-base font-bold text-slate-900">Khôi Phục Mật Khẩu WMS</h3>
-              <p className="text-xs text-slate-500 font-medium">Xác thực 2 lớp qua mã OTP (SMS / Email)</p>
+              <h3 className="text-base font-bold text-slate-900">Khôi Phục Mật Khẩu</h3>
+              <p className="text-xs text-slate-500 font-medium">Xác thực danh tính để thiết lập lại mật khẩu</p>
             </div>
           </div>
           <button
@@ -232,10 +235,6 @@ export const ForgotPasswordModal: React.FC<ForgotPasswordModalProps> = ({
             <StepIdentifier
               identifier={identifier}
               onIdentifierChange={setIdentifier}
-              channel={channel}
-              onChannelChange={setChannel}
-              phoneNumber={phoneNumber}
-              onPhoneNumberChange={setPhoneNumber}
               isSubmitting={isSubmitting}
               onSubmit={handleSendOtp}
               onCancel={handleResetAll}
@@ -244,14 +243,15 @@ export const ForgotPasswordModal: React.FC<ForgotPasswordModalProps> = ({
 
           {step === 'ENTER_OTP' && (
             <StepOtp
-              channel={channel}
-              phoneNumber={phoneNumber}
               identifier={identifier}
+              targetEmail={targetEmail}
               otpDigits={otpDigits}
               otpInputRefs={otpInputRefs}
               onOtpChange={handleOtpChange}
               onOtpKeyDown={handleOtpKeyDown}
+              onOtpPaste={handleOtpPaste}
               countdown={countdown}
+              isSubmitting={isSubmitting}
               onResendOtp={handleSendOtp}
               onBackToIdentifier={() => setStep('INPUT_IDENTIFIER')}
               onSubmit={handleVerifyOtp}

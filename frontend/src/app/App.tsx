@@ -12,6 +12,7 @@ import { AppHeader } from './components/AppHeader';
 import { AppRoutes } from './components/AppRoutes';
 import { NotificationProvider } from '../features/notifications/context/NotificationContext';
 import { ToastNotificationContainer } from '../features/notifications/components/ToastNotificationContainer';
+import { IdleTimeoutGuard } from '../features/auth/components/IdleTimeoutGuard';
 
 const AppContent: React.FC = () => {
   const [showScanner, setShowScanner] = useState(false);
@@ -24,6 +25,33 @@ const AppContent: React.FC = () => {
     const saved = localStorage.getItem('smart_wms_sidebar_collapsed');
     return saved === 'true';
   });
+
+  const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
+
+  // Close mobile drawer on route navigation and check session active status in real-time
+  useEffect(() => {
+    setIsMobileSidebarOpen(false);
+
+    const verifySession = () => {
+      const token = localStorage.getItem('smart_wms_token');
+      if (token && location.pathname !== '/login') {
+        authService.checkSessionStatus().then((status) => {
+          if (!status.active && status.reason === 'SESSION_REVOKED') {
+            localStorage.removeItem('smart_wms_token');
+            localStorage.removeItem('smart_wms_session');
+            window.location.href = '/login?expired=true';
+          }
+        }).catch(() => {});
+      }
+    };
+
+    const timer = setTimeout(verifySession, 4000);
+    const interval = setInterval(verifySession, 20000);
+    return () => {
+      clearTimeout(timer);
+      clearInterval(interval);
+    };
+  }, [location.pathname]);
 
   const toggleSidebar = () => {
     setIsSidebarCollapsed((prev) => {
@@ -89,24 +117,27 @@ const AppContent: React.FC = () => {
       <AppSidebar
         isSidebarCollapsed={isSidebarCollapsed}
         onToggleSidebar={toggleSidebar}
+        isMobileOpen={isMobileSidebarOpen}
+        onCloseMobile={() => setIsMobileSidebarOpen(false)}
         onOpenScanner={() => setShowScanner(true)}
         session={session}
         currentTime={currentTime}
       />
 
       {/* Main Content Arena */}
-      <div className="flex-1 flex flex-col overflow-hidden relative z-10 bg-slate-100">
+      <div className="flex-1 flex flex-col overflow-hidden relative z-10 bg-slate-100 min-w-0">
         {/* Top Header Bar */}
         <AppHeader
           isSidebarCollapsed={isSidebarCollapsed}
           onToggleSidebar={toggleSidebar}
+          onToggleMobileSidebar={() => setIsMobileSidebarOpen((prev) => !prev)}
           session={session}
           onOpenProfile={() => setIsProfileModalOpen(true)}
           onLogout={handleLogout}
         />
 
         {/* Dynamic Route View */}
-        <main className="flex-1 overflow-y-auto p-6 bg-slate-100/70 relative">
+        <main className="flex-1 overflow-y-auto p-3 sm:p-4 md:p-6 bg-slate-100/70 relative">
           <AppRoutes onOpenScanner={() => setShowScanner(true)} />
         </main>
       </div>
@@ -137,6 +168,7 @@ export const App: React.FC = () => {
     <BrowserRouter>
       <NotificationProvider>
         <AppContent />
+        <IdleTimeoutGuard />
         <ToastNotificationContainer />
       </NotificationProvider>
     </BrowserRouter>

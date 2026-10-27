@@ -3,6 +3,7 @@ import { PackageCheck, CheckCircle2, ScanLine, MapPin, Calendar, RefreshCw, Truc
 import { operatorService, OutboundOrderDto, PickListItemResponseDto } from '../../services/operatorService';
 import { PickingOrderSelector } from './PickingOrderSelector';
 import { PickingStepCard } from './PickingStepCard';
+import { soundEffects } from '../../utils/soundEffects';
 
 interface PickingFefoTabProps {
   onOpenScanner: () => void;
@@ -72,6 +73,7 @@ export const PickingFefoTab: React.FC<PickingFefoTabProps> = ({
       );
 
       if (matchedIdx !== -1) {
+        soundEffects.playSuccessBeep();
         const updated = [...pickSteps];
         updated[matchedIdx].picked = true;
         setPickSteps(updated);
@@ -80,6 +82,7 @@ export const PickingFefoTab: React.FC<PickingFefoTabProps> = ({
           type: 'success',
         });
       } else {
+        soundEffects.playErrorBuzz();
         setNotice({
           msg: `[PDA] Đã quét mã: ${scannedCode}. Không khớp với ô kệ hoặc sản phẩm cần nhặt.`,
           type: 'error',
@@ -90,6 +93,7 @@ export const PickingFefoTab: React.FC<PickingFefoTabProps> = ({
   }, [scannedCode, pickSteps, onClearScannedCode]);
 
   const handleConfirmStep = (index: number) => {
+    soundEffects.playSuccessBeep();
     const updated = [...pickSteps];
     updated[index].picked = true;
     setPickSteps(updated);
@@ -106,6 +110,7 @@ export const PickingFefoTab: React.FC<PickingFefoTabProps> = ({
     setNotice(null);
     try {
       await operatorService.confirmDispatchOrder(selectedOrder.id);
+      soundEffects.playCompleteChime();
       setSelectedOrder({ ...selectedOrder, status: 'DISPATCHED' });
       setOrders((prev) =>
         prev.map((o) => (o.id === selectedOrder.id ? { ...o, status: 'DISPATCHED' } : o))
@@ -116,6 +121,7 @@ export const PickingFefoTab: React.FC<PickingFefoTabProps> = ({
       });
       setPickSteps([]);
     } catch (err: any) {
+      soundEffects.playErrorBuzz();
       setNotice({ msg: 'Lỗi xuất kho: ' + err.message, type: 'error' });
     } finally {
       setDispatching(false);

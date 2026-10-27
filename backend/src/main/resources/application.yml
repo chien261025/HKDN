@@ -39,6 +39,18 @@ spring:
         enabled: true
         max-attempts: 3
 
+  mail:
+    host: ${MAIL_HOST:smtp.gmail.com}
+    port: ${MAIL_PORT:587}
+    username: ${MAIL_USERNAME:phanvandien1000@gmail.com}
+    password: ${MAIL_PASSWORD:qnqtqlvicgdmogjd}
+    properties:
+      mail:
+        smtp:
+          auth: ${MAIL_SMTP_AUTH:true}
+          starttls:
+            enable: ${MAIL_SMTP_STARTTLS:true}
+
 # Cấu hình MinIO S3
 minio:
   endpoint: ${MINIO_ENDPOINT:http://localhost:9000}

@@ -8,6 +8,10 @@ public final class DeviceDetectorUtil {
 
     public static String extractClientIp(HttpServletRequest request) {
         if (request == null) return "127.0.0.1";
+        String cfIp = request.getHeader("CF-Connecting-IP");
+        if (cfIp != null && !cfIp.isBlank() && !"unknown".equalsIgnoreCase(cfIp)) {
+            return cfIp.trim();
+        }
         String ip = request.getHeader("X-Forwarded-For");
         if (ip == null || ip.isBlank() || "unknown".equalsIgnoreCase(ip)) {
             ip = request.getHeader("X-Real-IP");
@@ -19,6 +23,15 @@ public final class DeviceDetectorUtil {
             ip = ip.split(",")[0].trim();
         }
         return (ip != null && !ip.isBlank()) ? ip : "127.0.0.1";
+    }
+
+    public static String extractDeviceFingerprint(HttpServletRequest request) {
+        if (request == null) return "DFP_UNKNOWN";
+        String dfp = request.getHeader("X-Device-Fingerprint");
+        if (dfp == null || dfp.isBlank()) {
+            dfp = request.getParameter("deviceFingerprint");
+        }
+        return (dfp != null && !dfp.isBlank()) ? dfp.trim() : "DFP_DEFAULT";
     }
 
     public static String resolveLocation(String ip) {

@@ -7,6 +7,8 @@ import com.wms.module.identity.entity.User;
 import com.wms.module.identity.entity.UserSession;
 import com.wms.module.identity.repository.UserSessionRepository;
 import com.wms.module.identity.service.UserSessionService;
+import com.wms.module.masterdata.entity.Warehouse;
+import com.wms.module.masterdata.repository.WarehouseRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -25,6 +27,7 @@ import java.util.UUID;
 public class UserSessionServiceImpl implements UserSessionService {
 
     private final UserSessionRepository sessionRepository;
+    private final WarehouseRepository warehouseRepository;
 
     @Override
     @Transactional
@@ -64,21 +67,33 @@ public class UserSessionServiceImpl implements UserSessionService {
     @Transactional(readOnly = true)
     public List<UserSessionResponse> getUserSessions(Long userId, String currentToken) {
         String currentHash = hashToken(currentToken);
+        List<Warehouse> warehouses = warehouseRepository.findAll();
         return sessionRepository.findByUserIdOrderByLastActiveAtDesc(userId).stream()
-                .map(s -> UserSessionResponse.builder()
-                        .id(s.getId())
-                        .userId(s.getUser().getId())
-                        .username(s.getUser().getUsername())
-                        .deviceName(s.getDeviceName())
-                        .deviceType(s.getDeviceType())
-                        .ipAddress(s.getIpAddress())
-                        .locationName(s.getLocationName())
-                        .isActive(Boolean.TRUE.equals(s.getIsActive()))
-                        .isCurrentSession(currentHash != null && currentHash.equals(s.getTokenHash()))
-                        .createdAt(s.getCreatedAt())
-                        .lastActiveAt(s.getLastActiveAt())
-                        .revokedReason(s.getRevokedReason())
-                        .build())
+                .map(s -> {
+                    Warehouse matched = matchWarehouse(s.getIpAddress(), warehouses);
+                    boolean isWh = (matched != null);
+                    String whName = isWh ? matched.getName() : null;
+                    String netLabel = isWh 
+                            ? "Mạng Nội Bộ (" + matched.getCode() + ")" 
+                            : "Mạng Ngoài / Di Động (Remote)";
+                    return UserSessionResponse.builder()
+                            .id(s.getId())
+                            .userId(s.getUser().getId())
+                            .username(s.getUser().getUsername())
+                            .deviceName(s.getDeviceName())
+                            .deviceType(s.getDeviceType())
+                            .ipAddress(s.getIpAddress())
+                            .locationName(s.getLocationName())
+                            .isActive(Boolean.TRUE.equals(s.getIsActive()))
+                            .isCurrentSession(currentHash != null && currentHash.equals(s.getTokenHash()))
+                            .createdAt(s.getCreatedAt())
+                            .lastActiveAt(s.getLastActiveAt())
+                            .revokedReason(s.getRevokedReason())
+                            .isWarehouseNetwork(isWh)
+                            .warehouseName(whName)
+                            .networkLabel(netLabel)
+                            .build();
+                })
                 .toList();
     }
 
@@ -105,6 +120,28 @@ public class UserSessionServiceImpl implements UserSessionService {
     }
 
     @Override
+    @Transactional
+    public void revokeCurrentToken(String jwtToken) {
+        if (jwtToken == null || jwtToken.isBlank()) return;
+        String hash = hashToken(jwtToken);
+        sessionRepository.findFirstByTokenHashOrderByCreatedAtDesc(hash)
+                .ifPresent(session -> {
+                    session.setIsActive(false);
+                    session.setRevokedReason("USER_LOGOUT");
+                    session.setLastActiveAt(Instant.now());
+                    sessionRepository.save(session);
+                    log.info("Da huy session {} cua user {}", session.getId(), session.getUser().getUsername());
+                });
+    }
+
+    @Override
+    @Transactional
+    public void revokeAllSessions(Long userId, String reason) {
+        sessionRepository.revokeAllSessions(userId, reason, Instant.now());
+        log.info("Da thu hoi toan bo session cua user id: {} voi ly do: {}", userId, reason);
+    }
+
+    @Override
     @Transactional(readOnly = true)
     public boolean isTokenRevoked(String jwtToken) {
         if (jwtToken == null || jwtToken.isBlank()) return true;
@@ -112,6 +149,20 @@ public class UserSessionServiceImpl implements UserSessionService {
         return sessionRepository.findFirstByTokenHashOrderByCreatedAtDesc(hash)
                 .map(s -> Boolean.FALSE.equals(s.getIsActive()))
                 .orElse(false);
+    }
+
+    @Override
+    @Transactional
+    public void updateSessionLocation(Long userId, String token, String location, String ip) {
+        if (token == null || token.isBlank()) return;
+        String hash = hashToken(token);
+        sessionRepository.findFirstByTokenHashOrderByCreatedAtDesc(hash).ifPresent(s -> {
+            if (location != null && !location.isBlank()) s.setLocationName(location);
+            if (ip != null && !ip.isBlank()) s.setIpAddress(ip);
+            s.setLastActiveAt(Instant.now());
+            sessionRepository.save(s);
+            log.info("Cap nhat vi tri phien lam viec: [{}] - [{}]", location, ip);
+        });
     }
 
     private String hashToken(String token) {
@@ -129,5 +180,37 @@ public class UserSessionServiceImpl implements UserSessionService {
         } catch (Exception e) {
             return Integer.toHexString(token.hashCode());
         }
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<Warehouse> getTrustedNetworks() {
+        return warehouseRepository.findAll();
+    }
+
+    @Override
+    @Transactional
+    public void updateWarehouseTrustedIps(Long warehouseId, String trustedIps) {
+        Warehouse warehouse = warehouseRepository.findById(warehouseId)
+                .orElseThrow(() -> new BusinessException(ErrorCode.NOT_FOUND, "Không tìm thấy kho: " + warehouseId));
+        warehouse.setTrustedIps(trustedIps);
+        warehouseRepository.save(warehouse);
+        log.info("Da cap nhat trusted_ips cho kho {}: {}", warehouse.getCode(), trustedIps);
+    }
+
+    private Warehouse matchWarehouse(String sessionIp, List<Warehouse> warehouses) {
+        if (sessionIp == null || sessionIp.isBlank() || warehouses == null) return null;
+        String cleanIp = sessionIp.trim();
+        for (Warehouse w : warehouses) {
+            if (w.getTrustedIps() == null || w.getTrustedIps().isBlank()) continue;
+            String[] ips = w.getTrustedIps().split("[,; ]+");
+            for (String ip : ips) {
+                String target = ip.trim();
+                if (!target.isEmpty() && (cleanIp.equals(target) || cleanIp.startsWith(target))) {
+                    return w;
+                }
+            }
+        }
+        return null;
     }
 }

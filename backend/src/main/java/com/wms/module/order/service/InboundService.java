@@ -34,6 +34,7 @@ public class InboundService {
     private final ProductBatchRepository productBatchRepository;
     private final InventoryRepository inventoryRepository;
     private final StockLedgerRepository stockLedgerRepository;
+    private final com.wms.module.notification.service.NotificationService notificationService;
 
     @Transactional(readOnly = true)
     public List<InboundOrder> getAllInboundOrders() {
@@ -61,6 +62,11 @@ public class InboundService {
     public InboundOrder receiveInboundOrder(Long id) {
         InboundOrder order = inboundOrderRepository.findById(id)
                 .orElseThrow(() -> new BusinessException(ErrorCode.NOT_FOUND, "Không tìm thấy đơn nhập: " + id));
+
+        if ("RECEIVED".equalsIgnoreCase(order.getStatus()) || "STOCKED".equalsIgnoreCase(order.getStatus())) {
+            throw new BusinessException(ErrorCode.BAD_REQUEST, "Đơn nhập kho " + order.getOrderCode() + " đã được tiếp nhận trước đó!");
+        }
+
         order.setStatus("RECEIVED");
         order.setUpdatedAt(Instant.now());
         if (order.getItems() != null) {
@@ -115,6 +121,10 @@ public class InboundService {
 
         InboundOrder order = inboundOrderRepository.findById(request.getOrderId())
                 .orElseThrow(() -> new BusinessException(ErrorCode.NOT_FOUND, "Không tìm thấy đơn nhập: " + request.getOrderId()));
+
+        if ("STOCKED".equalsIgnoreCase(order.getStatus())) {
+            throw new BusinessException(ErrorCode.BAD_REQUEST, "Đơn nhập kho " + order.getOrderCode() + " đã hoàn tất cất hàng (STOCKED) trước đó!");
+        }
 
         Location location = locationRepository.findById(request.getLocationId())
                 .orElseThrow(() -> new BusinessException(ErrorCode.NOT_FOUND, "Không tìm thấy ô kệ: " + request.getLocationId()));
@@ -189,6 +199,19 @@ public class InboundService {
         }
 
         order.setUpdatedAt(Instant.now());
-        return inboundOrderRepository.save(order);
+        InboundOrder saved = inboundOrderRepository.save(order);
+
+        if ("STOCKED".equalsIgnoreCase(saved.getStatus()) && notificationService != null) {
+            notificationService.broadcast(com.wms.module.notification.dto.NotificationMessage.builder()
+                    .type("INBOUND_ORDER_CREATED")
+                    .title("Hoàn Tất Nhập Kho " + order.getOrderCode())
+                    .message("Đơn hàng " + order.getOrderCode() + " đã hoàn tất cất hàng lên ô kệ kho thành công.")
+                    .severity("SUCCESS")
+                    .referenceCode(order.getOrderCode())
+                    .link("/inbound")
+                    .build());
+        }
+
+        return saved;
     }
 }

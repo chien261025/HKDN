@@ -1,4 +1,4 @@
-export type OperatorTab = 'STAGING' | 'PUTAWAY' | 'PICKING' | 'AUDIT';
+export type OperatorTab = 'STAGING' | 'PUTAWAY' | 'PICKING' | 'TRANSFER' | 'AUDIT';
 
 export interface InboundReceiptItem {
   id: string;
@@ -45,4 +45,18 @@ export interface BlindCountRecord {
   timestamp: string;
   notes?: string;
   status: 'SUBMITTED';
+}
+
+export interface StockTransferTask {
+  productId: number;
+  productName?: string;
+  sku?: string;
+  fromLocationId: number;
+  fromLocationBarcode: string;
+  toLocationId: number;
+  toLocationBarcode: string;
+  batchId: number;
+  batchNumber?: string;
+  quantity: number;
+  notes?: string;
 }

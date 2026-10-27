@@ -5,7 +5,8 @@ import {
   LogOut,
   PanelLeftClose,
   PanelLeftOpen,
-  ChevronRight
+  ChevronRight,
+  Menu,
 } from 'lucide-react';
 import { useLocation } from 'react-router-dom';
 import { AuthSession } from '../../features/auth/types';
@@ -14,6 +15,7 @@ import { NotificationCenterDropdown } from '../../features/notifications/compone
 interface AppHeaderProps {
   isSidebarCollapsed: boolean;
   onToggleSidebar: () => void;
+  onToggleMobileSidebar: () => void;
   session: AuthSession;
   onOpenProfile: () => void;
   onLogout: () => void;
@@ -22,6 +24,7 @@ interface AppHeaderProps {
 export const AppHeader: React.FC<AppHeaderProps> = ({
   isSidebarCollapsed,
   onToggleSidebar,
+  onToggleMobileSidebar,
   session,
   onOpenProfile,
   onLogout,
@@ -37,7 +40,7 @@ export const AppHeader: React.FC<AppHeaderProps> = ({
     '/inventory': 'Quản Lý Tồn Kho & Sổ Cái',
     '/audit': 'Kiểm Kê Kho Hàng',
     '/labels': 'In Tem Mã Vạch & QR',
-    '/smartquery': 'Trợ Lý AI Tra Cứu',
+    '/smartquery': 'Truy Vấn Dữ Liệu',
     '/reports': 'Báo Cáo & Thống Kê',
     '/operator': 'Giao Diện Quét Mã PDA',
   };
@@ -60,13 +63,23 @@ export const AppHeader: React.FC<AppHeaderProps> = ({
       : 'Trưởng Kho Quản Lý';
 
   return (
-    <header className="h-16 bg-white/90 backdrop-blur-md border-b border-slate-200/90 px-4 md:px-6 flex items-center justify-between shadow-xs gap-3 sticky top-0 z-30">
-      {/* Nút bật/tắt Sidebar & Breadcrumbs */}
-      <div className="flex items-center gap-3">
+    <header className="h-14 md:h-16 bg-white/95 backdrop-blur-md border-b border-slate-200/90 px-3 md:px-6 flex items-center justify-between shadow-xs gap-2 md:gap-3 sticky top-0 z-30">
+      {/* Mobile Hamburger & Desktop Toggle & Breadcrumbs */}
+      <div className="flex items-center gap-2 md:gap-3 truncate">
+        {/* Mobile Menu Button */}
+        <button
+          onClick={onToggleMobileSidebar}
+          className="p-2 text-slate-600 hover:text-slate-900 hover:bg-slate-100 rounded-xl border border-slate-200 transition-colors md:hidden cursor-pointer shrink-0"
+          aria-label="Mở menu"
+        >
+          <Menu className="w-5 h-5 text-slate-700" />
+        </button>
+
+        {/* Desktop Collapse Button */}
         <button
           onClick={onToggleSidebar}
-          className="p-2 text-slate-500 hover:text-slate-900 hover:bg-slate-100 rounded-xl border border-slate-200 transition-all cursor-pointer flex-shrink-0"
-          title={isSidebarCollapsed ? "Mở rộng thanh menu bên trái (Ctrl+B)" : "Thu nhỏ thanh menu bên trái (Ctrl+B)"}
+          className="hidden md:flex p-2 text-slate-500 hover:text-slate-900 hover:bg-slate-100 rounded-xl border border-slate-200 transition-colors cursor-pointer shrink-0"
+          title={isSidebarCollapsed ? "Mở rộng thanh menu (Ctrl+B)" : "Thu nhỏ thanh menu (Ctrl+B)"}
         >
           {isSidebarCollapsed ? (
             <PanelLeftOpen className="w-5 h-5 text-indigo-600" />
@@ -75,22 +88,22 @@ export const AppHeader: React.FC<AppHeaderProps> = ({
           )}
         </button>
 
-        <div className="hidden md:flex items-center gap-2 text-xs font-semibold text-slate-500">
-          <span className="text-slate-400">Kho Vận</span>
-          <ChevronRight className="w-3.5 h-3.5 text-slate-300" />
-          <span className="text-slate-900 font-bold bg-slate-100 px-2 py-0.5 rounded-md border border-slate-200/80">
+        <div className="flex items-center gap-1.5 md:gap-2 text-xs font-semibold text-slate-500 truncate">
+          <span className="hidden sm:inline text-slate-400">Kho Vận</span>
+          <ChevronRight className="hidden sm:inline w-3.5 h-3.5 text-slate-300" />
+          <span className="text-slate-900 font-bold bg-slate-100 px-2 py-0.5 rounded-md border border-slate-200/80 truncate text-xs sm:text-sm">
             {currentTitle}
           </span>
         </div>
       </div>
 
-      {/* Search bar */}
-      <div className="flex items-center gap-3 flex-1 max-w-md">
+      {/* Search Bar - hidden on mobile to avoid overflow */}
+      <div className="hidden lg:flex items-center gap-3 flex-1 max-w-md">
         <div className="relative w-full">
           <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
           <input
             type="text"
-            placeholder="Tìm nhanh SKU, mã vạch Barcode, ô kệ..."
+            placeholder="Tìm nhanh SKU, mã vạch, ô kệ..."
             className="w-full pl-9 pr-14 py-2 bg-slate-50 hover:bg-slate-100/70 focus:bg-white border border-slate-200 rounded-xl text-sm text-slate-800 placeholder-slate-400 focus:outline-none focus:border-indigo-500 focus:ring-3 focus:ring-indigo-50 transition-all font-normal"
           />
           <div className="absolute right-2.5 top-1/2 -translate-y-1/2 flex items-center gap-1 text-[11px] font-semibold text-slate-400 bg-white px-1.5 py-0.5 rounded border border-slate-200 shadow-2xs">
@@ -100,29 +113,20 @@ export const AppHeader: React.FC<AppHeaderProps> = ({
         </div>
       </div>
 
-      {/* Right quick telemetry & User profile */}
-      <div className="flex items-center gap-3">
-        <div className="hidden lg:flex items-center gap-2 px-3 py-1.5 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs font-bold">
-          <span className="relative flex h-2 w-2">
-            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-            <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
-          </span>
-          <ShieldCheck className="w-3.5 h-3.5 text-emerald-600" />
-          <span>Sổ Cái Khép Kín: 100% Khớp</span>
-        </div>
-
+      {/* Right User Profile & Notifications */}
+      <div className="flex items-center gap-1.5 sm:gap-3 shrink-0">
         <NotificationCenterDropdown />
 
         {/* Profile badge with safe UTF-8 fallback */}
-        <div className="flex items-center gap-3 pl-3 border-l border-slate-200">
+        <div className="flex items-center gap-1.5 sm:gap-3 pl-1.5 sm:pl-3 border-l border-slate-200">
           <button
             type="button"
             onClick={onOpenProfile}
             title="Xem hồ sơ cá nhân và đổi mật khẩu"
-            className="flex items-center gap-2.5 group cursor-pointer text-left focus:outline-none"
+            className="flex items-center gap-2 group cursor-pointer text-left focus:outline-none"
           >
             <div className="relative">
-              <div className="w-9 h-9 rounded-xl bg-gradient-to-tr from-indigo-600 to-indigo-500 text-white font-bold flex items-center justify-center text-xs tracking-wider shadow-sm group-hover:scale-105 transition-transform ring-2 ring-indigo-50">
+              <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-xl bg-indigo-600 text-white font-bold flex items-center justify-center text-xs tracking-wider shadow-xs group-hover:scale-105 transition-transform ring-2 ring-indigo-50">
                 {initials}
               </div>
               <span className="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 bg-emerald-500 border-2 border-white rounded-full"></span>
@@ -140,7 +144,7 @@ export const AppHeader: React.FC<AppHeaderProps> = ({
           <button
             onClick={onLogout}
             title="Đăng xuất khỏi hệ thống"
-            className="p-2 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-xl border border-slate-200 transition-all ml-1 cursor-pointer"
+            className="p-1.5 sm:p-2 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-xl border border-slate-200 transition-colors cursor-pointer"
           >
             <LogOut className="w-4 h-4" />
           </button>

@@ -21,4 +21,7 @@ public class ForgotPasswordResetRequest {
     @Size(min = 6, max = 100, message = "Mật khẩu mới phải từ 6 ký tự trở lên")
     @Schema(description = "Mật khẩu mới cần đặt", example = "NewPass@2026")
     private String newPassword;
+
+    @Schema(description = "Mã xác thực OTP gồm 6 số", example = "123456")
+    private String otpCode;
 }

@@ -139,7 +139,9 @@ public class UserServiceImpl implements UserService {
         user.setUpdatedAt(Instant.now());
         userRepository.save(user);
 
-        log.info("Da reset mat khau cho tai khoan: {}", user.getUsername());
+        // Hủy toàn bộ phiên cũ để tránh bị chiếm quyền sử dụng token cũ
+        sessionRepository.revokeAllSessions(user.getId(), "ADMIN_RESET_PASSWORD_REVOKE", Instant.now());
+        log.info("Da reset mat khau va huy toan bo phien cu cua user: {}", user.getUsername());
     }
 
     @Override
@@ -149,8 +151,7 @@ public class UserServiceImpl implements UserService {
                 .orElseThrow(() -> new BusinessException(ErrorCode.NOT_FOUND, "Không tìm thấy người dùng: " + request.getUsername()));
 
         // Kiểm tra mật khẩu hiện tại
-        boolean matches = passwordEncoder.matches(request.getCurrentPassword(), user.getPasswordHash())
-                || "123456".equals(request.getCurrentPassword()); // Hỗ trợ mật khẩu demo ban đầu
+        boolean matches = passwordEncoder.matches(request.getCurrentPassword(), user.getPasswordHash());
 
         if (!matches) {
             throw new BusinessException(ErrorCode.BAD_REQUEST, "Mật khẩu hiện tại không chính xác!");
@@ -164,7 +165,9 @@ public class UserServiceImpl implements UserService {
         user.setUpdatedAt(Instant.now());
         userRepository.save(user);
 
-        log.info("Nguoi dung {} da tu doi mat khau thanh cong", user.getUsername());
+        // Hủy toàn bộ phiên cũ trên các thiết bị khác khi đổi mật khẩu
+        sessionRepository.revokeAllSessions(user.getId(), "USER_CHANGE_PASSWORD_REVOKE", Instant.now());
+        log.info("Nguoi dung {} da doi mat khau va huy toan bo phien cu thanh cong", user.getUsername());
     }
 
     @Override
@@ -243,54 +246,33 @@ public class UserServiceImpl implements UserService {
 
 
     private UserResponse mapToResponse(User user) {
-        String roleName = "ROLE_OPERATOR";
-        if (user.getRoles() != null && !user.getRoles().isEmpty()) {
-            roleName = user.getRoles().iterator().next().getName();
-        }
-
+        String roleName = (user.getRoles() != null && !user.getRoles().isEmpty())
+                ? user.getRoles().iterator().next().getName() : "ROLE_OPERATOR";
         boolean active = Boolean.TRUE.equals(user.getIsActive());
 
         return UserResponse.builder()
-                .id(user.getId())
-                .username(user.getUsername())
-                .fullName(user.getFullName())
-                .email(user.getEmail())
-                .role(roleName)
-                .roleDescription(getRoleDescription(roleName))
-                .isActive(active)
-                .status(active ? "ACTIVE" : "LOCKED")
+                .id(user.getId()).username(user.getUsername()).fullName(user.getFullName())
+                .email(user.getEmail()).role(roleName).roleDescription(getRoleDescription(roleName))
+                .isActive(active).status(active ? "ACTIVE" : "LOCKED")
                 .assignedWarehouse("Kho Tổng Tân Bình (ZONE A & B)")
                 .phone("090000000" + user.getId())
-                .createdAt(user.getCreatedAt())
-                .updatedAt(user.getUpdatedAt())
+                .createdAt(user.getCreatedAt()).updatedAt(user.getUpdatedAt())
                 .build();
     }
 
     private String normalizeRoleName(String role) {
-        if (role == null || role.isBlank()) {
-            return "ROLE_OPERATOR";
-        }
+        if (role == null || role.isBlank()) return "ROLE_OPERATOR";
         String normalized = role.trim().toUpperCase();
-        if (!normalized.startsWith("ROLE_")) {
-            normalized = "ROLE_" + normalized;
-        }
-        // Chuẩn hóa ROLE_MANAGER -> ROLE_WAREHOUSE_MANAGER
-        if ("ROLE_MANAGER".equals(normalized)) {
-            return "ROLE_WAREHOUSE_MANAGER";
-        }
-        return normalized;
+        if (!normalized.startsWith("ROLE_")) normalized = "ROLE_" + normalized;
+        return "ROLE_MANAGER".equals(normalized) ? "ROLE_WAREHOUSE_MANAGER" : normalized;
     }
 
     private String getRoleDescription(String roleName) {
-        switch (roleName) {
-            case "ROLE_ADMIN":
-                return "Quản Trị Viên (Toàn quyền)";
-            case "ROLE_WAREHOUSE_MANAGER":
-                return "Quản Lý Kho (Điều hành)";
-            case "ROLE_OPERATOR":
-                return "Thủ Kho (PDA Mobile)";
-            default:
-                return "Nhân viên vận hành";
-        }
+        return switch (roleName) {
+            case "ROLE_ADMIN" -> "Quản Trị Viên (Toàn quyền)";
+            case "ROLE_WAREHOUSE_MANAGER" -> "Quản Lý Kho (Điều hành)";
+            case "ROLE_OPERATOR" -> "Thủ Kho (PDA Mobile)";
+            default -> "Nhân viên vận hành";
+        };
     }
 }

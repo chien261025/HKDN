@@ -29,6 +29,9 @@ public class Warehouse {
     @Column(name = "contact_phone", length = 20)
     private String contactPhone;
 
+    @Column(name = "trusted_ips", length = 255)
+    private String trustedIps;
+
     @Column(name = "is_active")
     @Builder.Default
     private Boolean isActive = true;

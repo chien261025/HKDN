@@ -39,6 +39,7 @@ public class OutboundService {
     private final InventoryLockService inventoryLockService;
     private final OutboundOrderRepository outboundOrderRepository;
     private final StockLedgerRepository stockLedgerRepository;
+    private final com.wms.module.notification.service.NotificationService notificationService;
 
     @Transactional(readOnly = true)
     public List<OutboundOrder> getAllOutboundOrders() {
@@ -65,6 +66,10 @@ public class OutboundService {
     public OutboundOrder dispatchOutboundOrder(Long id) {
         OutboundOrder order = outboundOrderRepository.findById(id)
                 .orElseThrow(() -> new BusinessException(ErrorCode.NOT_FOUND, "Không tìm thấy đơn xuất: " + id));
+
+        if ("DISPATCHED".equalsIgnoreCase(order.getStatus())) {
+            throw new BusinessException(ErrorCode.BAD_REQUEST, "Đơn xuất kho " + order.getOrderCode() + " đã hoàn tất bàn giao vận chuyển trước đó!");
+        }
 
         if (order.getItems() != null) {
             for (OutboundOrderItem item : order.getItems()) {
@@ -103,7 +108,20 @@ public class OutboundService {
 
         order.setStatus("DISPATCHED");
         order.setUpdatedAt(Instant.now());
-        return outboundOrderRepository.save(order);
+        OutboundOrder saved = outboundOrderRepository.save(order);
+
+        if (notificationService != null) {
+            notificationService.broadcast(com.wms.module.notification.dto.NotificationMessage.builder()
+                    .type("OUTBOUND_ORDER_CREATED")
+                    .title("Xuất Kho Đơn Hàng " + order.getOrderCode())
+                    .message("Đơn hàng " + order.getOrderCode() + " đã hoàn tất kiểm đếm và bàn giao vận chuyển thành công.")
+                    .severity("SUCCESS")
+                    .referenceCode(order.getOrderCode())
+                    .link("/outbound")
+                    .build());
+        }
+
+        return saved;
     }
 
     /**

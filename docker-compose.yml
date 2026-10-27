@@ -74,6 +74,12 @@ services:
       RABBITMQ_USER: guest
       RABBITMQ_PASS: guest
       MINIO_ENDPOINT: http://wms-minio:9000
+      MAIL_HOST: smtp.gmail.com
+      MAIL_PORT: 587
+      MAIL_USERNAME: phanvandien1000@gmail.com
+      MAIL_PASSWORD: qnqtqlvicgdmogjd
+      MAIL_SMTP_AUTH: "true"
+      MAIL_SMTP_STARTTLS: "true"
     ports:
       - "8080:8080"
     networks:

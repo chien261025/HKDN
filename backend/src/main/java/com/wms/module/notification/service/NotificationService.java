@@ -78,6 +78,10 @@ public class NotificationService {
         recentNotifications.forEach(n -> n.setRead(true));
     }
 
+    public long getUnreadCount() {
+        return recentNotifications.stream().filter(n -> !n.isRead()).count();
+    }
+
     public SseEmitter subscribeSse() {
         SseEmitter emitter = new SseEmitter(180_000L); // 3 phút timeout
         sseEmitters.add(emitter);

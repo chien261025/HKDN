@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Search, TrendingDown, Lock, FileText, AlertTriangle, ArrowRightLeft } from 'lucide-react';
 import { StockItem } from '../../types';
+import { StockBalanceMobileCards } from './StockBalanceMobileCards';
 
 interface StockBalanceTableProps {
   stocks: StockItem[];
@@ -52,7 +53,7 @@ export const StockBalanceTable: React.FC<StockBalanceTableProps> = ({
 
         <button
           onClick={() => setFilterExpiring(!filterExpiring)}
-          className={`flex items-center gap-2 px-3.5 py-2 rounded-lg text-xs sm:text-sm font-medium border transition-colors cursor-pointer ${
+          className={`flex items-center gap-2 px-3.5 py-2 rounded-lg text-xs sm:text-sm font-medium border transition-colors cursor-pointer w-full sm:w-auto justify-center ${
             filterExpiring
               ? 'bg-rose-50 text-rose-700 border-rose-200 ring-2 ring-rose-100'
               : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-50 hover:text-slate-900'
@@ -63,8 +64,21 @@ export const StockBalanceTable: React.FC<StockBalanceTableProps> = ({
         </button>
       </div>
 
-      {/* Bảng Dữ Liệu Tồn Kho Doanh Nghiệp Chuẩn */}
-      <div className="bg-white rounded-xl border border-slate-200 overflow-hidden shadow-xs">
+      {/* Mobile Card Feed (< md) */}
+      <div className="block md:hidden">
+        <StockBalanceMobileCards
+          stocks={filteredStocks}
+          onReserveClick={(item) => {
+            setReserveModalItem(item);
+            setReserveQty(5);
+          }}
+          onViewLedger={onViewLedger}
+          onTransfer={onTransfer}
+        />
+      </div>
+
+      {/* Desktop Table View (>= md) */}
+      <div className="hidden md:block bg-white rounded-xl border border-slate-200 overflow-hidden shadow-xs">
         <div className="overflow-x-auto">
           <table className="w-full text-left text-sm border-collapse">
             <thead>
