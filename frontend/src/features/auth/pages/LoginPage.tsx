@@ -1,22 +1,10 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { authService } from '../services/authService';
 import { ForgotPasswordModal } from '../components/ForgotPasswordModal';
 import { LoginForm } from '../components/LoginForm';
 import { AlertCircle, CheckCircle2, ShieldAlert } from 'lucide-react';
-import { getDeviceFingerprint } from '../utils/deviceFingerprint';
-
-const getStoredLockoutSeconds = (u: string): number => {
-  if (!u?.trim()) return 0;
-  const stored = localStorage.getItem(`wms_lockout_${u.trim().toLowerCase()}`);
-  if (!stored) return 0;
-  const remaining = Math.max(0, Math.ceil((parseInt(stored, 10) - Date.now()) / 1000));
-  if (remaining <= 0) {
-    localStorage.removeItem(`wms_lockout_${u.trim().toLowerCase()}`);
-    return 0;
-  }
-  return remaining;
-};
+import { useLoginLockout } from '../hooks/useLoginLockout';
 
 export const LoginPage: React.FC = () => {
   const navigate = useNavigate();
@@ -32,19 +20,24 @@ export const LoginPage: React.FC = () => {
   const [password, setPassword] = useState('');
   const [rememberMe, setRememberMe] = useState(() => authService.isRemembered());
 
-  // Lockout countdown timer state (giây) và cấp độ phạt (1: 1p, 2: 3p, 3: 15p...)
-  const [lockoutRemainingSec, setLockoutRemainingSec] = useState(() =>
-    getStoredLockoutSeconds(authService.getRememberedUsername())
-  );
-  const [lockLevel, setLockLevel] = useState<number>(1);
-
   // Modal quên mật khẩu
   const [isForgotModalOpen, setIsForgotModalOpen] = useState(false);
 
-  // Trạng thái chung
+  // Trạng thái thông báo
   const [isLoading, setIsLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
+
+  const onLockoutExpired = useCallback(() => {
+    setSuccessMessage('Thời gian tạm khóa đã kết thúc. Bạn có thể đăng nhập lại.');
+  }, []);
+
+  const {
+    lockoutRemainingSec,
+    lockLevel,
+    handleLockoutFromError,
+    formatMinsSecs,
+  } = useLoginLockout(username, onLockoutExpired);
 
   // Cảnh báo nếu phiên đã hết hạn hoặc vừa đăng xuất
   useEffect(() => {
@@ -56,57 +49,6 @@ export const LoginPage: React.FC = () => {
       setSuccessMessage('Đã đăng xuất thành công khỏi hệ thống.');
     }
   }, [isExpired, isLoggedOut, isIdle]);
-
-  // Bộ đếm thời gian thực lùi từng giây
-  useEffect(() => {
-    if (lockoutRemainingSec <= 0) return;
-    const timer = setInterval(() => {
-      setLockoutRemainingSec((prev) => {
-        if (prev <= 1) {
-          if (username.trim()) {
-            localStorage.removeItem(`wms_lockout_${username.trim().toLowerCase()}`);
-          }
-          setSuccessMessage('Thời gian tạm khóa đã kết thúc. Bạn có thể đăng nhập lại.');
-          return 0;
-        }
-        return prev - 1;
-      });
-    }, 1000);
-    return () => clearInterval(timer);
-  }, [lockoutRemainingSec, username]);
-
-  // Tự động kiểm tra khóa theo cả Tài khoản, IP mạng & Dấu vân tay thiết bị (Chống Tab Ẩn Danh)
-  useEffect(() => {
-    let isMounted = true;
-    const checkCurrentLockout = async () => {
-      const dfp = getDeviceFingerprint();
-      try {
-        const res = await authService.checkLockout(username, dfp);
-        if (!isMounted) return;
-        if (res.blocked && res.remainingSeconds > 0) {
-          setLockoutRemainingSec(res.remainingSeconds);
-          setLockLevel(res.lockLevel || 1);
-          if (username.trim()) {
-            localStorage.setItem(
-              `wms_lockout_${username.trim().toLowerCase()}`,
-              (Date.now() + res.remainingSeconds * 1000).toString()
-            );
-          }
-        } else {
-          setLockoutRemainingSec(0);
-          if (username.trim()) {
-            localStorage.removeItem(`wms_lockout_${username.trim().toLowerCase()}`);
-          }
-        }
-      } catch {
-        if (!isMounted) return;
-        const localSec = getStoredLockoutSeconds(username);
-        setLockoutRemainingSec(localSec);
-      }
-    };
-    checkCurrentLockout();
-    return () => { isMounted = false; };
-  }, [username]);
 
   const handleRedirectByRole = (role: string, overrideRoute?: string) => {
     if (overrideRoute) {
@@ -151,54 +93,17 @@ export const LoginPage: React.FC = () => {
       }, 300);
     } catch (err: any) {
       setIsLoading(false);
+      handleLockoutFromError(err, username);
       const apiMsg =
         err.response?.data?.message ||
         err.message ||
         'Tên đăng nhập hoặc mật khẩu không chính xác!';
-
-      // Bắt thời gian phạt từ API (chỉ khi thực sự bị khóa: mã 400 và có thông báo khóa)
-      const secMatch = apiMsg.match(/sau\s+(\d+)\s+giây/);
-      const minMatch = apiMsg.match(/bị tạm khóa\s+(\d+)\s+phút/);
-      const isLockedResponse = err.response?.status === 400 && (secMatch || minMatch);
-
-      if (isLockedResponse) {
-        let sec = 60;
-        if (secMatch) {
-          sec = parseInt(secMatch[1], 10);
-        } else if (minMatch) {
-          sec = parseInt(minMatch[1], 10) * 60;
-        }
-        setLockoutRemainingSec(sec);
-        if (sec > 180) setLockLevel(3);
-        else if (sec > 60) setLockLevel(2);
-        else setLockLevel(1);
-
-        if (username.trim()) {
-          localStorage.setItem(
-            `wms_lockout_${username.trim().toLowerCase()}`,
-            (Date.now() + sec * 1000).toString()
-          );
-        }
-      } else {
-        // Chỉ là nhập sai thông thường (chưa chạm 5 lần) -> KHÔNG kích hoạt bộ đếm khóa
-        setLockoutRemainingSec(0);
-        if (username.trim()) {
-          localStorage.removeItem(`wms_lockout_${username.trim().toLowerCase()}`);
-        }
-      }
       setErrorMessage(apiMsg);
     }
   };
 
-  const formatMinsSecs = (sec: number) => {
-    const mins = Math.floor(sec / 60);
-    const s = sec % 60;
-    return `${mins.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
-  };
-
   return (
     <div className="min-h-screen w-full bg-slate-50 text-slate-900 flex flex-col justify-center items-center p-4 sm:p-6 relative font-sans select-none overflow-hidden">
-      {/* Clean Enterprise Card */}
       <div className="w-full max-w-[420px] bg-white border border-slate-200/90 rounded-3xl p-6 sm:p-8 shadow-xl shadow-slate-200/60 relative z-10 space-y-5 animate-in fade-in zoom-in-95 duration-200">
         {/* Brand Header */}
         <div className="text-center space-y-2">
@@ -209,7 +114,7 @@ export const LoginPage: React.FC = () => {
           </div>
         </div>
 
-        {/* Lockout Live Countdown Banner (Hỗ trợ khóa theo IP & Thiết bị) */}
+        {/* Lockout Live Countdown Banner */}
         {lockoutRemainingSec > 0 && (
           <div className="p-3.5 rounded-2xl bg-amber-50 border border-amber-200 text-amber-900 text-xs sm:text-sm font-medium flex items-center gap-3 animate-in fade-in">
             <ShieldAlert className="w-5 h-5 text-amber-600 shrink-0 animate-pulse" />
@@ -271,7 +176,6 @@ export const LoginPage: React.FC = () => {
         }}
       />
 
-      {/* Footer */}
       <footer className="text-center text-xs text-slate-400 mt-6 font-normal">
         © 2026 Smart WMS. All rights reserved.
       </footer>

@@ -1,5 +1,6 @@
+import axios from 'axios';
 import { apiClient } from '../../../services/api';
-import { AuthSession } from '../types';
+import { AuthSession, UserRole } from '../types';
 import { getRealLocation } from './geolocationService';
 
 export interface LoginPayload {
@@ -33,6 +34,13 @@ export interface ApiResponse<T> {
   timestamp: string;
 }
 
+const getErrorMessage = (err: unknown, fallback: string): string => {
+  if (axios.isAxiosError(err)) {
+    return err.response?.data?.message || err.message || fallback;
+  }
+  return err instanceof Error ? err.message : fallback;
+};
+
 export const authService = {
   /**
    * Gọi API đăng nhập backend để nhận JWT Token
@@ -57,7 +65,7 @@ export const authService = {
       token: data.accessToken,
       username: data.username,
       fullName: data.fullName,
-      role: data.role as any,
+      role: data.role as UserRole,
       warehouse: warehouse || 'Kho Tổng Tân Bình (ZONE A & B)',
       expiresAt: new Date(Date.now() + (data.expiresIn || 86400000)).toISOString(),
     };
@@ -98,7 +106,7 @@ export const authService = {
       token: data.accessToken,
       username: data.username,
       fullName: data.fullName,
-      role: data.role as any,
+      role: data.role as UserRole,
       warehouse: warehouse || 'Kho Tổng Tân Bình (ZONE A & B)',
       expiresAt: new Date(Date.now() + (data.expiresIn || 86400000)).toISOString(),
     };
@@ -213,8 +221,8 @@ export const authService = {
         throw new Error(res.data.message || 'Không thể gửi mã xác thực');
       }
       return res.data.data;
-    } catch (err: any) {
-      throw new Error(err.response?.data?.message || err.message || 'Không thể gửi mã xác thực');
+    } catch (err: unknown) {
+      throw new Error(getErrorMessage(err, 'Không thể gửi mã xác thực'));
     }
   },
 
@@ -231,8 +239,8 @@ export const authService = {
         throw new Error(res.data.message || 'Mã OTP không chính xác!');
       }
       return true;
-    } catch (err: any) {
-      throw new Error(err.response?.data?.message || err.message || 'Mã OTP không chính xác hoặc đã hết hạn!');
+    } catch (err: unknown) {
+      throw new Error(getErrorMessage(err, 'Mã OTP không chính xác hoặc đã hết hạn!'));
     }
   },
 
@@ -250,8 +258,8 @@ export const authService = {
         throw new Error(res.data.message || 'Không thể đặt lại mật khẩu');
       }
       return res.data.message;
-    } catch (err: any) {
-      throw new Error(err.response?.data?.message || err.message || 'Không thể đặt lại mật khẩu');
+    } catch (err: unknown) {
+      throw new Error(getErrorMessage(err, 'Không thể đặt lại mật khẩu'));
     }
   },
 

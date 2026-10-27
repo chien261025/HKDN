@@ -1,5 +1,8 @@
 package com.wms.module.identity.service;
 
+import com.wms.module.identity.constant.SecurityConstants;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 
 import java.time.Instant;
@@ -8,14 +11,13 @@ import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * Quản lý bảo mật đăng nhập chống Brute-Force (Tài khoản, IP & Thiết bị).
- * Phạt lũy tiến: 1p -> 3p -> 15p...
+ * Phạt lũy tiến theo chuẩn doanh nghiệp: 1p -> 3p -> 15p...
  * Đồng bộ chu kỳ: Sau khi hết giờ phạt, người dùng luôn có trọn vẹn 5 lần thử mới.
+ * Tự động dọn dẹp bộ nhớ định kỳ ngăn chặn rò rỉ RAM (Memory Leak Prevention).
  */
+@Slf4j
 @Service
 public class LoginAttemptService {
-
-    public static final int MAX_ATTEMPTS = 5;
-    public static final long INACTIVITY_EXPIRY_SECONDS = 900; // 15 phút không thao tác -> reset
 
     public record LockResult(boolean blocked, long remainingSeconds, int lockLevel, int remainingAttempts) {}
 
@@ -27,15 +29,15 @@ public class LoginAttemptService {
     }
 
     private final Map<String, AttemptRecord> attemptsMap = new ConcurrentHashMap<>();
-    // Ghi nhớ mốc thời gian kết thúc khóa gần nhất của IP và Thiết bị để xóa sạch cờ cũ của mọi username
     private final Map<String, Instant> lastLockoutEndMap = new ConcurrentHashMap<>();
 
     public long calculateLockDurationSeconds(int level) {
         return switch (level) {
-            case 1 -> 60;    // Lần 1: 1 phút
-            case 2 -> 180;   // Lần 2: 3 phút
-            case 3 -> 900;   // Lần 3: 15 phút
-            default -> Math.min(3600, 900 + (long) (level - 3) * 900); // Lần 4+: 30p, tối đa 60p
+            case 1 -> SecurityConstants.LOCKOUT_LEVEL_1_SECONDS;
+            case 2 -> SecurityConstants.LOCKOUT_LEVEL_2_SECONDS;
+            case 3 -> SecurityConstants.LOCKOUT_LEVEL_3_SECONDS;
+            default -> Math.min(SecurityConstants.LOCKOUT_MAX_SECONDS,
+                    SecurityConstants.LOCKOUT_LEVEL_3_SECONDS + (long) (level - 3) * SecurityConstants.LOCKOUT_LEVEL_3_SECONDS);
         };
     }
 
@@ -60,8 +62,7 @@ public class LoginAttemptService {
             record.consecutiveFails = 0;
         }
 
-        // 2. Nếu lần nhập sai của record này diễn ra trước mốc khóa/mở khóa gần nhất của IP hoặc Thiết bị
-        // -> Đây là tàn dư từ chu kỳ cũ trước khi bị phạt, PHẢI RESET VỀ 0 để chu kỳ mới có đủ 5 lần thử!
+        // 2. Nếu lần nhập sai của record này diễn ra trước mốc mở khóa gần nhất -> Reset về 0
         if (relevantLockoutEnd != null && record.lastAttemptAt != null && record.lastAttemptAt.isBefore(relevantLockoutEnd)) {
             record.consecutiveFails = 0;
             if (record.blockedUntil != null && now.isAfter(record.blockedUntil)) {
@@ -71,7 +72,7 @@ public class LoginAttemptService {
 
         // 3. Nếu quá 15 phút không có thao tác -> Reset hoàn toàn về mức 0
         if (record.blockedUntil == null && record.lastAttemptAt != null &&
-                now.isAfter(record.lastAttemptAt.plusSeconds(INACTIVITY_EXPIRY_SECONDS))) {
+                now.isAfter(record.lastAttemptAt.plusSeconds(SecurityConstants.INACTIVITY_EXPIRY_SECONDS))) {
             record.consecutiveFails = 0;
             record.lockLevel = 0;
         }
@@ -126,11 +127,11 @@ public class LoginAttemptService {
     }
 
     public int getRemainingAttempts(String key, Instant now, Instant relevantLockEnd) {
-        if (key == null || key.isBlank()) return MAX_ATTEMPTS;
+        if (key == null || key.isBlank()) return SecurityConstants.MAX_FAILED_LOGIN_ATTEMPTS;
         AttemptRecord record = attemptsMap.get(cleanKey(key));
-        if (record == null) return MAX_ATTEMPTS;
+        if (record == null) return SecurityConstants.MAX_FAILED_LOGIN_ATTEMPTS;
         refreshRecordState(key, record, now, relevantLockEnd);
-        return Math.max(0, MAX_ATTEMPTS - record.consecutiveFails);
+        return Math.max(0, SecurityConstants.MAX_FAILED_LOGIN_ATTEMPTS - record.consecutiveFails);
     }
 
     public LockResult registerFailure(String username, String clientIp, String deviceFingerprint) {
@@ -148,7 +149,6 @@ public class LoginAttemptService {
         long maxRemaining = Math.max(userRes.remainingSeconds(), Math.max(ipRes.remainingSeconds(), devRes.remainingSeconds()));
         int maxLevel = Math.max(userRes.lockLevel(), Math.max(ipRes.lockLevel(), devRes.lockLevel()));
 
-        // NẾU BẤT KỲ YẾU TỐ NÀO BỊ KHÓA: ĐỒNG BỘ MỐC KHÓA VÀ RESET TRỌN VẸN SỐ LẦN SAI CHO CHU KỲ MỚI
         if (anyBlocked) {
             Instant blockEnd = now.plusSeconds(maxRemaining);
             lastLockoutEndMap.put(ipKey, blockEnd);
@@ -171,24 +171,24 @@ public class LoginAttemptService {
             AttemptRecord rec = (existing != null) ? existing : new AttemptRecord();
             rec.blockedUntil = blockEnd;
             rec.lockLevel = level;
-            rec.consecutiveFails = 0; // Đặt về 0 để sau khi hết giờ phạt người dùng có đủ 5 lần thử
+            rec.consecutiveFails = 0;
             rec.lastAttemptAt = Instant.now();
             return rec;
         });
     }
 
     private LockResult registerSingleFailure(String key, Instant now, Instant relevantLockEnd) {
-        if (key == null || key.isBlank()) return new LockResult(false, 0, 0, MAX_ATTEMPTS);
+        if (key == null || key.isBlank()) return new LockResult(false, 0, 0, SecurityConstants.MAX_FAILED_LOGIN_ATTEMPTS);
         AttemptRecord record = attemptsMap.compute(key, (unused, existing) -> {
             AttemptRecord rec = (existing != null) ? existing : new AttemptRecord();
             refreshRecordState(key, rec, now, relevantLockEnd);
             rec.lastAttemptAt = now;
             rec.consecutiveFails++;
-            if (rec.consecutiveFails >= MAX_ATTEMPTS) {
-                rec.lockLevel++; // Tăng mức phạt: 1 (1p), 2 (3p), 3 (15p)...
+            if (rec.consecutiveFails >= SecurityConstants.MAX_FAILED_LOGIN_ATTEMPTS) {
+                rec.lockLevel++;
                 long duration = calculateLockDurationSeconds(rec.lockLevel);
                 rec.blockedUntil = now.plusSeconds(duration);
-                rec.consecutiveFails = 0; // Reset số lần sai cho chu kỳ tiếp theo
+                rec.consecutiveFails = 0;
             }
             return rec;
         });
@@ -196,7 +196,7 @@ public class LoginAttemptService {
         long remaining = (record.blockedUntil != null)
                 ? Math.max(0, record.blockedUntil.getEpochSecond() - now.getEpochSecond())
                 : 0;
-        int left = Math.max(0, MAX_ATTEMPTS - record.consecutiveFails);
+        int left = Math.max(0, SecurityConstants.MAX_FAILED_LOGIN_ATTEMPTS - record.consecutiveFails);
         return new LockResult(record.blockedUntil != null && remaining > 0, remaining, record.lockLevel, left);
     }
 
@@ -213,5 +213,31 @@ public class LoginAttemptService {
             attemptsMap.remove(cleanKey(formatDevKey(deviceFingerprint)));
             lastLockoutEndMap.remove(cleanKey(formatDevKey(deviceFingerprint)));
         }
+    }
+
+    /**
+     * Dọn dẹp định kỳ 5 phút một lần để giải phóng các bản ghi không còn hoạt động.
+     * Chống rò rỉ bộ nhớ (Memory Leak Prevention) trong môi trường sản xuất.
+     */
+    @Scheduled(fixedRate = 300_000)
+    public void cleanupExpiredRecords() {
+        Instant cutoff = Instant.now().minusSeconds(SecurityConstants.INACTIVITY_EXPIRY_SECONDS);
+        int initialSize = attemptsMap.size();
+        attemptsMap.entrySet().removeIf(entry -> {
+            AttemptRecord rec = entry.getValue();
+            boolean expiredInactivity = rec.lastAttemptAt != null && rec.lastAttemptAt.isBefore(cutoff);
+            boolean notBlocked = rec.blockedUntil == null || Instant.now().isAfter(rec.blockedUntil);
+            return expiredInactivity && notBlocked;
+        });
+        lastLockoutEndMap.entrySet().removeIf(entry -> entry.getValue().isBefore(cutoff));
+        if (attemptsMap.size() < initialSize) {
+            log.info("[RATE-LIMIT] Da don dep {} ban ghi het han. So ban ghi hien tai: {}",
+                    initialSize - attemptsMap.size(), attemptsMap.size());
+        }
+    }
+
+    public void clearAllForTesting() {
+        attemptsMap.clear();
+        lastLockoutEndMap.clear();
     }
 }

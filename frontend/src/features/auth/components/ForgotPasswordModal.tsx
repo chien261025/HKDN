@@ -1,10 +1,11 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useCallback } from 'react';
 import { X, KeyRound, AlertCircle } from 'lucide-react';
 import { authService } from '../services/authService';
 import { StepIdentifier } from './forgot-password/StepIdentifier';
 import { StepOtp } from './forgot-password/StepOtp';
 import { StepNewPassword } from './forgot-password/StepNewPassword';
 import { StepSuccess } from './forgot-password/StepSuccess';
+import { useOtpInput } from '../hooks/useOtpInput';
 
 interface ForgotPasswordModalProps {
   isOpen: boolean;
@@ -21,31 +22,49 @@ export const ForgotPasswordModal: React.FC<ForgotPasswordModalProps> = ({
 }) => {
   const [step, setStep] = useState<Step>('INPUT_IDENTIFIER');
   const [identifier, setIdentifier] = useState('');
-
-  // Target email and OTP digits
   const [targetEmail, setTargetEmail] = useState('');
-  const [otpDigits, setOtpDigits] = useState(['', '', '', '', '', '']);
-  const [countdown, setCountdown] = useState(180);
-  const otpInputRefs = useRef<(HTMLInputElement | null)[]>([]);
 
   // New Password State
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
 
-  // General Status
+  // Status
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
-  // Countdown timer for OTP
-  useEffect(() => {
-    let timer: any;
-    if (step === 'ENTER_OTP' && countdown > 0) {
-      timer = setInterval(() => {
-        setCountdown((prev) => prev - 1);
-      }, 1000);
+  const executeVerifyOtp = useCallback(async (code: string) => {
+    if (code.length < 6 || isSubmitting) return;
+
+    setIsSubmitting(true);
+    setErrorMessage(null);
+
+    try {
+      await authService.verifyForgotPasswordOtp(identifier.trim(), code);
+      setIsSubmitting(false);
+      setStep('NEW_PASSWORD');
+    } catch (err: unknown) {
+      setIsSubmitting(false);
+      const msg = err instanceof Error ? err.message : 'Mã xác thực không chính xác hoặc đã hết hạn.';
+      setErrorMessage(msg);
     }
-    return () => clearInterval(timer);
-  }, [step, countdown]);
+  }, [identifier, isSubmitting]);
+
+  const {
+    otpDigits,
+    countdown,
+    otpInputRefs,
+    handleOtpChange,
+    handleOtpPaste,
+    handleOtpKeyDown,
+    resetOtp,
+    focusFirst,
+    setCountdown,
+  } = useOtpInput({
+    length: 6,
+    initialCountdown: 180,
+    isActive: step === 'ENTER_OTP',
+    onComplete: executeVerifyOtp,
+  });
 
   if (!isOpen) return null;
 
@@ -53,17 +72,13 @@ export const ForgotPasswordModal: React.FC<ForgotPasswordModalProps> = ({
     setStep('INPUT_IDENTIFIER');
     setIdentifier('');
     setTargetEmail('');
-    setOtpDigits(['', '', '', '', '', '']);
-    setCountdown(180);
+    resetOtp(180);
     setNewPassword('');
     setConfirmPassword('');
     setErrorMessage(null);
     onClose();
   };
 
-  /**
-   * Bước 1: Gửi mã xác thực OTP qua Email hoặc SMS
-   */
   const handleSendOtp = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!identifier.trim()) {
@@ -80,94 +95,24 @@ export const ForgotPasswordModal: React.FC<ForgotPasswordModalProps> = ({
       setTargetEmail(res.email || identifier.trim());
       setCountdown(res.expiresInSeconds || 180);
       setStep('ENTER_OTP');
-
-      setTimeout(() => {
-        otpInputRefs.current[0]?.focus();
-      }, 100);
-    } catch (err: any) {
+      focusFirst();
+    } catch (err: unknown) {
       setIsSubmitting(false);
-      setErrorMessage(err.message || 'Không thể gửi mã xác thực. Vui lòng kiểm tra lại tài khoản hoặc email!');
+      const msg = err instanceof Error ? err.message : 'Không thể gửi mã xác thực. Vui lòng thử lại!';
+      setErrorMessage(msg);
     }
   };
 
-  /**
-   * Gọi xác thực OTP với máy chủ (Tự động hoặc khi bấm nút)
-   */
-  const executeVerifyOtp = async (code: string) => {
-    if (code.length < 6 || isSubmitting) return;
-
-    setIsSubmitting(true);
-    setErrorMessage(null);
-
-    try {
-      await authService.verifyForgotPasswordOtp(identifier.trim(), code);
-      setIsSubmitting(false);
-      setStep('NEW_PASSWORD');
-    } catch (err: any) {
-      setIsSubmitting(false);
-      setErrorMessage(err.message || 'Mã xác thực không chính xác hoặc đã hết hạn.');
-    }
-  };
-
-  /**
-   * Xử lý nhập OTP & Tự động gửi khi điền đủ 6 số
-   */
-  const handleOtpChange = (index: number, value: string) => {
-    if (!/^\d*$/.test(value)) return;
-
-    const newOtp = [...otpDigits];
-    newOtp[index] = value.slice(-1);
-    setOtpDigits(newOtp);
-
-    if (value && index < 5) {
-      otpInputRefs.current[index + 1]?.focus();
-    }
-
-    // Tự động gửi xác thực ngay khi điền đủ 6 số
-    const fullCode = newOtp.join('');
-    if (fullCode.length === 6 && !newOtp.includes('')) {
-      executeVerifyOtp(fullCode);
-    }
-  };
-
-  const handleOtpPaste = (pasted: string) => {
-    const digits = pasted.split('').slice(0, 6);
-    const newOtp = [...otpDigits];
-    digits.forEach((d, i) => {
-      newOtp[i] = d;
-    });
-    setOtpDigits(newOtp);
-    if (digits.length === 6) {
-      executeVerifyOtp(digits.join(''));
-    } else {
-      otpInputRefs.current[digits.length]?.focus();
-    }
-  };
-
-  const handleOtpKeyDown = (index: number, e: React.KeyboardEvent<HTMLInputElement>) => {
-    if (e.key === 'Backspace' && !otpDigits[index] && index > 0) {
-      otpInputRefs.current[index - 1]?.focus();
-    }
-  };
-
-  /**
-   * Bước 2: Xác thực OTP với máy chủ khi submit form
-   */
   const handleVerifyOtp = (e: React.FormEvent) => {
     e.preventDefault();
     const enteredCode = otpDigits.join('');
-
     if (enteredCode.length < 6) {
       setErrorMessage('Vui lòng nhập đủ 6 chữ số của mã xác thực.');
       return;
     }
-
     executeVerifyOtp(enteredCode);
   };
 
-  /**
-   * Bước 3: Lưu mật khẩu mới
-   */
   const handleResetPasswordSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setErrorMessage(null);
@@ -191,9 +136,10 @@ export const ForgotPasswordModal: React.FC<ForgotPasswordModalProps> = ({
       if (onPrefillUsername) {
         onPrefillUsername(identifier.trim());
       }
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('Lỗi đặt lại mật khẩu:', err);
-      setErrorMessage(err.message || 'Không thể cập nhật mật khẩu. Vui lòng thử lại sau.');
+      const msg = err instanceof Error ? err.message : 'Không thể cập nhật mật khẩu. Vui lòng thử lại sau.';
+      setErrorMessage(msg);
     } finally {
       setIsSubmitting(false);
     }
@@ -201,7 +147,6 @@ export const ForgotPasswordModal: React.FC<ForgotPasswordModalProps> = ({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-sm p-4 overflow-y-auto animate-in fade-in duration-200">
-      {/* Main Modal */}
       <div className="bg-white border border-slate-200 rounded-2xl w-full max-w-md shadow-2xl overflow-hidden my-8 relative">
         {/* Modal Header */}
         <div className="p-5 border-b border-slate-200 flex items-center justify-between bg-slate-50/80">

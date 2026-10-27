@@ -2,45 +2,13 @@ import React, { useState, useRef, useEffect } from 'react';
 import {
   Bell,
   CheckCheck,
-  Check,
-  ExternalLink,
   Sparkles,
-  AlertTriangle,
-  AlertOctagon,
-  CheckCircle2,
-  Info,
-  Radio,
   RefreshCw,
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useNotifications } from '../context/NotificationContext';
-import { NotificationMessage, NotificationSeverity } from '../types';
-
-const formatTimeAgo = (isoString: string): string => {
-  try {
-    const diff = Math.floor((Date.now() - new Date(isoString).getTime()) / 1000);
-    if (diff < 30) return 'Vừa xong';
-    if (diff < 60) return `${diff} giây trước`;
-    if (diff < 3600) return `${Math.floor(diff / 60)} phút trước`;
-    if (diff < 86400) return `${Math.floor(diff / 3600)} giờ trước`;
-    return `${Math.floor(diff / 86400)} ngày trước`;
-  } catch {
-    return 'Gần đây';
-  }
-};
-
-const getSeverityIcon = (severity: NotificationSeverity) => {
-  switch (severity) {
-    case 'ERROR':
-      return <AlertOctagon className="w-4 h-4 text-rose-600" />;
-    case 'WARNING':
-      return <AlertTriangle className="w-4 h-4 text-amber-600" />;
-    case 'SUCCESS':
-      return <CheckCircle2 className="w-4 h-4 text-emerald-600" />;
-    default:
-      return <Info className="w-4 h-4 text-indigo-600" />;
-  }
-};
+import { NotificationMessage } from '../types';
+import { NotificationItem } from './NotificationItem';
 
 export const NotificationCenterDropdown: React.FC = () => {
   const [isOpen, setIsOpen] = useState(false);
@@ -208,59 +176,12 @@ export const NotificationCenterDropdown: React.FC = () => {
               </div>
             ) : (
               filteredNotifications.map((n) => (
-                <div
+                <NotificationItem
                   key={n.id}
-                  onClick={() => handleItemClick(n)}
-                  className={`p-3.5 flex items-start gap-3 transition-colors cursor-pointer group ${
-                    n.read ? 'bg-white hover:bg-slate-50' : 'bg-indigo-50/40 hover:bg-indigo-50/70'
-                  }`}
-                >
-                  <div className="mt-0.5 p-1.5 rounded-xl bg-white shadow-xs border border-slate-200/80 shrink-0">
-                    {getSeverityIcon(n.severity)}
-                  </div>
-
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center justify-between gap-2">
-                      <h4
-                        className={`text-xs font-bold leading-tight truncate ${
-                          n.read ? 'text-slate-700' : 'text-slate-900 font-extrabold'
-                        }`}
-                      >
-                        {n.title}
-                      </h4>
-                      <span className="text-[10px] text-slate-400 shrink-0 font-medium">
-                        {formatTimeAgo(n.timestamp)}
-                      </span>
-                    </div>
-
-                    <p className="text-xs text-slate-500 mt-1 line-clamp-2 leading-relaxed">
-                      {n.message}
-                    </p>
-
-                    <div className="mt-2 flex items-center justify-between gap-2 text-[11px]">
-                      {n.link ? (
-                        <span className="inline-flex items-center gap-1 text-indigo-600 font-semibold group-hover:underline">
-                          <span>Chi tiết</span>
-                          <ExternalLink className="w-3 h-3" />
-                        </span>
-                      ) : <span />}
-
-                      {!n.read && (
-                        <button
-                          type="button"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            markAsRead(n.id);
-                          }}
-                          className="text-slate-400 hover:text-indigo-600 flex items-center gap-1 cursor-pointer font-medium"
-                        >
-                          <Check className="w-3 h-3" />
-                          <span>Đã đọc</span>
-                        </button>
-                      )}
-                    </div>
-                  </div>
-                </div>
+                  notification={n}
+                  onClick={handleItemClick}
+                  onMarkAsRead={markAsRead}
+                />
               ))
             )}
           </div>
