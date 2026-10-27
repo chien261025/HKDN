@@ -36,8 +36,8 @@ public class OrderController {
 
     @PostMapping("/inbound")
     @Operation(summary = "Tạo mới đơn nhập hàng PO", description = "Tạo mới đơn nhập hàng từ nhà cung ứng với danh sách sản phẩm và số lượng")
-    public ApiResponse<InboundOrder> createInboundOrder(@RequestBody InboundOrder order) {
-        return ApiResponse.success("Tạo đơn nhập kho thành công!", inboundService.createInboundOrder(order));
+    public ApiResponse<InboundOrder> createInboundOrder(@Valid @RequestBody com.wms.module.order.dto.request.CreateInboundOrderRequest request) {
+        return ApiResponse.success("Tạo đơn nhập kho thành công!", inboundService.createInboundOrder(request));
     }
 
     @PutMapping("/inbound/{id}/receive")
@@ -61,8 +61,8 @@ public class OrderController {
 
     @PostMapping("/outbound")
     @Operation(summary = "Tạo mới đơn xuất hàng SO", description = "Tạo mới đơn xuất hàng bán cho khách hàng")
-    public ApiResponse<OutboundOrder> createOutboundOrder(@RequestBody OutboundOrder order) {
-        return ApiResponse.success("Tạo đơn xuất kho thành công!", outboundService.createOutboundOrder(order));
+    public ApiResponse<OutboundOrder> createOutboundOrder(@Valid @RequestBody com.wms.module.order.dto.request.CreateOutboundOrderRequest request) {
+        return ApiResponse.success("Tạo đơn xuất kho thành công!", outboundService.createOutboundOrder(request));
     }
 
     @PutMapping("/outbound/{id}/dispatch")

@@ -42,6 +42,43 @@ public class InboundService {
     }
 
     @Transactional
+    public InboundOrder createInboundOrder(com.wms.module.order.dto.request.CreateInboundOrderRequest request) {
+        String code = request.getOrderCode() != null && !request.getOrderCode().isBlank()
+                ? request.getOrderCode()
+                : "PO-" + System.currentTimeMillis() % 1000000;
+
+        InboundOrder order = InboundOrder.builder()
+                .orderCode(code)
+                .warehouseId(request.getWarehouseId() != null ? request.getWarehouseId() : 1L)
+                .supplierId(request.getSupplierId())
+                .status("PENDING")
+                .notes(request.getNotes())
+                .createdAt(Instant.now())
+                .updatedAt(Instant.now())
+                .build();
+
+        if (request.getItems() != null) {
+            java.util.List<InboundOrderItem> items = new java.util.ArrayList<>();
+            for (com.wms.module.order.dto.request.CreateInboundOrderRequest.ItemRequest itemReq : request.getItems()) {
+                InboundOrderItem item = InboundOrderItem.builder()
+                        .inboundOrder(order)
+                        .productId(itemReq.getProductId())
+                        .expectedQty(itemReq.getExpectedQty())
+                        .receivedQty(0)
+                        .batchNumber(itemReq.getBatchNumber())
+                        .expiryDate(itemReq.getExpiryDate())
+                        .unitPrice(itemReq.getUnitPrice() != null ? itemReq.getUnitPrice() : BigDecimal.ZERO)
+                        .status("PENDING")
+                        .createdAt(Instant.now())
+                        .build();
+                items.add(item);
+            }
+            order.setItems(items);
+        }
+        return inboundOrderRepository.save(order);
+    }
+
+    @Transactional
     public InboundOrder createInboundOrder(InboundOrder order) {
         if (order.getOrderCode() == null || order.getOrderCode().isBlank()) {
             order.setOrderCode("PO-" + System.currentTimeMillis() % 1000000);

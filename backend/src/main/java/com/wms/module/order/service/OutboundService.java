@@ -40,10 +40,47 @@ public class OutboundService {
     private final OutboundOrderRepository outboundOrderRepository;
     private final StockLedgerRepository stockLedgerRepository;
     private final com.wms.module.notification.service.NotificationService notificationService;
+    private final com.wms.module.identity.repository.UserRepository userRepository;
 
     @Transactional(readOnly = true)
     public List<OutboundOrder> getAllOutboundOrders() {
         return outboundOrderRepository.findAll();
+    }
+
+    @Transactional
+    public OutboundOrder createOutboundOrder(com.wms.module.order.dto.request.CreateOutboundOrderRequest request) {
+        String code = request.getOrderCode() != null && !request.getOrderCode().isBlank()
+                ? request.getOrderCode()
+                : "SO-" + System.currentTimeMillis() % 1000000;
+
+        OutboundOrder order = OutboundOrder.builder()
+                .orderCode(code)
+                .warehouseId(request.getWarehouseId() != null ? request.getWarehouseId() : 1L)
+                .customerName(request.getCustomerName() != null ? request.getCustomerName() : "Khách Hàng Doanh Nghiệp")
+                .status("PENDING")
+                .notes(request.getNotes())
+                .createdAt(Instant.now())
+                .updatedAt(Instant.now())
+                .build();
+
+        if (request.getItems() != null) {
+            java.util.List<OutboundOrderItem> items = new java.util.ArrayList<>();
+            for (com.wms.module.order.dto.request.CreateOutboundOrderRequest.ItemRequest itemReq : request.getItems()) {
+                OutboundOrderItem item = OutboundOrderItem.builder()
+                        .outboundOrder(order)
+                        .productId(itemReq.getProductId())
+                        .requestedQty(itemReq.getRequestedQty())
+                        .allocatedQty(itemReq.getAllocatedQty() != null ? itemReq.getAllocatedQty() : 0)
+                        .pickedQty(0)
+                        .unitPrice(itemReq.getUnitPrice() != null ? itemReq.getUnitPrice() : java.math.BigDecimal.ZERO)
+                        .status("PENDING")
+                        .createdAt(Instant.now())
+                        .build();
+                items.add(item);
+            }
+            order.setItems(items);
+        }
+        return outboundOrderRepository.save(order);
     }
 
     @Transactional
@@ -71,13 +108,18 @@ public class OutboundService {
             throw new BusinessException(ErrorCode.BAD_REQUEST, "Đơn xuất kho " + order.getOrderCode() + " đã hoàn tất bàn giao vận chuyển trước đó!");
         }
 
+        Long currentUserId = com.wms.module.identity.util.SecurityUtils.getCurrentUserIdOrDefault(userRepository, 1L);
+
         if (order.getItems() != null) {
             for (OutboundOrderItem item : order.getItems()) {
                 int qtyToDeduct = item.getRequestedQty();
-                List<Inventory> inventories = inventoryRepository.findAll().stream()
-                        .filter(inv -> inv.getProductId().equals(item.getProductId()) && inv.getOnHandQty() > 0)
-                        .sorted((a, b) -> Integer.compare(b.getReservedQty(), a.getReservedQty()))
-                        .toList();
+                List<Inventory> inventories = inventoryRepository.findByProductIdAndOnHandQtyGreaterThanOrderByReservedQtyDesc(item.getProductId(), 0);
+                if (inventories == null || inventories.isEmpty()) {
+                    inventories = inventoryRepository.findAll().stream()
+                            .filter(inv -> inv.getProductId().equals(item.getProductId()) && inv.getOnHandQty() > 0)
+                            .sorted((a, b) -> Integer.compare(b.getReservedQty(), a.getReservedQty()))
+                            .toList();
+                }
 
                 for (Inventory inv : inventories) {
                     if (qtyToDeduct <= 0) break;
@@ -95,7 +137,7 @@ public class OutboundService {
                             .batchId(inv.getBatchId())
                             .qtyChange(-deduct)
                             .balanceAfter(inv.getOnHandQty())
-                            .performedBy(1L)
+                            .performedBy(currentUserId)
                             .notes("Bàn giao vận chuyển đơn xuất SO: " + order.getOrderCode())
                             .createdAt(Instant.now())
                             .build();
@@ -149,8 +191,14 @@ public class OutboundService {
         for (ProductBatch batch : activeBatches) {
             if (remainingToPick <= 0) break;
 
-            List<Inventory> inventories = inventoryRepository.findAll().stream()
-                    .filter(i -> i.getProductId().equals(productId) && i.getBatchId().equals(batch.getId()))
+            List<Inventory> batchInvs = inventoryRepository.findByProductIdAndBatchId(productId, batch.getId());
+            if (batchInvs == null || batchInvs.isEmpty()) {
+                batchInvs = inventoryRepository.findAll().stream()
+                        .filter(i -> i.getProductId().equals(productId) && i.getBatchId().equals(batch.getId()))
+                        .toList();
+            }
+
+            List<Inventory> inventories = batchInvs.stream()
                     .filter(i -> i.getAvailableQty() > 0)
                     .toList();
 

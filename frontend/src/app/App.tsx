@@ -13,6 +13,7 @@ import { AppRoutes } from './components/AppRoutes';
 import { NotificationProvider } from '../features/notifications/context/NotificationContext';
 import { ToastNotificationContainer } from '../features/notifications/components/ToastNotificationContainer';
 import { IdleTimeoutGuard } from '../features/auth/components/IdleTimeoutGuard';
+import { STORAGE_KEYS } from '../constants';
 
 const AppContent: React.FC = () => {
   const [showScanner, setShowScanner] = useState(false);
@@ -22,7 +23,7 @@ const AppContent: React.FC = () => {
 
   // Trạng thái thu gọn/mở rộng thanh menu bên trái (lưu vào localStorage)
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState<boolean>(() => {
-    const saved = localStorage.getItem('smart_wms_sidebar_collapsed');
+    const saved = localStorage.getItem(STORAGE_KEYS.SIDEBAR_COLLAPSED);
     return saved === 'true';
   });
 
@@ -33,12 +34,12 @@ const AppContent: React.FC = () => {
     setIsMobileSidebarOpen(false);
 
     const verifySession = () => {
-      const token = localStorage.getItem('smart_wms_token');
+      const token = localStorage.getItem(STORAGE_KEYS.TOKEN);
       if (token && location.pathname !== '/login') {
         authService.checkSessionStatus().then((status) => {
           if (!status.active && status.reason === 'SESSION_REVOKED') {
-            localStorage.removeItem('smart_wms_token');
-            localStorage.removeItem('smart_wms_session');
+            localStorage.removeItem(STORAGE_KEYS.TOKEN);
+            localStorage.removeItem(STORAGE_KEYS.SESSION);
             window.location.href = '/login?expired=true';
           }
         }).catch(() => {});
@@ -56,7 +57,7 @@ const AppContent: React.FC = () => {
   const toggleSidebar = () => {
     setIsSidebarCollapsed((prev) => {
       const next = !prev;
-      localStorage.setItem('smart_wms_sidebar_collapsed', String(next));
+      localStorage.setItem(STORAGE_KEYS.SIDEBAR_COLLAPSED, String(next));
       return next;
     });
   };
@@ -82,13 +83,13 @@ const AppContent: React.FC = () => {
 
   // 2. Kiểm tra Auth Guard cho TẤT CẢ các route nội bộ
   const session = authService.getCurrentSession();
-  const token = localStorage.getItem('smart_wms_token');
+  const token = localStorage.getItem(STORAGE_KEYS.TOKEN);
   const isExpired = session?.expiresAt ? new Date(session.expiresAt).getTime() <= Date.now() : true;
 
   if (!session || !token || isExpired) {
     if (token || session) {
-      localStorage.removeItem('smart_wms_token');
-      localStorage.removeItem('smart_wms_session');
+      localStorage.removeItem(STORAGE_KEYS.TOKEN);
+      localStorage.removeItem(STORAGE_KEYS.SESSION);
     }
     return <Navigate to="/login" replace state={{ from: location, expired: isExpired && !!session }} />;
   }
