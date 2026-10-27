@@ -1,18 +1,20 @@
-export type JobStatus = 'QUEUED' | 'STREAMING' | 'UPLOADING' | 'COMPLETED' | 'FAILED';
+export type JobStatus = 'INITIALIZING' | 'EXTRACTING' | 'FORMATTING' | 'COMPLETED' | 'FAILED';
 
 export interface ReportJob {
   id: string;
   reportCode: string;
   reportTitle: string;
+  category: string;
+  format: 'EXCEL' | 'PDF' | 'CSV';
   status: JobStatus;
+  statusLabel?: string;
   progress: number;
   totalRows: number;
   fileSize?: string;
   createdAt: string;
   completedAt?: string;
   downloadUrl?: string;
-  workerNode: string;
-  ramUsageMb: number;
+  requestedBy: string;
 }
 
 export interface ReportTemplate {
@@ -22,16 +24,24 @@ export interface ReportTemplate {
   description: string;
   estimatedRows: string;
   estimatedSize: string;
-  icon: string;
-  colorScheme: 'amber' | 'indigo' | 'emerald' | 'cyan';
+  format: 'EXCEL' | 'PDF';
+  badgeColor: 'emerald' | 'blue' | 'indigo' | 'amber';
 }
 
-export interface QueueTelemetry {
-  queueName: string;
-  exchange: string;
-  consumerCount: number;
-  messageRate: string;
-  memoryLimitMb: number;
-  currentHeapMb: number;
-  minioBucket: string;
+export interface ScheduledReport {
+  id: string;
+  title: string;
+  scheduleDescription: string;
+  targetRole: string;
+  format: string;
+  isEnabled: boolean;
+  lastRunAt: string;
+}
+
+export interface ReportOverviewStats {
+  monthlyReportsCount: number;
+  reconciliationAccuracy: string;
+  storageUsed: string;
+  storageLimit: string;
+  avgGenerationTime: string;
 }

@@ -108,13 +108,13 @@ export const INITIAL_RBAC_MODULES: RbacModuleItem[] = [
   {
     id: 10,
     moduleId: 'ASYNC_REPORTS',
-    moduleName: 'Báo Cáo & Lịch Sử Xuất File (RabbitMQ)',
+    moduleName: 'Trung Tâm Báo Cáo & Thống Kê Kho Vận',
     desktopRoute: '/reports',
     adminAllowed: true,
     managerAllowed: true,
     operatorAllowed: false,
     device: 'Desktop',
-    description: 'Xử lý hàng đợi RabbitMQ, SXSSF RAM Guard <50MB, tải MinIO S3',
+    description: 'Trích xuất sổ cái thẻ kho, cân đối hạn dùng FEFO, đối soát xuất nhập tồn định kỳ',
   },
   {
     id: 11,
