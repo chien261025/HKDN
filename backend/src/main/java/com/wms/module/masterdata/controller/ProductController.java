@@ -44,12 +44,14 @@ public class ProductController {
     }
 
     @PostMapping
+    @org.springframework.security.access.prepost.PreAuthorize("hasAnyRole('ADMIN', 'WAREHOUSE_MANAGER')")
     @Operation(summary = "Tạo mới sản phẩm SKU", description = "Đăng ký sản phẩm mới vào danh mục Master Data")
     public ApiResponse<Product> createProduct(@RequestBody Product product) {
         return ApiResponse.success("Tạo mới sản phẩm thành công!", productService.createProduct(product));
     }
 
     @PutMapping("/{id}")
+    @org.springframework.security.access.prepost.PreAuthorize("hasAnyRole('ADMIN', 'WAREHOUSE_MANAGER')")
     @Operation(summary = "Cập nhật thông tin sản phẩm", description = "Cập nhật tên, mã vạch, đơn vị, định mức an toàn, điểm đặt hàng")
     public ApiResponse<Product> updateProduct(@PathVariable Long id, @RequestBody Product productUpdate) {
         return ApiResponse.success("Cập nhật thông tin sản phẩm thành công!", productService.updateProduct(id, productUpdate));

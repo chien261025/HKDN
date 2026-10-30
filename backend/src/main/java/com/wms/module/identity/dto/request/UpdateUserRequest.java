@@ -34,4 +34,7 @@ public class UpdateUserRequest {
 
     @Schema(description = "Số điện thoại liên hệ", example = "0900000002")
     private String phone;
+
+    @Schema(description = "Thời gian hết hạn hợp đồng tài khoản thời vụ (Tùy chọn, ISO 8601)", example = "2026-12-31T23:59:59Z")
+    private java.time.Instant expiresAt;
 }

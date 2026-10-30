@@ -25,6 +25,7 @@ export interface AuthTokenData {
   fullName: string;
   role: string;
   expiresIn: number;
+  mustChangePassword?: boolean;
 }
 
 export interface ApiResponse<T> {
@@ -68,6 +69,7 @@ export const authService = {
       role: data.role as UserRole,
       warehouse: warehouse || 'Kho Tổng Tân Bình (ZONE A & B)',
       expiresAt: new Date(Date.now() + (data.expiresIn || 86400000)).toISOString(),
+      mustChangePassword: data.mustChangePassword,
     };
     
     localStorage.setItem('smart_wms_session', JSON.stringify(session));
@@ -109,6 +111,7 @@ export const authService = {
       role: data.role as UserRole,
       warehouse: warehouse || 'Kho Tổng Tân Bình (ZONE A & B)',
       expiresAt: new Date(Date.now() + (data.expiresIn || 86400000)).toISOString(),
+      mustChangePassword: data.mustChangePassword,
     };
     
     localStorage.setItem('smart_wms_session', JSON.stringify(session));
@@ -127,6 +130,8 @@ export const authService = {
     } finally {
       localStorage.removeItem('smart_wms_token');
       localStorage.removeItem('smart_wms_session');
+      localStorage.removeItem('smart_wms_remembered_username');
+      localStorage.removeItem('smart_wms_remember_me');
       window.location.href = '/login?logged_out=true';
     }
   },
@@ -180,33 +185,6 @@ export const authService = {
       console.warn('Không thể tải tài khoản demo từ backend, sử dụng danh sách mặc định:', err);
       return null;
     }
-  },
-
-  /**
-   * Lấy tên đăng nhập đã ghi nhớ
-   */
-  getRememberedUsername(): string {
-    return localStorage.getItem('smart_wms_remembered_username') || '';
-  },
-
-  /**
-   * Lưu hoặc xóa tên đăng nhập đã ghi nhớ
-   */
-  setRememberedUsername(username: string, remember: boolean): void {
-    if (remember && username.trim()) {
-      localStorage.setItem('smart_wms_remembered_username', username.trim());
-      localStorage.setItem('smart_wms_remember_me', 'true');
-    } else {
-      localStorage.removeItem('smart_wms_remembered_username');
-      localStorage.removeItem('smart_wms_remember_me');
-    }
-  },
-
-  /**
-   * Kiểm tra người dùng có bật ghi nhớ không
-   */
-  isRemembered(): boolean {
-    return localStorage.getItem('smart_wms_remember_me') === 'true';
   },
 
   /**
@@ -278,5 +256,16 @@ export const authService = {
     } catch {
       return { blocked: false, remainingSeconds: 0 };
     }
-  }
+  },
+
+  clearMustChangePassword(): void {
+    const sessionStr = localStorage.getItem('smart_wms_session');
+    if (sessionStr) {
+      try {
+        const session = JSON.parse(sessionStr);
+        session.mustChangePassword = false;
+        localStorage.setItem('smart_wms_session', JSON.stringify(session));
+      } catch {}
+    }
+  },
 };

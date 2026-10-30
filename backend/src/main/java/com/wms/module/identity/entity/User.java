@@ -46,6 +46,13 @@ public class User {
     @Builder.Default
     private Boolean isActive = true;
 
+    @Column(name = "expires_at")
+    private Instant expiresAt;
+
+    @Column(name = "must_change_password")
+    @Builder.Default
+    private Boolean mustChangePassword = false;
+
     @Column(name = "created_at")
     @Builder.Default
     private Instant createdAt = Instant.now();

@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { authService } from '../services/authService';
 import { ForgotPasswordModal } from '../components/ForgotPasswordModal';
+import { FirstTimeChangePasswordModal } from '../components/FirstTimeChangePasswordModal';
 import { LoginForm } from '../components/LoginForm';
 import { AlertCircle, CheckCircle2, ShieldAlert } from 'lucide-react';
 import { useLoginLockout } from '../hooks/useLoginLockout';
@@ -16,12 +17,22 @@ export const LoginPage: React.FC = () => {
   const isIdle = searchParams.get('idle') === 'true';
 
   // Form Đăng nhập states
-  const [username, setUsername] = useState(() => authService.getRememberedUsername());
+  const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
-  const [rememberMe, setRememberMe] = useState(() => authService.isRemembered());
 
-  // Modal quên mật khẩu
+  // Modal quên mật khẩu & bắt buộc đổi mật khẩu lần đầu
   const [isForgotModalOpen, setIsForgotModalOpen] = useState(false);
+  const [mustChangePasswordState, setMustChangePasswordState] = useState<{
+    isOpen: boolean;
+    username: string;
+    currentPassword: string;
+    role: string;
+  }>({
+    isOpen: false,
+    username: '',
+    currentPassword: '',
+    role: '',
+  });
 
   // Trạng thái thông báo
   const [isLoading, setIsLoading] = useState(false);
@@ -49,6 +60,19 @@ export const LoginPage: React.FC = () => {
       setSuccessMessage('Đã đăng xuất thành công khỏi hệ thống.');
     }
   }, [isExpired, isLoggedOut, isIdle]);
+
+  // Kiểm tra nếu phiên hiện tại đang ở trạng thái bắt buộc đổi mật khẩu
+  useEffect(() => {
+    const s = authService.getCurrentSession();
+    if (s && s.mustChangePassword) {
+      setMustChangePasswordState({
+        isOpen: true,
+        username: s.username,
+        currentPassword: '',
+        role: s.role,
+      });
+    }
+  }, []);
 
   const handleRedirectByRole = (role: string, overrideRoute?: string) => {
     if (overrideRoute) {
@@ -84,7 +108,17 @@ export const LoginPage: React.FC = () => {
         password: password,
       });
 
-      authService.setRememberedUsername(username.trim(), rememberMe);
+      if (data.mustChangePassword) {
+        setIsLoading(false);
+        setMustChangePasswordState({
+          isOpen: true,
+          username: data.username,
+          currentPassword: password,
+          role: data.role,
+        });
+        return;
+      }
+
       setSuccessMessage(`Đăng nhập thành công! Xin chào ${data.fullName || data.username}`);
 
       setTimeout(() => {
@@ -126,7 +160,7 @@ export const LoginPage: React.FC = () => {
                 </span>
               </div>
               <div className="text-amber-800 text-xs mt-1">
-                Do nhập sai nhiều lần. Tự động mở sau:{' '}
+                Hệ thống tạm khóa bảo vệ. Tự động mở sau:{' '}
                 <span className="font-mono font-bold text-rose-600 text-sm">
                   {formatMinsSecs(lockoutRemainingSec)}
                 </span>
@@ -156,8 +190,6 @@ export const LoginPage: React.FC = () => {
           onUsernameChange={setUsername}
           password={password}
           onPasswordChange={setPassword}
-          rememberMe={rememberMe}
-          onRememberMeChange={setRememberMe}
           isLoading={isLoading}
           lockoutRemainingSec={lockoutRemainingSec}
           onSubmit={handleLoginSubmit}
@@ -173,6 +205,26 @@ export const LoginPage: React.FC = () => {
           setUsername(u);
           setPassword('');
           setSuccessMessage(`Đã cập nhật mật khẩu mới cho tài khoản @${u}! Vui lòng đăng nhập lại.`);
+        }}
+      />
+
+      {/* Modal Bắt Buộc Đổi Mật Khẩu Lần Đầu */}
+      <FirstTimeChangePasswordModal
+        isOpen={mustChangePasswordState.isOpen}
+        username={mustChangePasswordState.username}
+        currentPassword={mustChangePasswordState.currentPassword}
+        onCancel={() => {
+          authService.logout();
+          setMustChangePasswordState({ isOpen: false, username: '', currentPassword: '', role: '' });
+          setPassword('');
+        }}
+        onSuccess={() => {
+          const role = mustChangePasswordState.role;
+          setMustChangePasswordState({ isOpen: false, username: '', currentPassword: '', role: '' });
+          setSuccessMessage('Đã thiết lập mật khẩu cá nhân thành công! Đang chuyển hướng...');
+          setTimeout(() => {
+            handleRedirectByRole(role);
+          }, 400);
         }}
       />
 

@@ -1,6 +1,6 @@
 export type UserRole = 'ROLE_ADMIN' | 'ROLE_WAREHOUSE_MANAGER' | 'ROLE_MANAGER' | 'ROLE_OPERATOR';
 
-export type UserStatus = 'ACTIVE' | 'LOCKED' | 'SUSPENDED';
+export type UserStatus = 'ACTIVE' | 'LOCKED' | 'SUSPENDED' | 'EXPIRED';
 
 export interface UserAccount {
   id: string;
@@ -11,6 +11,9 @@ export interface UserAccount {
   role: UserRole;
   assignedWarehouse: string;
   status: UserStatus;
+  expiresAt?: string | null;
+  rawExpiresAt?: string | null;
+  isExpired?: boolean;
   lastLoginAt: string;
   lastLoginIp: string;
   createdAt: string;
@@ -26,6 +29,8 @@ export interface BackendUserResponse {
   isActive: boolean;
   status: 'ACTIVE' | 'LOCKED';
   assignedWarehouse: string;
+  expiresAt?: string | null;
+  isExpired?: boolean;
   createdAt: string;
   updatedAt: string;
 }
@@ -46,6 +51,7 @@ export interface UpdateUserPayload {
   role?: string;
   assignedWarehouse?: string;
   phone?: string;
+  expiresAt?: string | null;
 }
 
 export interface LoginHistoryEntry {

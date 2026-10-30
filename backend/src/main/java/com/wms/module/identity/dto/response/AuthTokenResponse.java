@@ -29,4 +29,8 @@ public class AuthTokenResponse {
 
     @Schema(description = "Thời gian hết hạn của Token (mili-giây)", example = "86400000")
     private Long expiresIn;
+
+    @Schema(description = "Yêu cầu đổi mật khẩu ở lần đăng nhập tới", example = "false")
+    @Builder.Default
+    private Boolean mustChangePassword = false;
 }

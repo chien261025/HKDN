@@ -49,7 +49,7 @@ export const TempPasswordGenerator: React.FC<TempPasswordGeneratorProps> = ({
         <div className="flex items-center justify-between text-2xs font-semibold">
           <span className="text-slate-500">Độ an toàn mật khẩu:</span>
           <span className={value.length >= 8 ? 'text-emerald-700 font-bold' : 'text-amber-700'}>
-            {value.length >= 8 ? 'Chuẩn Enterprise (OWASP)' : 'Cơ bản (Khuyến nghị >= 8 ký tự)'}
+            {value.length >= 8 ? 'Mật khẩu mạnh' : 'Khuyến nghị ≥ 8 ký tự'}
           </span>
         </div>
         <div className="w-full bg-slate-200 h-1.5 rounded-full overflow-hidden flex gap-0.5">
@@ -60,7 +60,7 @@ export const TempPasswordGenerator: React.FC<TempPasswordGeneratorProps> = ({
         </div>
       </div>
       <p className="text-2xs text-slate-500 font-sans">
-        Mật khẩu được mã hóa một chiều bằng thuật toán <strong>BCrypt (10 rounds)</strong> trước khi ghi vào CSDL.
+        Mật khẩu sẽ được mã hóa an toàn trước khi lưu trữ.
       </p>
     </div>
   );

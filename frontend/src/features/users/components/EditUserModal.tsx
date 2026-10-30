@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { X, UserCheck, Shield, AlertTriangle, Building2, Phone, Mail, User, Loader2 } from 'lucide-react';
+import { X, UserCheck, Shield, AlertTriangle, Building2, Phone, Mail, User, Loader2, Clock } from 'lucide-react';
 import { UserAccount, UserRole, UpdateUserPayload } from '../types';
 
 interface EditUserModalProps {
@@ -20,6 +20,7 @@ export const EditUserModal: React.FC<EditUserModalProps> = ({
   const [phone, setPhone] = useState('');
   const [role, setRole] = useState<UserRole>('ROLE_OPERATOR');
   const [assignedWarehouse, setAssignedWarehouse] = useState('Kho Tổng Tân Bình (ZONE A & B)');
+  const [expiresAt, setExpiresAt] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
@@ -30,6 +31,7 @@ export const EditUserModal: React.FC<EditUserModalProps> = ({
       setPhone(user.phone || '');
       setRole(user.role);
       setAssignedWarehouse(user.assignedWarehouse || 'Kho Tổng Tân Bình (ZONE A & B)');
+      setExpiresAt(user.rawExpiresAt ? user.rawExpiresAt.slice(0, 10) : '');
       setErrorMsg(null);
     }
   }, [user, isOpen]);
@@ -52,8 +54,9 @@ export const EditUserModal: React.FC<EditUserModalProps> = ({
         fullName: fullName.trim(),
         email: email.trim().toLowerCase(),
         phone: phone.trim(),
-        role: role,
+        role: isRootAdmin ? 'ROLE_ADMIN' : role,
         assignedWarehouse: assignedWarehouse,
+        expiresAt: isRootAdmin ? null : (expiresAt ? new Date(expiresAt + 'T23:59:59Z').toISOString() : null),
       });
       onClose();
     } catch (err: any) {
@@ -68,25 +71,27 @@ export const EditUserModal: React.FC<EditUserModalProps> = ({
       <div className="bg-white border border-slate-200 rounded-3xl w-full max-w-lg shadow-2xl overflow-hidden my-8">
         {/* Header */}
         <div className="px-6 py-4 bg-slate-50 border-b border-slate-200 flex items-center justify-between">
-          <div className="flex items-center gap-2.5">
-            <div className="w-10 h-10 rounded-xl bg-indigo-100 text-indigo-700 flex items-center justify-center font-bold">
-              <UserCheck className="w-5 h-5" />
-            </div>
-            <div>
-              <h3 className="font-bold text-slate-900 text-base">Chỉnh Sửa Hồ Sơ & Vai Trò RBAC</h3>
-              <p className="text-xs text-slate-500 font-mono">Tài khoản: @{user.username}</p>
-            </div>
+          <div>
+            <h3 className="text-base font-bold text-slate-800">
+              Chỉnh Sửa Thông Tin & Vai Trò
+            </h3>
+            <p className="text-xs text-slate-500 font-mono mt-0.5">
+              Tài khoản: @{user.username} (ID #{user.id})
+            </p>
           </div>
-          <button onClick={onClose} className="text-slate-400 hover:text-slate-700 p-1.5 rounded-lg hover:bg-slate-100 transition-colors">
+          <button
+            onClick={onClose}
+            className="p-1 rounded-xl text-slate-400 hover:text-slate-600 hover:bg-slate-200 transition-colors cursor-pointer"
+          >
             <X className="w-5 h-5" />
           </button>
         </div>
 
-        {/* Form Body */}
-        <form onSubmit={handleSubmit} className="p-6 space-y-4 text-sm">
+        {/* Form */}
+        <form onSubmit={handleSubmit} className="p-6 space-y-4 text-xs">
           {errorMsg && (
-            <div className="p-3.5 bg-rose-50 border border-rose-200 rounded-xl text-xs text-rose-700 flex items-center gap-2">
-              <AlertTriangle className="w-4 h-4 flex-shrink-0" />
+            <div className="p-3 rounded-xl bg-rose-50 border border-rose-200 text-rose-700 flex items-center gap-2">
+              <AlertTriangle className="w-4 h-4 shrink-0 text-rose-600" />
               <span>{errorMsg}</span>
             </div>
           )}
@@ -95,33 +100,32 @@ export const EditUserModal: React.FC<EditUserModalProps> = ({
           <div className="space-y-1.5">
             <label className="font-bold text-slate-700 flex items-center gap-1.5">
               <User className="w-4 h-4 text-slate-400" />
-              <span>Họ và Tên Nhân Sự:</span>
+              <span>Họ Và Tên:</span>
             </label>
             <input
               type="text"
-              required
               value={fullName}
               onChange={(e) => setFullName(e.target.value)}
+              placeholder="Nhập họ và tên đầy đủ..."
               className="w-full px-3.5 py-2.5 bg-white border border-slate-300 rounded-xl focus:outline-none focus:border-indigo-600 focus:ring-2 focus:ring-indigo-100 font-medium"
             />
           </div>
 
-          {/* Email & Phone Grid */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+          {/* Email & Phone */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div className="space-y-1.5">
               <label className="font-bold text-slate-700 flex items-center gap-1.5">
                 <Mail className="w-4 h-4 text-slate-400" />
-                <span>Email Công Vụ:</span>
+                <span>Email Liên Hệ:</span>
               </label>
               <input
                 type="email"
-                required
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
+                placeholder="ten@smartwms.vn"
                 className="w-full px-3.5 py-2.5 bg-white border border-slate-300 rounded-xl focus:outline-none focus:border-indigo-600 focus:ring-2 focus:ring-indigo-100 font-medium"
               />
             </div>
-
             <div className="space-y-1.5">
               <label className="font-bold text-slate-700 flex items-center gap-1.5">
                 <Phone className="w-4 h-4 text-slate-400" />
@@ -137,16 +141,16 @@ export const EditUserModal: React.FC<EditUserModalProps> = ({
             </div>
           </div>
 
-          {/* RBAC Role */}
+          {/* Role */}
           <div className="space-y-1.5">
             <label className="font-bold text-slate-700 flex items-center justify-between">
               <span className="flex items-center gap-1.5">
                 <Shield className="w-4 h-4 text-indigo-600" />
-                <span>Vai Trò Hệ Thống (RBAC):</span>
+                <span>Vai Trò Hệ Thống:</span>
               </span>
               {isRootAdmin && (
                 <span className="text-2xs font-bold text-purple-700 bg-purple-50 px-2 py-0.5 rounded-full border border-purple-200">
-                  Root Admin Bất Biến
+                  Quản Trị Viên Gốc
                 </span>
               )}
             </label>
@@ -156,9 +160,9 @@ export const EditUserModal: React.FC<EditUserModalProps> = ({
               onChange={(e) => setRole(e.target.value as UserRole)}
               className="w-full px-3.5 py-2.5 bg-white border border-slate-300 rounded-xl focus:outline-none focus:border-indigo-600 focus:ring-2 focus:ring-indigo-100 font-medium disabled:bg-slate-100 cursor-pointer"
             >
-              <option value="ROLE_OPERATOR">THỦ KHO (PDA Mobile - Vận hành hiện trường)</option>
-              <option value="ROLE_WAREHOUSE_MANAGER">QUẢN LÝ KHO (Manager - Điều hành toàn diện)</option>
-              <option value="ROLE_ADMIN">ADMIN (Quản trị viên toàn hệ thống)</option>
+              <option value="ROLE_OPERATOR">Thủ kho (Vận hành thực địa)</option>
+              <option value="ROLE_WAREHOUSE_MANAGER">Quản lý trưởng kho</option>
+              <option value="ROLE_ADMIN">Quản trị viên (Admin)</option>
             </select>
           </div>
 
@@ -176,6 +180,44 @@ export const EditUserModal: React.FC<EditUserModalProps> = ({
               <option value="Kho Tổng Tân Bình (ZONE A & B)">Kho Tổng Tân Bình (ZONE A & B - TP.HCM)</option>
               <option value="Kho Phân Phối VSIP Bắc Ninh">Kho Phân Phối VSIP Bắc Ninh (Miền Bắc)</option>
             </select>
+          </div>
+
+          {/* Expiry Date */}
+          <div className="space-y-1.5">
+            <div className="flex items-center justify-between">
+              <label className="font-bold text-slate-700 flex items-center gap-1.5">
+                <Clock className="w-4 h-4 text-slate-400" />
+                <span>Ngày Hết Hạn Tài Khoản:</span>
+              </label>
+              {isRootAdmin ? (
+                <span className="text-2xs font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200">
+                  Vĩnh viễn
+                </span>
+              ) : expiresAt ? (
+                <button
+                  type="button"
+                  onClick={() => setExpiresAt('')}
+                  className="text-2xs text-slate-500 hover:text-slate-800 underline cursor-pointer"
+                >
+                  Không đặt hạn
+                </button>
+              ) : null}
+            </div>
+            {isRootAdmin ? (
+              <input
+                type="text"
+                disabled
+                value="Vĩnh viễn (Tài khoản Quản trị viên tối cao)"
+                className="w-full px-3.5 py-2.5 bg-slate-100 border border-slate-200 text-slate-500 rounded-xl font-medium text-xs cursor-not-allowed select-none"
+              />
+            ) : (
+              <input
+                type="date"
+                value={expiresAt}
+                onChange={(e) => setExpiresAt(e.target.value)}
+                className="w-full px-3.5 py-2.5 bg-white border border-slate-300 rounded-xl focus:outline-none focus:border-indigo-600 focus:ring-2 focus:ring-indigo-100 font-mono text-xs cursor-pointer"
+              />
+            )}
           </div>
 
           {/* Footer Actions */}

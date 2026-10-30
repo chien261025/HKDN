@@ -2,7 +2,6 @@ import React, { useState, useEffect } from 'react';
 import { Loader2, AlertTriangle, CheckCircle2, AlertCircle, X, RefreshCw } from 'lucide-react';
 import { UsersHeader } from '../components/UsersHeader';
 import { UserListTable } from '../components/UserListTable';
-import { RbacMatrixTable } from '../components/RbacMatrixTable';
 import { CreateUserModal } from '../components/CreateUserModal';
 import { EditUserModal } from '../components/EditUserModal';
 import { ResetPasswordModal } from '../components/ResetPasswordModal';
@@ -17,7 +16,6 @@ interface ToastState {
 }
 
 export const UsersManagementPage: React.FC = () => {
-  const [activeTab, setActiveTab] = useState<'ACCOUNTS' | 'RBAC_MATRIX'>('ACCOUNTS');
   const [users, setUsers] = useState<UserAccount[]>([]);
   const [loading, setLoading] = useState(true);
   const [fetchError, setFetchError] = useState<string | null>(null);
@@ -59,7 +57,7 @@ export const UsersManagementPage: React.FC = () => {
     setUsers((prev) => [newUser, ...prev]);
     setToast({
       type: 'success',
-      message: `Khởi tạo tài khoản @${newUser.username} thành công vào PostgreSQL!`,
+      message: `Tạo tài khoản @${newUser.username} thành công!`,
     });
   };
 
@@ -72,8 +70,8 @@ export const UsersManagementPage: React.FC = () => {
     });
   };
 
-  const handleConfirmReset = async (userId: string, newPass: string) => {
-    await userService.resetPassword(userId, newPass);
+  const handleConfirmReset = async (userId: string, newPass: string, forceChangeOnLogin: boolean) => {
+    await userService.resetPassword(userId, newPass, forceChangeOnLogin);
     setToast({
       type: 'success',
       message: `Đã cấp lại mật khẩu thành công! Mật khẩu mới: ${newPass}`,
@@ -107,8 +105,32 @@ export const UsersManagementPage: React.FC = () => {
     await userService.forceLogout(userId);
     setToast({
       type: 'success',
-      message: 'Đã cưỡng chế đăng xuất (Force Logout) và thu hồi toàn bộ token của tài khoản!',
+      message: 'Đã đăng xuất toàn bộ phiên hoạt động của tài khoản!',
     });
+  };
+
+  const handleBulkStatus = async (selectedIds: string[], isActive: boolean) => {
+    try {
+      const msg = await userService.bulkUpdateStatus(selectedIds, isActive);
+      const targetIds = new Set(selectedIds);
+      setUsers((prev) =>
+        prev.map((u) =>
+          targetIds.has(u.id)
+            ? { ...u, status: isActive ? 'ACTIVE' : 'LOCKED' }
+            : u
+        )
+      );
+      setToast({
+        type: 'success',
+        message: msg || `Đã ${isActive ? 'mở khóa' : 'khóa'} thành công ${selectedIds.length} tài khoản!`,
+      });
+    } catch (err: any) {
+      console.error('Lỗi thao tác hàng loạt:', err);
+      setToast({
+        type: 'error',
+        message: err.message || 'Không thể cập nhật trạng thái hàng loạt!',
+      });
+    }
   };
 
   return (
@@ -130,25 +152,23 @@ export const UsersManagementPage: React.FC = () => {
             {toast.type === 'info' && <CheckCircle2 className="w-4 h-4 shrink-0 text-indigo-600" />}
             <span>{toast.message}</span>
           </div>
-          <button onClick={() => setToast(null)} className="text-slate-400 hover:text-slate-700 p-1 rounded transition-colors">
+          <button onClick={() => setToast(null)} className="text-slate-400 hover:text-slate-700 p-1 rounded transition-colors cursor-pointer">
             <X className="w-3.5 h-3.5" />
           </button>
         </div>
       )}
 
-      {/* Header Banner & Security KPI */}
+      {/* Header Banner & Personnel KPI Cards */}
       <UsersHeader
-        activeTab={activeTab}
-        setActiveTab={setActiveTab}
         users={users}
         onOpenCreateModal={() => setIsCreateModalOpen(true)}
       />
 
-      {/* Body Tab */}
+      {/* Danh Sách Nhân Viên & Quản Lý Tài Khoản Doanh Nghiệp */}
       {loading ? (
         <div className="bg-white rounded-2xl border border-slate-200 p-12 flex flex-col items-center justify-center gap-3 shadow-xs">
           <Loader2 className="w-8 h-8 text-indigo-600 animate-spin" />
-          <p className="text-xs text-slate-500 font-mono">Đang đồng bộ danh sách tài khoản từ PostgreSQL database...</p>
+          <p className="text-xs text-slate-500 font-medium">Đang tải danh sách tài khoản...</p>
         </div>
       ) : fetchError ? (
         <div className="bg-rose-50 border border-rose-200 rounded-2xl p-6 text-center space-y-3">
@@ -156,22 +176,21 @@ export const UsersManagementPage: React.FC = () => {
           <p className="text-sm font-semibold text-rose-800">{fetchError}</p>
           <button
             onClick={fetchUsers}
-            className="inline-flex items-center gap-2 px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-semibold transition-colors shadow-xs"
+            className="inline-flex items-center gap-2 px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-semibold transition-colors shadow-xs cursor-pointer"
           >
             <RefreshCw className="w-3.5 h-3.5" />
             <span>Thử lại</span>
           </button>
         </div>
-      ) : activeTab === 'ACCOUNTS' ? (
+      ) : (
         <UserListTable
           users={users}
           onToggleStatus={(u) => setLockingUser(u)}
           onResetPassword={(u) => setResettingUser(u)}
           onEditUser={(u) => setEditingUser(u)}
           onViewSecurityLog={(u) => setAuditUser(u)}
+          onBulkStatus={handleBulkStatus}
         />
-      ) : (
-        <RbacMatrixTable />
       )}
 
       {/* Modals */}

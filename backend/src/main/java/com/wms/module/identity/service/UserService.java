@@ -10,8 +10,12 @@ public interface UserService {
     UserResponse getUserById(Long id);
     UserResponse createUser(CreateUserRequest request);
     UserResponse updateUserStatus(Long id, Boolean isActive);
+    void bulkUpdateStatus(com.wms.module.identity.dto.request.BulkUpdateStatusRequest request);
     UserResponse updateUserRole(Long id, String newRole);
-    void resetPassword(Long id, String newPassword);
+    void resetPassword(Long id, String newPassword, boolean mustChangePassword);
+    default void resetPassword(Long id, String newPassword) {
+        resetPassword(id, newPassword, false);
+    }
     void changePassword(com.wms.module.identity.dto.request.ChangePasswordRequest request);
     UserResponse updateUser(Long id, com.wms.module.identity.dto.request.UpdateUserRequest request);
     void forceLogout(Long id);

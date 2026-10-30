@@ -1,5 +1,5 @@
 import React from 'react';
-import { Shield, User, Smartphone, CheckCircle2, Lock } from 'lucide-react';
+import { Shield, User, Smartphone, CheckCircle2, Lock, Clock } from 'lucide-react';
 import { UserRole, UserStatus } from '../types';
 
 export const getRoleBadge = (role: UserRole): React.ReactNode => {
@@ -32,8 +32,15 @@ export const getRoleBadge = (role: UserRole): React.ReactNode => {
   }
 };
 
-export const getStatusBadge = (status: UserStatus): React.ReactNode => (
-  status === 'ACTIVE' ? (
+export const getStatusBadge = (status: UserStatus): React.ReactNode => {
+  if (status === 'EXPIRED') {
+    return (
+      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-semibold bg-amber-50 text-amber-700 border border-amber-200">
+        <Clock className="w-3 h-3 text-amber-600" /> Hết Hạn
+      </span>
+    );
+  }
+  return status === 'ACTIVE' ? (
     <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200">
       <CheckCircle2 className="w-3 h-3" /> Hoạt Động
     </span>
@@ -41,5 +48,5 @@ export const getStatusBadge = (status: UserStatus): React.ReactNode => (
     <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-semibold bg-rose-50 text-rose-700 border border-rose-200">
       <Lock className="w-3 h-3" /> Đã Khóa
     </span>
-  )
-);
+  );
+};

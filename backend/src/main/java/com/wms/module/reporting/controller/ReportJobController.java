@@ -20,6 +20,7 @@ import java.util.UUID;
 @RestController
 @RequestMapping("/reports")
 @RequiredArgsConstructor
+@org.springframework.security.access.prepost.PreAuthorize("hasAnyRole('ADMIN', 'WAREHOUSE_MANAGER')")
 @Tag(name = "7. Báo Cáo Lớn Bất Đồng Bộ (RabbitMQ & MinIO)", description = "APIs đẩy tác vụ xuất file ngầm vào RabbitMQ và stream Excel SXSSFWorkbook")
 public class ReportJobController {
 
@@ -29,14 +30,15 @@ public class ReportJobController {
     @PostMapping("/export")
     @Operation(summary = "Kích hoạt Job xuất báo cáo ngầm qua RabbitMQ",
                description = "Đẩy thông điệp vào Queue 'wms.report.task.queue'. Consumer sẽ nhận task và ghi file ngầm bằng SXSSFWorkbook.")
-    public ApiResponse<Map<String, Object>> exportReport(@Valid @RequestBody ExportReportRequest request) {
+    public ApiResponse<Map<String, Object>> exportReport(@Valid @RequestBody ExportReportRequest request, java.security.Principal principal) {
         UUID jobId = UUID.randomUUID();
-        log.info("Kich hoat Job xuat bao cao: JobId={}, Type={}", jobId, request.getReportType());
+        String caller = (principal != null) ? principal.getName() : "system";
+        log.info("Kich hoat Job xuat bao cao boi {}: JobId={}, Type={}", caller, jobId, request.getReportType());
 
         ReportTaskMessage message = ReportTaskMessage.builder()
                 .jobId(jobId)
                 .reportType(request.getReportType())
-                .requestedBy("manager01")
+                .requestedBy(caller)
                 .build();
 
         try {

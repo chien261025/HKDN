@@ -19,6 +19,7 @@ import {
   X,
 } from 'lucide-react';
 import { AuthSession } from '../../features/auth/types';
+import { isRouteAllowedForRole } from '../../features/users/data/rbacModulesData';
 
 interface AppSidebarProps {
   isSidebarCollapsed: boolean;
@@ -53,6 +54,13 @@ export const AppSidebar: React.FC<AppSidebarProps> = ({
   currentTime,
 }) => {
   const location = useLocation();
+  const [, setRbacVersion] = React.useState(0);
+
+  useEffect(() => {
+    const handleRbacUpdate = () => setRbacVersion((v) => v + 1);
+    window.addEventListener('smart_wms_rbac_updated', handleRbacUpdate);
+    return () => window.removeEventListener('smart_wms_rbac_updated', handleRbacUpdate);
+  }, []);
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -163,9 +171,12 @@ export const AppSidebar: React.FC<AppSidebarProps> = ({
         {/* Navigation Groups */}
         <nav className="flex-1 px-3 py-2 space-y-4 overflow-y-auto overflow-x-hidden scrollbar-none">
           {navGroups.map((group, groupIdx) => {
-            const visibleItems = group.items.filter(
-              (item) => !item.requiredRole || item.requiredRole === session.role
-            );
+            const visibleItems = group.items.filter((item) => {
+              if (item.requiredRole && item.requiredRole !== session.role) {
+                return false;
+              }
+              return isRouteAllowedForRole(item.path, session.role);
+            });
             if (visibleItems.length === 0) return null;
 
             return (
