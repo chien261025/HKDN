@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { X, Lock, Unlock, AlertTriangle, ShieldCheck, Loader2 } from 'lucide-react';
 import { UserAccount } from '../types';
+import { getRoleBadge } from '../utils/userBadges';
 
 interface LockUserModalProps {
   isOpen: boolean;
@@ -15,7 +16,7 @@ export const LockUserModal: React.FC<LockUserModalProps> = ({
   user,
   onConfirmToggle,
 }) => {
-  const [reason, setReason] = useState('Nghi ngờ vi phạm quy chế an toàn dữ liệu kho');
+  const [reason, setReason] = useState('Nghi ngờ vi phạm an toàn thông tin');
   const [forceLogout, setForceLogout] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
@@ -79,24 +80,27 @@ export const LockUserModal: React.FC<LockUserModalProps> = ({
           )}
 
           <div className="p-3.5 bg-slate-50 rounded-2xl border border-slate-200">
-            <div className="font-bold text-slate-900">{user.fullName}</div>
-            <div className="text-xs text-slate-500 font-mono mt-0.5">Email: {user.email} • Vai trò: {user.role}</div>
-            <div className="text-xs text-slate-600 mt-1 font-medium">{user.assignedWarehouse}</div>
+            <div className="flex items-center justify-between">
+              <span className="font-bold text-slate-900">{user.fullName}</span>
+              {getRoleBadge(user.role)}
+            </div>
+            <div className="text-xs text-slate-500 mt-1">Email: {user.email}</div>
+            <div className="text-xs text-slate-600 mt-0.5 font-medium">{user.assignedWarehouse}</div>
           </div>
 
           {isLocking ? (
             <>
               <div className="space-y-1.5">
-                <label className="font-bold text-slate-700">Lý Do Khóa Tài Khoản:</label>
+                <label className="font-semibold text-slate-700">Lý do khóa tài khoản:</label>
                 <select
                   value={reason}
                   onChange={(e) => setReason(e.target.value)}
-                  className="w-full px-3.5 py-2.5 bg-white border border-slate-300 rounded-xl focus:outline-none focus:border-rose-500 focus:ring-2 focus:ring-rose-100 font-medium cursor-pointer"
+                  className="w-full px-3.5 py-2.5 bg-white border border-slate-300 rounded-xl focus:outline-none focus:border-rose-500 focus:ring-1 focus:ring-rose-500 font-medium cursor-pointer text-slate-800"
                 >
-                  <option value="Nghi ngờ vi phạm quy chế an toàn dữ liệu kho">Nghi ngờ vi phạm quy chế an toàn dữ liệu kho</option>
-                  <option value="Nhân viên tạm nghỉ phép dài hạn / luân chuyển">Nhân viên tạm nghỉ phép dài hạn / luân chuyển</option>
+                  <option value="Nghi ngờ vi phạm an toàn thông tin">Nghi ngờ vi phạm an toàn thông tin</option>
+                  <option value="Tạm nghỉ việc / Luân chuyển công tác">Tạm nghỉ việc / Luân chuyển công tác</option>
                   <option value="Chấm dứt hợp đồng lao động">Chấm dứt hợp đồng lao động</option>
-                  <option value="Yêu cầu kiểm toán nội bộ khẩn cấp">Yêu cầu kiểm toán nội bộ khẩn cấp</option>
+                  <option value="Khác">Lý do khác</option>
                 </select>
               </div>
 
@@ -105,17 +109,17 @@ export const LockUserModal: React.FC<LockUserModalProps> = ({
                   type="checkbox"
                   checked={forceLogout}
                   onChange={(e) => setForceLogout(e.target.checked)}
-                  className="w-4 h-4 rounded text-rose-600 focus:ring-rose-500 border-slate-300"
+                  className="w-4 h-4 rounded text-rose-600 focus:ring-rose-500 border-slate-300 cursor-pointer"
                 />
-                <span className="text-xs font-semibold text-slate-800">
-                  Cưỡng chế hủy toàn bộ Token phiên đăng nhập hiện hành (Force Logout)
+                <span className="text-xs font-medium text-slate-800">
+                  Đăng xuất khỏi tất cả thiết bị đang hoạt động
                 </span>
               </label>
 
               <div className="p-3 bg-rose-50 border border-rose-200 rounded-xl text-xs text-rose-800 flex items-start gap-2">
                 <AlertTriangle className="w-4 h-4 text-rose-600 flex-shrink-0 mt-0.5" />
                 <span>
-                  Sau khi khóa, người dùng sẽ bị từ chối mọi yêu cầu API với mã <strong>HTTP 403 Forbidden</strong> và không thể đăng nhập lại.
+                  Tài khoản sau khi bị khóa sẽ không thể đăng nhập vào hệ thống.
                 </span>
               </div>
             </>
@@ -123,7 +127,7 @@ export const LockUserModal: React.FC<LockUserModalProps> = ({
             <div className="p-3 bg-emerald-50 border border-emerald-200 rounded-xl text-xs text-emerald-800 flex items-start gap-2">
               <ShieldCheck className="w-4 h-4 text-emerald-600 flex-shrink-0 mt-0.5" />
               <span>
-                Mở khóa tài khoản sẽ cho phép nhân sự đăng nhập và vận hành kho bình thường với đúng quyền hạn của vai trò hiện tại.
+                Tài khoản sẽ được mở khóa và có thể đăng nhập bình thường.
               </span>
             </div>
           )}
@@ -147,7 +151,13 @@ export const LockUserModal: React.FC<LockUserModalProps> = ({
                   : 'bg-emerald-600 hover:bg-emerald-700 shadow-emerald-600/20'
               }`}
             >
-              {submitting ? <Loader2 className="w-4 h-4 animate-spin" /> : isLocking ? <Lock className="w-4 h-4" /> : <Unlock className="w-4 h-4" />}
+              {submitting ? (
+                <Loader2 className="w-4 h-4 animate-spin" />
+              ) : isLocking ? (
+                <Lock className="w-4 h-4" />
+              ) : (
+                <Unlock className="w-4 h-4" />
+              )}
               <span>{isLocking ? 'Khóa Tài Khoản Ngay' : 'Kích Hoạt Tài Khoản'}</span>
             </button>
           </div>

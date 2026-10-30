@@ -30,6 +30,7 @@ public class UserSessionController {
     public ApiResponse<List<UserSessionResponse>> getUserSessions(
             @PathVariable Long userId,
             HttpServletRequest request) {
+        enforceSelfOrAdmin(userId, request);
         String token = extractBearerToken(request);
         log.info("API lay danh sach thiet bi dang nhap cua user id: {}", userId);
         List<UserSessionResponse> sessions = sessionService.getUserSessions(userId, token);
@@ -40,7 +41,9 @@ public class UserSessionController {
     @Operation(summary = "Đăng xuất từ xa một thiết bị cụ thể", description = "Thu hồi quyền truy cập và chấm dứt phiên làm việc của một thiết bị chỉ định")
     public ApiResponse<String> revokeSession(
             @PathVariable Long userId,
-            @PathVariable String sessionId) {
+            @PathVariable String sessionId,
+            HttpServletRequest request) {
+        enforceSelfOrAdmin(userId, request);
         log.info("API thu hoi thiet bi {} cua user id: {}", sessionId, userId);
         sessionService.revokeSession(userId, sessionId);
         return ApiResponse.success("Đã đăng xuất thiết bị thành công!", sessionId);
@@ -51,6 +54,7 @@ public class UserSessionController {
     public ApiResponse<String> revokeOtherSessions(
             @PathVariable Long userId,
             HttpServletRequest request) {
+        enforceSelfOrAdmin(userId, request);
         String token = extractBearerToken(request);
         log.info("API dang xuat tat ca cac thiet bi khac cua user id: {}", userId);
         sessionService.revokeOtherSessions(userId, token);
@@ -109,12 +113,26 @@ public class UserSessionController {
     }
 
     @PutMapping("/trusted-networks/{warehouseId}")
+    @org.springframework.security.access.prepost.PreAuthorize("hasRole('ADMIN')")
     @Operation(summary = "Cập nhật dải IP tin cậy cho một nhà kho")
     public ApiResponse<String> updateTrustedNetwork(
             @PathVariable Long warehouseId,
             @RequestBody java.util.Map<String, String> body) {
         sessionService.updateWarehouseTrustedIps(warehouseId, body.get("trustedIps"));
         return ApiResponse.success("Cập nhật dải IP mạng kho thành công!");
+    }
+
+    private void enforceSelfOrAdmin(Long targetUserId, HttpServletRequest request) {
+        String token = extractBearerToken(request);
+        if (token == null) {
+            throw new com.wms.common.exception.BusinessException(com.wms.common.exception.ErrorCode.UNAUTHORIZED, "Không tìm thấy token xác thực!");
+        }
+        Long currentUserId = resolveCurrentUserId(token);
+        String role = jwtTokenProvider.getRoleFromToken(token);
+        boolean isAdmin = role != null && (role.contains("ADMIN") || role.contains("WAREHOUSE_MANAGER"));
+        if (!isAdmin && !currentUserId.equals(targetUserId)) {
+            throw new com.wms.common.exception.BusinessException(com.wms.common.exception.ErrorCode.FORBIDDEN, "Bạn không có quyền truy cập hoặc can thiệp phiên làm việc của tài khoản khác!");
+        }
     }
 
     private Long resolveCurrentUserId(String token) {

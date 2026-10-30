@@ -14,6 +14,7 @@ import com.wms.module.identity.repository.RoleRepository;
 import com.wms.module.identity.repository.UserRepository;
 import com.wms.module.identity.repository.UserSessionRepository;
 import com.wms.module.identity.service.UserService;
+import com.wms.module.identity.service.UserSessionService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Sort;
@@ -36,6 +37,7 @@ public class UserServiceImpl implements UserService {
     private final RoleRepository roleRepository;
     private final PasswordEncoder passwordEncoder;
     private final UserSessionRepository sessionRepository;
+    private final UserSessionService userSessionService;
     private final UserMapper userMapper;
 
     @Override
@@ -84,6 +86,7 @@ public class UserServiceImpl implements UserService {
                 .email(cleanEmail)
                 .roles(new HashSet<>(Set.of(role)))
                 .isActive(true)
+                .expiresAt(request.getExpiresAt())
                 .createdAt(Instant.now())
                 .updatedAt(Instant.now())
                 .build();
@@ -107,8 +110,36 @@ public class UserServiceImpl implements UserService {
         user.setUpdatedAt(Instant.now());
         User updated = userRepository.save(user);
 
+        if (Boolean.FALSE.equals(isActive)) {
+            userSessionService.revokeAllSessions(user.getId(), "ADMIN_LOCK_STATUS");
+        }
+
         log.info("Cap nhat trang thai user {} -> isActive: {}", user.getUsername(), isActive);
         return userMapper.toResponse(updated);
+    }
+
+    @Override
+    @Transactional
+    public void bulkUpdateStatus(com.wms.module.identity.dto.request.BulkUpdateStatusRequest request) {
+        if (request.getUserIds() == null || request.getUserIds().isEmpty()) {
+            return;
+        }
+
+        List<User> targetUsers = userRepository.findAllById(request.getUserIds());
+        for (User u : targetUsers) {
+            // Không bao giờ khóa tài khoản admin tối cao
+            if ("admin".equalsIgnoreCase(u.getUsername()) && Boolean.FALSE.equals(request.getIsActive())) {
+                continue;
+            }
+            u.setIsActive(request.getIsActive());
+            u.setUpdatedAt(Instant.now());
+
+            if (Boolean.FALSE.equals(request.getIsActive())) {
+                userSessionService.revokeAllSessions(u.getId(), "ADMIN_BULK_LOCK");
+            }
+        }
+        userRepository.saveAll(targetUsers);
+        log.info("Admin da cap nhat trang thai hang loat cho {} tai khoan -> isActive: {}", targetUsers.size(), request.getIsActive());
     }
 
     @Override
@@ -135,17 +166,27 @@ public class UserServiceImpl implements UserService {
 
     @Override
     @Transactional
-    public void resetPassword(Long id, String newPassword) {
+    public void resetPassword(Long id, String newPassword, boolean mustChangePassword) {
         User user = userRepository.findById(id)
                 .orElseThrow(() -> new BusinessException(ErrorCode.NOT_FOUND, "Không tìm thấy tài khoản với ID: " + id));
 
+        if ("admin".equalsIgnoreCase(user.getUsername())) {
+            throw new BusinessException(ErrorCode.BAD_REQUEST, "Không thể cấp lại mật khẩu cho tài khoản Quản trị viên tối cao. Vui lòng đổi mật khẩu tại trang Hồ sơ cá nhân!");
+        }
+
         String targetPassword = (newPassword != null && !newPassword.isBlank()) ? newPassword.trim() : "123456";
         user.setPasswordHash(passwordEncoder.encode(targetPassword));
+        user.setMustChangePassword(mustChangePassword);
         user.setUpdatedAt(Instant.now());
         userRepository.save(user);
 
-        sessionRepository.revokeAllSessions(user.getId(), "ADMIN_RESET_PASSWORD_REVOKE", Instant.now());
-        log.info("Da reset mat khau va huy toan bo phien cu cua user: {}", user.getUsername());
+        userSessionService.revokeAllSessions(user.getId(), "ADMIN_RESET_PASSWORD_REVOKE");
+        log.info("Da reset mat khau (mustChangePassword={}) va huy toan bo phien cu cua user: {}", mustChangePassword, user.getUsername());
+    }
+
+    @Override
+    public void resetPassword(Long id, String newPassword) {
+        resetPassword(id, newPassword, false);
     }
 
     @Override
@@ -164,10 +205,11 @@ public class UserServiceImpl implements UserService {
         }
 
         user.setPasswordHash(passwordEncoder.encode(request.getNewPassword().trim()));
+        user.setMustChangePassword(false);
         user.setUpdatedAt(Instant.now());
         userRepository.save(user);
 
-        sessionRepository.revokeAllSessions(user.getId(), "USER_CHANGE_PASSWORD_REVOKE", Instant.now());
+        userSessionService.revokeAllSessions(user.getId(), "USER_CHANGE_PASSWORD_REVOKE");
         log.info("Nguoi dung {} da doi mat khau va huy toan bo phien cu thanh cong", user.getUsername());
     }
 
@@ -184,6 +226,12 @@ public class UserServiceImpl implements UserService {
 
         user.setFullName(request.getFullName().trim());
         user.setEmail(cleanEmail);
+
+        if ("admin".equalsIgnoreCase(user.getUsername())) {
+            user.setExpiresAt(null);
+        } else {
+            user.setExpiresAt(request.getExpiresAt());
+        }
 
         if (request.getRole() != null && !request.getRole().isBlank()) {
             if ("admin".equalsIgnoreCase(user.getUsername()) && !"ROLE_ADMIN".equalsIgnoreCase(request.getRole())) {
@@ -205,7 +253,7 @@ public class UserServiceImpl implements UserService {
     public void forceLogout(Long id) {
         User user = userRepository.findById(id)
                 .orElseThrow(() -> new BusinessException(ErrorCode.NOT_FOUND, "Không tìm thấy tài khoản: " + id));
-        sessionRepository.revokeAllSessions(user.getId(), "ADMIN_FORCE_LOGOUT", Instant.now());
+        userSessionService.revokeAllSessions(user.getId(), "ADMIN_FORCE_LOGOUT");
         user.setUpdatedAt(Instant.now());
         userRepository.save(user);
         log.info("Admin da Force Logout toan bo thiet bi cua user: {}", user.getUsername());

@@ -79,10 +79,7 @@ public class AuthController {
         String fullName = "Người dùng";
 
         if (user != null) {
-            if (Boolean.FALSE.equals(user.getIsActive())) {
-                throw new BusinessException(ErrorCode.FORBIDDEN, MessageConstants.ERR_ACCOUNT_LOCKED);
-            }
-
+            // 1. Kiểm tra mật khẩu trước (chống brute-force và password enumeration)
             boolean matches = passwordEncoder.matches(request.getPassword(), user.getPasswordHash());
             if (!matches) {
                 var failRes = loginAttemptService.registerFailure(user.getUsername(), clientIp, dfp);
@@ -90,11 +87,34 @@ public class AuthController {
                     String timeDesc = failRes.lockLevel() == 1 ? "1 phút" : (failRes.lockLevel() == 2 ? "3 phút" : "15 phút");
                     throw new BusinessException(ErrorCode.BAD_REQUEST,
                             "Mật khẩu không đúng! Bạn đã nhập sai " + SecurityConstants.MAX_FAILED_LOGIN_ATTEMPTS
-                                    + " lần. Tài khoản và thiết bị bị tạm khóa " + timeDesc + ".");
+                                    + " lần. Tài khoản và thiết bị bị tạm khóa " + timeDesc + ". Vui lòng thử lại sau " + failRes.remainingSeconds() + " giây!");
                 }
                 throw new BusinessException(ErrorCode.UNAUTHORIZED,
                         "Mật khẩu không chính xác! Bạn còn " + failRes.remainingAttempts() + " lần thử.");
             }
+
+            // 2. Mật khẩu đúng nhưng tài khoản đã bị khóa bởi Quản trị viên
+            if (Boolean.FALSE.equals(user.getIsActive())) {
+                var failRes = loginAttemptService.registerFailure(user.getUsername(), clientIp, dfp);
+                if (failRes.blocked()) {
+                    String timeDesc = failRes.lockLevel() == 1 ? "1 phút" : (failRes.lockLevel() == 2 ? "3 phút" : "15 phút");
+                    throw new BusinessException(ErrorCode.BAD_REQUEST,
+                            "Tài khoản hoặc thiết bị (IP) đang bị tạm khóa " + timeDesc + ". Vui lòng thử lại sau " + failRes.remainingSeconds() + " giây!");
+                }
+                throw new BusinessException(ErrorCode.FORBIDDEN, MessageConstants.ERR_ACCOUNT_LOCKED);
+            }
+
+            // 3. Mật khẩu đúng nhưng tài khoản đã hết hạn sử dụng (Account Expired)
+            if (user.getExpiresAt() != null && user.getExpiresAt().isBefore(Instant.now())) {
+                var failRes = loginAttemptService.registerFailure(user.getUsername(), clientIp, dfp);
+                if (failRes.blocked()) {
+                    String timeDesc = failRes.lockLevel() == 1 ? "1 phút" : (failRes.lockLevel() == 2 ? "3 phút" : "15 phút");
+                    throw new BusinessException(ErrorCode.BAD_REQUEST,
+                            "Tài khoản hoặc thiết bị (IP) đang bị tạm khóa " + timeDesc + ". Vui lòng thử lại sau " + failRes.remainingSeconds() + " giây!");
+                }
+                throw new BusinessException(ErrorCode.FORBIDDEN, "Tài khoản đã hết hạn sử dụng! Vui lòng liên hệ Quản trị viên.");
+            }
+
             loginAttemptService.loginSucceeded(user.getUsername(), clientIp, dfp);
             if (user.getRoles() != null && !user.getRoles().isEmpty()) {
                 roleName = user.getRoles().iterator().next().getName();
@@ -102,8 +122,12 @@ public class AuthController {
             fullName = user.getFullName();
         } else {
             var failRes = loginAttemptService.registerFailure(inputKey, clientIp, dfp);
-            throw new BusinessException(ErrorCode.UNAUTHORIZED,
-                    failRes.blocked() ? "Tài khoản & Thiết bị (IP) đã bị tạm khóa do nhập sai nhiều lần." : MessageConstants.ERR_INVALID_CREDENTIALS);
+            if (failRes.blocked()) {
+                String timeDesc = failRes.lockLevel() == 1 ? "1 phút" : (failRes.lockLevel() == 2 ? "3 phút" : "15 phút");
+                throw new BusinessException(ErrorCode.BAD_REQUEST,
+                        "Tài khoản hoặc thiết bị (IP) đang bị tạm khóa " + timeDesc + ". Vui lòng thử lại sau " + failRes.remainingSeconds() + " giây!");
+            }
+            throw new BusinessException(ErrorCode.UNAUTHORIZED, MessageConstants.ERR_INVALID_CREDENTIALS);
         }
 
         String username = (user != null) ? user.getUsername() : inputKey;
@@ -124,6 +148,7 @@ public class AuthController {
                 .fullName(fullName)
                 .role(roleName)
                 .expiresIn(SecurityConstants.JWT_EXPIRATION_MS)
+                .mustChangePassword(user != null && Boolean.TRUE.equals(user.getMustChangePassword()))
                 .build();
 
         return ApiResponse.success(MessageConstants.LOGIN_SUCCESS, response);

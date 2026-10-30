@@ -14,4 +14,6 @@ public interface PickAllocationRepository extends JpaRepository<PickAllocation, 
     List<PickAllocation> findByLocationIdAndBatchId(Long locationId, Long batchId);
 
     List<PickAllocation> findByStatus(String status);
+
+    void deleteByOutboundOrderItemId(Long outboundOrderItemId);
 }

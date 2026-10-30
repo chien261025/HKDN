@@ -7,6 +7,7 @@ export interface AuthSession {
   role: UserRole;
   warehouse: string;
   expiresAt: string;
+  mustChangePassword?: boolean;
   email?: string;
   loginAt?: string;
 }

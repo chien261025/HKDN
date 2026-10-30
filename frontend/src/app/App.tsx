@@ -37,7 +37,7 @@ const AppContent: React.FC = () => {
       const token = localStorage.getItem(STORAGE_KEYS.TOKEN);
       if (token && location.pathname !== '/login') {
         authService.checkSessionStatus().then((status) => {
-          if (!status.active && status.reason === 'SESSION_REVOKED') {
+          if (!status.active) {
             localStorage.removeItem(STORAGE_KEYS.TOKEN);
             localStorage.removeItem(STORAGE_KEYS.SESSION);
             window.location.href = '/login?expired=true';
@@ -46,10 +46,23 @@ const AppContent: React.FC = () => {
       }
     };
 
-    const timer = setTimeout(verifySession, 4000);
-    const interval = setInterval(verifySession, 20000);
+    // Kiểm tra ngay lập tức khi người dùng click/focus vào tab
+    window.addEventListener('focus', verifySession);
+
+    // Đồng bộ đa tab: tự động văng ngay nếu tab khác hủy token
+    const handleStorageChange = (e: StorageEvent) => {
+      if (e.key === STORAGE_KEYS.TOKEN && !e.newValue) {
+        window.location.href = '/login?expired=true';
+      }
+    };
+    window.addEventListener('storage', handleStorageChange);
+
+    // Nhịp tim Heartbeat kiểm tra phiên thời gian thực mỗi 3 giây
+    const interval = setInterval(verifySession, 3000);
+
     return () => {
-      clearTimeout(timer);
+      window.removeEventListener('focus', verifySession);
+      window.removeEventListener('storage', handleStorageChange);
       clearInterval(interval);
     };
   }, [location.pathname]);

@@ -10,6 +10,7 @@ export interface FefoAllocation {
 
 export interface OutboundItem {
   id: string;
+  productId?: number;
   sku: string;
   productName: string;
   requestedQty: number;

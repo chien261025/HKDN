@@ -1,46 +1,57 @@
 import { apiClient } from '../../../services/api';
 import { StockItem, LedgerEntryData } from '../types';
 
-const LOCATION_BARCODES: Record<number, string> = {
-  1: 'WH01-ZA-A01-R01-S01-B01',
-  2: 'WH01-ZA-A01-R01-S02-B02',
-  3: 'WH01-ZA-A01-R02-S01-B03',
-  4: 'WH01-ZA-A02-R01-S01-B04',
-  5: 'WH01-ZB-B01-R01-S01-B05',
-  6: 'WH01-ZB-B01-R01-S02-B06',
-};
+export interface SafetyStockAlert {
+  productId: number;
+  sku: string;
+  barcode: string;
+  productName: string;
+  categoryName: string;
+  unit: string;
+  currentOnHand: number;
+  currentReserved: number;
+  currentAvailable: number;
+  safetyStock: number;
+  reorderPoint: number;
+  suggestedReorderQty: number;
+  alertLevel: 'CRITICAL' | 'WARNING' | 'OUT_OF_STOCK' | 'NORMAL';
+  message: string;
+}
 
 export const inventoryService = {
   async getInventoryBalances(): Promise<StockItem[]> {
     try {
       const res = await apiClient.get('/inventory');
       if (res.data?.data && Array.isArray(res.data.data)) {
-        return res.data.data.map((inv: any) => {
-          const isMilk = inv.productId === 1;
-          const isS24 = inv.productId === 2;
-          const isOmo = inv.productId === 3;
-          const isExpiring = inv.batchId === 1;
-
-          return {
-            id: inv.id,
-            productId: inv.productId,
-            locationId: inv.locationId,
-            batchId: inv.batchId,
-            sku: isMilk ? 'SKU-MILK-100' : isS24 ? 'SKU-SAMS-S24' : 'SKU-OMO-MATIC',
-            name: isMilk ? 'Sữa tươi tiệt trùng Vinamilk 100% 1L' : isS24 ? 'Điện thoại Samsung Galaxy S24 Ultra 256GB' : 'Nước giặt OMO Matic Cửa Trên 3.6kg',
-            locationBarcode: LOCATION_BARCODES[inv.locationId] || `LOC-${inv.locationId}`,
-            batchNumber: inv.batchId === 1 ? 'BATCH-MILK-26A' : inv.batchId === 2 ? 'BATCH-MILK-26B' : inv.batchId === 3 ? 'BATCH-S24-01' : 'BATCH-OMO-01',
-            expiryDate: inv.batchId === 1 ? '2026-09-25' : inv.batchId === 2 ? '2026-11-30' : inv.batchId === 3 ? '2028-01-10' : '2027-03-01',
-            onHandQty: inv.onHandQty,
-            reservedQty: inv.reservedQty,
-            availableQty: inv.availableQty != null ? inv.availableQty : (inv.onHandQty - inv.reservedQty),
-            isExpiringSoon: isExpiring,
-          };
-        });
+        return res.data.data.map((inv: any) => ({
+          id: inv.id,
+          productId: inv.productId,
+          locationId: inv.locationId,
+          batchId: inv.batchId,
+          sku: inv.sku || `SKU-${inv.productId}`,
+          name: inv.productName || `Sản phẩm #${inv.productId}`,
+          locationBarcode: inv.locationBarcode || `LOC-${inv.locationId}`,
+          batchNumber: inv.batchNumber || `BATCH-${inv.batchId}`,
+          expiryDate: inv.expiryDate || 'N/A',
+          onHandQty: inv.onHandQty ?? 0,
+          reservedQty: inv.reservedQty ?? 0,
+          availableQty: inv.availableQty != null ? inv.availableQty : ((inv.onHandQty ?? 0) - (inv.reservedQty ?? 0)),
+          isExpiringSoon: Boolean(inv.isExpiringSoon),
+        }));
       }
       return [];
     } catch (err) {
       console.warn('Backend inventory balances error:', err);
+      return [];
+    }
+  },
+
+  async getSafetyStockAlerts(): Promise<SafetyStockAlert[]> {
+    try {
+      const res = await apiClient.get('/inventory/alerts/safety-stock');
+      return res.data?.data || [];
+    } catch (err) {
+      console.warn('Backend safety stock alerts error:', err);
       return [];
     }
   },
@@ -68,18 +79,18 @@ export const inventoryService = {
           id: String(l.id),
           transactionType: (l.transactionType || 'OUTBOUND') as any,
           referenceCode: l.referenceCode || `TX-${l.id}`,
-          locationBarcode: LOCATION_BARCODES[l.locationId] || `LOC-${l.locationId}`,
-          productSku: l.productId === 1 ? 'SKU-MILK-100' : 'SKU-SAMS-S24',
-          productName: l.productId === 1 ? 'Sữa tươi Vinamilk 100% 1L' : 'Samsung Galaxy S24 Ultra',
-          batchNumber: l.batchId === 1 ? 'BATCH-MILK-26A' : 'BATCH-S24-01',
-          expiryDate: '2026-09-25',
-          qtyChange: l.qtyChange,
-          balanceBefore: (l.balanceAfter || 80) - (l.qtyChange || 0),
-          balanceAfter: l.balanceAfter,
-          performedBy: 'Trần Trưởng Kho',
+          locationBarcode: l.locationBarcode || `LOC-${l.locationId}`,
+          productSku: l.productSku || `SKU-${l.productId}`,
+          productName: l.productName || `Sản phẩm #${l.productId}`,
+          batchNumber: l.batchNumber || `BATCH-${l.batchId}`,
+          expiryDate: l.expiryDate || 'N/A',
+          qtyChange: l.qtyChange ?? 0,
+          balanceBefore: l.balanceBefore != null ? l.balanceBefore : ((l.balanceAfter || 0) - (l.qtyChange || 0)),
+          balanceAfter: l.balanceAfter ?? 0,
+          performedBy: l.performedByName || (l.performedBy ? `Nhân viên #${l.performedBy}` : 'Hệ thống WMS'),
           notes: l.notes || 'Bút toán tự động ghi nhận vào sổ cái',
           timestamp: l.createdAt ? new Date(l.createdAt).toLocaleString('vi-VN') : new Date().toLocaleString('vi-VN'),
-          hashSignature: `SHA256:7f83b1657ff1fc53b92dc18148a1d65dfc2d4b1f...`,
+          hashSignature: `SHA256:LEDGER-${l.id}-${l.referenceCode || 'TX'}`,
         }));
       }
       return [];
@@ -104,4 +115,3 @@ export const inventoryService = {
     }
   },
 };
-

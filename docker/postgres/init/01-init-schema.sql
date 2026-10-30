@@ -9,19 +9,6 @@ CREATE TABLE IF NOT EXISTS wms_role (
     description VARCHAR(255)
 );
 
-CREATE TABLE IF NOT EXISTS wms_permission (
-    id SERIAL PRIMARY KEY,
-    code VARCHAR(100) UNIQUE NOT NULL,                   -- VD: 'INVENTORY:READ', 'ORDER:APPROVE'
-    name VARCHAR(255) NOT NULL,
-    module VARCHAR(50) NOT NULL
-);
-
-CREATE TABLE IF NOT EXISTS wms_role_permission (
-    role_id INT NOT NULL REFERENCES wms_role(id) ON DELETE CASCADE,
-    permission_id INT NOT NULL REFERENCES wms_permission(id) ON DELETE CASCADE,
-    PRIMARY KEY (role_id, permission_id)
-);
-
 -- Bảng người dùng: Chuẩn hóa 100% RBAC đa vai trò thông qua bảng wms_user_role
 CREATE TABLE IF NOT EXISTS wms_user (
     id BIGSERIAL PRIMARY KEY,
@@ -30,6 +17,8 @@ CREATE TABLE IF NOT EXISTS wms_user (
     full_name VARCHAR(100) NOT NULL,
     email VARCHAR(100) UNIQUE NOT NULL,
     is_active BOOLEAN DEFAULT TRUE,
+    expires_at TIMESTAMPTZ,
+    must_change_password BOOLEAN NOT NULL DEFAULT FALSE,
     created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
 );
@@ -39,6 +28,25 @@ CREATE TABLE IF NOT EXISTS wms_user_role (
     role_id INT NOT NULL REFERENCES wms_role(id) ON DELETE CASCADE,
     PRIMARY KEY (user_id, role_id)
 );
+
+-- Bảng quản lý đa phiên thiết bị đăng nhập (Multi-Device Sessions)
+CREATE TABLE IF NOT EXISTS wms_user_session (
+    id VARCHAR(36) PRIMARY KEY,
+    user_id BIGINT NOT NULL REFERENCES wms_user(id) ON DELETE CASCADE,
+    device_name VARCHAR(100) NOT NULL,
+    device_type VARCHAR(30) NOT NULL,
+    ip_address VARCHAR(50) NOT NULL,
+    location_name VARCHAR(150) NOT NULL,
+    token_hash VARCHAR(64) NOT NULL,
+    is_active BOOLEAN DEFAULT TRUE,
+    created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
+    last_active_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
+    revoked_reason VARCHAR(100)
+);
+
+CREATE INDEX IF NOT EXISTS idx_user_session_user_id ON wms_user_session(user_id);
+CREATE INDEX IF NOT EXISTS idx_user_session_active ON wms_user_session(user_id, is_active);
+CREATE INDEX IF NOT EXISTS idx_user_session_token ON wms_user_session(token_hash);
 
 -- 2. BẢNG MASTER DATA: KHO TỔNG (WAREHOUSE) & VỊ TRÍ KHO VẬT LÝ (LOCATION TOPOLOGY)
 CREATE TABLE IF NOT EXISTS wms_warehouse (
@@ -99,20 +107,6 @@ CREATE TABLE IF NOT EXISTS wms_product (
     reorder_point INT DEFAULT 20,
     created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
-);
-
--- Bảng liên kết N-N: Danh mục cung ứng (Supplier Product Catalog)
-CREATE TABLE IF NOT EXISTS wms_supplier_product (
-    supplier_id BIGINT NOT NULL REFERENCES wms_supplier(id) ON DELETE CASCADE,
-    product_id BIGINT NOT NULL REFERENCES wms_product(id) ON DELETE CASCADE,
-    supplier_sku VARCHAR(100),
-    purchase_price NUMERIC(15,2) DEFAULT 0.00,
-    lead_time_days INT DEFAULT 3,
-    min_order_qty INT DEFAULT 1,
-    is_preferred BOOLEAN DEFAULT FALSE,
-    created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
-    PRIMARY KEY (supplier_id, product_id)
 );
 
 -- 4. BẢNG LÔ HÀNG (BATCH) & HẠN SỬ DỤNG
@@ -200,53 +194,7 @@ CREATE TABLE IF NOT EXISTS wms_inbound_order_item (
         CHECK (received_qty <= expected_qty * (1 + (over_delivery_tolerance_pct / 100.0)))
 );
 
--- 8B. BẢNG BIÊN BẢN TIẾP NHẬN HÀNG THỰC TẾ & KIỂM TRA CHẤT LƯỢNG (RECEIVING & QC)
-CREATE TABLE IF NOT EXISTS wms_receipt (
-    id BIGSERIAL PRIMARY KEY,
-    receipt_code VARCHAR(50) UNIQUE NOT NULL,            -- VD: 'REC-2026-001'
-    inbound_order_id BIGINT NOT NULL REFERENCES wms_inbound_order(id) ON DELETE RESTRICT,
-    warehouse_id BIGINT NOT NULL REFERENCES wms_warehouse(id) ON DELETE RESTRICT,
-    dock_number VARCHAR(50),                             -- Cửa tiếp nhận / Receiving Dock
-    status VARCHAR(30) NOT NULL DEFAULT 'RECEIVING' 
-        CHECK (status IN ('RECEIVING', 'COMPLETED', 'CANCELLED')),
-    received_by BIGINT NOT NULL REFERENCES wms_user(id) ON DELETE RESTRICT,
-    received_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
-    notes TEXT,
-    created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
-);
-
-CREATE TABLE IF NOT EXISTS wms_receipt_item (
-    id BIGSERIAL PRIMARY KEY,
-    receipt_id BIGINT NOT NULL REFERENCES wms_receipt(id) ON DELETE CASCADE,
-    inbound_order_item_id BIGINT NOT NULL REFERENCES wms_inbound_order_item(id) ON DELETE RESTRICT,
-    product_id BIGINT NOT NULL REFERENCES wms_product(id) ON DELETE RESTRICT,
-    batch_id BIGINT REFERENCES wms_product_batch(id) ON DELETE RESTRICT,
-    accepted_qty INT NOT NULL CHECK (accepted_qty >= 0),
-    rejected_qty INT NOT NULL DEFAULT 0 CHECK (rejected_qty >= 0),
-    reject_reason VARCHAR(255),
-    created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
-);
-
--- BẢNG NHIỆM VỤ CẤT HÀNG VÀO KỆ (PUTAWAY TASK)
-CREATE TABLE IF NOT EXISTS wms_putaway_task (
-    id BIGSERIAL PRIMARY KEY,
-    task_code VARCHAR(50) UNIQUE NOT NULL,               -- VD: 'PUT-2026-001'
-    receipt_item_id BIGINT NOT NULL REFERENCES wms_receipt_item(id) ON DELETE RESTRICT,
-    product_id BIGINT NOT NULL REFERENCES wms_product(id) ON DELETE RESTRICT,
-    batch_id BIGINT REFERENCES wms_product_batch(id) ON DELETE RESTRICT,
-    source_location_id BIGINT REFERENCES wms_location(id) ON DELETE RESTRICT,     -- Vị trí đỗ/staging ban đầu
-    destination_location_id BIGINT NOT NULL REFERENCES wms_location(id) ON DELETE RESTRICT, -- Vị trí ô kệ đích do Putaway Engine đề xuất
-    quantity INT NOT NULL CHECK (quantity > 0),
-    status VARCHAR(30) NOT NULL DEFAULT 'PENDING' 
-        CHECK (status IN ('PENDING', 'IN_PROGRESS', 'COMPLETED', 'CANCELLED')),
-    assigned_to BIGINT REFERENCES wms_user(id) ON DELETE SET NULL,
-    completed_at TIMESTAMPTZ,
-    created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
-);
-
--- 8. BẢNG QUẢN LÝ ĐƠN HÀNG XUẤT KHO & PHÂN BỔ NHẶT HÀNG (OUTBOUND DOMAIN)
+-- 8. BẢNG QUẢN LÝ ĐƠN HÀNG XUẤT KHO, PHÂN BỔ FEFO & GIỮ CHỖ TỒN KHO (OUTBOUND DOMAIN)
 CREATE TABLE IF NOT EXISTS wms_outbound_order (
     id BIGSERIAL PRIMARY KEY,
     order_code VARCHAR(50) UNIQUE NOT NULL,
@@ -300,7 +248,7 @@ CREATE TABLE IF NOT EXISTS wms_pick_allocation (
         REFERENCES wms_inventory(location_id, product_id, batch_id) ON DELETE RESTRICT
 );
 
--- 8C. BẢNG THEO DÕI GIỮ CHỖ TỒN KHO CHO ĐƠN HÀNG (STOCK RESERVATION)
+-- Bảng theo dõi giữ chỗ tồn kho cho đơn hàng xuất (Stock Reservation)
 CREATE TABLE IF NOT EXISTS wms_stock_reservation (
     id BIGSERIAL PRIMARY KEY,
     outbound_order_id BIGINT NOT NULL REFERENCES wms_outbound_order(id) ON DELETE CASCADE,
@@ -315,48 +263,6 @@ CREATE TABLE IF NOT EXISTS wms_stock_reservation (
     created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
     CONSTRAINT fk_reservation_inventory FOREIGN KEY (location_id, product_id, batch_id) 
         REFERENCES wms_inventory(location_id, product_id, batch_id) ON DELETE RESTRICT
-);
-
--- 8D. BẢNG ĐÓNG GÓI KIỆN HÀNG & KIỂM ĐẾM QC (PACKING & QC)
-CREATE TABLE IF NOT EXISTS wms_package (
-    id BIGSERIAL PRIMARY KEY,
-    package_code VARCHAR(50) UNIQUE NOT NULL,            -- Mã kiện hàng (VD: 'PKG-2026-001')
-    outbound_order_id BIGINT NOT NULL REFERENCES wms_outbound_order(id) ON DELETE RESTRICT,
-    tracking_number VARCHAR(100),                        -- Mã vận đơn kiện hàng
-    weight_kg NUMERIC(10,2),                             -- Trọng lượng thực tế kiện hàng
-    status VARCHAR(30) NOT NULL DEFAULT 'PACKING' 
-        CHECK (status IN ('PACKING', 'SEALED', 'SHIPPED')),
-    packed_by BIGINT NOT NULL REFERENCES wms_user(id) ON DELETE RESTRICT,
-    packed_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
-    notes TEXT,
-    created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
-);
-
-CREATE TABLE IF NOT EXISTS wms_package_item (
-    id BIGSERIAL PRIMARY KEY,
-    package_id BIGINT NOT NULL REFERENCES wms_package(id) ON DELETE CASCADE,
-    product_id BIGINT NOT NULL REFERENCES wms_product(id) ON DELETE RESTRICT,
-    batch_id BIGINT NOT NULL REFERENCES wms_product_batch(id) ON DELETE RESTRICT,
-    quantity INT NOT NULL CHECK (quantity > 0)
-);
-
--- 8E. BẢNG VẬN ĐƠN XUẤT KHO & GIAO VẬN (SHIPPING & DISPATCH)
-CREATE TABLE IF NOT EXISTS wms_shipment (
-    id BIGSERIAL PRIMARY KEY,
-    shipment_code VARCHAR(50) UNIQUE NOT NULL,           -- Chuyến xuất / Vận đơn (VD: 'SHP-2026-001')
-    outbound_order_id BIGINT NOT NULL REFERENCES wms_outbound_order(id) ON DELETE RESTRICT,
-    carrier_name VARCHAR(100) NOT NULL,                  -- Đơn vị vận chuyển (GHTK, Viettel Post, Xe tải nội bộ)
-    vehicle_number VARCHAR(50),                          -- Biển số xe tải
-    driver_name VARCHAR(100),                            -- Tên tài xế
-    driver_phone VARCHAR(20),
-    status VARCHAR(30) NOT NULL DEFAULT 'DISPATCHED' 
-        CHECK (status IN ('PREPARING', 'DISPATCHED', 'DELIVERED', 'RETURNED')),
-    dispatched_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
-    created_by BIGINT NOT NULL REFERENCES wms_user(id) ON DELETE RESTRICT,
-    notes TEXT,
-    created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
 );
 
 -- 9. BẢNG QUẢN LÝ ĐIỀU CHUYỂN VỊ TRÍ / CHUYỂN KHO (STOCK TRANSFER DOMAIN)
@@ -381,7 +287,7 @@ CREATE TABLE IF NOT EXISTS wms_stock_transfer (
         REFERENCES wms_product_batch(id, product_id) ON DELETE RESTRICT
 );
 
--- 10. BẢNG QUẢN LÝ KIỂM KÊ KHO (STOCK AUDIT / CYCLE COUNT)
+-- 10. BẢNG QUẢN LÝ KIỂM KÊ KHO & CÂN ĐỐI TỒN KHO (STOCK AUDIT & ADJUSTMENT DOMAIN)
 CREATE TABLE IF NOT EXISTS wms_inventory_audit (
     id BIGSERIAL PRIMARY KEY,
     audit_code VARCHAR(50) UNIQUE NOT NULL,
@@ -419,7 +325,7 @@ CREATE TABLE IF NOT EXISTS wms_inventory_audit_item (
         REFERENCES wms_inventory(location_id, product_id, batch_id) ON DELETE RESTRICT
 );
 
--- 10B. BẢNG ĐIỀU CHỈNH TỒN KHO SAU KIỂM KÊ (STOCK ADJUSTMENT DOMAIN)
+-- Bảng điều chỉnh tồn kho sau kiểm kê (Stock Adjustment)
 CREATE TABLE IF NOT EXISTS wms_stock_adjustment (
     id BIGSERIAL PRIMARY KEY,
     adjustment_code VARCHAR(50) UNIQUE NOT NULL,         -- VD: 'ADJ-2026-001'
@@ -509,13 +415,8 @@ CREATE TRIGGER trg_category_updated_at BEFORE UPDATE ON wms_category FOR EACH RO
 CREATE TRIGGER trg_supplier_updated_at BEFORE UPDATE ON wms_supplier FOR EACH ROW EXECUTE FUNCTION trg_set_updated_at();
 CREATE TRIGGER trg_product_updated_at BEFORE UPDATE ON wms_product FOR EACH ROW EXECUTE FUNCTION trg_set_updated_at();
 CREATE TRIGGER trg_product_batch_updated_at BEFORE UPDATE ON wms_product_batch FOR EACH ROW EXECUTE FUNCTION trg_set_updated_at();
-CREATE TRIGGER trg_supplier_product_updated_at BEFORE UPDATE ON wms_supplier_product FOR EACH ROW EXECUTE FUNCTION trg_set_updated_at();
 CREATE TRIGGER trg_inbound_order_updated_at BEFORE UPDATE ON wms_inbound_order FOR EACH ROW EXECUTE FUNCTION trg_set_updated_at();
 CREATE TRIGGER trg_outbound_order_updated_at BEFORE UPDATE ON wms_outbound_order FOR EACH ROW EXECUTE FUNCTION trg_set_updated_at();
-CREATE TRIGGER trg_receipt_updated_at BEFORE UPDATE ON wms_receipt FOR EACH ROW EXECUTE FUNCTION trg_set_updated_at();
-CREATE TRIGGER trg_putaway_task_updated_at BEFORE UPDATE ON wms_putaway_task FOR EACH ROW EXECUTE FUNCTION trg_set_updated_at();
-CREATE TRIGGER trg_package_updated_at BEFORE UPDATE ON wms_package FOR EACH ROW EXECUTE FUNCTION trg_set_updated_at();
-CREATE TRIGGER trg_shipment_updated_at BEFORE UPDATE ON wms_shipment FOR EACH ROW EXECUTE FUNCTION trg_set_updated_at();
 CREATE TRIGGER trg_stock_adjustment_updated_at BEFORE UPDATE ON wms_stock_adjustment FOR EACH ROW EXECUTE FUNCTION trg_set_updated_at();
 
 -- Trigger Function: Bảo vệ Sổ cái Bất biến (Immutable Ledger) - Cấm UPDATE và DELETE
@@ -688,18 +589,9 @@ CREATE INDEX IF NOT EXISTS idx_audit_item_loc_prod ON wms_inventory_audit_item(l
 CREATE INDEX IF NOT EXISTS idx_outbox_status_retry ON wms_outbox_event(status, next_retry_at) 
 WHERE status IN ('PENDING', 'FAILED');
 
--- Index Phân hệ Tiếp nhận hàng & Cất kệ
-CREATE INDEX IF NOT EXISTS idx_receipt_inbound ON wms_receipt(inbound_order_id);
-CREATE INDEX IF NOT EXISTS idx_receipt_item_receipt ON wms_receipt_item(receipt_id);
-CREATE INDEX IF NOT EXISTS idx_putaway_task_status ON wms_putaway_task(status);
-CREATE INDEX IF NOT EXISTS idx_putaway_task_dest ON wms_putaway_task(destination_location_id);
-
--- Index Phân hệ Giữ chỗ tồn kho, Đóng gói & Giao vận
+-- Index Phân hệ Giữ chỗ tồn kho (Stock Reservation)
 CREATE INDEX IF NOT EXISTS idx_reservation_order ON wms_stock_reservation(outbound_order_id);
 CREATE INDEX IF NOT EXISTS idx_reservation_loc_batch ON wms_stock_reservation(location_id, batch_id);
-CREATE INDEX IF NOT EXISTS idx_package_order ON wms_package(outbound_order_id);
-CREATE INDEX IF NOT EXISTS idx_package_item_pkg ON wms_package_item(package_id);
-CREATE INDEX IF NOT EXISTS idx_shipment_order ON wms_shipment(outbound_order_id);
 
 -- Index Phân hệ Cân chỉnh tồn kho sau kiểm kê
 CREATE INDEX IF NOT EXISTS idx_adj_audit ON wms_stock_adjustment(audit_id);

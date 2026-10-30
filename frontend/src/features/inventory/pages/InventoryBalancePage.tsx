@@ -1,24 +1,26 @@
 import React, { useState, useEffect, useTransition } from 'react';
-import { Package, Clock, Layers, ArrowRightLeft, CheckCircle2, AlertCircle } from 'lucide-react';
+import { Package, Clock, Layers, ArrowRightLeft, CheckCircle2, AlertCircle, ShieldAlert } from 'lucide-react';
 import { StockItem, StockTransferDto } from '../types';
 import { OutboundFefoWorkbench } from '../components/OutboundFefoWorkbench';
 import { StockBalanceTable } from '../components/balance/StockBalanceTable';
 import { StockTransferHistoryTable } from '../components/balance/StockTransferHistoryTable';
+import { SafetyStockAlertsPanel } from '../components/SafetyStockAlertsPanel';
 import { StockTransferModal } from '../components/StockTransferModal';
 import { StockLedgerModal, LedgerEntryData } from '../components/StockLedgerModal';
-import { inventoryService } from '../services/inventoryService';
+import { inventoryService, SafetyStockAlert } from '../services/inventoryService';
 
 export const InventoryBalancePage: React.FC = () => {
-  const [activeTab, setActiveTab] = useState<'outbound' | 'balance' | 'transfer'>('balance');
+  const [activeTab, setActiveTab] = useState<'outbound' | 'balance' | 'transfer' | 'alerts'>('balance');
   const [, startTransition] = useTransition();
 
-  const handleTabChange = (tab: 'outbound' | 'balance' | 'transfer') => {
+  const handleTabChange = (tab: 'outbound' | 'balance' | 'transfer' | 'alerts') => {
     startTransition(() => {
       setActiveTab(tab);
     });
   };
   const [stocks, setStocks] = useState<StockItem[]>([]);
   const [transfers, setTransfers] = useState<StockTransferDto[]>([]);
+  const [alerts, setAlerts] = useState<SafetyStockAlert[]>([]);
   const [loadingTransfers, setLoadingTransfers] = useState(false);
   const [notification, setNotification] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
 
@@ -47,6 +49,7 @@ export const InventoryBalancePage: React.FC = () => {
   useEffect(() => {
     loadStockData();
     loadTransfers();
+    inventoryService.getSafetyStockAlerts().then(setAlerts);
   }, []);
 
   // Xử lý giữ hàng từ bảng tồn kho (Tab 2)
@@ -122,65 +125,85 @@ export const InventoryBalancePage: React.FC = () => {
 
   return (
     <div className="space-y-5 max-w-[1600px] mx-auto pb-10">
-      {/* Header & Bộ Chuyển Tab Doanh Nghiệp */}
-      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 pb-4 border-b border-slate-200">
-        <div>
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-indigo-600 flex items-center justify-center text-white shadow-xs">
-              <Package className="w-5 h-5" />
-            </div>
-            <h1 className="text-xl sm:text-2xl font-bold text-slate-900 tracking-tight">
-              Quản Lý Tồn Kho & Điều Chuyển Nội Bộ
-            </h1>
+      {/* Header */}
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+        <div className="flex items-center gap-3.5">
+          <div className="w-11 h-11 rounded-xl bg-slate-900 text-white flex items-center justify-center shadow-xs flex-shrink-0">
+            <Package className="w-5 h-5" />
           </div>
-          <p className="text-xs sm:text-sm text-slate-500 font-normal mt-1 pl-13">
-            Theo dõi số lượng tồn kho theo vị trí ô kệ, điều phối xuất hàng FEFO và điều chuyển hàng hóa linh hoạt.
-          </p>
+          <div>
+            <h1 className="text-xl font-bold text-slate-900 tracking-tight">
+              Quản Lý Tồn Kho & Điều Chuyển
+            </h1>
+            <p className="text-xs text-slate-500 mt-0.5">
+              Kiểm soát số dư theo vị trí ô kệ, điều chuyển nội bộ và giám sát định mức tồn an toàn (Safety Stock)
+            </p>
+          </div>
         </div>
+      </div>
 
-        {/* Tab Gạt Tối Giản, Chuẩn Enterprise */}
-        <div className="flex items-center bg-slate-100/90 p-1 rounded-xl border border-slate-200/80 flex-wrap gap-1">
-          <button
-            onClick={() => handleTabChange('balance')}
-            className={`tab-pill-btn flex items-center gap-2 px-3.5 py-1.5 rounded-lg text-xs sm:text-sm cursor-pointer ${
-              activeTab === 'balance'
-                ? 'bg-white text-slate-900 font-semibold shadow-xs border border-slate-200/80'
-                : 'text-slate-600 hover:text-slate-900 hover:bg-slate-200/50 font-medium border border-transparent'
-            }`}
-          >
-            <Layers className="w-4 h-4 text-indigo-600" />
-            <span>Tồn Kho Thực Tế</span>
-          </button>
+      {/* Horizontal Tabs - Clean Enterprise Standard */}
+      <div className="flex items-center gap-2 border-b border-slate-200 overflow-x-auto no-scrollbar">
+        <button
+          onClick={() => handleTabChange('balance')}
+          className={`flex items-center gap-2 px-4 py-2.5 text-xs sm:text-sm font-semibold border-b-2 transition-all cursor-pointer whitespace-nowrap ${
+            activeTab === 'balance'
+              ? 'border-indigo-600 text-indigo-700 bg-indigo-50/40 rounded-t-lg'
+              : 'border-transparent text-slate-600 hover:text-slate-900 hover:border-slate-300'
+          }`}
+        >
+          <Layers className="w-4 h-4 text-slate-500" />
+          <span>Tồn Kho Thực Tế</span>
+          <span className="px-1.5 py-0.2 rounded-full text-2xs bg-slate-100 text-slate-600 font-mono">
+            {stocks.length}
+          </span>
+        </button>
 
-          <button
-            onClick={() => handleTabChange('transfer')}
-            className={`tab-pill-btn flex items-center gap-2 px-3.5 py-1.5 rounded-lg text-xs sm:text-sm cursor-pointer ${
-              activeTab === 'transfer'
-                ? 'bg-white text-slate-900 font-semibold shadow-xs border border-slate-200/80'
-                : 'text-slate-600 hover:text-slate-900 hover:bg-slate-200/50 font-medium border border-transparent'
-            }`}
-          >
-            <ArrowRightLeft className="w-4 h-4 text-indigo-600" />
-            <span>Lịch Sử Điều Chuyển</span>
-            {transfers.length > 0 && (
-              <span className="px-1.5 py-0.2 rounded-full text-2xs bg-indigo-100 text-indigo-700 font-mono font-semibold">
-                {transfers.length}
-              </span>
-            )}
-          </button>
+        <button
+          onClick={() => handleTabChange('alerts')}
+          className={`flex items-center gap-2 px-4 py-2.5 text-xs sm:text-sm font-semibold border-b-2 transition-all cursor-pointer whitespace-nowrap ${
+            activeTab === 'alerts'
+              ? 'border-rose-600 text-rose-700 bg-rose-50/40 rounded-t-lg'
+              : 'border-transparent text-slate-600 hover:text-rose-700 hover:border-rose-300'
+          }`}
+        >
+          <ShieldAlert className="w-4 h-4 text-rose-500" />
+          <span>Cảnh Báo Tồn An Toàn</span>
+          {alerts.length > 0 && (
+            <span className="px-1.5 py-0.2 rounded-full text-2xs bg-rose-600 text-white font-mono font-bold">
+              {alerts.length}
+            </span>
+          )}
+        </button>
 
-          <button
-            onClick={() => handleTabChange('outbound')}
-            className={`tab-pill-btn flex items-center gap-2 px-3.5 py-1.5 rounded-lg text-xs sm:text-sm cursor-pointer ${
-              activeTab === 'outbound'
-                ? 'bg-white text-slate-900 font-semibold shadow-xs border border-slate-200/80'
-                : 'text-slate-600 hover:text-slate-900 hover:bg-slate-200/50 font-medium border border-transparent'
-            }`}
-          >
-            <Clock className="w-4 h-4 text-indigo-600" />
-            <span>Điều Phối Xuất (FEFO)</span>
-          </button>
-        </div>
+        <button
+          onClick={() => handleTabChange('transfer')}
+          className={`flex items-center gap-2 px-4 py-2.5 text-xs sm:text-sm font-semibold border-b-2 transition-all cursor-pointer whitespace-nowrap ${
+            activeTab === 'transfer'
+              ? 'border-indigo-600 text-indigo-700 bg-indigo-50/40 rounded-t-lg'
+              : 'border-transparent text-slate-600 hover:text-slate-900 hover:border-slate-300'
+          }`}
+        >
+          <ArrowRightLeft className="w-4 h-4 text-slate-500" />
+          <span>Lịch Sử Điều Chuyển</span>
+          {transfers.length > 0 && (
+            <span className="px-1.5 py-0.2 rounded-full text-2xs bg-slate-100 text-slate-600 font-mono">
+              {transfers.length}
+            </span>
+          )}
+        </button>
+
+        <button
+          onClick={() => handleTabChange('outbound')}
+          className={`flex items-center gap-2 px-4 py-2.5 text-xs sm:text-sm font-semibold border-b-2 transition-all cursor-pointer whitespace-nowrap ${
+            activeTab === 'outbound'
+              ? 'border-indigo-600 text-indigo-700 bg-indigo-50/40 rounded-t-lg'
+              : 'border-transparent text-slate-600 hover:text-slate-900 hover:border-slate-300'
+          }`}
+        >
+          <Clock className="w-4 h-4 text-slate-500" />
+          <span>Điều Phối Xuất (FEFO)</span>
+        </button>
       </div>
 
       {/* Thông Báo */}
@@ -226,6 +249,10 @@ export const InventoryBalancePage: React.FC = () => {
 
         {activeTab === 'outbound' && (
           <OutboundFefoWorkbench />
+        )}
+
+        {activeTab === 'alerts' && (
+          <SafetyStockAlertsPanel alerts={alerts} />
         )}
       </div>
 

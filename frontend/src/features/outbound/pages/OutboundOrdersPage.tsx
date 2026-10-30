@@ -13,57 +13,34 @@ export const OutboundOrdersPage: React.FC = () => {
   const [selectedOrder, setSelectedOrder] = useState<OutboundOrder | null>(null);
   const [pickPathOrder, setPickPathOrder] = useState<OutboundOrder | null>(null);
 
+  const fetchOrders = async () => {
+    const list = await outboundService.getOutboundOrders();
+    setOrders(list);
+  };
+
   useEffect(() => {
-    outboundService.getOutboundOrders().then(setOrders);
+    fetchOrders();
   }, []);
 
   const handleCreateOrder = async (newOrder: OutboundOrder) => {
     const saved = await outboundService.createOutboundOrder(newOrder);
-    setOrders((prev) => [saved, ...prev]);
+    if (saved) {
+      setOrders((prev) => [saved, ...prev]);
+    }
   };
 
-  const handleAllocateAndLock = (orderId: string) => {
-    setOrders((prev) =>
-      prev.map((order) => {
-        if (order.id !== orderId) return order;
-        const generatedLockId = `LOCK-TX-${Math.floor(10000 + Math.random() * 90000)}`;
-
-        return {
-          ...order,
-          status: 'ALLOCATED',
-          lockId: generatedLockId,
-          items: order.items.map((it) => ({
-            ...it,
-            allocatedQty: it.requestedQty,
-            allocations: [
-              {
-                batchNumber: 'BATCH-MILK-26A',
-                expiryDate: '2026-09-25',
-                locationBarcode: 'ZB-B01-R01-S01-B05',
-                qtyAllocated: it.requestedQty,
-                isNearestExpiry: true,
-              },
-            ],
-          })),
-        };
-      })
-    );
+  const handleAllocateAndLock = async (orderId: string) => {
+    const success = await outboundService.allocateOrderFefo(orderId);
+    if (success) {
+      await fetchOrders();
+    }
   };
 
-  const handleDispatchOrder = (orderId: string) => {
-    setOrders((prev) =>
-      prev.map((order) => {
-        if (order.id !== orderId) return order;
-        return {
-          ...order,
-          status: 'DISPATCHED',
-          items: order.items.map((it) => ({
-            ...it,
-            pickedQty: it.requestedQty,
-          })),
-        };
-      })
-    );
+  const handleDispatchOrder = async (orderId: string) => {
+    const success = await outboundService.dispatchOrder(orderId);
+    if (success) {
+      await fetchOrders();
+    }
   };
 
   return (

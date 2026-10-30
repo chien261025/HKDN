@@ -6,7 +6,7 @@ interface ResetPasswordModalProps {
   isOpen: boolean;
   onClose: () => void;
   user: UserAccount | null;
-  onConfirmReset: (userId: string, newPass: string) => Promise<void>;
+  onConfirmReset: (userId: string, newPass: string, forceChangeOnLogin: boolean) => Promise<void>;
 }
 
 export const ResetPasswordModal: React.FC<ResetPasswordModalProps> = ({
@@ -49,7 +49,7 @@ export const ResetPasswordModal: React.FC<ResetPasswordModalProps> = ({
     setSubmitting(true);
     setErrorMsg(null);
     try {
-      await onConfirmReset(user.id, newPassword.trim());
+      await onConfirmReset(user.id, newPassword.trim(), forceChangeOnLogin);
       onClose();
     } catch (err: any) {
       setErrorMsg(err.message || 'Lỗi khi đặt lại mật khẩu!');
@@ -144,7 +144,7 @@ export const ResetPasswordModal: React.FC<ResetPasswordModalProps> = ({
           <div className="p-3 bg-indigo-50/70 border border-indigo-100 rounded-xl flex items-start gap-2.5 text-xs text-indigo-900">
             <ShieldAlert className="w-4 h-4 text-indigo-600 flex-shrink-0 mt-0.5" />
             <span>
-              Mật khẩu mới sẽ được băm mã hóa một chiều bằng <strong>BCrypt (độ phức tạp 10 rounds)</strong> trước khi lưu vào CSDL PostgreSQL. Hãy sao chép và gửi cho nhân sự.
+              Vui lòng sao chép mật khẩu mới và gửi cho nhân sự trước khi hoàn tất.
             </span>
           </div>
 

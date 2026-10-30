@@ -26,6 +26,7 @@ public class UserController {
     private final UserService userService;
 
     @GetMapping
+    @org.springframework.security.access.prepost.PreAuthorize("hasAnyRole('ADMIN', 'WAREHOUSE_MANAGER')")
     @Operation(summary = "Lấy danh sách tất cả người dùng trong hệ thống", description = "Truy vấn toàn bộ tài khoản người dùng và vai trò RBAC từ cơ sở dữ liệu PostgreSQL")
     public ApiResponse<List<UserResponse>> getAllUsers() {
         log.info("API lay danh sach tat ca nguoi dung");
@@ -34,6 +35,7 @@ public class UserController {
     }
 
     @GetMapping("/{id}")
+    @org.springframework.security.access.prepost.PreAuthorize("hasAnyRole('ADMIN', 'WAREHOUSE_MANAGER')")
     @Operation(summary = "Lấy thông tin chi tiết một người dùng", description = "Tìm kiếm người dùng theo mã định danh ID")
     public ApiResponse<UserResponse> getUserById(@PathVariable Long id) {
         log.info("API lay thong tin nguoi dung id: {}", id);
@@ -64,6 +66,19 @@ public class UserController {
         return ApiResponse.success(msg, updatedUser);
     }
 
+    @PutMapping("/bulk-status")
+    @org.springframework.security.access.prepost.PreAuthorize("hasRole('ADMIN')")
+    @Operation(summary = "Khóa hoặc Mở khóa hàng loạt tài khoản", description = "Admin cập nhật trạng thái nhiều tài khoản người dùng cùng lúc")
+    public ApiResponse<String> bulkUpdateStatus(
+            @Valid @RequestBody com.wms.module.identity.dto.request.BulkUpdateStatusRequest request) {
+        log.info("API cap nhat trang thai hang loat cho {} user -> isActive: {}", request.getUserIds().size(), request.getIsActive());
+        userService.bulkUpdateStatus(request);
+        String msg = Boolean.TRUE.equals(request.getIsActive())
+                ? "Đã mở khóa thành công " + request.getUserIds().size() + " tài khoản!"
+                : "Đã tạm khóa và thu hồi phiên làm việc của " + request.getUserIds().size() + " tài khoản!";
+        return ApiResponse.success(msg, "SUCCESS");
+    }
+
     @PutMapping("/{id}/role")
     @org.springframework.security.access.prepost.PreAuthorize("hasRole('ADMIN')")
     @Operation(summary = "Cập nhật vai trò phân quyền người dùng", description = "Gán vai trò mới theo RBAC: ROLE_ADMIN, ROLE_WAREHOUSE_MANAGER, ROLE_OPERATOR")
@@ -80,11 +95,21 @@ public class UserController {
     @Operation(summary = "Khôi phục mật khẩu tài khoản về mặc định", description = "Đặt lại mật khẩu thành 123456 hoặc mật khẩu mới chỉ định")
     public ApiResponse<String> resetPassword(
             @PathVariable Long id,
-            @RequestBody(required = false) Map<String, String> payload) {
-        String newPassword = (payload != null) ? payload.get("newPassword") : "123456";
-        log.info("API reset mat khau user id: {}", id);
-        userService.resetPassword(id, newPassword);
-        return ApiResponse.success("Mật khẩu đã được đặt lại thành công về: " + (newPassword != null ? newPassword : "123456"));
+            @RequestBody(required = false) Map<String, Object> payload) {
+        String newPassword = null;
+        boolean mustChangePassword = false;
+        if (payload != null) {
+            newPassword = (String) payload.get("newPassword");
+            Object mcp = payload.get("mustChangePassword");
+            if (mcp instanceof Boolean b) {
+                mustChangePassword = b;
+            } else if (mcp instanceof String s) {
+                mustChangePassword = Boolean.parseBoolean(s);
+            }
+        }
+        log.info("API reset mat khau user id: {}, mustChangePassword: {}", id, mustChangePassword);
+        userService.resetPassword(id, newPassword, mustChangePassword);
+        return ApiResponse.success("Mật khẩu đã được đặt lại thành công!");
     }
 
     @PutMapping("/change-password")

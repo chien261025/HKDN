@@ -7,6 +7,8 @@ import {
   PanelLeftOpen,
   ChevronRight,
   Menu,
+  BookOpen,
+  ExternalLink,
 } from 'lucide-react';
 import { useLocation } from 'react-router-dom';
 import { AuthSession } from '../../features/auth/types';
@@ -115,6 +117,18 @@ export const AppHeader: React.FC<AppHeaderProps> = ({
 
       {/* Right User Profile & Notifications */}
       <div className="flex items-center gap-1.5 sm:gap-3 shrink-0">
+        <a
+          href="http://localhost:8080/api/v1/swagger-ui/index.html"
+          target="_blank"
+          rel="noopener noreferrer"
+          title="Tài liệu đặc tả API Swagger (OpenAPI 3)"
+          className="hidden md:inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-50 hover:bg-indigo-50 text-slate-700 hover:text-indigo-700 border border-slate-200 hover:border-indigo-200 text-xs font-semibold shadow-2xs transition-all"
+        >
+          <BookOpen className="w-3.5 h-3.5 text-indigo-600" />
+          <span>Swagger API</span>
+          <ExternalLink className="w-3 h-3 text-slate-400" />
+        </a>
+
         <NotificationCenterDropdown />
 
         {/* Profile badge with safe UTF-8 fallback */}

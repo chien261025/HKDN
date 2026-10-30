@@ -35,6 +35,7 @@ public class OrderController {
     }
 
     @PostMapping("/inbound")
+    @org.springframework.security.access.prepost.PreAuthorize("hasAnyRole('ADMIN', 'WAREHOUSE_MANAGER')")
     @Operation(summary = "Tạo mới đơn nhập hàng PO", description = "Tạo mới đơn nhập hàng từ nhà cung ứng với danh sách sản phẩm và số lượng")
     public ApiResponse<InboundOrder> createInboundOrder(@Valid @RequestBody com.wms.module.order.dto.request.CreateInboundOrderRequest request) {
         return ApiResponse.success("Tạo đơn nhập kho thành công!", inboundService.createInboundOrder(request));
@@ -55,19 +56,29 @@ public class OrderController {
 
     @GetMapping("/outbound")
     @Operation(summary = "Lấy danh sách đơn xuất hàng SO", description = "Trả về toàn bộ danh sách đơn bán hàng xuất kho")
-    public ApiResponse<List<OutboundOrder>> getAllOutboundOrders() {
+    public ApiResponse<List<com.wms.module.order.dto.response.OutboundOrderResponse>> getAllOutboundOrders() {
         return ApiResponse.success("Lấy danh sách đơn xuất kho thành công!", outboundService.getAllOutboundOrders());
     }
 
     @PostMapping("/outbound")
+    @org.springframework.security.access.prepost.PreAuthorize("hasAnyRole('ADMIN', 'WAREHOUSE_MANAGER')")
     @Operation(summary = "Tạo mới đơn xuất hàng SO", description = "Tạo mới đơn xuất hàng bán cho khách hàng")
-    public ApiResponse<OutboundOrder> createOutboundOrder(@Valid @RequestBody com.wms.module.order.dto.request.CreateOutboundOrderRequest request) {
+    public ApiResponse<com.wms.module.order.dto.response.OutboundOrderResponse> createOutboundOrder(@Valid @RequestBody com.wms.module.order.dto.request.CreateOutboundOrderRequest request) {
         return ApiResponse.success("Tạo đơn xuất kho thành công!", outboundService.createOutboundOrder(request));
     }
 
+    @PutMapping("/outbound/{id}/allocate-fefo")
+    @org.springframework.security.access.prepost.PreAuthorize("hasAnyRole('ADMIN', 'WAREHOUSE_MANAGER')")
+    @Operation(summary = "Thuật toán cấp phát lô tự động theo FEFO cho đơn xuất SO", 
+               description = "Tự động phân bổ các lô hàng có hạn sử dụng gần nhất (First Expired, First Out) và khóa giữ tồn kho an toàn.")
+    public ApiResponse<com.wms.module.order.dto.response.OutboundOrderResponse> allocateOutboundOrderFefo(@PathVariable Long id) {
+        return ApiResponse.success("Cấp phát lô hàng theo FEFO và khóa tồn thành công!", outboundService.allocateOutboundOrderFefo(id));
+    }
+
     @PutMapping("/outbound/{id}/dispatch")
+    @org.springframework.security.access.prepost.PreAuthorize("hasAnyRole('ADMIN', 'WAREHOUSE_MANAGER')")
     @Operation(summary = "Xuất kho và bàn giao vận chuyển đơn SO", description = "Chuyển trạng thái đơn thành DISPATCHED")
-    public ApiResponse<OutboundOrder> dispatchOutboundOrder(@PathVariable Long id) {
+    public ApiResponse<com.wms.module.order.dto.response.OutboundOrderResponse> dispatchOutboundOrder(@PathVariable Long id) {
         return ApiResponse.success("Xuất kho và bàn giao vận chuyển thành công!", outboundService.dispatchOutboundOrder(id));
     }
 

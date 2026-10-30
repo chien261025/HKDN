@@ -19,6 +19,7 @@ public class UserMapper {
     public UserResponse toResponse(User user) {
         String roleName = (user.getRoles() != null && !user.getRoles().isEmpty())
                 ? user.getRoles().iterator().next().getName() : "ROLE_OPERATOR";
+        boolean isExpired = user.getExpiresAt() != null && user.getExpiresAt().isBefore(java.time.Instant.now());
         boolean active = Boolean.TRUE.equals(user.getIsActive());
 
         return UserResponse.builder()
@@ -29,9 +30,11 @@ public class UserMapper {
                 .role(roleName)
                 .roleDescription(getRoleDescription(roleName))
                 .isActive(active)
-                .status(active ? "ACTIVE" : "LOCKED")
+                .status(isExpired ? "EXPIRED" : (active ? "ACTIVE" : "LOCKED"))
                 .assignedWarehouse("Kho Tổng Tân Bình (ZONE A & B)")
                 .phone("090000000" + user.getId())
+                .expiresAt(user.getExpiresAt())
+                .isExpired(isExpired)
                 .createdAt(user.getCreatedAt())
                 .updatedAt(user.getUpdatedAt())
                 .build();

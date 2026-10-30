@@ -6,8 +6,6 @@ interface LoginFormProps {
   onUsernameChange: (username: string) => void;
   password: string;
   onPasswordChange: (password: string) => void;
-  rememberMe: boolean;
-  onRememberMeChange: (remember: boolean) => void;
   isLoading: boolean;
   lockoutRemainingSec?: number;
   onSubmit: (e: React.FormEvent) => void;
@@ -19,8 +17,6 @@ export const LoginForm: React.FC<LoginFormProps> = ({
   onUsernameChange,
   password,
   onPasswordChange,
-  rememberMe,
-  onRememberMeChange,
   isLoading,
   lockoutRemainingSec = 0,
   onSubmit,
@@ -92,19 +88,6 @@ export const LoginForm: React.FC<LoginFormProps> = ({
               {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
             </button>
           </div>
-        </div>
-
-        {/* Remember Me */}
-        <div className="flex items-center justify-between pt-0.5">
-          <label className="flex items-center gap-2 cursor-pointer text-slate-600 hover:text-slate-900 transition-colors text-sm font-medium select-none">
-            <input
-              type="checkbox"
-              checked={rememberMe}
-              onChange={(e) => onRememberMeChange(e.target.checked)}
-              className="w-4 h-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500 cursor-pointer"
-            />
-            <span>Ghi nhớ đăng nhập</span>
-          </label>
         </div>
 
         {/* Login Button */}

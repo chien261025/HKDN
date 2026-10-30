@@ -7,6 +7,7 @@ export interface CreateUserPayload {
   fullName: string;
   email: string;
   role: string;
+  expiresAt?: string | null;
 }
 
 interface ApiResponse<T> {
@@ -28,7 +29,10 @@ export const mapBackendUserToAccount = (
   phone: overrides?.phone || ('09' + String(u.id).padStart(8, '0')),
   role: (overrides?.role as UserRole) || (u.role as UserRole) || 'ROLE_OPERATOR',
   assignedWarehouse: overrides?.assignedWarehouse || u.assignedWarehouse || 'Kho Tổng Tân Bình (ZONE A & B)',
-  status: (overrides?.status as UserStatus) || (u.status as UserStatus) || (u.isActive ? 'ACTIVE' : 'LOCKED'),
+  status: (overrides?.status as UserStatus) || (u.status as UserStatus) || (u.isExpired ? 'EXPIRED' : (u.isActive ? 'ACTIVE' : 'LOCKED')),
+  expiresAt: u.expiresAt ? new Date(u.expiresAt).toLocaleDateString('vi-VN') : null,
+  rawExpiresAt: u.expiresAt || null,
+  isExpired: Boolean(u.isExpired),
   lastLoginAt: u.updatedAt ? new Date(u.updatedAt).toLocaleString('vi-VN') : 'Vừa cập nhật',
   lastLoginIp: '192.168.1.10' + (u.id % 10),
   createdAt: u.createdAt ? new Date(u.createdAt).toLocaleDateString('vi-VN') : 'Hôm nay',
@@ -66,6 +70,20 @@ export const userService = {
   /**
    * Khóa hoặc Mở khóa tài khoản
    */
+  /**
+   * Khóa hoặc Mở khóa hàng loạt tài khoản (Bulk Inactivation / Activation)
+   */
+  async bulkUpdateStatus(userIds: string[], isActive: boolean): Promise<string> {
+    const res = await apiClient.put<ApiResponse<string>>('/users/bulk-status', {
+      userIds: userIds.map(Number),
+      isActive,
+    });
+    if (!res.data.success) {
+      throw new Error(res.data.message || 'Không thể cập nhật trạng thái hàng loạt');
+    }
+    return res.data.message;
+  },
+
   async updateUserStatus(id: string, isActive: boolean): Promise<UserAccount> {
     const res = await apiClient.put<ApiResponse<BackendUserResponse>>(`/users/${id}/status`, { isActive });
     if (!res.data.success || !res.data.data) {
@@ -94,8 +112,11 @@ export const userService = {
   /**
    * Đặt lại mật khẩu tài khoản
    */
-  async resetPassword(id: string, newPassword?: string): Promise<string> {
-    const res = await apiClient.put<ApiResponse<string>>(`/users/${id}/reset-password`, { newPassword: newPassword || '123456' });
+  async resetPassword(id: string, newPassword?: string, mustChangePassword: boolean = false): Promise<string> {
+    const res = await apiClient.put<ApiResponse<string>>(`/users/${id}/reset-password`, {
+      newPassword: newPassword || '123456',
+      mustChangePassword,
+    });
     if (!res.data.success) {
       throw new Error(res.data.message || 'Không thể khôi phục mật khẩu');
     }

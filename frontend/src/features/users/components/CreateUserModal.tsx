@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { X, Plus, Shield, Loader2, AlertCircle } from 'lucide-react';
+import { X, Plus, Shield, Loader2, AlertCircle, Clock } from 'lucide-react';
 import { UserAccount, UserRole } from '../types';
 import { userService } from '../services/userService';
 import { TempPasswordGenerator } from './TempPasswordGenerator';
@@ -21,6 +21,7 @@ export const CreateUserModal: React.FC<CreateUserModalProps> = ({
   const [phone, setPhone] = useState('');
   const [role, setRole] = useState<UserRole>('ROLE_OPERATOR');
   const [assignedWarehouse, setAssignedWarehouse] = useState('Kho Tổng Tân Bình (ZONE A & B)');
+  const [expiresAt, setExpiresAt] = useState('');
   const [tempPassword, setTempPassword] = useState('123456');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -33,6 +34,7 @@ export const CreateUserModal: React.FC<CreateUserModalProps> = ({
     setEmail('');
     setPhone('');
     setRole('ROLE_OPERATOR');
+    setExpiresAt('');
     setTempPassword('123456');
     setErrorMessage(null);
   };
@@ -59,6 +61,7 @@ export const CreateUserModal: React.FC<CreateUserModalProps> = ({
         fullName: fullName.trim(),
         email: email.trim() || `${username.trim().toLowerCase()}@smartwms.vn`,
         role: role,
+        expiresAt: expiresAt ? new Date(expiresAt + 'T23:59:59Z').toISOString() : undefined,
       });
 
       createdUser.assignedWarehouse = assignedWarehouse;
@@ -88,51 +91,48 @@ export const CreateUserModal: React.FC<CreateUserModalProps> = ({
             </div>
             <div>
               <h2 className="text-lg font-bold text-slate-900">Thêm Tài Khoản Người Dùng Mới</h2>
-              <p className="text-xs text-slate-500 mt-0.5">Khởi tạo định danh xác thực vào cơ sở dữ liệu PostgreSQL</p>
+              <p className="text-xs text-slate-500">Khởi tạo tài khoản nhân sự mới vào hệ thống Smart WMS</p>
             </div>
           </div>
           <button
-            type="button"
             onClick={handleClose}
-            className="p-1.5 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-200 transition-colors cursor-pointer"
+            className="text-slate-400 hover:text-slate-600 p-2 rounded-xl hover:bg-slate-100 transition-colors cursor-pointer"
           >
             <X className="w-5 h-5" />
           </button>
         </div>
 
-        {/* Error Alert */}
-        {errorMessage && (
-          <div className="m-4 mb-0 p-3 bg-rose-50 border border-rose-200 rounded-xl flex items-center gap-2.5 text-rose-700 text-xs">
-            <AlertCircle className="w-4 h-4 shrink-0 text-rose-600" />
-            <span>{errorMessage}</span>
-          </div>
-        )}
+        {/* Form Body */}
+        <form onSubmit={handleSubmit} className="p-5 md:p-6 space-y-4 text-xs">
+          {errorMessage && (
+            <div className="p-3 bg-rose-50 border border-rose-200 rounded-xl text-rose-700 flex items-start gap-2.5">
+              <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />
+              <span>{errorMessage}</span>
+            </div>
+          )}
 
-        {/* Form */}
-        <form onSubmit={handleSubmit} className="p-5 md:p-6 space-y-4 text-sm">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
               <label className="block text-slate-700 font-semibold mb-1">
-                Tên Đăng Nhập (Username) <span className="text-rose-500">*</span>
+                Tên Đăng Nhập <span className="text-rose-500">*</span>
               </label>
               <input
                 type="text"
-                required
                 placeholder="VD: operator_pda2"
                 value={username}
                 onChange={(e) => setUsername(e.target.value)}
                 className="w-full px-3 py-2 bg-white border border-slate-300 rounded-xl text-slate-900 font-mono focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-600 transition-all"
                 disabled={isSubmitting}
+                autoFocus
               />
             </div>
             <div>
               <label className="block text-slate-700 font-semibold mb-1">
-                Họ Và Tên Đầy Đủ <span className="text-rose-500">*</span>
+                Họ và Tên Nhân Viên <span className="text-rose-500">*</span>
               </label>
               <input
                 type="text"
-                required
-                placeholder="VD: Lê Văn An"
+                placeholder="VD: Nguyễn Văn Vận Hành"
                 value={fullName}
                 onChange={(e) => setFullName(e.target.value)}
                 className="w-full px-3 py-2 bg-white border border-slate-300 rounded-xl text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-600 transition-all"
@@ -143,10 +143,10 @@ export const CreateUserModal: React.FC<CreateUserModalProps> = ({
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
-              <label className="block text-slate-700 font-semibold mb-1">Email Công Vụ</label>
+              <label className="block text-slate-700 font-semibold mb-1">Địa Chỉ Email</label>
               <input
                 type="email"
-                placeholder="VD: an.le@smartwms.vn"
+                placeholder="VD: pda2@smartwms.vn"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 className="w-full px-3 py-2 bg-white border border-slate-300 rounded-xl text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-600 transition-all"
@@ -168,16 +168,16 @@ export const CreateUserModal: React.FC<CreateUserModalProps> = ({
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
-              <label className="block text-slate-700 font-semibold mb-1">Vai Trò Hệ Thống (RBAC)</label>
+              <label className="block text-slate-700 font-semibold mb-1">Vai Trò Hệ Thống</label>
               <select
                 value={role}
                 onChange={(e) => setRole(e.target.value as UserRole)}
                 className="w-full px-3 py-2 bg-white border border-slate-300 rounded-xl text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-600 cursor-pointer transition-all"
                 disabled={isSubmitting}
               >
-                <option value="ROLE_OPERATOR">ROLE_OPERATOR (Thủ kho Mobile/PDA)</option>
-                <option value="ROLE_WAREHOUSE_MANAGER">ROLE_WAREHOUSE_MANAGER (Quản lý kho Desktop)</option>
-                <option value="ROLE_ADMIN">ROLE_ADMIN (Quản trị viên tối cao)</option>
+                <option value="ROLE_OPERATOR">Thủ kho (Vận hành thực địa)</option>
+                <option value="ROLE_WAREHOUSE_MANAGER">Quản lý trưởng kho</option>
+                <option value="ROLE_ADMIN">Quản trị viên (Admin)</option>
               </select>
             </div>
 
@@ -194,6 +194,32 @@ export const CreateUserModal: React.FC<CreateUserModalProps> = ({
                 <option value="Kho Khô & Điện Tử (ZONE A)">Kho Khô & Điện Tử (ZONE A)</option>
               </select>
             </div>
+          </div>
+
+          {/* Expiry Date */}
+          <div>
+            <div className="flex items-center justify-between mb-1">
+              <label className="text-slate-700 font-semibold flex items-center gap-1.5">
+                <Clock className="w-4 h-4 text-slate-400" />
+                <span>Ngày Hết Hạn Tài Khoản (Tùy chọn)</span>
+              </label>
+              {expiresAt && (
+                <button
+                  type="button"
+                  onClick={() => setExpiresAt('')}
+                  className="text-2xs text-slate-500 hover:text-slate-800 underline cursor-pointer"
+                >
+                  Không đặt hạn
+                </button>
+              )}
+            </div>
+            <input
+              type="date"
+              value={expiresAt}
+              onChange={(e) => setExpiresAt(e.target.value)}
+              className="w-full px-3 py-2 bg-white border border-slate-300 rounded-xl text-slate-900 text-xs focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-600 transition-all cursor-pointer"
+              disabled={isSubmitting}
+            />
           </div>
 
           {/* Temporary Password Component */}

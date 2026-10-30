@@ -10,24 +10,31 @@ export const outboundService = {
           id: String(o.id),
           soCode: o.orderCode || `SO-${o.id}`,
           customerName: o.customerName || 'Khách Hàng Doanh Nghiệp',
-          shippingAddress: 'Kho Phân Phối TP.HCM',
+          shippingAddress: 'Kho Phân Phối Trung Tâm',
           orderDate: o.createdAt ? new Date(o.createdAt).toLocaleString('vi-VN') : '',
-          requiredDate: '2026-09-25 18:00',
+          requiredDate: '2026-11-30 18:00',
           status: (o.status || 'PENDING') as OutboundStatus,
           priority: 'HIGH' as const,
-          lockId: 'LOCK-PG-SQL',
-          dispatchCarrier: 'Giao Hàng Tiết Kiệm (GHTK)',
+          lockId: o.status === 'ALLOCATED' ? `LOCK-FEFO-${o.id}` : undefined,
+          dispatchCarrier: 'Đội xe nội bộ WMS Logistics',
           notes: o.notes || '',
           items: (o.items && o.items.length > 0)
             ? o.items.map((i: any) => ({
                 id: String(i.id),
-                sku: i.product?.sku || (i.productId === 1 ? 'SKU-MILK-100' : i.productId === 2 ? 'SKU-SAMS-S24' : 'SKU-OMO-MATIC'),
-                productName: i.product?.name || (i.productId === 1 ? 'Sữa tươi tiệt trùng Vinamilk 100% 1L' : i.productId === 2 ? 'Điện thoại Samsung Galaxy S24 Ultra' : 'Nước giặt OMO Matic 3.6kg'),
+                productId: i.productId,
+                sku: i.sku || `SKU-${i.productId}`,
+                productName: i.productName || `Sản phẩm #${i.productId}`,
                 requestedQty: i.requestedQty || 0,
-                allocatedQty: i.allocatedQty || i.requestedQty || 0,
+                allocatedQty: i.allocatedQty || 0,
                 pickedQty: i.pickedQty || 0,
-                unit: i.product?.unit || (i.productId === 1 ? 'Hộp' : i.productId === 2 ? 'Chiếc' : 'Túi'),
-                allocations: [],
+                unit: i.unit || 'Cái',
+                allocations: (i.allocations || []).map((a: any) => ({
+                  batchNumber: a.batchNumber || `BATCH-${a.batchId}`,
+                  expiryDate: a.expiryDate ? String(a.expiryDate) : 'N/A',
+                  locationBarcode: a.locationBarcode || `LOC-${a.locationId}`,
+                  qtyAllocated: a.allocatedQty || 0,
+                  isNearestExpiry: a.isNearestExpiry ?? true,
+                })),
               }))
             : [],
         }));
@@ -39,7 +46,7 @@ export const outboundService = {
     }
   },
 
-  async createOutboundOrder(order: Partial<OutboundOrder>): Promise<OutboundOrder> {
+  async createOutboundOrder(order: Partial<OutboundOrder>): Promise<OutboundOrder | null> {
     try {
       const payload = {
         orderCode: order.soCode || 'SO-' + Date.now(),
@@ -48,49 +55,67 @@ export const outboundService = {
         status: 'PENDING',
         notes: order.notes,
         items: (order.items || []).map((it: any) => ({
-          productId: it.productId || (it.sku?.includes('MILK') ? 1 : it.sku?.includes('SAMS') ? 2 : 3),
+          productId: it.productId || 1,
           requestedQty: it.requestedQty,
-          allocatedQty: it.allocatedQty || 0,
+          allocatedQty: 0,
           pickedQty: 0,
           unitPrice: 100000,
         })),
       };
       const res = await apiClient.post('/orders/outbound', payload);
       const saved = res.data?.data;
+      if (!saved) return null;
       return {
-        id: String(saved?.id || Date.now()),
-        soCode: saved?.orderCode || order.soCode!,
-        customerName: order.customerName || 'Khách Hàng Mới',
-        shippingAddress: order.shippingAddress || '',
-        orderDate: new Date().toLocaleString('vi-VN'),
-        requiredDate: order.requiredDate || '2026-09-30',
-        status: 'PENDING',
-        priority: order.priority || 'NORMAL',
-        items: order.items || [],
-        notes: order.notes,
+        id: String(saved.id),
+        soCode: saved.orderCode,
+        customerName: saved.customerName,
+        shippingAddress: order.shippingAddress || 'Kho Phân Phối',
+        orderDate: new Date(saved.createdAt).toLocaleString('vi-VN'),
+        requiredDate: order.requiredDate || '2026-11-30',
+        status: (saved.status || 'PENDING') as OutboundStatus,
+        priority: order.priority || 'HIGH',
+        items: (saved.items || []).map((i: any) => ({
+          id: String(i.id),
+          productId: i.productId,
+          sku: i.sku,
+          productName: i.productName,
+          requestedQty: i.requestedQty,
+          allocatedQty: i.allocatedQty,
+          pickedQty: i.pickedQty,
+          unit: i.unit,
+          allocations: (i.allocations || []).map((a: any) => ({
+            batchNumber: a.batchNumber,
+            expiryDate: a.expiryDate ? String(a.expiryDate) : 'N/A',
+            locationBarcode: a.locationBarcode,
+            qtyAllocated: a.allocatedQty,
+            isNearestExpiry: a.isNearestExpiry ?? true,
+          })),
+        })),
+        notes: saved.notes,
       };
     } catch (err) {
-      console.warn('Could not save SO to backend, saving locally:', err);
-      return {
-        id: String(Date.now()),
-        soCode: order.soCode || 'SO-' + Date.now(),
-        customerName: order.customerName || 'Khách Hàng Mới',
-        shippingAddress: order.shippingAddress || '',
-        orderDate: new Date().toLocaleString('vi-VN'),
-        requiredDate: order.requiredDate || '2026-09-30',
-        status: 'PENDING',
-        priority: order.priority || 'NORMAL',
-        items: order.items || [],
-        notes: order.notes,
-      };
+      console.warn('Could not save SO to backend:', err);
+      return null;
     }
   },
 
-  async dispatchOrder(id: string): Promise<void> {
+  async allocateOrderFefo(id: string): Promise<boolean> {
+    try {
+      await apiClient.put(`/orders/outbound/${id}/allocate-fefo`);
+      return true;
+    } catch (err) {
+      console.warn('Could not allocate order FEFO:', err);
+      return false;
+    }
+  },
+
+  async dispatchOrder(id: string): Promise<boolean> {
     try {
       await apiClient.put(`/orders/outbound/${id}/dispatch`);
+      return true;
     } catch (err) {
       console.warn('Could not dispatch order on backend:', err);
+      return false;
     }
   },
 

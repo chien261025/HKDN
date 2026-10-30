@@ -35,6 +35,8 @@ export const UserMobileCards: React.FC<UserMobileCardsProps> = ({
           .slice(-2)
           .join('');
 
+        const isRootAdmin = u.username.toLowerCase() === 'admin';
+
         return (
           <div
             key={u.id}
@@ -47,7 +49,18 @@ export const UserMobileCards: React.FC<UserMobileCardsProps> = ({
                   {initials}
                 </div>
                 <div>
-                  <div className="font-bold text-slate-900 text-sm">{u.fullName}</div>
+                  <div className="font-bold text-slate-900 text-sm flex items-center gap-1.5 flex-wrap">
+                    <span>{u.fullName}</span>
+                    {u.isExpired ? (
+                      <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-rose-700 bg-rose-50 border border-rose-200 px-1.5 py-0.2 rounded-full">
+                        Đã hết hạn
+                      </span>
+                    ) : u.expiresAt ? (
+                      <span className="inline-flex items-center gap-1 text-[10px] font-medium text-amber-700 bg-amber-50 border border-amber-200 px-1.5 py-0.2 rounded-full">
+                        Hạn: {u.expiresAt}
+                      </span>
+                    ) : null}
+                  </div>
                   <div className="font-mono text-xs text-slate-500">
                     @{u.username} • {u.phone}
                   </div>
@@ -81,30 +94,36 @@ export const UserMobileCards: React.FC<UserMobileCardsProps> = ({
             <div className="pt-2 border-t border-slate-100 flex items-center justify-end gap-1.5">
               <button
                 onClick={() => onEditUser(u)}
-                title="Chỉnh sửa tài khoản"
+                title="Chỉnh sửa tài khoản & hạn dùng"
                 className="p-2 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 rounded-lg transition-colors border border-indigo-200 cursor-pointer"
               >
                 <Pencil className="w-4 h-4" />
               </button>
-              <button
-                onClick={() => onResetPassword(u)}
-                title="Cấp lại mật khẩu"
-                className="p-2 bg-amber-50 hover:bg-amber-100 text-amber-700 rounded-lg transition-colors border border-amber-200 cursor-pointer"
-              >
-                <KeyRound className="w-4 h-4" />
-              </button>
+              {isRootAdmin ? (
+                <span
+                  title="Quản trị viên đổi mật khẩu tại trang Hồ sơ cá nhân"
+                  className="p-2 bg-slate-100 text-slate-400 rounded-lg border border-slate-200 cursor-not-allowed inline-flex"
+                >
+                  <KeyRound className="w-4 h-4" />
+                </span>
+              ) : (
+                <button
+                  onClick={() => onResetPassword(u)}
+                  title="Đặt lại mật khẩu"
+                  className="p-2 bg-amber-50 hover:bg-amber-100 text-amber-700 rounded-lg transition-colors border border-amber-200 cursor-pointer"
+                >
+                  <KeyRound className="w-4 h-4" />
+                </button>
+              )}
               <button
                 onClick={() => onViewSecurityLog(u)}
-                title="Xem nhật ký an ninh"
+                title="Lịch sử an ninh"
                 className="p-2 bg-sky-50 hover:bg-sky-100 text-sky-700 rounded-lg transition-colors border border-sky-200 cursor-pointer"
               >
                 <ShieldCheck className="w-4 h-4" />
               </button>
-              {u.username === 'admin' ? (
-                <span
-                  title="Tài khoản Quản trị viên tối cao"
-                  className="p-2 bg-slate-100 text-slate-400 rounded-lg border border-slate-200 cursor-not-allowed inline-flex"
-                >
+              {isRootAdmin ? (
+                <span className="p-2 bg-slate-100 text-slate-400 rounded-lg border border-slate-200 cursor-not-allowed inline-flex">
                   <Lock className="w-4 h-4" />
                 </span>
               ) : (

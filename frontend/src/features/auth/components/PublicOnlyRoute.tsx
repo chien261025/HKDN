@@ -12,6 +12,11 @@ export const PublicOnlyRoute: React.FC<PublicOnlyRouteProps> = ({ children }) =>
 
   // Nếu đã đăng nhập và phiên còn hạn, tự động đưa vào màn hình tương ứng
   if (session && token) {
+    // Nếu tài khoản đang cần đổi mật khẩu lần đầu, giữ ở trang Login để hiện popup
+    if (session.mustChangePassword) {
+      return <>{children}</>;
+    }
+
     const isExpired = session.expiresAt && new Date(session.expiresAt).getTime() <= Date.now();
     if (!isExpired) {
       if (session.role === 'ROLE_OPERATOR') {
