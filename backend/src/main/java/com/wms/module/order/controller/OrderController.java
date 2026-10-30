@@ -68,7 +68,7 @@ public class OrderController {
     }
 
     @PutMapping("/outbound/{id}/allocate-fefo")
-    @org.springframework.security.access.prepost.PreAuthorize("hasAnyRole('ADMIN', 'WAREHOUSE_MANAGER')")
+    @org.springframework.security.access.prepost.PreAuthorize("hasAnyRole('ADMIN', 'WAREHOUSE_MANAGER', 'OPERATOR')")
     @Operation(summary = "Thuật toán cấp phát lô tự động theo FEFO cho đơn xuất SO", 
                description = "Tự động phân bổ các lô hàng có hạn sử dụng gần nhất (First Expired, First Out) và khóa giữ tồn kho an toàn.")
     public ApiResponse<com.wms.module.order.dto.response.OutboundOrderResponse> allocateOutboundOrderFefo(@PathVariable Long id) {
@@ -76,7 +76,7 @@ public class OrderController {
     }
 
     @PutMapping("/outbound/{id}/dispatch")
-    @org.springframework.security.access.prepost.PreAuthorize("hasAnyRole('ADMIN', 'WAREHOUSE_MANAGER')")
+    @org.springframework.security.access.prepost.PreAuthorize("hasAnyRole('ADMIN', 'WAREHOUSE_MANAGER', 'OPERATOR')")
     @Operation(summary = "Xuất kho và bàn giao vận chuyển đơn SO", description = "Chuyển trạng thái đơn thành DISPATCHED")
     public ApiResponse<com.wms.module.order.dto.response.OutboundOrderResponse> dispatchOutboundOrder(@PathVariable Long id) {
         return ApiResponse.success("Xuất kho và bàn giao vận chuyển thành công!", outboundService.dispatchOutboundOrder(id));

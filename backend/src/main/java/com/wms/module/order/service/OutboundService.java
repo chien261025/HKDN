@@ -249,8 +249,9 @@ public class OutboundService {
                         alloc.setPickedAt(Instant.now());
                         pickAllocationRepository.save(alloc);
                     }
+                    item.setAllocatedQty(item.getRequestedQty());
+                    item.setPickedQty(item.getRequestedQty());
                     item.setStatus("SHIPPED");
-                    item.setPickedQty(item.getAllocatedQty());
                 } else {
                     // Fallback nếu đơn chưa phân bổ trước đó
                     int qtyToDeduct = item.getRequestedQty();
@@ -286,8 +287,9 @@ public class OutboundService {
 
                         qtyToDeduct -= deduct;
                     }
-                    item.setStatus("SHIPPED");
+                    item.setAllocatedQty(item.getRequestedQty());
                     item.setPickedQty(item.getRequestedQty());
+                    item.setStatus("SHIPPED");
                 }
             }
         }
