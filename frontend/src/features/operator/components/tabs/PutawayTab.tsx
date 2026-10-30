@@ -10,36 +10,6 @@ interface PutawayTabProps {
   onClearScannedCode?: () => void;
 }
 
-const DEFAULT_STAGING_TASKS: ActivePutawayTask[] = [
-  {
-    id: 'put-01',
-    sku: 'SKU-OMO-MATIC',
-    productName: 'Nước giặt OMO Matic 3.6kg',
-    weightKg: 150.0,
-    qty: 40,
-    preferredZone: 'ZONE_A',
-    status: 'PENDING',
-  },
-  {
-    id: 'put-02',
-    sku: 'SKU-MILK-100',
-    productName: 'Sữa tươi tiệt trùng Vinamilk 100% 1L',
-    weightKg: 30.0,
-    qty: 30,
-    preferredZone: 'ZONE_B',
-    status: 'PENDING',
-  },
-  {
-    id: 'put-03',
-    sku: 'SKU-SAMS-S24',
-    productName: 'Điện thoại Samsung Galaxy S24 Ultra',
-    weightKg: 5.0,
-    qty: 10,
-    preferredZone: 'ZONE_A',
-    status: 'PENDING',
-  },
-];
-
 export const PutawayTab: React.FC<PutawayTabProps> = ({
   onOpenScanner,
   scannedCode,
@@ -49,7 +19,7 @@ export const PutawayTab: React.FC<PutawayTabProps> = ({
   const [activeTask, setActiveTask] = useState<ActivePutawayTask | null>(null);
   const [scannedBin, setScannedBin] = useState('');
   const [feedback, setFeedback] = useState<{ msg: string; type: 'success' | 'error' } | null>(null);
-  const [stagingQueue, setStagingQueue] = useState<ActivePutawayTask[]>(DEFAULT_STAGING_TASKS);
+  const [stagingQueue, setStagingQueue] = useState<ActivePutawayTask[]>([]);
 
   useEffect(() => {
     const fetchReceivedOrders = async () => {
@@ -83,9 +53,9 @@ export const PutawayTab: React.FC<PutawayTabProps> = ({
               });
             }
           }
-          if (dynamicTasks.length > 0) {
-            setStagingQueue(dynamicTasks);
-          }
+          setStagingQueue(dynamicTasks);
+        } else {
+          setStagingQueue([]);
         }
       } catch (err) {
         console.warn('Could not load received orders for putaway:', err);
@@ -219,6 +189,18 @@ export const PutawayTab: React.FC<PutawayTabProps> = ({
           </span>
           <span className="text-xs text-slate-500 font-mono">Thuật toán Directed Put-away</span>
         </div>
+
+        {pendingQueue.length === 0 && completedQueue.length === 0 && (
+          <div className="p-8 text-center bg-white rounded-2xl border border-dashed border-slate-300 space-y-2">
+            <div className="w-12 h-12 rounded-2xl bg-indigo-50 text-indigo-600 mx-auto flex items-center justify-center">
+              <Layers className="w-6 h-6" />
+            </div>
+            <p className="text-sm font-bold text-slate-800">Khu đệm Staging đang trống</p>
+            <p className="text-xs text-slate-500 max-w-xs mx-auto">
+              Chưa có kiện hàng nào chờ cất kệ. Hãy tiếp nhận đơn hàng PO tại Tab 1 (Nhận PO) để bắt đầu chu trình cất kệ.
+            </p>
+          </div>
+        )}
 
         {pendingQueue.map((task) => (
           <div
