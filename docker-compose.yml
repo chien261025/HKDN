@@ -1,18 +1,18 @@
 services:
-  # 1. Cơ sở dữ liệu PostgreSQL
-  wms-postgres:
-    image: postgres:16-alpine
-    container_name: wms-postgres
+  # 1. Cơ sở dữ liệu MySQL 8
+  wms-mysql:
+    image: mysql:8.0
+    container_name: wms-mysql
     restart: always
+    command: --character-set-server=utf8mb4 --collation-server=utf8mb4_unicode_ci --default-authentication-plugin=mysql_native_password
     environment:
-      POSTGRES_DB: wms_db
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: password123
+      MYSQL_DATABASE: wms_db
+      MYSQL_ROOT_PASSWORD: password123
     ports:
-      - "5432:5432"
+      - "3306:3306"
     volumes:
-      - wms_pgdata:/var/lib/postgresql/data
-      - ./docker/postgres/init:/docker-entrypoint-initdb.d
+      - wms_mysqldata:/var/lib/mysql
+      - ./docker/mysql/init:/docker-entrypoint-initdb.d
     networks:
       - wms-net
 
@@ -36,7 +36,7 @@ services:
 
   # 3. Lưu trữ đối tượng MinIO (Tương thích chuẩn AWS S3)
   wms-minio:
-    image: minio/minio:latest
+    image: quay.io/minio/minio:latest
     container_name: wms-minio
     restart: always
     command: server /data --console-address ":9001"
@@ -71,16 +71,16 @@ services:
     container_name: wms-backend
     restart: always
     depends_on:
-      - wms-postgres
+      - wms-mysql
       - wms-rabbitmq
       - wms-minio
       - wms-redis
     environment:
       SPRING_PROFILES_ACTIVE: prod
-      DB_HOST: wms-postgres
-      DB_PORT: 5432
+      DB_HOST: wms-mysql
+      DB_PORT: 3306
       DB_NAME: wms_db
-      DB_USER: postgres
+      DB_USER: root
       DB_PASSWORD: password123
       REDIS_HOST: wms-redis
       REDIS_PORT: 6379
@@ -116,7 +116,7 @@ services:
       - wms-net
 
 volumes:
-  wms_pgdata:
+  wms_mysqldata:
   wms_mqdata:
   wms_miniodata:
   wms_redisdata:

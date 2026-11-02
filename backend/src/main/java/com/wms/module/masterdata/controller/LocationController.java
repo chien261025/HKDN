@@ -9,7 +9,10 @@ import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.web.bind.annotation.*;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
 
@@ -29,8 +32,7 @@ public class LocationController {
     }
 
     @GetMapping("/occupancy")
-    @Operation(summary = "Sơ đồ ô kệ kèm dữ liệu tồn kho thực tế (Digital Twin)",
-               description = "Trả về trạng thái thực tế của từng ô kệ: EMPTY, OCCUPIED, EXPIRING, RESERVED kèm chi tiết sản phẩm, lô hàng và hạn dùng")
+    @Operation(summary = "Sơ đồ ô kệ kèm dữ liệu tồn kho thực tế (Digital Twin)", description = "Trả về trạng thái thực tế của từng ô kệ: EMPTY, OCCUPIED, EXPIRING, RESERVED kèm chi tiết sản phẩm, lô hàng và hạn dùng")
     public ApiResponse<List<LocationOccupancyDto>> getLocationOccupancy() {
         return ApiResponse.success("Lấy sơ đồ ô kệ thời gian thực thành công!", locationService.getLocationOccupancy());
     }
@@ -38,16 +40,15 @@ public class LocationController {
     @GetMapping("/zone/{zoneCode}")
     @Operation(summary = "Lọc ô kệ theo Phân khu (Zone)", description = "VD: ZONE_A (Kho Khô), ZONE_B (Kho Mát)")
     public ApiResponse<List<Location>> getLocationsByZone(
-            @Parameter(description = "Mã phân khu (ZONE_A hoặc ZONE_B)", example = "ZONE_A")
-            @PathVariable String zoneCode) {
-        return ApiResponse.success("Lấy danh sách ô kệ theo Zone " + zoneCode + " thành công!", locationService.getLocationsByZone(zoneCode));
+            @Parameter(description = "Mã phân khu (ZONE_A hoặc ZONE_B)", example = "ZONE_A") @PathVariable String zoneCode) {
+        return ApiResponse.success("Lấy danh sách ô kệ theo Zone " + zoneCode + " thành công!",
+                locationService.getLocationsByZone(zoneCode));
     }
 
     @GetMapping("/barcode/{binBarcode}")
     @Operation(summary = "Tìm ô kệ theo mã vạch dán trên kệ", description = "VD: ZA-A01-R01-S01-B01")
     public ApiResponse<Location> getLocationByBarcode(
-            @Parameter(description = "Mã vạch trên kệ", example = "ZA-A01-R01-S01-B01")
-            @PathVariable String binBarcode) {
+            @Parameter(description = "Mã vạch trên kệ", example = "ZA-A01-R01-S01-B01") @PathVariable String binBarcode) {
         return ApiResponse.success(locationService.getLocationByBarcode(binBarcode));
     }
 }

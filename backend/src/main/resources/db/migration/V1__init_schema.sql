@@ -1,708 +1,437 @@
 -- ==========================================================
--- 01-init-schema.sql: KHỞI TẠO BẢNG DỮ LIỆU SMART WMS CHUẨN ENTERPRISE PRODUCTION-READY
+-- V1__init_schema.sql: KHỞI TẠO BẢNG DỮ LIỆU SMART WMS (MYSQL 8)
 -- ==========================================================
+
+SET NAMES utf8mb4;
+SET FOREIGN_KEY_CHECKS = 0;
 
 -- 1. BẢNG PHÂN QUYỀN & NGƯỜI DÙNG (IDENTITY & ACCESS MANAGEMENT - RBAC)
 CREATE TABLE IF NOT EXISTS wms_role (
-    id SERIAL PRIMARY KEY,
+    id INT AUTO_INCREMENT PRIMARY KEY,
     name VARCHAR(50) UNIQUE NOT NULL,
     description VARCHAR(255)
-);
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
-CREATE TABLE IF NOT EXISTS wms_permission (
-    id SERIAL PRIMARY KEY,
-    code VARCHAR(100) UNIQUE NOT NULL,                   -- VD: 'INVENTORY:READ', 'ORDER:APPROVE'
-    name VARCHAR(255) NOT NULL,
-    module VARCHAR(50) NOT NULL
-);
-
-CREATE TABLE IF NOT EXISTS wms_role_permission (
-    role_id INT NOT NULL REFERENCES wms_role(id) ON DELETE CASCADE,
-    permission_id INT NOT NULL REFERENCES wms_permission(id) ON DELETE CASCADE,
-    PRIMARY KEY (role_id, permission_id)
-);
-
--- Bảng người dùng: Chuẩn hóa 100% RBAC đa vai trò thông qua bảng wms_user_role
 CREATE TABLE IF NOT EXISTS wms_user (
-    id BIGSERIAL PRIMARY KEY,
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
     username VARCHAR(50) UNIQUE NOT NULL,
     password_hash VARCHAR(255) NOT NULL,
     full_name VARCHAR(100) NOT NULL,
     email VARCHAR(100) UNIQUE NOT NULL,
     is_active BOOLEAN DEFAULT TRUE,
-    expires_at TIMESTAMPTZ,
+    expires_at DATETIME(6),
     must_change_password BOOLEAN NOT NULL DEFAULT FALSE,
-    created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
-);
+    created_at DATETIME(6) DEFAULT CURRENT_TIMESTAMP(6),
+    updated_at DATETIME(6) DEFAULT CURRENT_TIMESTAMP(6) ON UPDATE CURRENT_TIMESTAMP(6)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE TABLE IF NOT EXISTS wms_user_role (
-    user_id BIGINT NOT NULL REFERENCES wms_user(id) ON DELETE CASCADE,
-    role_id INT NOT NULL REFERENCES wms_role(id) ON DELETE CASCADE,
-    PRIMARY KEY (user_id, role_id)
-);
+    user_id BIGINT NOT NULL,
+    role_id INT NOT NULL,
+    PRIMARY KEY (user_id, role_id),
+    CONSTRAINT fk_user_role_user FOREIGN KEY (user_id) REFERENCES wms_user(id) ON DELETE CASCADE,
+    CONSTRAINT fk_user_role_role FOREIGN KEY (role_id) REFERENCES wms_role(id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS wms_user_session (
+    id VARCHAR(36) PRIMARY KEY,
+    user_id BIGINT NOT NULL,
+    device_name VARCHAR(100) NOT NULL,
+    device_type VARCHAR(30) NOT NULL,
+    ip_address VARCHAR(50) NOT NULL,
+    location_name VARCHAR(150) NOT NULL,
+    token_hash VARCHAR(64) NOT NULL,
+    is_active BOOLEAN DEFAULT TRUE,
+    created_at DATETIME(6) DEFAULT CURRENT_TIMESTAMP(6),
+    last_active_at DATETIME(6) DEFAULT CURRENT_TIMESTAMP(6),
+    revoked_reason VARCHAR(100),
+    CONSTRAINT fk_user_session_user FOREIGN KEY (user_id) REFERENCES wms_user(id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE INDEX idx_user_session_user_id ON wms_user_session(user_id);
+CREATE INDEX idx_user_session_active ON wms_user_session(user_id, is_active);
+CREATE INDEX idx_user_session_token ON wms_user_session(token_hash);
 
 -- 2. BẢNG MASTER DATA: KHO TỔNG (WAREHOUSE) & VỊ TRÍ KHO VẬT LÝ (LOCATION TOPOLOGY)
 CREATE TABLE IF NOT EXISTS wms_warehouse (
-    id BIGSERIAL PRIMARY KEY,
-    code VARCHAR(20) UNIQUE NOT NULL,                    -- Business Key (VD: WH01, WH02)
-    name VARCHAR(255) NOT NULL,                          -- Tên kho (VD: Kho Tổng Tân Bình)
-    address TEXT,                                        -- Địa chỉ thực tế
-    contact_phone VARCHAR(20),                           -- Số hotline kho
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    code VARCHAR(20) UNIQUE NOT NULL,
+    name VARCHAR(255) NOT NULL,
+    address TEXT,
+    contact_phone VARCHAR(20),
+    trusted_ips VARCHAR(255),
     is_active BOOLEAN DEFAULT TRUE,
-    created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
-);
+    created_at DATETIME(6) DEFAULT CURRENT_TIMESTAMP(6),
+    updated_at DATETIME(6) DEFAULT CURRENT_TIMESTAMP(6) ON UPDATE CURRENT_TIMESTAMP(6)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE TABLE IF NOT EXISTS wms_location (
-    id BIGSERIAL PRIMARY KEY,
-    warehouse_id BIGINT NOT NULL REFERENCES wms_warehouse(id) ON DELETE RESTRICT,
-    zone_code VARCHAR(20) NOT NULL,                      -- Khu A (Khô), Khu B (Mát/Lạnh)
-    aisle VARCHAR(20) NOT NULL,                          -- Dãy kệ
-    rack VARCHAR(20) NOT NULL,                           -- Kệ chứa
-    shelf VARCHAR(20) NOT NULL,                          -- Tầng kệ
-    bin VARCHAR(20) NOT NULL,                            -- Mã định danh ô cụ thể (VD: B01, B02)
-    bin_barcode VARCHAR(50) UNIQUE NOT NULL,             -- Mã vạch quét nhanh (Tự sinh Unique Index)
-    max_weight_kg NUMERIC(10,2) DEFAULT 500.0,
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    warehouse_id BIGINT NOT NULL,
+    zone_code VARCHAR(20) NOT NULL,
+    aisle VARCHAR(20) NOT NULL,
+    rack VARCHAR(20) NOT NULL,
+    shelf VARCHAR(20) NOT NULL,
+    bin VARCHAR(20) NOT NULL,
+    bin_barcode VARCHAR(50) UNIQUE NOT NULL,
+    max_weight_kg DECIMAL(10,2) DEFAULT 500.0,
     is_active BOOLEAN DEFAULT TRUE,
-    created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
-    CONSTRAINT uq_location_coords UNIQUE (warehouse_id, zone_code, aisle, rack, shelf, bin)
-);
+    created_at DATETIME(6) DEFAULT CURRENT_TIMESTAMP(6),
+    updated_at DATETIME(6) DEFAULT CURRENT_TIMESTAMP(6) ON UPDATE CURRENT_TIMESTAMP(6),
+    CONSTRAINT uq_location_coords UNIQUE (warehouse_id, zone_code, aisle, rack, shelf, bin),
+    CONSTRAINT fk_location_warehouse FOREIGN KEY (warehouse_id) REFERENCES wms_warehouse(id) ON DELETE RESTRICT
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- 3. BẢNG MASTER DATA: DANH MỤC PHÂN CẤP (CATEGORY), SẢN PHẨM & NHÀ CUNG CẤP
 CREATE TABLE IF NOT EXISTS wms_category (
-    id BIGSERIAL PRIMARY KEY,
-    code VARCHAR(50) UNIQUE NOT NULL,                    -- Business Key (VD: CAT-ELEC, CAT-PHONE)
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    code VARCHAR(50) UNIQUE NOT NULL,
     name VARCHAR(100) NOT NULL,
-    parent_id BIGINT REFERENCES wms_category(id) ON DELETE RESTRICT, -- Hỗ trợ cây phân cấp cha - con
+    parent_id BIGINT,
     is_active BOOLEAN DEFAULT TRUE,
-    created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
-);
+    created_at DATETIME(6) DEFAULT CURRENT_TIMESTAMP(6),
+    updated_at DATETIME(6) DEFAULT CURRENT_TIMESTAMP(6) ON UPDATE CURRENT_TIMESTAMP(6),
+    CONSTRAINT fk_category_parent FOREIGN KEY (parent_id) REFERENCES wms_category(id) ON DELETE RESTRICT
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE TABLE IF NOT EXISTS wms_supplier (
-    id BIGSERIAL PRIMARY KEY,
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
     code VARCHAR(50) UNIQUE NOT NULL,
     name VARCHAR(255) NOT NULL,
     contact_phone VARCHAR(20),
-    created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
-);
+    created_at DATETIME(6) DEFAULT CURRENT_TIMESTAMP(6),
+    updated_at DATETIME(6) DEFAULT CURRENT_TIMESTAMP(6) ON UPDATE CURRENT_TIMESTAMP(6)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE TABLE IF NOT EXISTS wms_product (
-    id BIGSERIAL PRIMARY KEY,
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
     sku VARCHAR(50) UNIQUE NOT NULL,
     barcode VARCHAR(50) UNIQUE NOT NULL,
     name VARCHAR(255) NOT NULL,
-    category_id BIGINT REFERENCES wms_category(id) ON DELETE SET NULL,
+    category_id BIGINT,
     unit VARCHAR(20) NOT NULL,
     safety_stock INT DEFAULT 10,
     reorder_point INT DEFAULT 20,
-    created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
-);
-
--- Bảng liên kết N-N: Danh mục cung ứng (Supplier Product Catalog)
-CREATE TABLE IF NOT EXISTS wms_supplier_product (
-    supplier_id BIGINT NOT NULL REFERENCES wms_supplier(id) ON DELETE CASCADE,
-    product_id BIGINT NOT NULL REFERENCES wms_product(id) ON DELETE CASCADE,
-    supplier_sku VARCHAR(100),
-    purchase_price NUMERIC(15,2) DEFAULT 0.00,
-    lead_time_days INT DEFAULT 3,
-    min_order_qty INT DEFAULT 1,
-    is_preferred BOOLEAN DEFAULT FALSE,
-    created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
-    PRIMARY KEY (supplier_id, product_id)
-);
+    created_at DATETIME(6) DEFAULT CURRENT_TIMESTAMP(6),
+    updated_at DATETIME(6) DEFAULT CURRENT_TIMESTAMP(6) ON UPDATE CURRENT_TIMESTAMP(6),
+    CONSTRAINT fk_product_category FOREIGN KEY (category_id) REFERENCES wms_category(id) ON DELETE SET NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- 4. BẢNG LÔ HÀNG (BATCH) & HẠN SỬ DỤNG
 CREATE TABLE IF NOT EXISTS wms_product_batch (
-    id BIGSERIAL PRIMARY KEY,
-    product_id BIGINT NOT NULL REFERENCES wms_product(id) ON DELETE RESTRICT,
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    product_id BIGINT NOT NULL,
     batch_number VARCHAR(100) NOT NULL,
     manufacture_date DATE,
-    expiry_date DATE,                                    -- Hỗ trợ cả hàng tiêu dùng lẫn hàng phi date
-    status VARCHAR(20) NOT NULL DEFAULT 'ACTIVE' 
-        CHECK (status IN ('ACTIVE', 'QUARANTINE', 'RECALLED', 'EXPIRED')),
-    supplier_id BIGINT REFERENCES wms_supplier(id),
-    created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
+    expiry_date DATE,
+    status VARCHAR(20) NOT NULL DEFAULT 'ACTIVE',
+    supplier_id BIGINT,
+    created_at DATETIME(6) DEFAULT CURRENT_TIMESTAMP(6),
+    updated_at DATETIME(6) DEFAULT CURRENT_TIMESTAMP(6) ON UPDATE CURRENT_TIMESTAMP(6),
     CONSTRAINT uq_product_batch UNIQUE (product_id, batch_number),
-    CONSTRAINT uq_product_batch_id_product UNIQUE (id, product_id) -- Dùng cho Composite FK chống lệch dữ liệu
-);
+    CONSTRAINT uq_product_batch_id_product UNIQUE (id, product_id),
+    CONSTRAINT fk_batch_product FOREIGN KEY (product_id) REFERENCES wms_product(id) ON DELETE RESTRICT,
+    CONSTRAINT fk_batch_supplier FOREIGN KEY (supplier_id) REFERENCES wms_supplier(id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- 5. BẢNG LÕI TỒN KHO THEO Ô KỆ (INVENTORY)
 CREATE TABLE IF NOT EXISTS wms_inventory (
-    id BIGSERIAL PRIMARY KEY,
-    location_id BIGINT NOT NULL REFERENCES wms_location(id) ON DELETE RESTRICT,
-    product_id BIGINT NOT NULL REFERENCES wms_product(id) ON DELETE RESTRICT,
-    batch_id BIGINT NOT NULL REFERENCES wms_product_batch(id) ON DELETE RESTRICT,
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    location_id BIGINT NOT NULL,
+    product_id BIGINT NOT NULL,
+    batch_id BIGINT NOT NULL,
     on_hand_qty INT NOT NULL DEFAULT 0,
     reserved_qty INT NOT NULL DEFAULT 0,
-    version BIGINT NOT NULL DEFAULT 0,                   -- Optimistic Locking Version
-    last_updated_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
+    version BIGINT NOT NULL DEFAULT 0,
+    last_updated_at DATETIME(6) DEFAULT CURRENT_TIMESTAMP(6) ON UPDATE CURRENT_TIMESTAMP(6),
     CONSTRAINT uq_inventory_loc_batch UNIQUE (location_id, product_id, batch_id),
     CONSTRAINT chk_inventory_qty CHECK (on_hand_qty >= reserved_qty AND reserved_qty >= 0),
-    -- Khóa toàn vẹn: Đảm bảo product_id không lệch với lô hàng batch_id
-    CONSTRAINT fk_inventory_batch_product FOREIGN KEY (batch_id, product_id) 
-        REFERENCES wms_product_batch(id, product_id) ON DELETE RESTRICT
-);
+    CONSTRAINT fk_inventory_location FOREIGN KEY (location_id) REFERENCES wms_location(id) ON DELETE RESTRICT,
+    CONSTRAINT fk_inventory_product FOREIGN KEY (product_id) REFERENCES wms_product(id) ON DELETE RESTRICT,
+    CONSTRAINT fk_inventory_batch FOREIGN KEY (batch_id) REFERENCES wms_product_batch(id) ON DELETE RESTRICT,
+    CONSTRAINT fk_inventory_batch_product FOREIGN KEY (batch_id, product_id) REFERENCES wms_product_batch(id, product_id) ON DELETE RESTRICT
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- 6. BẢNG SỔ CÁI BẤT BIẾN (STOCK LEDGER)
 CREATE TABLE IF NOT EXISTS wms_stock_ledger (
-    id BIGSERIAL PRIMARY KEY,
-    transaction_type VARCHAR(30) NOT NULL 
-        CHECK (transaction_type IN ('INBOUND', 'OUTBOUND', 'ADJUSTMENT', 'TRANSFER', 'INITIAL_IMPORT')),
-    reference_code VARCHAR(100) NOT NULL,                -- Mã phiếu nhập/xuất/kiểm kê/chuyển vị trí
-    location_id BIGINT NOT NULL REFERENCES wms_location(id) ON DELETE RESTRICT,
-    product_id BIGINT NOT NULL REFERENCES wms_product(id) ON DELETE RESTRICT,
-    batch_id BIGINT NOT NULL REFERENCES wms_product_batch(id) ON DELETE RESTRICT,
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    transaction_type VARCHAR(30) NOT NULL,
+    reference_code VARCHAR(100) NOT NULL,
+    location_id BIGINT NOT NULL,
+    product_id BIGINT NOT NULL,
+    batch_id BIGINT NOT NULL,
     qty_change INT NOT NULL,
     balance_after INT NOT NULL,
-    performed_by BIGINT NOT NULL REFERENCES wms_user(id) ON DELETE RESTRICT,
+    performed_by BIGINT NOT NULL,
     notes TEXT,
-    created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
-    CONSTRAINT fk_ledger_batch_product FOREIGN KEY (batch_id, product_id) 
-        REFERENCES wms_product_batch(id, product_id) ON DELETE RESTRICT
-);
+    created_at DATETIME(6) DEFAULT CURRENT_TIMESTAMP(6),
+    CONSTRAINT fk_ledger_location FOREIGN KEY (location_id) REFERENCES wms_location(id) ON DELETE RESTRICT,
+    CONSTRAINT fk_ledger_product FOREIGN KEY (product_id) REFERENCES wms_product(id) ON DELETE RESTRICT,
+    CONSTRAINT fk_ledger_batch FOREIGN KEY (batch_id) REFERENCES wms_product_batch(id) ON DELETE RESTRICT,
+    CONSTRAINT fk_ledger_user FOREIGN KEY (performed_by) REFERENCES wms_user(id) ON DELETE RESTRICT,
+    CONSTRAINT fk_ledger_batch_product FOREIGN KEY (batch_id, product_id) REFERENCES wms_product_batch(id, product_id) ON DELETE RESTRICT
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- 7. BẢNG QUẢN LÝ ĐƠN HÀNG NHẬP KHO (INBOUND DOMAIN)
 CREATE TABLE IF NOT EXISTS wms_inbound_order (
-    id BIGSERIAL PRIMARY KEY,
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
     order_code VARCHAR(50) UNIQUE NOT NULL,
-    warehouse_id BIGINT NOT NULL REFERENCES wms_warehouse(id) ON DELETE RESTRICT,
-    supplier_id BIGINT REFERENCES wms_supplier(id),
-    status VARCHAR(30) NOT NULL DEFAULT 'PENDING' 
-        CHECK (status IN ('PENDING', 'RECEIVED', 'STOCKED', 'CANCELLED')),
-    created_by BIGINT NOT NULL REFERENCES wms_user(id) ON DELETE RESTRICT,
+    warehouse_id BIGINT NOT NULL,
+    supplier_id BIGINT,
+    status VARCHAR(30) NOT NULL DEFAULT 'PENDING',
+    created_by BIGINT NOT NULL,
     notes TEXT,
-    created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
-);
+    created_at DATETIME(6) DEFAULT CURRENT_TIMESTAMP(6),
+    updated_at DATETIME(6) DEFAULT CURRENT_TIMESTAMP(6) ON UPDATE CURRENT_TIMESTAMP(6),
+    CONSTRAINT fk_inbound_warehouse FOREIGN KEY (warehouse_id) REFERENCES wms_warehouse(id) ON DELETE RESTRICT,
+    CONSTRAINT fk_inbound_supplier FOREIGN KEY (supplier_id) REFERENCES wms_supplier(id),
+    CONSTRAINT fk_inbound_user FOREIGN KEY (created_by) REFERENCES wms_user(id) ON DELETE RESTRICT
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE TABLE IF NOT EXISTS wms_inbound_order_item (
-    id BIGSERIAL PRIMARY KEY,
-    inbound_order_id BIGINT NOT NULL REFERENCES wms_inbound_order(id) ON DELETE CASCADE,
-    product_id BIGINT NOT NULL REFERENCES wms_product(id) ON DELETE RESTRICT,
-    product_batch_id BIGINT REFERENCES wms_product_batch(id) ON DELETE SET NULL, -- Liên kết lô hàng khi nghiệm thu
-    batch_number VARCHAR(100),                           -- Số lô do NCC bàn giao
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    inbound_order_id BIGINT NOT NULL,
+    product_id BIGINT NOT NULL,
+    product_batch_id BIGINT,
+    batch_number VARCHAR(100),
     manufacture_date DATE,
     expiry_date DATE,
     expected_qty INT NOT NULL CHECK (expected_qty > 0),
     received_qty INT NOT NULL DEFAULT 0 CHECK (received_qty >= 0),
-    over_delivery_tolerance_pct NUMERIC(5,2) DEFAULT 10.00, -- Giới hạn dung sai giao thừa (mặc định 10%)
-    unit_price NUMERIC(15,2) DEFAULT 0.00,
-    status VARCHAR(30) NOT NULL DEFAULT 'PENDING' 
-        CHECK (status IN ('PENDING', 'PARTIAL', 'COMPLETED')),
-    created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
-    -- Bảo vệ chặn nhập sai vượt trần dung sai over-delivery
-    CONSTRAINT chk_inbound_item_over_delivery 
-        CHECK (received_qty <= expected_qty * (1 + (over_delivery_tolerance_pct / 100.0)))
-);
+    over_delivery_tolerance_pct DECIMAL(5,2) DEFAULT 10.00,
+    unit_price DECIMAL(15,2) DEFAULT 0.00,
+    status VARCHAR(30) NOT NULL DEFAULT 'PENDING',
+    created_at DATETIME(6) DEFAULT CURRENT_TIMESTAMP(6),
+    CONSTRAINT fk_inbound_item_order FOREIGN KEY (inbound_order_id) REFERENCES wms_inbound_order(id) ON DELETE CASCADE,
+    CONSTRAINT fk_inbound_item_product FOREIGN KEY (product_id) REFERENCES wms_product(id) ON DELETE RESTRICT,
+    CONSTRAINT fk_inbound_item_batch FOREIGN KEY (product_batch_id) REFERENCES wms_product_batch(id) ON DELETE SET NULL,
+    CONSTRAINT chk_inbound_item_over_delivery CHECK (received_qty <= expected_qty * (1 + (over_delivery_tolerance_pct / 100.0)))
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
--- 8B. BẢNG BIÊN BẢN TIẾP NHẬN HÀNG THỰC TẾ & KIỂM TRA CHẤT LƯỢNG (RECEIVING & QC)
-CREATE TABLE IF NOT EXISTS wms_receipt (
-    id BIGSERIAL PRIMARY KEY,
-    receipt_code VARCHAR(50) UNIQUE NOT NULL,            -- VD: 'REC-2026-001'
-    inbound_order_id BIGINT NOT NULL REFERENCES wms_inbound_order(id) ON DELETE RESTRICT,
-    warehouse_id BIGINT NOT NULL REFERENCES wms_warehouse(id) ON DELETE RESTRICT,
-    dock_number VARCHAR(50),                             -- Cửa tiếp nhận / Receiving Dock
-    status VARCHAR(30) NOT NULL DEFAULT 'RECEIVING' 
-        CHECK (status IN ('RECEIVING', 'COMPLETED', 'CANCELLED')),
-    received_by BIGINT NOT NULL REFERENCES wms_user(id) ON DELETE RESTRICT,
-    received_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
-    notes TEXT,
-    created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
-);
-
-CREATE TABLE IF NOT EXISTS wms_receipt_item (
-    id BIGSERIAL PRIMARY KEY,
-    receipt_id BIGINT NOT NULL REFERENCES wms_receipt(id) ON DELETE CASCADE,
-    inbound_order_item_id BIGINT NOT NULL REFERENCES wms_inbound_order_item(id) ON DELETE RESTRICT,
-    product_id BIGINT NOT NULL REFERENCES wms_product(id) ON DELETE RESTRICT,
-    batch_id BIGINT REFERENCES wms_product_batch(id) ON DELETE RESTRICT,
-    accepted_qty INT NOT NULL CHECK (accepted_qty >= 0),
-    rejected_qty INT NOT NULL DEFAULT 0 CHECK (rejected_qty >= 0),
-    reject_reason VARCHAR(255),
-    created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
-);
-
--- BẢNG NHIỆM VỤ CẤT HÀNG VÀO KỆ (PUTAWAY TASK)
-CREATE TABLE IF NOT EXISTS wms_putaway_task (
-    id BIGSERIAL PRIMARY KEY,
-    task_code VARCHAR(50) UNIQUE NOT NULL,               -- VD: 'PUT-2026-001'
-    receipt_item_id BIGINT NOT NULL REFERENCES wms_receipt_item(id) ON DELETE RESTRICT,
-    product_id BIGINT NOT NULL REFERENCES wms_product(id) ON DELETE RESTRICT,
-    batch_id BIGINT REFERENCES wms_product_batch(id) ON DELETE RESTRICT,
-    source_location_id BIGINT REFERENCES wms_location(id) ON DELETE RESTRICT,     -- Vị trí đỗ/staging ban đầu
-    destination_location_id BIGINT NOT NULL REFERENCES wms_location(id) ON DELETE RESTRICT, -- Vị trí ô kệ đích do Putaway Engine đề xuất
-    quantity INT NOT NULL CHECK (quantity > 0),
-    status VARCHAR(30) NOT NULL DEFAULT 'PENDING' 
-        CHECK (status IN ('PENDING', 'IN_PROGRESS', 'COMPLETED', 'CANCELLED')),
-    assigned_to BIGINT REFERENCES wms_user(id) ON DELETE SET NULL,
-    completed_at TIMESTAMPTZ,
-    created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
-);
-
--- 8. BẢNG QUẢN LÝ ĐƠN HÀNG XUẤT KHO & PHÂN BỔ NHẶT HÀNG (OUTBOUND DOMAIN)
+-- 8. BẢNG QUẢN LÝ ĐƠN HÀNG XUẤT KHO, PHÂN BỔ FEFO & GIỮ CHỖ TỒN KHO (OUTBOUND DOMAIN)
 CREATE TABLE IF NOT EXISTS wms_outbound_order (
-    id BIGSERIAL PRIMARY KEY,
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
     order_code VARCHAR(50) UNIQUE NOT NULL,
-    warehouse_id BIGINT NOT NULL REFERENCES wms_warehouse(id) ON DELETE RESTRICT,
+    warehouse_id BIGINT NOT NULL,
     customer_name VARCHAR(100),
-    status VARCHAR(30) NOT NULL DEFAULT 'PENDING' 
-        CHECK (status IN ('PENDING', 'ALLOCATED', 'PICKED', 'PACKED', 'SHIPPED', 'DISPATCHED', 'CANCELLED')),
-    created_by BIGINT NOT NULL REFERENCES wms_user(id) ON DELETE RESTRICT,
+    status VARCHAR(30) NOT NULL DEFAULT 'PENDING',
+    created_by BIGINT NOT NULL,
     notes TEXT,
-    created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
-);
+    created_at DATETIME(6) DEFAULT CURRENT_TIMESTAMP(6),
+    updated_at DATETIME(6) DEFAULT CURRENT_TIMESTAMP(6) ON UPDATE CURRENT_TIMESTAMP(6),
+    CONSTRAINT fk_outbound_warehouse FOREIGN KEY (warehouse_id) REFERENCES wms_warehouse(id) ON DELETE RESTRICT,
+    CONSTRAINT fk_outbound_user FOREIGN KEY (created_by) REFERENCES wms_user(id) ON DELETE RESTRICT
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE TABLE IF NOT EXISTS wms_outbound_order_item (
-    id BIGSERIAL PRIMARY KEY,
-    outbound_order_id BIGINT NOT NULL REFERENCES wms_outbound_order(id) ON DELETE CASCADE,
-    product_id BIGINT NOT NULL REFERENCES wms_product(id) ON DELETE RESTRICT,
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    outbound_order_id BIGINT NOT NULL,
+    product_id BIGINT NOT NULL,
     requested_qty INT NOT NULL CHECK (requested_qty > 0),
     allocated_qty INT NOT NULL DEFAULT 0 CHECK (allocated_qty >= 0),
     picked_qty INT NOT NULL DEFAULT 0 CHECK (picked_qty >= 0),
-    unit_price NUMERIC(15,2) DEFAULT 0.00,
-    status VARCHAR(30) NOT NULL DEFAULT 'PENDING' 
-        CHECK (status IN ('PENDING', 'ALLOCATED', 'PICKED', 'SHIPPED', 'CANCELLED')),
-    created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
-    CONSTRAINT chk_outbound_item_qty CHECK (requested_qty >= allocated_qty AND allocated_qty >= picked_qty),
-    CONSTRAINT uq_outbound_item_id_product UNIQUE (id, product_id) -- Dùng cho Composite FK với Pick Allocation
-);
+    unit_price DECIMAL(15,2) DEFAULT 0.00,
+    status VARCHAR(30) NOT NULL DEFAULT 'PENDING',
+    created_at DATETIME(6) DEFAULT CURRENT_TIMESTAMP(6),
+    CONSTRAINT uq_outbound_item_id_product UNIQUE (id, product_id),
+    CONSTRAINT fk_outbound_item_order FOREIGN KEY (outbound_order_id) REFERENCES wms_outbound_order(id) ON DELETE CASCADE,
+    CONSTRAINT fk_outbound_item_product FOREIGN KEY (product_id) REFERENCES wms_product(id) ON DELETE RESTRICT,
+    CONSTRAINT chk_outbound_item_qty CHECK (requested_qty >= allocated_qty AND allocated_qty >= picked_qty)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
--- Bảng phân bổ nhặt hàng (Pick Allocation): Khóa toàn vẹn 3 chiều (Order Item + Batch + Inventory)
 CREATE TABLE IF NOT EXISTS wms_pick_allocation (
-    id BIGSERIAL PRIMARY KEY,
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
     outbound_order_item_id BIGINT NOT NULL,
     product_id BIGINT NOT NULL,
     location_id BIGINT NOT NULL,
     batch_id BIGINT NOT NULL,
     allocated_qty INT NOT NULL CHECK (allocated_qty > 0),
     picked_qty INT NOT NULL DEFAULT 0 CHECK (picked_qty >= 0),
-    status VARCHAR(30) NOT NULL DEFAULT 'ALLOCATED' 
-        CHECK (status IN ('ALLOCATED', 'PICKED', 'CANCELLED')),
-    created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
-    picked_at TIMESTAMPTZ,
+    status VARCHAR(30) NOT NULL DEFAULT 'ALLOCATED',
+    created_at DATETIME(6) DEFAULT CURRENT_TIMESTAMP(6),
+    picked_at DATETIME(6),
     CONSTRAINT chk_pick_allocation_qty CHECK (allocated_qty >= picked_qty),
-    -- 1. BẢO VỆ CHÍ MẠNG: Ngăn chặn 100% nhặt sai sản phẩm của dòng đơn hàng
-    CONSTRAINT fk_pick_alloc_order_item_product FOREIGN KEY (outbound_order_item_id, product_id) 
-        REFERENCES wms_outbound_order_item(id, product_id) ON DELETE CASCADE,
-    -- 2. BẢO VỆ CHÍ MẠNG: Bắt buộc batch_id phải thuộc về đúng sản phẩm product_id
-    CONSTRAINT fk_pick_alloc_batch_product FOREIGN KEY (batch_id, product_id) 
-        REFERENCES wms_product_batch(id, product_id) ON DELETE RESTRICT,
-    -- 3. BẢO VỆ CHÍ MẠNG: Bắt buộc (location_id, product_id, batch_id) phải thực sự tồn tại trong kho wms_inventory
-    CONSTRAINT fk_pick_alloc_inventory FOREIGN KEY (location_id, product_id, batch_id) 
-        REFERENCES wms_inventory(location_id, product_id, batch_id) ON DELETE RESTRICT
-);
+    CONSTRAINT fk_pick_alloc_order_item_product FOREIGN KEY (outbound_order_item_id, product_id) REFERENCES wms_outbound_order_item(id, product_id) ON DELETE CASCADE,
+    CONSTRAINT fk_pick_alloc_batch_product FOREIGN KEY (batch_id, product_id) REFERENCES wms_product_batch(id, product_id) ON DELETE RESTRICT,
+    CONSTRAINT fk_pick_alloc_inventory FOREIGN KEY (location_id, product_id, batch_id) REFERENCES wms_inventory(location_id, product_id, batch_id) ON DELETE RESTRICT
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
--- 8C. BẢNG THEO DÕI GIỮ CHỖ TỒN KHO CHO ĐƠN HÀNG (STOCK RESERVATION)
 CREATE TABLE IF NOT EXISTS wms_stock_reservation (
-    id BIGSERIAL PRIMARY KEY,
-    outbound_order_id BIGINT NOT NULL REFERENCES wms_outbound_order(id) ON DELETE CASCADE,
-    outbound_order_item_id BIGINT NOT NULL REFERENCES wms_outbound_order_item(id) ON DELETE CASCADE,
-    location_id BIGINT NOT NULL REFERENCES wms_location(id) ON DELETE RESTRICT,
-    product_id BIGINT NOT NULL REFERENCES wms_product(id) ON DELETE RESTRICT,
-    batch_id BIGINT NOT NULL REFERENCES wms_product_batch(id) ON DELETE RESTRICT,
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    outbound_order_id BIGINT NOT NULL,
+    outbound_order_item_id BIGINT NOT NULL,
+    location_id BIGINT NOT NULL,
+    product_id BIGINT NOT NULL,
+    batch_id BIGINT NOT NULL,
     reserved_qty INT NOT NULL CHECK (reserved_qty > 0),
-    status VARCHAR(30) NOT NULL DEFAULT 'RESERVED' 
-        CHECK (status IN ('RESERVED', 'PICKED', 'RELEASED')),
-    expires_at TIMESTAMPTZ,
-    created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
-    CONSTRAINT fk_reservation_inventory FOREIGN KEY (location_id, product_id, batch_id) 
-        REFERENCES wms_inventory(location_id, product_id, batch_id) ON DELETE RESTRICT
-);
-
--- 8D. BẢNG ĐÓNG GÓI KIỆN HÀNG & KIỂM ĐẾM QC (PACKING & QC)
-CREATE TABLE IF NOT EXISTS wms_package (
-    id BIGSERIAL PRIMARY KEY,
-    package_code VARCHAR(50) UNIQUE NOT NULL,            -- Mã kiện hàng (VD: 'PKG-2026-001')
-    outbound_order_id BIGINT NOT NULL REFERENCES wms_outbound_order(id) ON DELETE RESTRICT,
-    tracking_number VARCHAR(100),                        -- Mã vận đơn kiện hàng
-    weight_kg NUMERIC(10,2),                             -- Trọng lượng thực tế kiện hàng
-    status VARCHAR(30) NOT NULL DEFAULT 'PACKING' 
-        CHECK (status IN ('PACKING', 'SEALED', 'SHIPPED')),
-    packed_by BIGINT NOT NULL REFERENCES wms_user(id) ON DELETE RESTRICT,
-    packed_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
-    notes TEXT,
-    created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
-);
-
-CREATE TABLE IF NOT EXISTS wms_package_item (
-    id BIGSERIAL PRIMARY KEY,
-    package_id BIGINT NOT NULL REFERENCES wms_package(id) ON DELETE CASCADE,
-    product_id BIGINT NOT NULL REFERENCES wms_product(id) ON DELETE RESTRICT,
-    batch_id BIGINT NOT NULL REFERENCES wms_product_batch(id) ON DELETE RESTRICT,
-    quantity INT NOT NULL CHECK (quantity > 0)
-);
-
--- 8E. BẢNG VẬN ĐƠN XUẤT KHO & GIAO VẬN (SHIPPING & DISPATCH)
-CREATE TABLE IF NOT EXISTS wms_shipment (
-    id BIGSERIAL PRIMARY KEY,
-    shipment_code VARCHAR(50) UNIQUE NOT NULL,           -- Chuyến xuất / Vận đơn (VD: 'SHP-2026-001')
-    outbound_order_id BIGINT NOT NULL REFERENCES wms_outbound_order(id) ON DELETE RESTRICT,
-    carrier_name VARCHAR(100) NOT NULL,                  -- Đơn vị vận chuyển (GHTK, Viettel Post, Xe tải nội bộ)
-    vehicle_number VARCHAR(50),                          -- Biển số xe tải
-    driver_name VARCHAR(100),                            -- Tên tài xế
-    driver_phone VARCHAR(20),
-    status VARCHAR(30) NOT NULL DEFAULT 'DISPATCHED' 
-        CHECK (status IN ('PREPARING', 'DISPATCHED', 'DELIVERED', 'RETURNED')),
-    dispatched_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
-    created_by BIGINT NOT NULL REFERENCES wms_user(id) ON DELETE RESTRICT,
-    notes TEXT,
-    created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
-);
+    status VARCHAR(30) NOT NULL DEFAULT 'RESERVED',
+    expires_at DATETIME(6),
+    created_at DATETIME(6) DEFAULT CURRENT_TIMESTAMP(6),
+    CONSTRAINT fk_reservation_order FOREIGN KEY (outbound_order_id) REFERENCES wms_outbound_order(id) ON DELETE CASCADE,
+    CONSTRAINT fk_reservation_item FOREIGN KEY (outbound_order_item_id) REFERENCES wms_outbound_order_item(id) ON DELETE CASCADE,
+    CONSTRAINT fk_reservation_inventory FOREIGN KEY (location_id, product_id, batch_id) REFERENCES wms_inventory(location_id, product_id, batch_id) ON DELETE RESTRICT
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- 9. BẢNG QUẢN LÝ ĐIỀU CHUYỂN VỊ TRÍ / CHUYỂN KHO (STOCK TRANSFER DOMAIN)
 CREATE TABLE IF NOT EXISTS wms_stock_transfer (
-    id BIGSERIAL PRIMARY KEY,
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
     transfer_code VARCHAR(50) UNIQUE NOT NULL,
-    warehouse_id BIGINT NOT NULL REFERENCES wms_warehouse(id) ON DELETE RESTRICT,
-    from_location_id BIGINT NOT NULL REFERENCES wms_location(id) ON DELETE RESTRICT,
-    to_location_id BIGINT NOT NULL REFERENCES wms_location(id) ON DELETE RESTRICT,
-    product_id BIGINT NOT NULL REFERENCES wms_product(id) ON DELETE RESTRICT,
-    batch_id BIGINT NOT NULL REFERENCES wms_product_batch(id) ON DELETE RESTRICT,
+    warehouse_id BIGINT NOT NULL,
+    from_location_id BIGINT NOT NULL,
+    to_location_id BIGINT NOT NULL,
+    product_id BIGINT NOT NULL,
+    batch_id BIGINT NOT NULL,
     quantity INT NOT NULL CHECK (quantity > 0),
-    status VARCHAR(30) NOT NULL DEFAULT 'PENDING' 
-        CHECK (status IN ('PENDING', 'IN_TRANSIT', 'COMPLETED', 'CANCELLED')),
-    created_by BIGINT NOT NULL REFERENCES wms_user(id) ON DELETE RESTRICT,
-    completed_by BIGINT REFERENCES wms_user(id) ON DELETE RESTRICT,
+    status VARCHAR(30) NOT NULL DEFAULT 'PENDING',
+    created_by BIGINT NOT NULL,
+    completed_by BIGINT,
     notes TEXT,
-    created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
-    completed_at TIMESTAMPTZ,
+    created_at DATETIME(6) DEFAULT CURRENT_TIMESTAMP(6),
+    completed_at DATETIME(6),
     CONSTRAINT chk_transfer_diff_loc CHECK (from_location_id <> to_location_id),
-    CONSTRAINT fk_transfer_batch_product FOREIGN KEY (batch_id, product_id) 
-        REFERENCES wms_product_batch(id, product_id) ON DELETE RESTRICT
-);
+    CONSTRAINT fk_transfer_warehouse FOREIGN KEY (warehouse_id) REFERENCES wms_warehouse(id) ON DELETE RESTRICT,
+    CONSTRAINT fk_transfer_from_loc FOREIGN KEY (from_location_id) REFERENCES wms_location(id) ON DELETE RESTRICT,
+    CONSTRAINT fk_transfer_to_loc FOREIGN KEY (to_location_id) REFERENCES wms_location(id) ON DELETE RESTRICT,
+    CONSTRAINT fk_transfer_product FOREIGN KEY (product_id) REFERENCES wms_product(id) ON DELETE RESTRICT,
+    CONSTRAINT fk_transfer_batch FOREIGN KEY (batch_id) REFERENCES wms_product_batch(id) ON DELETE RESTRICT,
+    CONSTRAINT fk_transfer_batch_product FOREIGN KEY (batch_id, product_id) REFERENCES wms_product_batch(id, product_id) ON DELETE RESTRICT,
+    CONSTRAINT fk_transfer_creator FOREIGN KEY (created_by) REFERENCES wms_user(id) ON DELETE RESTRICT,
+    CONSTRAINT fk_transfer_completer FOREIGN KEY (completed_by) REFERENCES wms_user(id) ON DELETE RESTRICT
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
--- 10. BẢNG QUẢN LÝ KIỂM KÊ KHO (STOCK AUDIT / CYCLE COUNT)
+-- 10. BẢNG QUẢN LÝ KIỂM KÊ KHO & CÂN ĐỐI TỒN KHO (STOCK AUDIT & ADJUSTMENT DOMAIN)
 CREATE TABLE IF NOT EXISTS wms_inventory_audit (
-    id BIGSERIAL PRIMARY KEY,
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
     audit_code VARCHAR(50) UNIQUE NOT NULL,
-    warehouse_id BIGINT NOT NULL REFERENCES wms_warehouse(id) ON DELETE RESTRICT,
-    audit_type VARCHAR(30) NOT NULL DEFAULT 'CYCLE_COUNT' 
-        CHECK (audit_type IN ('CYCLE_COUNT', 'FULL_AUDIT', 'SPOT_CHECK')),
-    status VARCHAR(30) NOT NULL DEFAULT 'IN_PROGRESS' 
-        CHECK (status IN ('IN_PROGRESS', 'COMPLETED', 'APPROVED', 'REJECTED', 'CANCELLED')),
-    created_by BIGINT NOT NULL REFERENCES wms_user(id) ON DELETE RESTRICT,
-    approved_by BIGINT REFERENCES wms_user(id) ON DELETE RESTRICT,
+    warehouse_id BIGINT NOT NULL,
+    audit_type VARCHAR(30) NOT NULL DEFAULT 'CYCLE_COUNT',
+    status VARCHAR(30) NOT NULL DEFAULT 'IN_PROGRESS',
+    created_by BIGINT NOT NULL,
+    approved_by BIGINT,
     notes TEXT,
-    created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
-    completed_at TIMESTAMPTZ
-);
+    created_at DATETIME(6) DEFAULT CURRENT_TIMESTAMP(6),
+    completed_at DATETIME(6),
+    CONSTRAINT fk_audit_warehouse FOREIGN KEY (warehouse_id) REFERENCES wms_warehouse(id) ON DELETE RESTRICT,
+    CONSTRAINT fk_audit_creator FOREIGN KEY (created_by) REFERENCES wms_user(id) ON DELETE RESTRICT,
+    CONSTRAINT fk_audit_approver FOREIGN KEY (approved_by) REFERENCES wms_user(id) ON DELETE RESTRICT
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE TABLE IF NOT EXISTS wms_inventory_audit_item (
-    id BIGSERIAL PRIMARY KEY,
-    audit_id BIGINT NOT NULL REFERENCES wms_inventory_audit(id) ON DELETE CASCADE,
-    location_id BIGINT NOT NULL REFERENCES wms_location(id) ON DELETE RESTRICT,
-    product_id BIGINT NOT NULL REFERENCES wms_product(id) ON DELETE RESTRICT,
-    batch_id BIGINT NOT NULL REFERENCES wms_product_batch(id) ON DELETE RESTRICT,
-    system_qty INT NOT NULL,                             -- Tồn hệ thống tại thời điểm chốt sổ
-    counted_qty INT,                                     -- Đếm mù, NULL khi mới tạo phiếu
-    difference_qty INT GENERATED ALWAYS AS (
-        CASE WHEN counted_qty IS NULL THEN NULL ELSE counted_qty - system_qty END
-    ) STORED,
-    status VARCHAR(30) NOT NULL DEFAULT 'PENDING' 
-        CHECK (status IN ('PENDING', 'MATCHED', 'DISCREPANCY', 'ADJUSTED')),
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    audit_id BIGINT NOT NULL,
+    location_id BIGINT NOT NULL,
+    product_id BIGINT NOT NULL,
+    batch_id BIGINT NOT NULL,
+    system_qty INT NOT NULL,
+    counted_qty INT,
+    difference_qty INT GENERATED ALWAYS AS (CASE WHEN counted_qty IS NULL THEN NULL ELSE counted_qty - system_qty END) STORED,
+    status VARCHAR(30) NOT NULL DEFAULT 'PENDING',
     counter_notes TEXT,
-    counted_at TIMESTAMPTZ,
-    CONSTRAINT fk_audit_item_batch_product FOREIGN KEY (batch_id, product_id) 
-        REFERENCES wms_product_batch(id, product_id) ON DELETE RESTRICT,
-    -- Khóa toàn vẹn: Bắt buộc vị trí, sản phẩm và lô hàng kiểm kê phải thực sự tồn tại trong wms_inventory
-    CONSTRAINT fk_audit_item_inventory FOREIGN KEY (location_id, product_id, batch_id) 
-        REFERENCES wms_inventory(location_id, product_id, batch_id) ON DELETE RESTRICT
-);
+    counted_at DATETIME(6),
+    CONSTRAINT fk_audit_item_audit FOREIGN KEY (audit_id) REFERENCES wms_inventory_audit(id) ON DELETE CASCADE,
+    CONSTRAINT fk_audit_item_location FOREIGN KEY (location_id) REFERENCES wms_location(id) ON DELETE RESTRICT,
+    CONSTRAINT fk_audit_item_product FOREIGN KEY (product_id) REFERENCES wms_product(id) ON DELETE RESTRICT,
+    CONSTRAINT fk_audit_item_batch FOREIGN KEY (batch_id) REFERENCES wms_product_batch(id) ON DELETE RESTRICT,
+    CONSTRAINT fk_audit_item_batch_product FOREIGN KEY (batch_id, product_id) REFERENCES wms_product_batch(id, product_id) ON DELETE RESTRICT,
+    CONSTRAINT fk_audit_item_inventory FOREIGN KEY (location_id, product_id, batch_id) REFERENCES wms_inventory(location_id, product_id, batch_id) ON DELETE RESTRICT
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
--- 10B. BẢNG ĐIỀU CHỈNH TỒN KHO SAU KIỂM KÊ (STOCK ADJUSTMENT DOMAIN)
 CREATE TABLE IF NOT EXISTS wms_stock_adjustment (
-    id BIGSERIAL PRIMARY KEY,
-    adjustment_code VARCHAR(50) UNIQUE NOT NULL,         -- VD: 'ADJ-2026-001'
-    audit_id BIGINT REFERENCES wms_inventory_audit(id) ON DELETE SET NULL,
-    warehouse_id BIGINT NOT NULL REFERENCES wms_warehouse(id) ON DELETE RESTRICT,
-    reason VARCHAR(255) NOT NULL,                        -- Lý do (Hao hụt kiểm kê, Hàng hỏng vỡ...)
-    status VARCHAR(30) NOT NULL DEFAULT 'PENDING' 
-        CHECK (status IN ('PENDING', 'APPROVED', 'REJECTED')),
-    created_by BIGINT NOT NULL REFERENCES wms_user(id) ON DELETE RESTRICT,
-    approved_by BIGINT REFERENCES wms_user(id) ON DELETE RESTRICT,
-    approved_at TIMESTAMPTZ,
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    adjustment_code VARCHAR(50) UNIQUE NOT NULL,
+    audit_id BIGINT,
+    warehouse_id BIGINT NOT NULL,
+    reason VARCHAR(255) NOT NULL,
+    status VARCHAR(30) NOT NULL DEFAULT 'PENDING',
+    created_by BIGINT NOT NULL,
+    approved_by BIGINT,
+    approved_at DATETIME(6),
     notes TEXT,
-    created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
-);
+    created_at DATETIME(6) DEFAULT CURRENT_TIMESTAMP(6),
+    updated_at DATETIME(6) DEFAULT CURRENT_TIMESTAMP(6) ON UPDATE CURRENT_TIMESTAMP(6),
+    CONSTRAINT fk_adj_audit FOREIGN KEY (audit_id) REFERENCES wms_inventory_audit(id) ON DELETE SET NULL,
+    CONSTRAINT fk_adj_warehouse FOREIGN KEY (warehouse_id) REFERENCES wms_warehouse(id) ON DELETE RESTRICT,
+    CONSTRAINT fk_adj_creator FOREIGN KEY (created_by) REFERENCES wms_user(id) ON DELETE RESTRICT,
+    CONSTRAINT fk_adj_approver FOREIGN KEY (approved_by) REFERENCES wms_user(id) ON DELETE RESTRICT
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE TABLE IF NOT EXISTS wms_stock_adjustment_item (
-    id BIGSERIAL PRIMARY KEY,
-    adjustment_id BIGINT NOT NULL REFERENCES wms_stock_adjustment(id) ON DELETE CASCADE,
-    location_id BIGINT NOT NULL REFERENCES wms_location(id) ON DELETE RESTRICT,
-    product_id BIGINT NOT NULL REFERENCES wms_product(id) ON DELETE RESTRICT,
-    batch_id BIGINT NOT NULL REFERENCES wms_product_batch(id) ON DELETE RESTRICT,
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    adjustment_id BIGINT NOT NULL,
+    location_id BIGINT NOT NULL,
+    product_id BIGINT NOT NULL,
+    batch_id BIGINT NOT NULL,
     system_qty INT NOT NULL,
     actual_qty INT NOT NULL,
     adjusted_qty INT GENERATED ALWAYS AS (actual_qty - system_qty) STORED,
-    created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
-    CONSTRAINT fk_adj_item_inventory FOREIGN KEY (location_id, product_id, batch_id) 
-        REFERENCES wms_inventory(location_id, product_id, batch_id) ON DELETE RESTRICT
-);
+    created_at DATETIME(6) DEFAULT CURRENT_TIMESTAMP(6),
+    CONSTRAINT fk_adj_item_adjustment FOREIGN KEY (adjustment_id) REFERENCES wms_stock_adjustment(id) ON DELETE CASCADE,
+    CONSTRAINT fk_adj_item_inventory FOREIGN KEY (location_id, product_id, batch_id) REFERENCES wms_inventory(location_id, product_id, batch_id) ON DELETE RESTRICT
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- 11. BẢNG THEO DÕI JOB BÁO CÁO NẶNG (REPORT JOBS)
 CREATE TABLE IF NOT EXISTS wms_report_job (
-    id UUID PRIMARY KEY,
+    id VARCHAR(36) PRIMARY KEY,
     report_name VARCHAR(100) NOT NULL,
-    status VARCHAR(30) NOT NULL DEFAULT 'PENDING' 
-        CHECK (status IN ('PENDING', 'PROCESSING', 'COMPLETED', 'FAILED')),
+    status VARCHAR(30) NOT NULL DEFAULT 'PENDING',
     download_url TEXT,
     error_message TEXT,
-    created_by BIGINT REFERENCES wms_user(id) ON DELETE SET NULL,
-    created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
-    completed_at TIMESTAMPTZ
-);
+    created_by BIGINT,
+    created_at DATETIME(6) DEFAULT CURRENT_TIMESTAMP(6),
+    completed_at DATETIME(6),
+    CONSTRAINT fk_report_job_user FOREIGN KEY (created_by) REFERENCES wms_user(id) ON DELETE SET NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
--- 12. BẢNG TRANSACTIONAL OUTBOX & PROCESSED EVENTS (RABBITMQ RELIABILITY & IDEMPOTENCY)
+-- 12. BẢNG TRANSACTIONAL OUTBOX & PROCESSED EVENTS
 CREATE TABLE IF NOT EXISTS wms_outbox_event (
-    id UUID PRIMARY KEY,
-    aggregate_type VARCHAR(50) NOT NULL,                 -- REPORT_JOB, INVENTORY, ORDER, TRANSFER
+    id VARCHAR(36) PRIMARY KEY,
+    aggregate_type VARCHAR(50) NOT NULL,
     aggregate_id VARCHAR(100) NOT NULL,
     event_type VARCHAR(100) NOT NULL,
-    payload JSONB NOT NULL,
-    status VARCHAR(20) NOT NULL DEFAULT 'PENDING' 
-        CHECK (status IN ('PENDING', 'PUBLISHED', 'FAILED')),
+    payload JSON NOT NULL,
+    status VARCHAR(20) NOT NULL DEFAULT 'PENDING',
     retry_count INT DEFAULT 0,
-    locked_at TIMESTAMPTZ,                               -- Chống cạnh tranh giữa các instance Outbox Worker
+    locked_at DATETIME(6),
     locked_by VARCHAR(100),
-    next_retry_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP, -- Exponential Backoff cho retry
-    last_error TEXT,                                     -- Lưu vết stacktrace lỗi khi publish thất bại
-    idempotency_key VARCHAR(100) UNIQUE,                 -- Khóa chống sinh trùng lặp sự kiện
-    created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
-    published_at TIMESTAMPTZ
-);
+    next_retry_at DATETIME(6) DEFAULT CURRENT_TIMESTAMP(6),
+    last_error TEXT,
+    idempotency_key VARCHAR(100) UNIQUE,
+    created_at DATETIME(6) DEFAULT CURRENT_TIMESTAMP(6),
+    published_at DATETIME(6)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
--- Bảng lưu vết sự kiện đã xử lý thành công ở Consumer (Inbox Pattern / Exactly-Once processing)
 CREATE TABLE IF NOT EXISTS wms_processed_event (
-    event_id UUID PRIMARY KEY,
+    event_id VARCHAR(36) PRIMARY KEY,
     event_type VARCHAR(100) NOT NULL,
-    processed_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
-);
+    processed_at DATETIME(6) DEFAULT CURRENT_TIMESTAMP(6)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
--- ==========================================================
--- 13. POSTGRESQL TRIGGERS & FUNCTIONS BẢO VỆ TÍNH TOÀN VẸN
--- ==========================================================
+-- INDEXES
+CREATE INDEX idx_inv_product_loc ON wms_inventory(product_id, location_id);
+CREATE INDEX idx_batch_fefo_active ON wms_product_batch(product_id, expiry_date, status);
+CREATE INDEX idx_ledger_product_loc ON wms_stock_ledger(product_id, location_id);
+CREATE INDEX idx_ledger_ref_code ON wms_stock_ledger(reference_code);
+CREATE INDEX idx_ledger_created_at ON wms_stock_ledger(created_at DESC);
+CREATE INDEX idx_ledger_batch ON wms_stock_ledger(batch_id);
 
--- Trigger Function: Tự động cập nhật cột updated_at trước mỗi lệnh UPDATE
-CREATE OR REPLACE FUNCTION trg_set_updated_at()
-RETURNS TRIGGER AS $$
-BEGIN
-    NEW.updated_at = CURRENT_TIMESTAMP;
-    RETURN NEW;
-END;
-$$ LANGUAGE plpgsql;
+CREATE INDEX idx_inbound_item_order ON wms_inbound_order_item(inbound_order_id);
+CREATE INDEX idx_inbound_item_product ON wms_inbound_order_item(product_id);
+CREATE INDEX idx_outbound_item_order ON wms_outbound_order_item(outbound_order_id);
+CREATE INDEX idx_outbound_item_product ON wms_outbound_order_item(product_id);
 
-CREATE TRIGGER trg_user_updated_at BEFORE UPDATE ON wms_user FOR EACH ROW EXECUTE FUNCTION trg_set_updated_at();
-CREATE TRIGGER trg_warehouse_updated_at BEFORE UPDATE ON wms_warehouse FOR EACH ROW EXECUTE FUNCTION trg_set_updated_at();
-CREATE TRIGGER trg_location_updated_at BEFORE UPDATE ON wms_location FOR EACH ROW EXECUTE FUNCTION trg_set_updated_at();
-CREATE TRIGGER trg_category_updated_at BEFORE UPDATE ON wms_category FOR EACH ROW EXECUTE FUNCTION trg_set_updated_at();
-CREATE TRIGGER trg_supplier_updated_at BEFORE UPDATE ON wms_supplier FOR EACH ROW EXECUTE FUNCTION trg_set_updated_at();
-CREATE TRIGGER trg_product_updated_at BEFORE UPDATE ON wms_product FOR EACH ROW EXECUTE FUNCTION trg_set_updated_at();
-CREATE TRIGGER trg_product_batch_updated_at BEFORE UPDATE ON wms_product_batch FOR EACH ROW EXECUTE FUNCTION trg_set_updated_at();
-CREATE TRIGGER trg_supplier_product_updated_at BEFORE UPDATE ON wms_supplier_product FOR EACH ROW EXECUTE FUNCTION trg_set_updated_at();
-CREATE TRIGGER trg_inbound_order_updated_at BEFORE UPDATE ON wms_inbound_order FOR EACH ROW EXECUTE FUNCTION trg_set_updated_at();
-CREATE TRIGGER trg_outbound_order_updated_at BEFORE UPDATE ON wms_outbound_order FOR EACH ROW EXECUTE FUNCTION trg_set_updated_at();
-CREATE TRIGGER trg_receipt_updated_at BEFORE UPDATE ON wms_receipt FOR EACH ROW EXECUTE FUNCTION trg_set_updated_at();
-CREATE TRIGGER trg_putaway_task_updated_at BEFORE UPDATE ON wms_putaway_task FOR EACH ROW EXECUTE FUNCTION trg_set_updated_at();
-CREATE TRIGGER trg_package_updated_at BEFORE UPDATE ON wms_package FOR EACH ROW EXECUTE FUNCTION trg_set_updated_at();
-CREATE TRIGGER trg_shipment_updated_at BEFORE UPDATE ON wms_shipment FOR EACH ROW EXECUTE FUNCTION trg_set_updated_at();
-CREATE TRIGGER trg_stock_adjustment_updated_at BEFORE UPDATE ON wms_stock_adjustment FOR EACH ROW EXECUTE FUNCTION trg_set_updated_at();
+CREATE INDEX idx_pick_alloc_item ON wms_pick_allocation(outbound_order_item_id);
+CREATE INDEX idx_pick_alloc_loc_batch ON wms_pick_allocation(location_id, batch_id);
+CREATE INDEX idx_pick_alloc_prod_batch ON wms_pick_allocation(product_id, batch_id);
 
--- Trigger Function: Bảo vệ Sổ cái Bất biến (Immutable Ledger) - Cấm UPDATE và DELETE
-CREATE OR REPLACE FUNCTION trg_stock_ledger_prevent_modification()
-RETURNS TRIGGER AS $$
-BEGIN
-    RAISE EXCEPTION 'BẢO VỆ TOÀN VẸN: wms_stock_ledger là Sổ Cái Bất Biến (Immutable Ledger), nghiêm cấm thao tác UPDATE hoặc DELETE!';
-END;
-$$ LANGUAGE plpgsql;
+CREATE INDEX idx_transfer_wh_status ON wms_stock_transfer(warehouse_id, status);
+CREATE INDEX idx_audit_item_audit ON wms_inventory_audit_item(audit_id);
+CREATE INDEX idx_audit_item_loc_prod ON wms_inventory_audit_item(location_id, product_id);
 
-DROP TRIGGER IF EXISTS trg_wms_stock_ledger_immutable ON wms_stock_ledger;
-CREATE TRIGGER trg_wms_stock_ledger_immutable
-BEFORE UPDATE OR DELETE ON wms_stock_ledger
-FOR EACH ROW EXECUTE FUNCTION trg_stock_ledger_prevent_modification();
+CREATE INDEX idx_outbox_status_retry ON wms_outbox_event(status, next_retry_at);
+CREATE INDEX idx_reservation_order ON wms_stock_reservation(outbound_order_id);
+CREATE INDEX idx_reservation_loc_batch ON wms_stock_reservation(location_id, batch_id);
 
--- Trigger Function: Bảo vệ toàn vẹn số dư Sổ cái (Ledger balance_after) khớp với wms_inventory
--- =========================================================================================
--- QUY TẮC BẮT BUỘC VỀ THỨ TỰ GIAO DỊCH (TRANSACTION ORDER PROTOCOL):
--- 1. Bước 1: UPDATE wms_inventory SET on_hand_qty = ... (kèm Khóa bi quan Pessimistic Lock)
--- 2. Bước 2: INSERT wms_stock_ledger (balance_after = số dư mới sau khi đã cập nhật wms_inventory)
--- Trigger này sẽ đọc số dư tức thời từ wms_inventory để đối soát. Nếu lệch, giao dịch bị ROLLBACK ngay.
--- =========================================================================================
-CREATE OR REPLACE FUNCTION trg_validate_stock_ledger_balance()
-RETURNS TRIGGER AS $$
-DECLARE
-    v_current_stock INT;
-BEGIN
-    SELECT on_hand_qty INTO v_current_stock
-    FROM wms_inventory
-    WHERE location_id = NEW.location_id 
-      AND product_id = NEW.product_id 
-      AND batch_id = NEW.batch_id;
+CREATE INDEX idx_adj_audit ON wms_stock_adjustment(audit_id);
+CREATE INDEX idx_adj_item_adj ON wms_stock_adjustment_item(adjustment_id);
 
-    IF v_current_stock IS NULL THEN
-        v_current_stock := 0;
-    END IF;
-
-    IF NEW.balance_after <> v_current_stock THEN
-        RAISE EXCEPTION 'TOÀN VẸN SỔ CÁI BỊ VI PHẠM: balance_after (%) không khớp với số dư tồn kho thực tế (%) tại vị trí %!',
-            NEW.balance_after, v_current_stock, NEW.location_id;
-    END IF;
-
-    RETURN NEW;
-END;
-$$ LANGUAGE plpgsql;
-
-DROP TRIGGER IF EXISTS trg_wms_stock_ledger_balance_check ON wms_stock_ledger;
-CREATE TRIGGER trg_wms_stock_ledger_balance_check
-BEFORE INSERT ON wms_stock_ledger
-FOR EACH ROW EXECUTE FUNCTION trg_validate_stock_ledger_balance();
-
--- Trigger Function: Đồng bộ tự động allocated_qty trên dòng đơn xuất khi có thay đổi ở Pick Allocation
-CREATE OR REPLACE FUNCTION trg_sync_outbound_allocated_qty()
-RETURNS TRIGGER AS $$
-DECLARE
-    v_item_id BIGINT;
-BEGIN
-    v_item_id := COALESCE(NEW.outbound_order_item_id, OLD.outbound_order_item_id);
-    
-    UPDATE wms_outbound_order_item
-    SET allocated_qty = (
-        SELECT COALESCE(SUM(allocated_qty), 0)
-        FROM wms_pick_allocation
-        WHERE outbound_order_item_id = v_item_id
-          AND status IN ('ALLOCATED', 'PICKED')
-    )
-    WHERE id = v_item_id;
-    
-    RETURN NULL;
-END;
-$$ LANGUAGE plpgsql;
-
-DROP TRIGGER IF EXISTS trg_wms_pick_alloc_sync_allocated_qty ON wms_pick_allocation;
-CREATE TRIGGER trg_wms_pick_alloc_sync_allocated_qty
-AFTER INSERT OR UPDATE OR DELETE ON wms_pick_allocation
-FOR EACH ROW EXECUTE FUNCTION trg_sync_outbound_allocated_qty();
-
--- Trigger Function: Bảo vệ toàn vẹn kho chéo (Cross-Warehouse Integrity) cho Kiểm kê
-CREATE OR REPLACE FUNCTION trg_check_audit_item_warehouse()
-RETURNS TRIGGER AS $$
-DECLARE
-    v_audit_wh BIGINT;
-    v_loc_wh   BIGINT;
-BEGIN
-    SELECT warehouse_id INTO v_audit_wh FROM wms_inventory_audit WHERE id = NEW.audit_id;
-    SELECT warehouse_id INTO v_loc_wh   FROM wms_location WHERE id = NEW.location_id;
-    
-    IF v_audit_wh <> v_loc_wh THEN
-        RAISE EXCEPTION 'VI PHẠM TOÀN VẸN KHO: Vị trí (id: %) thuộc Kho ID %, không thuộc Kho ID % của Phiếu kiểm kê (id: %)!',
-            NEW.location_id, v_loc_wh, v_audit_wh, NEW.audit_id;
-    END IF;
-    RETURN NEW;
-END;
-$$ LANGUAGE plpgsql;
-
-DROP TRIGGER IF EXISTS trg_wms_audit_item_warehouse_check ON wms_inventory_audit_item;
-CREATE TRIGGER trg_wms_audit_item_warehouse_check
-BEFORE INSERT OR UPDATE ON wms_inventory_audit_item
-FOR EACH ROW EXECUTE FUNCTION trg_check_audit_item_warehouse();
-
--- Trigger Function: Bảo vệ toàn vẹn kho chéo cho Điều chuyển (Stock Transfer)
--- Bắt buộc from_location_id và to_location_id đều phải cùng thuộc warehouse_id của Lệnh điều chuyển
-CREATE OR REPLACE FUNCTION trg_check_stock_transfer_warehouse()
-RETURNS TRIGGER AS $$
-DECLARE
-    v_from_wh BIGINT;
-    v_to_wh   BIGINT;
-BEGIN
-    SELECT warehouse_id INTO v_from_wh FROM wms_location WHERE id = NEW.from_location_id;
-    SELECT warehouse_id INTO v_to_wh   FROM wms_location WHERE id = NEW.to_location_id;
-    
-    IF v_from_wh IS NULL OR v_to_wh IS NULL THEN
-        RAISE EXCEPTION 'LỖI VỊ TRÍ: Vị trí xuất phát hoặc đích đến không tồn tại trong hệ thống!';
-    END IF;
-
-    IF v_from_wh <> NEW.warehouse_id THEN
-        RAISE EXCEPTION 'VI PHẠM TOÀN VẸN KHO: Vị trí xuất phát (from_location_id: %) thuộc Kho ID %, không thuộc Kho ID % của Lệnh điều chuyển (id: %)!',
-            NEW.from_location_id, v_from_wh, NEW.warehouse_id, NEW.id;
-    END IF;
-
-    IF v_to_wh <> NEW.warehouse_id THEN
-        RAISE EXCEPTION 'VI PHẠM TOÀN VẸN KHO: Vị trí đích đến (to_location_id: %) thuộc Kho ID %, không thuộc Kho ID % của Lệnh điều chuyển (id: %)!',
-            NEW.to_location_id, v_to_wh, NEW.warehouse_id, NEW.id;
-    END IF;
-
-    RETURN NEW;
-END;
-$$ LANGUAGE plpgsql;
-
-DROP TRIGGER IF EXISTS trg_wms_stock_transfer_warehouse_check ON wms_stock_transfer;
-CREATE TRIGGER trg_wms_stock_transfer_warehouse_check
-BEFORE INSERT OR UPDATE ON wms_stock_transfer
-FOR EACH ROW EXECUTE FUNCTION trg_check_stock_transfer_warehouse();
-
--- ==========================================================
--- 14. TỐI ƯU CHỈ MỤC TRUY VẤN (INDEXING STRATEGY)
--- ==========================================================
-
--- Index hỗ trợ tìm kiếm tồn kho theo mặt hàng và vị trí
-CREATE INDEX IF NOT EXISTS idx_inv_product_loc ON wms_inventory(product_id, location_id);
-
--- Partial Index hỗ trợ giải thuật FEFO: Lọc trước các lô hàng trạng thái ACTIVE và sắp xếp tăng dần theo expiry_date,
--- giúp Database Engine tối ưu hóa đường dẫn quét chỉ mục (Index Scan) thay vì quét toàn bộ bảng (Seq Scan).
-CREATE INDEX IF NOT EXISTS idx_batch_fefo_active 
-ON wms_product_batch(product_id, expiry_date ASC NULLS LAST) 
-WHERE status = 'ACTIVE';
-
--- Index Sổ cái Bất biến (Stock Ledger)
-CREATE INDEX IF NOT EXISTS idx_ledger_product_loc ON wms_stock_ledger(product_id, location_id);
-CREATE INDEX IF NOT EXISTS idx_ledger_ref_code ON wms_stock_ledger(reference_code);
-CREATE INDEX IF NOT EXISTS idx_ledger_created_at ON wms_stock_ledger(created_at DESC);
-CREATE INDEX IF NOT EXISTS idx_ledger_batch ON wms_stock_ledger(batch_id);
-
--- Index chi tiết đơn hàng & phân bổ nhặt hàng
-CREATE INDEX IF NOT EXISTS idx_inbound_item_order ON wms_inbound_order_item(inbound_order_id);
-CREATE INDEX IF NOT EXISTS idx_inbound_item_product ON wms_inbound_order_item(product_id);
-CREATE INDEX IF NOT EXISTS idx_outbound_item_order ON wms_outbound_order_item(outbound_order_id);
-CREATE INDEX IF NOT EXISTS idx_outbound_item_product ON wms_outbound_order_item(product_id);
-
-CREATE INDEX IF NOT EXISTS idx_pick_alloc_item ON wms_pick_allocation(outbound_order_item_id);
-CREATE INDEX IF NOT EXISTS idx_pick_alloc_loc_batch ON wms_pick_allocation(location_id, batch_id);
-CREATE INDEX IF NOT EXISTS idx_pick_alloc_prod_batch ON wms_pick_allocation(product_id, batch_id);
-
--- Index điều chuyển kho & kiểm kê
-CREATE INDEX IF NOT EXISTS idx_transfer_wh_status ON wms_stock_transfer(warehouse_id, status);
-CREATE INDEX IF NOT EXISTS idx_audit_item_audit ON wms_inventory_audit_item(audit_id);
-CREATE INDEX IF NOT EXISTS idx_audit_item_loc_prod ON wms_inventory_audit_item(location_id, product_id);
-
--- Index cho Transactional Outbox Worker polling
-CREATE INDEX IF NOT EXISTS idx_outbox_status_retry ON wms_outbox_event(status, next_retry_at) 
-WHERE status IN ('PENDING', 'FAILED');
-
--- Index Phân hệ Tiếp nhận hàng & Cất kệ
-CREATE INDEX IF NOT EXISTS idx_receipt_inbound ON wms_receipt(inbound_order_id);
-CREATE INDEX IF NOT EXISTS idx_receipt_item_receipt ON wms_receipt_item(receipt_id);
-CREATE INDEX IF NOT EXISTS idx_putaway_task_status ON wms_putaway_task(status);
-CREATE INDEX IF NOT EXISTS idx_putaway_task_dest ON wms_putaway_task(destination_location_id);
-
--- Index Phân hệ Giữ chỗ tồn kho, Đóng gói & Giao vận
-CREATE INDEX IF NOT EXISTS idx_reservation_order ON wms_stock_reservation(outbound_order_id);
-CREATE INDEX IF NOT EXISTS idx_reservation_loc_batch ON wms_stock_reservation(location_id, batch_id);
-CREATE INDEX IF NOT EXISTS idx_package_order ON wms_package(outbound_order_id);
-CREATE INDEX IF NOT EXISTS idx_package_item_pkg ON wms_package_item(package_id);
-CREATE INDEX IF NOT EXISTS idx_shipment_order ON wms_shipment(outbound_order_id);
-
--- Index Phân hệ Cân chỉnh tồn kho sau kiểm kê
-CREATE INDEX IF NOT EXISTS idx_adj_audit ON wms_stock_adjustment(audit_id);
-CREATE INDEX IF NOT EXISTS idx_adj_item_adj ON wms_stock_adjustment_item(adjustment_id);
+SET FOREIGN_KEY_CHECKS = 1;

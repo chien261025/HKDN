@@ -27,7 +27,7 @@ public class UserController {
 
     @GetMapping
     @org.springframework.security.access.prepost.PreAuthorize("hasAnyRole('ADMIN', 'WAREHOUSE_MANAGER')")
-    @Operation(summary = "Lấy danh sách tất cả người dùng trong hệ thống", description = "Truy vấn toàn bộ tài khoản người dùng và vai trò RBAC từ cơ sở dữ liệu PostgreSQL")
+    @Operation(summary = "Lấy danh sách tất cả người dùng trong hệ thống", description = "Truy vấn toàn bộ tài khoản người dùng và vai trò RBAC từ cơ sở dữ liệu MySQL")
     public ApiResponse<List<UserResponse>> getAllUsers() {
         log.info("API lay danh sach tat ca nguoi dung");
         List<UserResponse> users = userService.getAllUsers();
