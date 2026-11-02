@@ -1,7 +1,7 @@
 # TÀI LIỆU ĐẶC TẢ KIẾN TRÚC HỆ THỐNG QUẢN LÝ KHO THÔNG MINH (SMART WMS)
 > **Đề tài Đồ án Tốt nghiệp / Dự án Doanh nghiệp:** Hệ Thống Quản Lý Kho Hàng Thông Minh Tích Hợp AI & Hàng Đợi Bất Đồng Bộ  
 > **Kiến trúc chủ đạo:** Event-Driven Modular Monolith (Nguyên khối theo Phân hệ kết hợp Hướng sự kiện)  
-> **Tech Stack:** Java Spring Boot 3, React 18 TypeScript, PostgreSQL, RabbitMQ, MinIO, Docker, Nginx.
+> **Tech Stack:** Java Spring Boot 3, React 18 TypeScript, MySQL 8, RabbitMQ, MinIO, Docker, Nginx.
 
 ---
 

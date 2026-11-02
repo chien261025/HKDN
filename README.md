@@ -1,7 +1,7 @@
 # SMART WMS - Hệ Thống Quản Lý Kho Thông Minh Chuẩn Doanh Nghiệp
 
 > **Đồ án Tốt nghiệp / Graduation Thesis:** Hệ Thống Quản Lý Kho Hàng Tích Hợp AI & Xử Lý Sự Kiện Bất Đồng Bộ  
-> **Kiến trúc chủ đạo:** Event-Driven Modular Monolith (Spring Boot 3.3.3 + React 18 TypeScript + PostgreSQL 16 + RabbitMQ + MinIO)  
+> **Kiến trúc chủ đạo:** Event-Driven Modular Monolith (Spring Boot 3.5.0 + React 18 TypeScript + MySQL 8 + RabbitMQ + MinIO)  
 > **Mã nguồn GitHub:** [https://github.com/chien261025/HKDN](https://github.com/chien261025/HKDN)
 
 ---
@@ -128,7 +128,7 @@ docker compose up -d
 - **Tài liệu REST API (Swagger UI):** [http://localhost:8080/api/v1/swagger-ui/index.html](http://localhost:8080/api/v1/swagger-ui/index.html)
 - **RabbitMQ Management Dashboard:** [http://localhost:15672](http://localhost:15672) (`guest` / `guest`)
 - **MinIO Object Storage Console:** [http://localhost:9001](http://localhost:9001) (`minioadmin` / `minioadmin`)
-- **PostgreSQL Database:** `localhost:5432` (`wms_db` / `postgres` / `password123`)
+- **MySQL Database:** `localhost:3306` (`wms_db` / `root` / `123456`)
 
 ### 4.3. Tài khoản demo có sẵn
 | Tài khoản | Mật khẩu | Vai trò (Role) | Chức năng chính |
@@ -149,7 +149,7 @@ docker run --rm --network smart-wms_wms-net \
   -w /app maven:3.9-eclipse-temurin-17-alpine mvn test
 ```
 
-- **Kiểm thử Concurrency 20 luồng đồng thời:** Chứng minh Khóa bi quan (`SELECT FOR UPDATE`) ngăn chặn 100% âm kho trên PostgreSQL thật.
+- **Kiểm thử Concurrency 20 luồng đồng thời:** Chứng minh Khóa bi quan (`SELECT FOR UPDATE`) ngăn chặn 100% âm kho trên MySQL thật.
 - **Kiểm thử thuật toán Put-away:** Tự động ưu tiên tầng trệt `S01` cho hàng nặng > 100kg.
 - **Kiểm thử giải thuật FEFO:** Sắp xếp danh sách nhặt hàng theo ngày hết hạn gần nhất.
 - **Kiểm thử an toàn AI Smart Query:** JSqlParser chặn đứng SQL Injection và câu lệnh độc hại (DROP, DELETE, UPDATE).
