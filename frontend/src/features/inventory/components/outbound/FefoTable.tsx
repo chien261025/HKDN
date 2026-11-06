@@ -1,6 +1,6 @@
 import React from 'react';
 import { Eye, MapPin, AlertTriangle, ChevronRight } from 'lucide-react';
-import { OrderItem } from '../../types';
+import { OrderItem } from '../../../labels/types';
 
 interface FefoTableProps {
   orders: OrderItem[];

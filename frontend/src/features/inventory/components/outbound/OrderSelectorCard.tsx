@@ -1,5 +1,5 @@
 import React from 'react';
-import { OrderItem } from '../../types';
+import { OrderItem } from '../../../labels/types';
 import { Check, Package, Clock, CheckCircle2, ShoppingBag } from 'lucide-react';
 
 interface OrderSelectorCardProps {
@@ -38,11 +38,10 @@ export const OrderSelectorCard: React.FC<OrderSelectorCardProps> = ({
             <div
               key={order.id}
               onClick={() => onSelectOrder(order.id)}
-              className={`p-3.5 rounded-xl border text-left cursor-pointer transition-all relative flex flex-col justify-between gap-2.5 ${
-                isSelected
+              className={`p-3.5 rounded-xl border text-left cursor-pointer transition-all relative flex flex-col justify-between gap-2.5 ${isSelected
                   ? 'bg-indigo-50/70 border-indigo-500 shadow-sm ring-1 ring-indigo-400'
                   : 'bg-slate-50 border-slate-200 hover:bg-slate-100/80 hover:border-slate-300'
-              }`}
+                }`}
             >
               {/* Row 1: Mã đơn & Trạng thái */}
               <div className="flex items-center justify-between">
@@ -57,13 +56,12 @@ export const OrderSelectorCard: React.FC<OrderSelectorCardProps> = ({
 
                 <div className="flex items-center gap-1.5">
                   <span
-                    className={`text-xs font-bold px-2.5 py-0.5 rounded-full flex items-center gap-1 border ${
-                      order.status === 'SHIPPED'
+                    className={`text-xs font-bold px-2.5 py-0.5 rounded-full flex items-center gap-1 border ${order.status === 'SHIPPED'
                         ? 'bg-emerald-50 text-emerald-800 border-emerald-200'
                         : order.status === 'RESERVED'
-                        ? 'bg-amber-50 text-amber-800 border-amber-200'
-                        : 'bg-slate-200 text-slate-700 border-slate-300'
-                    }`}
+                          ? 'bg-amber-50 text-amber-800 border-amber-200'
+                          : 'bg-slate-200 text-slate-700 border-slate-300'
+                      }`}
                   >
                     {order.status === 'SHIPPED' ? (
                       <>

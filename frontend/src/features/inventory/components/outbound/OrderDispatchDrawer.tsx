@@ -1,6 +1,6 @@
 import React from 'react';
 import { X, MapPin, ArrowRight, Lock, Truck, FileText, Package, Calendar, CheckCircle2, AlertTriangle, ShieldCheck } from 'lucide-react';
-import { OrderItem, InventoryStats } from '../../types';
+import { OrderItem, InventoryStats } from '../../../labels/types';
 
 interface OrderDispatchDrawerProps {
   order: OrderItem | null;
@@ -35,19 +35,18 @@ export const OrderDispatchDrawer: React.FC<OrderDispatchDrawerProps> = ({
             <div className="flex items-center gap-2">
               <h3 className="font-mono font-bold text-slate-900 text-lg tracking-tight">{order.code}</h3>
               <span
-                className={`text-xs font-bold px-2.5 py-0.5 rounded-full border shadow-xs ${
-                  order.status === 'PENDING'
+                className={`text-xs font-bold px-2.5 py-0.5 rounded-full border shadow-xs ${order.status === 'PENDING'
                     ? 'bg-amber-50 text-amber-800 border-amber-200'
                     : order.status === 'RESERVED'
-                    ? 'bg-blue-50 text-blue-800 border-blue-200'
-                    : 'bg-emerald-50 text-emerald-800 border-emerald-200'
-                }`}
+                      ? 'bg-blue-50 text-blue-800 border-blue-200'
+                      : 'bg-emerald-50 text-emerald-800 border-emerald-200'
+                  }`}
               >
                 {order.status === 'PENDING'
                   ? 'CHỜ XỬ LÝ'
                   : order.status === 'RESERVED'
-                  ? 'ĐÃ GIỮ HÀNG'
-                  : 'ĐÃ XUẤT KHO'}
+                    ? 'ĐÃ GIỮ HÀNG'
+                    : 'ĐÃ XUẤT KHO'}
               </span>
             </div>
             <p className="text-xs sm:text-sm text-slate-600 font-medium mt-0.5 truncate max-w-[280px]">
@@ -85,11 +84,10 @@ export const OrderDispatchDrawer: React.FC<OrderDispatchDrawerProps> = ({
         </div>
 
         {/* Card 2: Lô hàng FEFO & Hạn sử dụng */}
-        <div className={`p-4 rounded-2xl border shadow-xs space-y-3 ${
-          isUrgent 
-            ? 'bg-rose-50/70 border-rose-200' 
+        <div className={`p-4 rounded-2xl border shadow-xs space-y-3 ${isUrgent
+            ? 'bg-rose-50/70 border-rose-200'
             : 'bg-slate-50 border-slate-200'
-        }`}>
+          }`}>
           <div className="flex items-center justify-between text-xs sm:text-sm">
             <span className="text-slate-800 flex items-center gap-1.5 font-bold">
               <Calendar className="w-4 h-4 text-indigo-600" />
@@ -126,11 +124,10 @@ export const OrderDispatchDrawer: React.FC<OrderDispatchDrawerProps> = ({
             </div>
             <div className="w-full h-2 bg-slate-200 rounded-full overflow-hidden">
               <div
-                className={`h-full rounded-full transition-all ${
-                  isUrgent 
-                    ? 'bg-rose-500' 
+                className={`h-full rounded-full transition-all ${isUrgent
+                    ? 'bg-rose-500'
                     : 'bg-emerald-500'
-                }`}
+                  }`}
                 style={{ width: `${Math.min(100, Math.max(10, Math.round((order.daysRemaining / 365) * 100)))}%` }}
               ></div>
             </div>
