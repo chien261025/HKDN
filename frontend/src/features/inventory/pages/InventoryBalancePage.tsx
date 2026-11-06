@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useTransition } from 'react';
 import { Package, Clock, Layers, ArrowRightLeft, CheckCircle2, AlertCircle, ShieldAlert } from 'lucide-react';
-import { StockItem, StockTransferDto } from '../types';
+import { StockItem, StockTransferDto } from '../../labels/types';
 import { OutboundFefoWorkbench } from '../components/OutboundFefoWorkbench';
 import { StockBalanceTable } from '../components/balance/StockBalanceTable';
 import { StockTransferHistoryTable } from '../components/balance/StockTransferHistoryTable';
@@ -146,11 +146,10 @@ export const InventoryBalancePage: React.FC = () => {
       <div className="flex items-center gap-2 border-b border-slate-200 overflow-x-auto no-scrollbar">
         <button
           onClick={() => handleTabChange('balance')}
-          className={`flex items-center gap-2 px-4 py-2.5 text-xs sm:text-sm font-semibold border-b-2 transition-all cursor-pointer whitespace-nowrap ${
-            activeTab === 'balance'
+          className={`flex items-center gap-2 px-4 py-2.5 text-xs sm:text-sm font-semibold border-b-2 transition-all cursor-pointer whitespace-nowrap ${activeTab === 'balance'
               ? 'border-indigo-600 text-indigo-700 bg-indigo-50/40 rounded-t-lg'
               : 'border-transparent text-slate-600 hover:text-slate-900 hover:border-slate-300'
-          }`}
+            }`}
         >
           <Layers className="w-4 h-4 text-slate-500" />
           <span>Tồn Kho Thực Tế</span>
@@ -161,11 +160,10 @@ export const InventoryBalancePage: React.FC = () => {
 
         <button
           onClick={() => handleTabChange('alerts')}
-          className={`flex items-center gap-2 px-4 py-2.5 text-xs sm:text-sm font-semibold border-b-2 transition-all cursor-pointer whitespace-nowrap ${
-            activeTab === 'alerts'
+          className={`flex items-center gap-2 px-4 py-2.5 text-xs sm:text-sm font-semibold border-b-2 transition-all cursor-pointer whitespace-nowrap ${activeTab === 'alerts'
               ? 'border-rose-600 text-rose-700 bg-rose-50/40 rounded-t-lg'
               : 'border-transparent text-slate-600 hover:text-rose-700 hover:border-rose-300'
-          }`}
+            }`}
         >
           <ShieldAlert className="w-4 h-4 text-rose-500" />
           <span>Cảnh Báo Tồn An Toàn</span>
@@ -178,11 +176,10 @@ export const InventoryBalancePage: React.FC = () => {
 
         <button
           onClick={() => handleTabChange('transfer')}
-          className={`flex items-center gap-2 px-4 py-2.5 text-xs sm:text-sm font-semibold border-b-2 transition-all cursor-pointer whitespace-nowrap ${
-            activeTab === 'transfer'
+          className={`flex items-center gap-2 px-4 py-2.5 text-xs sm:text-sm font-semibold border-b-2 transition-all cursor-pointer whitespace-nowrap ${activeTab === 'transfer'
               ? 'border-indigo-600 text-indigo-700 bg-indigo-50/40 rounded-t-lg'
               : 'border-transparent text-slate-600 hover:text-slate-900 hover:border-slate-300'
-          }`}
+            }`}
         >
           <ArrowRightLeft className="w-4 h-4 text-slate-500" />
           <span>Lịch Sử Điều Chuyển</span>
@@ -195,11 +192,10 @@ export const InventoryBalancePage: React.FC = () => {
 
         <button
           onClick={() => handleTabChange('outbound')}
-          className={`flex items-center gap-2 px-4 py-2.5 text-xs sm:text-sm font-semibold border-b-2 transition-all cursor-pointer whitespace-nowrap ${
-            activeTab === 'outbound'
+          className={`flex items-center gap-2 px-4 py-2.5 text-xs sm:text-sm font-semibold border-b-2 transition-all cursor-pointer whitespace-nowrap ${activeTab === 'outbound'
               ? 'border-indigo-600 text-indigo-700 bg-indigo-50/40 rounded-t-lg'
               : 'border-transparent text-slate-600 hover:text-slate-900 hover:border-slate-300'
-          }`}
+            }`}
         >
           <Clock className="w-4 h-4 text-slate-500" />
           <span>Điều Phối Xuất (FEFO)</span>
@@ -209,11 +205,10 @@ export const InventoryBalancePage: React.FC = () => {
       {/* Thông Báo */}
       {notification && (
         <div
-          className={`p-3.5 rounded-xl text-xs sm:text-sm font-semibold flex items-center justify-between transition-all ${
-            notification.type === 'success'
+          className={`p-3.5 rounded-xl text-xs sm:text-sm font-semibold flex items-center justify-between transition-all ${notification.type === 'success'
               ? 'bg-emerald-50 text-emerald-800 border border-emerald-200'
               : 'bg-rose-50 text-rose-800 border border-rose-200'
-          }`}
+            }`}
         >
           <div className="flex items-center gap-2">
             {notification.type === 'success' ? (

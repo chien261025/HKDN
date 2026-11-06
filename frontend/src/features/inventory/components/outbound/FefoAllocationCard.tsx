@@ -1,6 +1,6 @@
 import React from 'react';
 import { MapPin, ArrowRight, Lock, Truck, FileText, CheckCircle2, PackageCheck } from 'lucide-react';
-import { OrderItem, InventoryStats } from '../../types';
+import { OrderItem, InventoryStats } from '../../../labels/types';
 
 interface FefoAllocationCardProps {
   order: OrderItem;
@@ -163,11 +163,10 @@ export const FefoAllocationCard: React.FC<FefoAllocationCardProps> = ({
           <button
             onClick={onReserve}
             disabled={order.status !== 'PENDING'}
-            className={`flex-1 w-full py-3 px-4 rounded-xl font-bold text-xs flex items-center justify-center gap-2 transition-all ${
-              order.status === 'PENDING'
+            className={`flex-1 w-full py-3 px-4 rounded-xl font-bold text-xs flex items-center justify-center gap-2 transition-all ${order.status === 'PENDING'
                 ? 'bg-amber-600 hover:bg-amber-700 text-white shadow-sm cursor-pointer active:scale-[0.99]'
                 : 'bg-slate-100 text-slate-400 cursor-not-allowed border border-slate-200'
-            }`}
+              }`}
           >
             <Lock className="w-4 h-4" />
             <span>
@@ -181,13 +180,12 @@ export const FefoAllocationCard: React.FC<FefoAllocationCardProps> = ({
           <button
             onClick={onShip}
             disabled={order.status !== 'RESERVED'}
-            className={`flex-1 w-full py-3 px-4 rounded-xl font-bold text-xs flex items-center justify-center gap-2 transition-all ${
-              order.status === 'RESERVED'
+            className={`flex-1 w-full py-3 px-4 rounded-xl font-bold text-xs flex items-center justify-center gap-2 transition-all ${order.status === 'RESERVED'
                 ? 'bg-emerald-600 hover:bg-emerald-700 text-white shadow-sm cursor-pointer active:scale-[0.99]'
                 : order.status === 'SHIPPED'
-                ? 'bg-emerald-50 text-emerald-800 border border-emerald-200 font-bold'
-                : 'bg-slate-100 text-slate-400 cursor-not-allowed border border-slate-200'
-            }`}
+                  ? 'bg-emerald-50 text-emerald-800 border border-emerald-200 font-bold'
+                  : 'bg-slate-100 text-slate-400 cursor-not-allowed border border-slate-200'
+              }`}
           >
             <Truck className="w-4 h-4" />
             <span>

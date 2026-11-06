@@ -5,6 +5,23 @@
       "name": "/"
     }
   ],
+  "users": [
+    {
+      "name": "admin1",
+      "password_hash": "vMUqOu7BjfWNOQ5FxND3MbZTppFlH4woFYwqrnNIXKLrTljC",
+      "hashing_algorithm": "rabbit_password_hashing_sha256",
+      "tags": "administrator"
+    }
+  ],
+  "permissions": [
+    {
+      "user": "admin1",
+      "vhost": "/",
+      "configure": ".*",
+      "write": ".*",
+      "read": ".*"
+    }
+  ],
   "exchanges": [
     {
       "name": "wms.report.exchange",

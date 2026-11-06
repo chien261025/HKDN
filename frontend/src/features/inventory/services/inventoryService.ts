@@ -1,5 +1,5 @@
 import { apiClient } from '../../../services/api';
-import { StockItem, LedgerEntryData } from '../types';
+import { StockItem, LedgerEntryData } from '../../labels/types';
 
 export interface SafetyStockAlert {
   productId: number;
@@ -100,12 +100,12 @@ export const inventoryService = {
     }
   },
 
-  async transferStock(payload: import('../types').CreateStockTransferPayload): Promise<import('../types').StockTransferDto> {
+  async transferStock(payload: import('../../labels/types').CreateStockTransferPayload): Promise<import('../../labels/types').StockTransferDto> {
     const res = await apiClient.post('/inventory/transfers', payload);
     return res.data?.data;
   },
 
-  async getStockTransfers(): Promise<import('../types').StockTransferDto[]> {
+  async getStockTransfers(): Promise<import('../../labels/types').StockTransferDto[]> {
     try {
       const res = await apiClient.get('/inventory/transfers');
       return res.data?.data || [];

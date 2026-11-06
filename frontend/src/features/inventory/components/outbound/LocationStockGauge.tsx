@@ -1,5 +1,5 @@
 import React from 'react';
-import { InventoryStats } from '../../types';
+import { InventoryStats } from '../../../labels/types';
 import { ShieldCheck } from 'lucide-react';
 
 interface LocationStockGaugeProps {
@@ -43,17 +43,15 @@ export const LocationStockGauge: React.FC<LocationStockGaugeProps> = ({
 
         {/* Reserved */}
         <div
-          className={`py-3.5 px-3 rounded-xl border space-y-1 transition-all ${
-            stats.reserved > 0
+          className={`py-3.5 px-3 rounded-xl border space-y-1 transition-all ${stats.reserved > 0
               ? 'bg-amber-50 border-amber-200 shadow-2xs'
               : 'bg-slate-50 border-slate-200'
-          }`}
+            }`}
         >
           <span className="text-xs text-amber-800 block font-bold">Đã Cấp Phát (Allocated)</span>
           <span
-            className={`text-2xl font-black font-mono block tracking-tight ${
-              stats.reserved > 0 ? 'text-amber-700' : 'text-slate-400'
-            }`}
+            className={`text-2xl font-black font-mono block tracking-tight ${stats.reserved > 0 ? 'text-amber-700' : 'text-slate-400'
+              }`}
           >
             {stats.reserved > 0 ? `+${stats.reserved}` : '0'}
           </span>

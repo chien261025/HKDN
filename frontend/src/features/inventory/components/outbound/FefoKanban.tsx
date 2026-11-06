@@ -6,7 +6,7 @@ import {
   CheckCircle2,
   FileText
 } from 'lucide-react';
-import { OrderItem } from '../../types';
+import { OrderItem } from '../../../labels/types';
 
 interface FefoKanbanProps {
   orders: OrderItem[];

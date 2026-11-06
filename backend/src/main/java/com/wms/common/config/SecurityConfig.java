@@ -53,39 +53,44 @@ public class SecurityConfig {
                 .headers(headers -> {
                     headers.frameOptions(HeadersConfigurer.FrameOptionsConfig::deny);
                     headers.contentTypeOptions(Customizer.withDefaults());
-                    headers.referrerPolicy(referrer -> referrer.policy(ReferrerPolicyHeaderWriter.ReferrerPolicy.STRICT_ORIGIN_WHEN_CROSS_ORIGIN));
-                    headers.permissionsPolicy(permissions -> permissions.policy("geolocation=(), camera=(), microphone=()"));
-                    headers.contentSecurityPolicy(csp -> csp.policyDirectives("default-src 'self'; frame-ancestors 'none';"));
+                    headers.referrerPolicy(referrer -> referrer
+                            .policy(ReferrerPolicyHeaderWriter.ReferrerPolicy.STRICT_ORIGIN_WHEN_CROSS_ORIGIN));
+                    headers.permissionsPolicy(
+                            permissions -> permissions.policy("geolocation=(), camera=(), microphone=()"));
+                    headers.contentSecurityPolicy(
+                            csp -> csp.policyDirectives("default-src 'self'; frame-ancestors 'none';"));
                 })
-                // Đăng ký bộ lọc giới hạn tần suất request (chống DoS/DDoS) trước bộ lọc xác thực
+                // Đăng ký bộ lọc giới hạn tần suất request (chống DoS/DDoS) trước bộ lọc xác
+                // thực
                 .addFilterBefore(apiRateLimitingFilter, UsernamePasswordAuthenticationFilter.class)
                 .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class)
                 .exceptionHandling(exceptions -> exceptions
                         .authenticationEntryPoint((request, response, authException) -> {
                             response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
                             response.setContentType(MediaType.APPLICATION_JSON_VALUE + ";charset=UTF-8");
-                            response.getWriter().write("{\"success\":false,\"code\":401,\"message\":\"Yêu cầu không hợp lệ hoặc phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại!\"}");
+                            response.getWriter().write(
+                                    "{\"success\":false,\"code\":401,\"message\":\"Yêu cầu không hợp lệ hoặc phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại!\"}");
                         })
                         .accessDeniedHandler((request, response, accessDeniedException) -> {
                             response.setStatus(HttpServletResponse.SC_FORBIDDEN);
                             response.setContentType(MediaType.APPLICATION_JSON_VALUE + ";charset=UTF-8");
-                            response.getWriter().write("{\"success\":false,\"code\":403,\"message\":\"Bạn không có quyền truy cập chức năng này (Yêu cầu quyền Quản trị viên/Quản lý kho)!\"}");
-                        })
-                )
+                            response.getWriter().write(
+                                    "{\"success\":false,\"code\":403,\"message\":\"Bạn không có quyền truy cập chức năng này (Yêu cầu quyền Quản trị viên/Quản lý kho)!\"}");
+                        }))
                 .authorizeHttpRequests(auth -> auth
                         // 1. Cho phép truy cập tài liệu Swagger UI & OpenAPI
                         .requestMatchers(
-                                "/swagger-ui/**",
-                                "/swagger-ui.html",
-                                "/v3/api-docs/**",
-                                "/swagger-resources/**",
-                                "/webjars/**"
-                        ).permitAll()
+                                "/auth/**",
+                                "/api/v1/auth/**",
+                                "/api/auth/**",
+                                "/ws/**",
+                                "/api/v1/ws/**")
+                        .permitAll()
                         // 2. Cho phép các API công khai của Xác thực & WebSocket Handshake
                         .requestMatchers(
                                 "/auth/**",
-                                "/ws/**"
-                        ).permitAll()
+                                "/ws/**")
+                        .permitAll()
                         // 3. Phân quyền Endpoint Quản trị Người dùng (User Management)
                         .requestMatchers("/users/change-password").authenticated()
                         .requestMatchers("/users/me/**").authenticated()
@@ -93,8 +98,7 @@ public class SecurityConfig {
                         // 4. Phân quyền Báo cáo phân tích chuyên sâu
                         .requestMatchers("/reports/**").hasAnyRole("ADMIN", "WAREHOUSE_MANAGER")
                         // 5. Toàn bộ các API nghiệp vụ còn lại BẮT BUỘC phải có JWT Token hợp lệ
-                        .anyRequest().authenticated()
-                );
+                        .anyRequest().authenticated());
 
         return http.build();
     }
@@ -109,10 +113,10 @@ public class SecurityConfig {
         CorsConfiguration configuration = new CorsConfiguration();
         configuration.setAllowedOriginPatterns(List.of(
                 "http://localhost:*",
-                "http://127.0.0.1:*"
-        ));
+                "http://127.0.0.1:*"));
         configuration.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"));
-        configuration.setAllowedHeaders(List.of("Authorization", "Content-Type", "Accept", "X-Requested-With", "X-Device-Fingerprint", "X-Device-Name", "X-Device-Type"));
+        configuration.setAllowedHeaders(List.of("Authorization", "Content-Type", "Accept", "X-Requested-With",
+                "X-Device-Fingerprint", "X-Device-Name", "X-Device-Type"));
         configuration.setAllowCredentials(true);
         configuration.setMaxAge(3600L);
 

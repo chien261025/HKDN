@@ -1,6 +1,6 @@
 import React from 'react';
 import { X, MapPin, ArrowRight, Lock, Truck, FileText, Package, User, Calendar, CheckCircle2, AlertCircle } from 'lucide-react';
-import { OrderItem, InventoryStats } from '../../types';
+import { OrderItem, InventoryStats } from '../../../labels/types';
 
 interface OrderDispatchModalProps {
   order: OrderItem;
@@ -37,19 +37,18 @@ export const OrderDispatchModal: React.FC<OrderDispatchModalProps> = ({
                   Chi Tiết Đơn Xuất Kho: <span className="font-mono text-indigo-700">{order.code}</span>
                 </h3>
                 <span
-                  className={`text-xs font-bold px-2.5 py-0.5 rounded-full border ${
-                    order.status === 'PENDING'
+                  className={`text-xs font-bold px-2.5 py-0.5 rounded-full border ${order.status === 'PENDING'
                       ? 'bg-amber-50 text-amber-800 border-amber-200'
                       : order.status === 'RESERVED'
-                      ? 'bg-cyan-50 text-cyan-800 border-cyan-200'
-                      : 'bg-emerald-50 text-emerald-800 border-emerald-200'
-                  }`}
+                        ? 'bg-cyan-50 text-cyan-800 border-cyan-200'
+                        : 'bg-emerald-50 text-emerald-800 border-emerald-200'
+                    }`}
                 >
                   {order.status === 'PENDING'
                     ? 'CHỜ XỬ LÝ'
                     : order.status === 'RESERVED'
-                    ? 'ĐÃ GIỮ HÀNG'
-                    : 'ĐÃ XUẤT KHO'}
+                      ? 'ĐÃ GIỮ HÀNG'
+                      : 'ĐÃ XUẤT KHO'}
                 </span>
               </div>
               <p className="text-xs text-slate-500 mt-0.5 font-medium">

@@ -1,5 +1,5 @@
 import React from 'react';
-import { LedgerEntryData } from '../../types';
+import { LedgerEntryData } from '../../../labels/types';
 import { History, ArrowUpRight, ArrowDownRight, Eye, ShieldCheck } from 'lucide-react';
 
 interface RecentLedgerCardProps {
@@ -93,11 +93,10 @@ export const RecentLedgerCard: React.FC<RecentLedgerCardProps> = ({
                   {/* Biến Động Số Lượng */}
                   <td className="py-4 px-4 text-center">
                     <span
-                      className={`inline-flex items-center gap-1 font-mono font-bold px-3 py-1 rounded-full text-xs shadow-xs ${
-                        isOutbound
+                      className={`inline-flex items-center gap-1 font-mono font-bold px-3 py-1 rounded-full text-xs shadow-xs ${isOutbound
                           ? 'bg-rose-50 text-rose-700 border border-rose-200'
                           : 'bg-emerald-50 text-emerald-700 border border-emerald-200'
-                      }`}
+                        }`}
                     >
                       {isOutbound ? <ArrowDownRight className="w-3.5 h-3.5 text-rose-600" /> : <ArrowUpRight className="w-3.5 h-3.5 text-emerald-600" />}
                       {item.qtyChange > 0 ? `+${item.qtyChange}` : item.qtyChange} SP
