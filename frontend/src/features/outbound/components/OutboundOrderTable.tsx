@@ -38,9 +38,9 @@ export const OutboundOrderTable: React.FC<OutboundOrderTableProps> = ({
           </div>
           <div>
             <h2 className="text-sm sm:text-base font-bold text-slate-900">
-              Danh Sách Đơn Xuất Kho (Sales Orders)
+              Danh Sách Đơn Xuất Kho
             </h2>
-            <p className="text-xs text-slate-500 hidden sm:block">Phân bổ tồn kho FEFO và tối ưu đường đi lấy hàng</p>
+            <p className="text-xs text-slate-500 hidden sm:block">Phân bổ tồn kho FEFO</p>
           </div>
         </div>
         <span className="text-xs font-mono font-semibold text-slate-700 bg-white px-2.5 py-1 rounded-lg border border-slate-200 shadow-2xs">
@@ -119,9 +119,8 @@ export const OutboundOrderTable: React.FC<OutboundOrderTableProps> = ({
                       </div>
                       <div className="w-full bg-slate-200 rounded-full h-1.5 overflow-hidden">
                         <div
-                          className={`h-full rounded-full ${
-                            isDispatched ? 'bg-emerald-500' : isPicking ? 'bg-indigo-600' : isAllocated ? 'bg-amber-500' : 'bg-slate-400'
-                          }`}
+                          className={`h-full rounded-full ${isDispatched ? 'bg-emerald-500' : isPicking ? 'bg-indigo-600' : isAllocated ? 'bg-amber-500' : 'bg-slate-400'
+                            }`}
                           style={{ width: `${progressPercent}%` }}
                         />
                       </div>

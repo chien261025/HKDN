@@ -9,7 +9,7 @@ services:
       MYSQL_DATABASE: wms_db
       MYSQL_ROOT_PASSWORD: password123
     ports:
-      - "3306:3306"
+      - "3307:3306"
     volumes:
       - wms_mysqldata:/var/lib/mysql
       - ./docker/mysql/init:/docker-entrypoint-initdb.d

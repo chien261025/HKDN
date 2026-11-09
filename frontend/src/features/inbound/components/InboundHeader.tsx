@@ -27,15 +27,15 @@ export const InboundHeader: React.FC<InboundHeaderProps> = ({
           <div>
             <div className="flex items-center gap-2.5 flex-wrap">
               <h1 className="text-xl md:text-2xl font-bold text-slate-900 tracking-tight">
-                Quản Lý Đơn Nhập Kho (Inbound PO)
+                Quản Lý Đơn Nhập Kho (PO)
               </h1>
-              <span className="text-[11px] font-mono bg-slate-100 text-slate-700 px-2.5 py-0.5 rounded-md border border-slate-200 font-semibold uppercase">
+              {/* <span className="text-[11px] font-mono bg-slate-100 text-slate-700 px-2.5 py-0.5 rounded-md border border-slate-200 font-semibold uppercase">
                 Nhập Kho PO
-              </span>
+              </span> */}
             </div>
-            <p className="text-xs sm:text-sm text-slate-500 font-medium mt-1">
+            {/* <p className="text-xs sm:text-sm text-slate-500 font-medium mt-1">
               Quy trình tiếp nhận: Tạo đơn PO • Tiếp nhận Gate 01 • Thuật toán Put-away xếp kệ an toàn
-            </p>
+            </p> */}
           </div>
         </div>
 
@@ -94,7 +94,7 @@ export const InboundHeader: React.FC<InboundHeaderProps> = ({
           </div>
           <div className="mt-2 text-xs text-indigo-700 font-medium flex items-center gap-1">
             <span>{totalCount > 0 ? Math.round((receivedCount / totalCount) * 100) : 0}%</span>
-            <span className="font-normal text-slate-500">• Chờ quét lệnh Put-away</span>
+            <span className="font-normal text-slate-500">• Chờ chất lên kệ</span>
           </div>
         </div>
 
@@ -111,7 +111,7 @@ export const InboundHeader: React.FC<InboundHeaderProps> = ({
           </div>
           <div className="mt-2 text-xs text-emerald-700 font-medium flex items-center gap-1">
             <span>{totalCount > 0 ? Math.round((stockedCount / totalCount) * 100) : 0}%</span>
-            <span className="font-normal text-slate-500">• Ghi sổ cái thành công</span>
+            <span className="font-normal text-slate-500">• Ghi sổ thành công</span>
           </div>
         </div>
       </div>

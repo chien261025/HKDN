@@ -57,14 +57,14 @@ export const PickPathVisualizerModal: React.FC<PickPathVisualizerModalProps> = (
             <div>
               <div className="flex items-center gap-2.5 flex-wrap">
                 <h2 className="text-lg font-bold text-slate-900 tracking-tight">
-                  Tối Ưu Hóa Lộ Trình Nhặt Hàng (Pick-Path Routing Visualizer)
+                  Tối Ưu Hóa Lộ Trình Nhặt Hàng
                 </h2>
                 <span className="text-xs font-mono font-bold px-2.5 py-1 rounded-md bg-indigo-100 text-indigo-800 border border-indigo-300">
                   {order.soCode}
                 </span>
               </div>
               <p className="text-xs text-slate-600 mt-0.5">
-                Thuật toán định tuyến ngắn nhất (Shortest Path TSP) • Khách hàng: <span className="font-semibold text-slate-800">{order.customerName}</span>
+                Khách hàng: <span className="font-semibold text-slate-800">{order.customerName}</span>
               </p>
             </div>
           </div>
@@ -81,7 +81,7 @@ export const PickPathVisualizerModal: React.FC<PickPathVisualizerModalProps> = (
             </span>
             <div className="flex items-baseline gap-2 mt-1">
               <span className="text-lg font-extrabold text-slate-900 tabular-nums">{distance} mét</span>
-              {isOptimal && <span className="text-xs font-bold text-emerald-700 bg-emerald-100 px-2 py-0.5 rounded-full">-94m (-56%)</span>}
+              {/* {isOptimal && <span className="text-xs font-bold text-emerald-700 bg-emerald-100 px-2 py-0.5 rounded-full">-94m (-56%)</span>} */}
             </div>
           </div>
 
@@ -91,18 +91,18 @@ export const PickPathVisualizerModal: React.FC<PickPathVisualizerModalProps> = (
             </span>
             <div className="flex items-baseline gap-2 mt-1">
               <span className="text-lg font-extrabold text-slate-900 tabular-nums">{estTime}</span>
-              {isOptimal && <span className="text-xs font-bold text-emerald-700 bg-emerald-100 px-2 py-0.5 rounded-full">-3.2 phút</span>}
+              {/* {isOptimal && <span className="text-xs font-bold text-emerald-700 bg-emerald-100 px-2 py-0.5 rounded-full">-3.2 phút</span>} */}
             </div>
           </div>
 
-          <div className="bg-white p-3 rounded-xl border border-slate-200 shadow-xs">
+          {/* <div className="bg-white p-3 rounded-xl border border-slate-200 shadow-xs">
             <span className="text-slate-500 flex items-center gap-1.5 font-medium">
               <TrendingUp className="w-4 h-4 text-emerald-600" /> Hiệu suất tiết kiệm
             </span>
             <div className="text-lg font-extrabold text-emerald-600 tabular-nums mt-1">
               {isOptimal ? '56.0% Chi Phí Di Chuyển' : '0% (Đi tự do)'}
             </div>
-          </div>
+          </div> */}
 
           {/* Toggle Thuật toán */}
           <div className="bg-white p-2.5 rounded-xl border border-slate-200 shadow-xs flex flex-col justify-center">
@@ -110,17 +110,15 @@ export const PickPathVisualizerModal: React.FC<PickPathVisualizerModalProps> = (
             <div className="flex items-center gap-1.5 bg-slate-100 p-1 rounded-lg">
               <button
                 onClick={() => setIsOptimal(true)}
-                className={`flex-1 py-1.5 rounded-md text-xs font-bold transition-all cursor-pointer ${
-                  isOptimal ? 'bg-indigo-600 text-white shadow-sm' : 'text-slate-600 hover:text-slate-900'
-                }`}
+                className={`flex-1 py-1.5 rounded-md text-xs font-bold transition-all cursor-pointer ${isOptimal ? 'bg-indigo-600 text-white shadow-sm' : 'text-slate-600 hover:text-slate-900'
+                  }`}
               >
                 S-Shape TSP (Tối ưu)
               </button>
               <button
                 onClick={() => setIsOptimal(false)}
-                className={`flex-1 py-1.5 rounded-md text-xs font-bold transition-all cursor-pointer ${
-                  !isOptimal ? 'bg-slate-700 text-white shadow-sm' : 'text-slate-600 hover:text-slate-900'
-                }`}
+                className={`flex-1 py-1.5 rounded-md text-xs font-bold transition-all cursor-pointer ${!isOptimal ? 'bg-slate-700 text-white shadow-sm' : 'text-slate-600 hover:text-slate-900'
+                  }`}
               >
                 Lối Đi Tự Do
               </button>
@@ -144,9 +142,8 @@ export const PickPathVisualizerModal: React.FC<PickPathVisualizerModalProps> = (
               <div className="flex items-center gap-2">
                 <button
                   onClick={() => setIsPlaying(!isPlaying)}
-                  className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer shadow-xs ${
-                    isPlaying ? 'bg-amber-500 text-white hover:bg-amber-600' : 'bg-indigo-600 text-white hover:bg-indigo-700'
-                  }`}
+                  className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer shadow-xs ${isPlaying ? 'bg-amber-500 text-white hover:bg-amber-600' : 'bg-indigo-600 text-white hover:bg-indigo-700'
+                    }`}
                 >
                   {isPlaying ? <Pause className="w-3.5 h-3.5" /> : <Play className="w-3.5 h-3.5" />}
                   <span>{isPlaying ? 'Tạm Dừng Mô Phỏng' : 'Tự Động Mô Phỏng Bước Đi'}</span>
@@ -178,7 +175,7 @@ export const PickPathVisualizerModal: React.FC<PickPathVisualizerModalProps> = (
             <div className="flex items-center justify-between pb-2 border-b border-slate-200">
               <h3 className="text-xs font-bold text-slate-900 uppercase tracking-wider flex items-center gap-2">
                 <Route className="w-4 h-4 text-indigo-600" />
-                <span>Thứ Tự Nhặt Hàng (Turn-by-turn Picking List)</span>
+                <span>Thứ Tự Nhặt Hàng</span>
               </h3>
               <span className="text-xs font-mono font-bold text-indigo-700 bg-indigo-50 px-2 py-0.5 rounded border border-indigo-200">
                 4/4 Điểm Dừng
@@ -192,17 +189,15 @@ export const PickPathVisualizerModal: React.FC<PickPathVisualizerModalProps> = (
                   <div
                     key={wp.id}
                     onClick={() => setActiveStep(wp.stepNumber)}
-                    className={`p-3.5 rounded-xl border-2 transition-all cursor-pointer ${
-                      isActive
-                        ? 'bg-amber-50/80 border-amber-400 ring-2 ring-amber-200 shadow-md scale-[1.01]'
-                        : 'bg-white border-slate-200 hover:border-indigo-300 hover:bg-slate-50/80'
-                    }`}
+                    className={`p-3.5 rounded-xl border-2 transition-all cursor-pointer ${isActive
+                      ? 'bg-amber-50/80 border-amber-400 ring-2 ring-amber-200 shadow-md scale-[1.01]'
+                      : 'bg-white border-slate-200 hover:border-indigo-300 hover:bg-slate-50/80'
+                      }`}
                   >
                     <div className="flex items-start justify-between gap-2">
                       <div className="flex items-center gap-2.5">
-                        <span className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-extrabold font-mono shadow-xs ${
-                          isActive ? 'bg-amber-500 text-white' : 'bg-slate-800 text-white'
-                        }`}>
+                        <span className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-extrabold font-mono shadow-xs ${isActive ? 'bg-amber-500 text-white' : 'bg-slate-800 text-white'
+                          }`}>
                           {wp.stepNumber}
                         </span>
                         <div>

@@ -79,7 +79,7 @@ export const FulfillmentPipelineWidget: React.FC = () => {
               <Truck className="w-4 h-4" />
             </span>
             <h3 className="text-sm font-extrabold text-slate-900 tracking-tight">
-              Quy Trình Hoàn Tất Đơn Hàng (Fulfillment Pipeline)
+              Quy Trình Hoàn Tất Đơn Hàng
             </h3>
           </div>
           <p className="text-xs text-slate-500 mt-0.5">
@@ -87,11 +87,11 @@ export const FulfillmentPipelineWidget: React.FC = () => {
           </p>
         </div>
 
-        <div className="flex items-center gap-2 text-xs">
+        {/* <div className="flex items-center gap-2 text-xs">
           <span className="px-2.5 py-1 rounded-full bg-emerald-50 text-emerald-700 font-bold border border-emerald-200 font-mono">
             SLA: 98.2% KỊP HẠN
           </span>
-        </div>
+        </div> */}
       </div>
 
       {/* 5-Step Pipeline Strip */}
@@ -124,9 +124,8 @@ export const FulfillmentPipelineWidget: React.FC = () => {
         ))}
       </div>
 
-      {/* Dock Status & Fleet Activity */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-3 pt-2 text-xs">
-        {/* Inbound Docks */}
+        {/* Inbound Docks
         <div className="p-3 rounded-xl bg-slate-50 border border-slate-200/80 flex items-center justify-between">
           <div className="flex items-center gap-2.5">
             <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 shadow-xs"></span>
@@ -138,9 +137,8 @@ export const FulfillmentPipelineWidget: React.FC = () => {
           <span className="px-2 py-0.5 rounded-md bg-emerald-100 text-emerald-800 font-semibold font-mono text-[10px]">
             ĐANG HOẠT ĐỘNG
           </span>
-        </div>
-
-        {/* Outbound Docks */}
+        </div> */}
+        {/* 
         <div className="p-3 rounded-xl bg-slate-50 border border-slate-200/80 flex items-center justify-between">
           <div className="flex items-center gap-2.5">
             <span className="w-2.5 h-2.5 rounded-full bg-indigo-500 shadow-xs"></span>
@@ -152,7 +150,7 @@ export const FulfillmentPipelineWidget: React.FC = () => {
           <span className="px-2 py-0.5 rounded-md bg-indigo-100 text-indigo-800 font-semibold font-mono text-[10px]">
             ĐANG XẾP XE
           </span>
-        </div>
+        </div> */}
       </div>
     </div>
   );

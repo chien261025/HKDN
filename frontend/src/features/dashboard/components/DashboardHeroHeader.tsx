@@ -37,27 +37,22 @@ export const DashboardHeroHeader: React.FC<DashboardHeroHeaderProps> = ({
           <h1 className="text-xl sm:text-2xl font-bold text-slate-900 tracking-tight">
             Trung Tâm Điều Hành Kho Vận
           </h1>
-
-          <p className="text-slate-600 text-xs sm:text-sm leading-relaxed">
-            Giám sát thời gian thực chuỗi xuất nhập kho, sơ đồ ô kệ Digital Twin, điều phối xuất hàng theo FEFO và bảo toàn số dư sổ cái kép.
-          </p>
         </div>
 
         {/* Action Controls */}
         <div className="flex flex-wrap items-center gap-2.5">
-          {onToggleSimulation && (
+          {/* {onToggleSimulation && (
             <button
               onClick={onToggleSimulation}
-              className={`inline-flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-medium transition-colors border cursor-pointer ${
-                showSimulation
+              className={`inline-flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-medium transition-colors border cursor-pointer ${showSimulation
                   ? 'bg-slate-900 text-white border-slate-900'
                   : 'bg-white hover:bg-slate-50 text-slate-700 border-slate-300'
-              }`}
+                }`}
             >
               <Sliders className="w-3.5 h-3.5 text-slate-500" />
               <span>{showSimulation ? 'Ẩn Kiểm Thử Tải' : 'Kiểm Thử Concurrency'}</span>
             </button>
-          )}
+          )} */}
 
           <Link
             to="/smartquery"

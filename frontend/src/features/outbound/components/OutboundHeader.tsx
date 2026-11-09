@@ -27,15 +27,15 @@ export const OutboundHeader: React.FC<OutboundHeaderProps> = ({
           <div>
             <div className="flex items-center gap-2.5 flex-wrap">
               <h1 className="text-xl md:text-2xl font-bold text-slate-900 tracking-tight">
-                Quản Lý Đơn Xuất Kho (Outbound SO)
+                Quản Lý Đơn Xuất Kho (SO)
               </h1>
-              <span className="text-[11px] font-mono bg-slate-100 text-slate-700 px-2.5 py-0.5 rounded-md border border-slate-200 font-semibold uppercase">
+              {/* <span className="text-[11px] font-mono bg-slate-100 text-slate-700 px-2.5 py-0.5 rounded-md border border-slate-200 font-semibold uppercase">
                 Xuất Kho SO
-              </span>
+              </span> */}
             </div>
-            <p className="text-xs sm:text-sm text-slate-500 font-medium mt-1">
+            {/* <p className="text-xs sm:text-sm text-slate-500 font-medium mt-1">
               Phân bổ lô hàng cận date (FEFO) • Khóa chống tranh chấp (Pessimistic Lock) • Lộ trình nhặt hàng tối ưu
-            </p>
+            </p> */}
           </div>
         </div>
 
