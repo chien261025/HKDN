@@ -103,7 +103,7 @@ export const CreateOutboundModal: React.FC<CreateOutboundModalProps> = ({
         <div className="p-5 border-b border-slate-200 flex items-center justify-between bg-slate-50">
           <div className="flex items-center gap-2.5">
             <PackageCheck className="w-5 h-5 text-indigo-600" />
-            <h3 className="font-bold text-base text-slate-900">Tạo Đơn Xuất Kho Mới (Sales Order / SO)</h3>
+            <h3 className="font-bold text-base text-slate-900">Tạo Đơn Xuất Kho Mới (SO)</h3>
           </div>
           <button onClick={onClose} className="p-1 rounded-lg text-slate-400 hover:text-slate-700 cursor-pointer">
             <X className="w-5 h-5" />
@@ -178,12 +178,12 @@ export const CreateOutboundModal: React.FC<CreateOutboundModalProps> = ({
                           prev.map((item, i) =>
                             i === idx
                               ? {
-                                  ...item,
-                                  productId: matched ? Number(matched.id) : undefined,
-                                  sku: newSku,
-                                  productName: matched ? matched.name : item.productName,
-                                  unit: matched ? matched.unit : item.unit,
-                                }
+                                ...item,
+                                productId: matched ? Number(matched.id) : undefined,
+                                sku: newSku,
+                                productName: matched ? matched.name : item.productName,
+                                unit: matched ? matched.unit : item.unit,
+                              }
                               : item
                           )
                         );

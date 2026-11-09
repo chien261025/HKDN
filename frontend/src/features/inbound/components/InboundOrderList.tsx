@@ -32,7 +32,7 @@ export const InboundOrderList: React.FC<InboundOrderListProps> = ({
           </div>
           <div>
             <h2 className="text-sm sm:text-base font-bold text-slate-900">
-              Danh Sách Đơn Nhập Kho (Purchase Orders)
+              Danh Sách Đơn Nhập Kho
             </h2>
             <p className="text-xs text-slate-500 hidden sm:block">Theo dõi tiến độ từ vận chuyển đến cất kệ</p>
           </div>
@@ -111,9 +111,8 @@ export const InboundOrderList: React.FC<InboundOrderListProps> = ({
                   </div>
                   <div className="w-full bg-slate-200 rounded-full h-1.5 overflow-hidden">
                     <div
-                      className={`h-full rounded-full ${
-                        isStocked ? 'bg-emerald-500' : isReceived ? 'bg-indigo-600' : 'bg-amber-500'
-                      }`}
+                      className={`h-full rounded-full ${isStocked ? 'bg-emerald-500' : isReceived ? 'bg-indigo-600' : 'bg-amber-500'
+                        }`}
                       style={{ width: `${progressPercent}%` }}
                     />
                   </div>
@@ -203,9 +202,8 @@ export const InboundOrderList: React.FC<InboundOrderListProps> = ({
                       </div>
                       <div className="w-full bg-slate-200 rounded-full h-1.5 overflow-hidden">
                         <div
-                          className={`h-full rounded-full ${
-                            isStocked ? 'bg-emerald-500' : isReceived ? 'bg-indigo-600' : 'bg-amber-500'
-                          }`}
+                          className={`h-full rounded-full ${isStocked ? 'bg-emerald-500' : isReceived ? 'bg-indigo-600' : 'bg-amber-500'
+                            }`}
                           style={{ width: `${progressPercent}%` }}
                         />
                       </div>

@@ -55,13 +55,13 @@ export const AppHeader: React.FC<AppHeaderProps> = ({
     ? (roleStr === 'ROLE_ADMIN' ? 'Nguyễn Quản Trị' : roleStr === 'ROLE_OPERATOR' ? 'Lê Thủ Kho' : 'Trần Trưởng Kho')
     : rawName;
   const nameParts = safeName.trim().split(/\s+/).filter(Boolean);
-  const initials = nameParts.length >= 2 
+  const initials = nameParts.length >= 2
     ? (nameParts[nameParts.length - 2][0] + nameParts[nameParts.length - 1][0]).toUpperCase()
     : (nameParts[0]?.slice(0, 2).toUpperCase() || 'TK');
-  const roleTitle = roleStr === 'ROLE_ADMIN' 
-    ? 'Quản Trị Viên' 
-    : roleStr === 'ROLE_OPERATOR' 
-      ? 'Vận Hành Kho' 
+  const roleTitle = roleStr === 'ROLE_ADMIN'
+    ? 'Quản Trị Viên'
+    : roleStr === 'ROLE_OPERATOR'
+      ? 'Vận Hành Kho'
       : 'Trưởng Kho Quản Lý';
 
   return (
@@ -90,13 +90,13 @@ export const AppHeader: React.FC<AppHeaderProps> = ({
           )}
         </button>
 
-        <div className="flex items-center gap-1.5 md:gap-2 text-xs font-semibold text-slate-500 truncate">
+        {/* <div className="flex items-center gap-1.5 md:gap-2 text-xs font-semibold text-slate-500 truncate">
           <span className="hidden sm:inline text-slate-400">Kho Vận</span>
           <ChevronRight className="hidden sm:inline w-3.5 h-3.5 text-slate-300" />
           <span className="text-slate-900 font-bold bg-slate-100 px-2 py-0.5 rounded-md border border-slate-200/80 truncate text-xs sm:text-sm">
             {currentTitle}
           </span>
-        </div>
+        </div> */}
       </div>
 
       {/* Search Bar - hidden on mobile to avoid overflow */}
@@ -117,7 +117,7 @@ export const AppHeader: React.FC<AppHeaderProps> = ({
 
       {/* Right User Profile & Notifications */}
       <div className="flex items-center gap-1.5 sm:gap-3 shrink-0">
-        <a
+        {/* <a
           href="http://localhost:8080/api/v1/swagger-ui/index.html"
           target="_blank"
           rel="noopener noreferrer"
@@ -127,7 +127,7 @@ export const AppHeader: React.FC<AppHeaderProps> = ({
           <BookOpen className="w-3.5 h-3.5 text-indigo-600" />
           <span>Swagger API</span>
           <ExternalLink className="w-3 h-3 text-slate-400" />
-        </a>
+        </a> */}
 
         <NotificationCenterDropdown />
 

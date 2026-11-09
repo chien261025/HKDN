@@ -41,9 +41,9 @@ export const StockTransferHistoryTable: React.FC<StockTransferHistoryTableProps>
             <ArrowRightLeft className="w-4 h-4 text-indigo-600" />
             <span>Lịch Sử Điều Chuyển Hàng Nội Bộ ({transfers.length})</span>
           </h3>
-          <p className="text-xs text-slate-500 mt-0.5">
+          {/* <p className="text-xs text-slate-500 mt-0.5">
             Giao dịch chuyển ô kệ đã được ghi nhận đối ứng vào Sổ cái
-          </p>
+          </p> */}
         </div>
       </div>
 

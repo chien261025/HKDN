@@ -39,7 +39,7 @@ export const OutboundDetailModal: React.FC<OutboundDetailModalProps> = ({ order,
         {/* Modal Body */}
         <div className="p-6 space-y-4 overflow-y-auto text-sm">
           {/* Lock & FEFO Certification Card */}
-          <div className="p-4 rounded-xl bg-indigo-50 border border-indigo-200 space-y-2">
+          {/* <div className="p-4 rounded-xl bg-indigo-50 border border-indigo-200 space-y-2">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2 text-indigo-900 font-bold text-sm">
                 <Lock className="w-4.5 h-4.5 text-indigo-600" />
@@ -52,7 +52,7 @@ export const OutboundDetailModal: React.FC<OutboundDetailModalProps> = ({ order,
             <p className="text-xs sm:text-sm text-slate-700 leading-relaxed font-medium">
               Hệ thống đã thực hiện câu lệnh <code className="text-indigo-800 font-mono font-bold bg-white px-1 py-0.5 rounded border border-indigo-200">SELECT ... FOR UPDATE</code> trên cơ sở dữ liệu PostgreSQL. Số lượng tồn kho đã được khóa cứng (Reserved), ngăn chặn hoàn toàn tranh chấp từ các đơn hàng xuất đồng thời.
             </p>
-          </div>
+          </div> */}
 
           {/* Danh sách nhặt hàng FEFO */}
           <div className="space-y-2.5">

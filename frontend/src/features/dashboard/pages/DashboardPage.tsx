@@ -131,7 +131,8 @@ export const DashboardPage: React.FC = () => {
         </div>
       </div>
 
-      {/* 4. Full-width Order Fulfillment Pipeline */}
+      {/* 4. Full-width Order Fulfillment Pipeline 
+      còn hast code cầm chỉnh về dữ liệu động*/}
       <FulfillmentPipelineWidget />
 
       {/* 5. Risk & Workforce Layer (FEFO Expiry Risk & Workforce PDA Fleet) */}
