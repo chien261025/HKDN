@@ -142,11 +142,10 @@ export const ReportOverviewPanel: React.FC<ReportOverviewPanelProps> = ({
           {schedules.map((sch) => (
             <div
               key={sch.id}
-              className={`p-3 rounded-xl border transition-all ${
-                sch.isEnabled
-                  ? 'bg-white border-slate-200 hover:border-sky-300'
-                  : 'bg-slate-50 border-slate-200 opacity-60'
-              }`}
+              className={`p-3 rounded-xl border transition-all ${sch.isEnabled
+                ? 'bg-white border-slate-200 hover:border-sky-300'
+                : 'bg-slate-50 border-slate-200 opacity-60'
+                }`}
             >
               <div className="flex items-start justify-between gap-2">
                 <div className="space-y-1">
@@ -169,9 +168,8 @@ export const ReportOverviewPanel: React.FC<ReportOverviewPanelProps> = ({
                 <button
                   type="button"
                   onClick={() => toggleSchedule(sch.id)}
-                  className={`w-9 h-5 flex items-center rounded-full p-0.5 cursor-pointer transition-colors ${
-                    sch.isEnabled ? 'bg-emerald-600 justify-end' : 'bg-slate-300 justify-start'
-                  }`}
+                  className={`w-9 h-5 flex items-center rounded-full p-0.5 cursor-pointer transition-colors ${sch.isEnabled ? 'bg-emerald-600 justify-end' : 'bg-slate-300 justify-start'
+                    }`}
                   title={sch.isEnabled ? 'Đang bật tự động' : 'Đã tạm dừng'}
                 >
                   <span className="w-4 h-4 bg-white rounded-full shadow-md"></span>
@@ -183,19 +181,19 @@ export const ReportOverviewPanel: React.FC<ReportOverviewPanelProps> = ({
       </div>
 
       {/* 3. Security & Enterprise Compliance */}
-      <div className="bg-gradient-to-br from-slate-900 to-slate-800 rounded-2xl p-4 text-white shadow-sm space-y-2.5">
-        <div className="flex items-center gap-2 text-xs font-bold text-emerald-400 uppercase tracking-wider">
-          <ShieldCheck className="w-4 h-4" />
-          <span>Bảo Mật & Tiêu Chuẩn Doanh Nghiệp</span>
-        </div>
-        <p className="text-xs text-slate-300 leading-relaxed">
-          Tất cả báo cáo xuất ra được mã hóa chuẩn <strong>AES-256</strong>. Đường dẫn tải về bảo mật theo phiên đăng nhập và tuân thủ chuẩn kiểm toán nội bộ kho vận.
-        </p>
-        <div className="pt-2 border-t border-slate-700 flex items-center justify-between text-[11px] text-slate-400 font-medium">
-          <span>Thời hạn lưu trữ: 30 ngày</span>
-          <span className="text-emerald-400 font-semibold">ISO 9001:2015</span>
-        </div>
-      </div>
+      {/* <div className="bg-gradient-to-br from-slate-900 to-slate-800 rounded-2xl p-4 text-white shadow-sm space-y-2.5">
+          <div className="flex items-center gap-2 text-xs font-bold text-emerald-400 uppercase tracking-wider">
+            <ShieldCheck className="w-4 h-4" />
+            <span>Bảo Mật & Tiêu Chuẩn Doanh Nghiệp</span>
+          </div>
+          <p className="text-xs text-slate-300 leading-relaxed">
+            Tất cả báo cáo xuất ra được mã hóa chuẩn <strong>AES-256</strong>. Đường dẫn tải về bảo mật theo phiên đăng nhập và tuân thủ chuẩn kiểm toán nội bộ kho vận.
+          </p>
+          <div className="pt-2 border-t border-slate-700 flex items-center justify-between text-[11px] text-slate-400 font-medium">
+            <span>Thời hạn lưu trữ: 30 ngày</span>
+            <span className="text-emerald-400 font-semibold">ISO 9001:2015</span>
+          </div>
+        </div> */}
     </div>
   );
 };

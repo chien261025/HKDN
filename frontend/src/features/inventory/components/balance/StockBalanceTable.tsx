@@ -1,7 +1,10 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Search, TrendingDown, Lock, FileText, AlertTriangle, ArrowRightLeft } from 'lucide-react';
 import { StockItem } from '../../types';
 import { StockBalanceMobileCards } from './StockBalanceMobileCards';
+import { Pagination } from '../../../../components/common';
+
+const PAGE_SIZE = 10;
 
 interface StockBalanceTableProps {
   stocks: StockItem[];
@@ -20,6 +23,7 @@ export const StockBalanceTable: React.FC<StockBalanceTableProps> = ({
   const [filterExpiring, setFilterExpiring] = useState(false);
   const [reserveModalItem, setReserveModalItem] = useState<StockItem | null>(null);
   const [reserveQty, setReserveQty] = useState(5);
+  const [currentPage, setCurrentPage] = useState(1);
 
   const filteredStocks = stocks.filter((s) => {
     const matchesSearch =
@@ -29,6 +33,11 @@ export const StockBalanceTable: React.FC<StockBalanceTableProps> = ({
     const matchesFilter = filterExpiring ? s.isExpiringSoon : true;
     return matchesSearch && matchesFilter;
   });
+  const totalPages = Math.max(1, Math.ceil(filteredStocks.length / PAGE_SIZE));
+  const visibleStocks = filteredStocks.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE);
+
+  useEffect(() => setCurrentPage(1), [searchQuery, filterExpiring]);
+  useEffect(() => setCurrentPage((page) => Math.min(page, totalPages)), [totalPages]);
 
   const handleConfirmReserve = () => {
     if (!reserveModalItem) return;
@@ -67,7 +76,7 @@ export const StockBalanceTable: React.FC<StockBalanceTableProps> = ({
       {/* Mobile Card Feed (< md) */}
       <div className="block md:hidden">
         <StockBalanceMobileCards
-          stocks={filteredStocks}
+          stocks={visibleStocks}
           onReserveClick={(item) => {
             setReserveModalItem(item);
             setReserveQty(5);
@@ -93,7 +102,7 @@ export const StockBalanceTable: React.FC<StockBalanceTableProps> = ({
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100 text-slate-800">
-              {filteredStocks.map((item) => (
+              {visibleStocks.map((item) => (
                 <tr key={item.id} className="hover:bg-slate-50/70 transition-colors group">
                   <td className="py-3.5 px-4">
                     <div className="font-semibold text-slate-900 text-sm group-hover:text-indigo-600 transition-colors">
@@ -177,6 +186,7 @@ export const StockBalanceTable: React.FC<StockBalanceTableProps> = ({
             </tbody>
           </table>
         </div>
+        <Pagination currentPage={currentPage} totalItems={filteredStocks.length} pageSize={PAGE_SIZE} onPageChange={setCurrentPage} />
       </div>
 
       {/* Modal Giữ Hàng Nhỏ Gọn & Sắc Nét */}

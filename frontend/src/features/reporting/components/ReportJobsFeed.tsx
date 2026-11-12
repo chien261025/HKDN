@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   Download,
   Trash2,
@@ -10,6 +10,9 @@ import {
   AlertCircle
 } from 'lucide-react';
 import { ReportJob } from '../types';
+import { Pagination } from '../../../components/common';
+
+const PAGE_SIZE = 10;
 
 interface ReportJobsFeedProps {
   jobs: ReportJob[];
@@ -22,6 +25,12 @@ export const ReportJobsFeed: React.FC<ReportJobsFeedProps> = ({
   onDownload,
   onRemoveJob,
 }) => {
+  const [currentPage, setCurrentPage] = useState(1);
+  const totalPages = Math.max(1, Math.ceil(jobs.length / PAGE_SIZE));
+  const visibleJobs = jobs.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE);
+
+  useEffect(() => setCurrentPage((page) => Math.min(page, totalPages)), [totalPages]);
+
   return (
     <div className="bg-white rounded-2xl border border-slate-200/90 shadow-xs overflow-hidden">
       {/* Table Header Controls */}
@@ -67,7 +76,7 @@ export const ReportJobsFeed: React.FC<ReportJobsFeedProps> = ({
                 </td>
               </tr>
             ) : (
-              jobs.map((job) => {
+              visibleJobs.map((job) => {
                 const isDone = job.status === 'COMPLETED';
 
                 return (
@@ -175,6 +184,7 @@ export const ReportJobsFeed: React.FC<ReportJobsFeedProps> = ({
             )}
           </tbody>
         </table>
+        <Pagination currentPage={currentPage} totalItems={jobs.length} pageSize={PAGE_SIZE} onPageChange={setCurrentPage} />
       </div>
     </div>
   );

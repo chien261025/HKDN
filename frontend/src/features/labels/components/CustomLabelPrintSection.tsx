@@ -1,7 +1,9 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Truck, Sparkles, Printer, Plus, Minus, QrCode } from 'lucide-react';
 import { PalletLabelCard, PalletLabelData } from './PalletLabelCard';
-import { BarcodeSvg, QrCodeSvg } from '../../../components/common';
+import { BarcodeSvg, Pagination, QrCodeSvg } from '../../../components/common';
+
+const PAGE_SIZE = 10;
 
 const DEFAULT_PALLET: PalletLabelData = {
   palletCode: 'PLT-2026-0042',
@@ -29,6 +31,19 @@ export const CustomLabelPrintSection: React.FC = () => {
   const [customSubtitle, setCustomSubtitle] = useState<string>('Kho Trung Tâm WH-01 • Tiêu Chuẩn ISO');
   const [barcodeType, setBarcodeType] = useState<'BOTH' | 'BARCODE' | 'QR'>('BOTH');
   const [customCopies, setCustomCopies] = useState<number>(3);
+  const [currentPage, setCurrentPage] = useState(1);
+  const totalCopies = mode === 'PALLET' ? palletCopies : customCopies;
+  const totalPages = Math.max(1, Math.ceil(totalCopies / PAGE_SIZE));
+  const firstCopy = (currentPage - 1) * PAGE_SIZE;
+  const visibleCopies = Math.min(PAGE_SIZE, totalCopies - firstCopy);
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [mode]);
+
+  useEffect(() => {
+    setCurrentPage((page) => Math.min(page, totalPages));
+  }, [totalPages]);
 
   const handlePrint = () => {
     window.print();
@@ -191,8 +206,8 @@ export const CustomLabelPrintSection: React.FC = () => {
       {/* Printable Sheet */}
       {mode === 'PALLET' ? (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 print-label-sheet">
-          {Array.from({ length: palletCopies }).map((_, idx) => (
-            <div key={idx} className="relative">
+          {Array.from({ length: visibleCopies }).map((_, idx) => (
+            <div key={firstCopy + idx} className="relative">
               <span className="absolute top-2 right-2 z-10 text-3xs font-mono font-bold text-slate-400 no-print">
                 Kiện #{idx + 1}
               </span>
@@ -202,9 +217,9 @@ export const CustomLabelPrintSection: React.FC = () => {
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 print-label-sheet">
-          {Array.from({ length: customCopies }).map((_, idx) => (
+          {Array.from({ length: visibleCopies }).map((_, idx) => (
             <div
-              key={idx}
+              key={firstCopy + idx}
               className="bg-white border-2 border-slate-900 rounded-xl p-3.5 flex flex-col justify-between text-slate-900 shadow-sm print-single-label"
               style={{ width: '100%', maxWidth: '340px', minHeight: '180px' }}
             >
@@ -232,12 +247,18 @@ export const CustomLabelPrintSection: React.FC = () => {
 
               <div className="pt-1.5 border-t border-slate-300 flex justify-between text-3xs font-mono text-slate-500">
                 <span>{customSubtitle}</span>
-                <span>#{idx + 1}</span>
+                <span>#{firstCopy + idx + 1}</span>
               </div>
             </div>
           ))}
         </div>
       )}
+      <Pagination
+        currentPage={currentPage}
+        totalItems={totalCopies}
+        pageSize={PAGE_SIZE}
+        onPageChange={setCurrentPage}
+      />
     </div>
   );
 };

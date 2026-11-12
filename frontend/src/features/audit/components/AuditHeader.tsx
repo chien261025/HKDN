@@ -26,11 +26,11 @@ export const AuditHeader: React.FC<AuditHeaderProps> = ({
           <div>
             <div className="flex items-center gap-2.5">
               <h1 className="text-xl md:text-2xl font-black text-slate-900 tracking-tight">
-                Quản Lý Kiểm Kê & Cân Đối Kho (Inventory Audit)
+                Quản Lý Kiểm Kê & Cân Đối Kho
               </h1>
-              <span className="text-xs font-mono bg-emerald-50 text-emerald-700 px-2.5 py-0.5 rounded-full border border-emerald-200 font-bold flex items-center gap-1">
+              {/* <span className="text-xs font-mono bg-emerald-50 text-emerald-700 px-2.5 py-0.5 rounded-full border border-emerald-200 font-bold flex items-center gap-1">
                 <EyeOff className="w-3.5 h-3.5" /> BLIND COUNT
-              </span>
+              </span> */}
             </div>
             <p className="text-sm text-slate-600 mt-1">
               So khớp số liệu thực tế từ máy quét PDA Thủ kho • Phát hiện sai lệch thừa thiếu • Duyệt ghi sổ cái cân đối

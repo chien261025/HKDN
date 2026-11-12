@@ -219,12 +219,12 @@ export const SmartAssistantPage: React.FC = () => {
         </div>
 
         {/* CỘT PHẢI (4 COLS): HÀNG RÀO BẢO VỆ AST, THỬ NGHIỆM TẤN CÔNG & LƯỢC ĐỒ BẢNG */}
-        <div className="lg:col-span-4 h-[calc(100vh-210px)] min-h-[550px] overflow-y-auto pr-1 scrollbar-thin">
+        {/* <div className="lg:col-span-4 h-[calc(100vh-210px)] min-h-[550px] overflow-y-auto pr-1 scrollbar-thin">
           <AstSecuritySidebar
             onSimulateAttack={handleSimulateAttack}
             disabled={loading}
           />
-        </div>
+        </div> */}
       </div>
     </div>
   );

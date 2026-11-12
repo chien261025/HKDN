@@ -1,7 +1,10 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Search, Filter, Shield, Lock, Unlock, KeyRound, Pencil, ShieldCheck, Download, Clock, MapPin, CheckSquare, Square, Check } from 'lucide-react';
 import { UserAccount } from '../types';
 import { UserMobileCards } from './UserMobileCards';
+import { Pagination } from '../../../components/common';
+
+const PAGE_SIZE = 10;
 import { getRoleBadge, getStatusBadge } from '../utils/userBadges';
 
 interface UserListTableProps {
@@ -26,6 +29,7 @@ export const UserListTable: React.FC<UserListTableProps> = ({
   const [statusFilter, setStatusFilter] = useState<string>('ALL');
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [isBulkLoading, setIsBulkLoading] = useState(false);
+  const [currentPage, setCurrentPage] = useState(1);
 
   const filteredUsers = users.filter((u) => {
     const term = searchTerm.toLowerCase();
@@ -46,6 +50,11 @@ export const UserListTable: React.FC<UserListTableProps> = ({
 
     return matchSearch && matchRole && matchStatus;
   });
+  const totalPages = Math.max(1, Math.ceil(filteredUsers.length / PAGE_SIZE));
+  const visibleUsers = filteredUsers.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE);
+
+  useEffect(() => setCurrentPage(1), [searchTerm, roleFilter, statusFilter]);
+  useEffect(() => setCurrentPage((page) => Math.min(page, totalPages)), [totalPages]);
 
   // Tài khoản có thể chọn (loại trừ root admin)
   const selectableUsers = filteredUsers.filter((u) => u.username.toLowerCase() !== 'admin');
@@ -214,7 +223,7 @@ export const UserListTable: React.FC<UserListTableProps> = ({
       {/* Mobile Cards View (< md) */}
       <div className="block md:hidden">
         <UserMobileCards
-          users={filteredUsers}
+          users={visibleUsers}
           onToggleStatus={onToggleStatus}
           onResetPassword={onResetPassword}
           onEditUser={onEditUser}
@@ -253,7 +262,7 @@ export const UserListTable: React.FC<UserListTableProps> = ({
                 </td>
               </tr>
             ) : (
-              filteredUsers.map((u) => {
+              visibleUsers.map((u) => {
                 const initials = u.fullName
                   .split(' ')
                   .map((n) => n[0])
@@ -391,6 +400,8 @@ export const UserListTable: React.FC<UserListTableProps> = ({
           </tbody>
         </table>
       </div>
+
+      <Pagination currentPage={currentPage} totalItems={filteredUsers.length} pageSize={PAGE_SIZE} onPageChange={setCurrentPage} />
 
       {/* Footer */}
       <div className="p-3 sm:p-4 bg-slate-50 border-t border-slate-200 text-xs text-slate-600 flex items-center justify-between font-mono">

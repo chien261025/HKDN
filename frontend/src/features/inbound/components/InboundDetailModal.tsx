@@ -1,6 +1,9 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { X, Building2, Calendar, CheckCircle2, Clock, Truck, Layers, Printer, MapPin } from 'lucide-react';
 import { InboundOrder } from '../types';
+import { Pagination } from '../../../components/common';
+
+const PAGE_SIZE = 10;
 
 interface InboundDetailModalProps {
   order: InboundOrder | null;
@@ -8,7 +11,14 @@ interface InboundDetailModalProps {
 }
 
 export const InboundDetailModal: React.FC<InboundDetailModalProps> = ({ order, onClose }) => {
+  const [currentPage, setCurrentPage] = useState(1);
+  useEffect(() => {
+    if (order) setCurrentPage(1);
+  }, [order?.id]);
+
   if (!order) return null;
+
+  const visibleItems = order.items.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE);
 
   const isPending = order.status === 'PENDING';
   const isReceived = order.status === 'RECEIVED';
@@ -109,7 +119,7 @@ export const InboundDetailModal: React.FC<InboundDetailModalProps> = ({ order, o
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-200 text-slate-800">
-                  {order.items.map((item) => (
+                  {visibleItems.map((item) => (
                     <tr key={item.id} className="hover:bg-slate-50">
                       <td className="py-3 px-4">
                         <div className="font-sans font-bold text-slate-900 text-sm">{item.productName}</div>
@@ -143,6 +153,12 @@ export const InboundDetailModal: React.FC<InboundDetailModalProps> = ({ order, o
                   ))}
                 </tbody>
               </table>
+              <Pagination
+                currentPage={currentPage}
+                totalItems={order.items.length}
+                pageSize={PAGE_SIZE}
+                onPageChange={setCurrentPage}
+              />
             </div>
           </div>
 

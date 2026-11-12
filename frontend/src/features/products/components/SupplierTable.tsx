@@ -1,6 +1,9 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Search, Building2, Phone, Mail, MapPin, CheckCircle2, XCircle, Edit2, Box } from 'lucide-react';
 import { SupplierItem } from '../types';
+import { Pagination } from '../../../components/common';
+
+const PAGE_SIZE = 10;
 
 interface SupplierTableProps {
   suppliers: SupplierItem[];
@@ -14,6 +17,7 @@ export const SupplierTable: React.FC<SupplierTableProps> = ({
   onViewSupplierProducts,
 }) => {
   const [searchTerm, setSearchTerm] = useState('');
+  const [currentPage, setCurrentPage] = useState(1);
 
   const filteredSuppliers = suppliers.filter((s) => {
     const term = searchTerm.toLowerCase();
@@ -25,6 +29,11 @@ export const SupplierTable: React.FC<SupplierTableProps> = ({
       s.email.toLowerCase().includes(term)
     );
   });
+  const totalPages = Math.max(1, Math.ceil(filteredSuppliers.length / PAGE_SIZE));
+  const visibleSuppliers = filteredSuppliers.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE);
+
+  useEffect(() => setCurrentPage(1), [searchTerm]);
+  useEffect(() => setCurrentPage((page) => Math.min(page, totalPages)), [totalPages]);
 
   return (
     <div className="bg-white rounded-2xl border border-slate-200 shadow-xs overflow-hidden">
@@ -53,7 +62,7 @@ export const SupplierTable: React.FC<SupplierTableProps> = ({
             Không tìm thấy nhà cung cấp nào.
           </div>
         ) : (
-          filteredSuppliers.map((s) => (
+          visibleSuppliers.map((s) => (
             <div key={s.id} className="bg-white rounded-xl border border-slate-200 p-4 shadow-2xs space-y-3">
               <div className="flex items-start justify-between gap-2">
                 <div className="flex items-center gap-2.5">
@@ -145,7 +154,7 @@ export const SupplierTable: React.FC<SupplierTableProps> = ({
                 </td>
               </tr>
             ) : (
-              filteredSuppliers.map((s) => (
+              visibleSuppliers.map((s) => (
                 <tr key={s.id} className="hover:bg-slate-50 transition-colors">
                   <td className="py-3.5 px-4">
                     <div className="flex items-center gap-3">
@@ -233,6 +242,8 @@ export const SupplierTable: React.FC<SupplierTableProps> = ({
           </tbody>
         </table>
       </div>
+
+      <Pagination currentPage={currentPage} totalItems={filteredSuppliers.length} pageSize={PAGE_SIZE} onPageChange={setCurrentPage} />
 
       {/* Footer */}
       <div className="p-3 sm:p-4 bg-slate-50 border-t border-slate-200 text-xs text-slate-600 flex flex-wrap items-center justify-between gap-2 font-mono">

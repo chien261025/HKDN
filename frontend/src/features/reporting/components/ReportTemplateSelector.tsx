@@ -21,7 +21,7 @@ export const REPORT_TEMPLATES: ReportTemplate[] = [
     title: 'Sổ Cái Thẻ Kho & Bút Toán Đối Soát',
     category: 'Kiểm Toán & Kế Toán',
     description: 'Toàn bộ giao dịch Nhập - Xuất - Điều chuyển kèm chứng từ và mã lô đối soát.',
-    estimatedRows: '50,000 dòng',
+    estimatedRows: '',
     estimatedSize: '4.2 MB',
     format: 'EXCEL',
     badgeColor: 'emerald',
@@ -31,7 +31,7 @@ export const REPORT_TEMPLATES: ReportTemplate[] = [
     title: 'Cân Đối Tồn & Hạn Dùng (FEFO/FIFO)',
     category: 'Quản Lý Hạn Sử Dụng',
     description: 'Tổng hợp tồn khả dụng, phân loại lô hàng cận date 30-60-90 ngày theo danh mục SKU.',
-    estimatedRows: '15,000 dòng',
+    estimatedRows: '',
     estimatedSize: '1.8 MB',
     format: 'EXCEL',
     badgeColor: 'blue',
@@ -41,7 +41,7 @@ export const REPORT_TEMPLATES: ReportTemplate[] = [
     title: 'Tỷ Lệ Lấp Đầy & Dung Tích Ô Kệ',
     category: 'Quy Hoạch Mặt Bằng',
     description: 'Thống kê sức chứa, tỷ lệ lấp đầy thể tích & tải trọng an toàn phân khu Zone A & B.',
-    estimatedRows: '8,000 vị trí',
+    estimatedRows: '',
     estimatedSize: '950 KB',
     format: 'EXCEL',
     badgeColor: 'indigo',
@@ -51,7 +51,7 @@ export const REPORT_TEMPLATES: ReportTemplate[] = [
     title: 'Hiệu Suất Đơn Hàng & SLA Vận Hành',
     category: 'KPI Vận Hành & Giao Vận',
     description: 'Đo lường năng suất lấy hàng (Pick/Pack), tỷ lệ hoàn tất đơn hàng và thời gian xử lý.',
-    estimatedRows: '25,000 dòng',
+    estimatedRows: '',
     estimatedSize: '2.5 MB',
     format: 'EXCEL',
     badgeColor: 'amber',
@@ -74,9 +74,9 @@ export const ReportTemplateSelector: React.FC<ReportTemplateSelectorProps> = ({
             Chọn mẫu dữ liệu cần xuất theo tiêu chuẩn kế toán và đối soát vận hành kho
           </p>
         </div>
-        <span className="text-xs text-slate-600 bg-slate-100 px-3 py-1 rounded-full font-medium self-start sm:self-auto border border-slate-200">
+        {/* <span className="text-xs text-slate-600 bg-slate-100 px-3 py-1 rounded-full font-medium self-start sm:self-auto border border-slate-200">
           Định dạng xuất: <strong className="text-emerald-700">Microsoft Excel (.xlsx)</strong>
-        </span>
+        </span> */}
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">

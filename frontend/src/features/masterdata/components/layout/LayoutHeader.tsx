@@ -26,11 +26,11 @@ export const LayoutHeader: React.FC<LayoutHeaderProps> = ({
           <div>
             <div className="flex items-center gap-2 flex-wrap">
               <h1 className="text-lg md:text-xl font-bold text-slate-900 tracking-tight">
-                Sơ Đồ Vị Trí Ô Kệ (Digital Twin)
+                Sơ Đồ Vị Trí Ô Kệ
               </h1>
-              <span className="text-[11px] font-medium bg-slate-100 text-slate-700 px-2 py-0.5 rounded-md border border-slate-200">
+              {/* <span className="text-[11px] font-medium bg-slate-100 text-slate-700 px-2 py-0.5 rounded-md border border-slate-200">
                 Kho Tổng Tân Bình
-              </span>
+              </span> */}
             </div>
             <p className="text-xs text-slate-500 font-normal mt-0.5">
               Phân cấp lưu trữ: Khu (Zone) • Dãy (Aisle) • Kệ (Rack) • Tầng (Shelf) • Ô Chứa (Bin)
@@ -42,21 +42,19 @@ export const LayoutHeader: React.FC<LayoutHeaderProps> = ({
         <div className="flex items-center bg-slate-100 p-1 rounded-lg border border-slate-200 gap-1 flex-wrap text-xs">
           <button
             onClick={() => onSelectZone('ZONE_A')}
-            className={`px-3 py-1.5 rounded-md font-medium transition-colors cursor-pointer ${
-              selectedZone === 'ZONE_A'
+            className={`px-3 py-1.5 rounded-md font-medium transition-colors cursor-pointer ${selectedZone === 'ZONE_A'
                 ? 'bg-white text-indigo-700 shadow-xs font-semibold'
                 : 'text-slate-600 hover:text-slate-900'
-            }`}
+              }`}
           >
             Khu A: Hàng Khô & Điện Tử
           </button>
           <button
             onClick={() => onSelectZone('ZONE_B')}
-            className={`px-3 py-1.5 rounded-md font-medium transition-colors cursor-pointer ${
-              selectedZone === 'ZONE_B'
+            className={`px-3 py-1.5 rounded-md font-medium transition-colors cursor-pointer ${selectedZone === 'ZONE_B'
                 ? 'bg-white text-indigo-700 shadow-xs font-semibold'
                 : 'text-slate-600 hover:text-slate-900'
-            }`}
+              }`}
           >
             Khu B: Kho Mát (2-8°C)
           </button>

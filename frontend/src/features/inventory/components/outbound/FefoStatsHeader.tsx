@@ -42,7 +42,10 @@ export const FefoStatsHeader: React.FC<FefoStatsHeaderProps> = ({
       {/* 4 THẺ CHỈ SỐ KPI ĐẬM NÉT, RỰC RỠ & GIÀU NĂNG LƯỢNG */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         {/* Card 1: Tổng đơn xuất */}
-        <div className="rounded-2xl bg-white border border-slate-200 p-5 shadow-xs hover:border-indigo-300 hover:shadow-md transition-all">
+        <div className="rounded-2xl bg-white border border-slate-200 p-5 shadow-xs hover:border-indigo-300 hover:shadow-md transition-all"
+          role="button"
+          onClick={() => onStatusFilterChange('ALL')}
+        >
           <div className="flex items-center justify-between">
             <div>
               <span className="text-xs sm:text-sm font-semibold text-slate-600 block">Tổng Đơn Xuất</span>
@@ -58,7 +61,10 @@ export const FefoStatsHeader: React.FC<FefoStatsHeaderProps> = ({
         </div>
 
         {/* Card 2: Chờ xử lý */}
-        <div className="rounded-2xl bg-white border border-slate-200 p-5 shadow-xs hover:border-amber-300 hover:shadow-md transition-all">
+        <div className="rounded-2xl bg-white border border-slate-200 p-5 shadow-xs hover:border-amber-300 hover:shadow-md transition-all"
+          role="button"
+          onClick={() => onStatusFilterChange('PENDING')}
+        >
           <div className="flex items-center justify-between">
             <div>
               <span className="text-xs sm:text-sm font-semibold text-slate-600 block">Chờ Xử Lý</span>
@@ -74,7 +80,10 @@ export const FefoStatsHeader: React.FC<FefoStatsHeaderProps> = ({
         </div>
 
         {/* Card 3: Đã giữ hàng */}
-        <div className="rounded-2xl bg-white border border-slate-200 p-5 shadow-xs hover:border-blue-300 hover:shadow-md transition-all">
+        <div className="rounded-2xl bg-white border border-slate-200 p-5 shadow-xs hover:border-blue-300 hover:shadow-md transition-all"
+          role="button"
+          onClick={() => onStatusFilterChange('RESERVED')}
+        >
           <div className="flex items-center justify-between">
             <div>
               <span className="text-xs sm:text-sm font-semibold text-slate-600 block">Đã Giữ Hàng</span>
@@ -90,7 +99,10 @@ export const FefoStatsHeader: React.FC<FefoStatsHeaderProps> = ({
         </div>
 
         {/* Card 4: Đã xuất kho */}
-        <div className="rounded-2xl bg-white border border-slate-200 p-5 shadow-xs hover:border-emerald-300 hover:shadow-md transition-all">
+        <div className="rounded-2xl bg-white border border-slate-200 p-5 shadow-xs hover:border-emerald-300 hover:shadow-md transition-all"
+          role="button"
+          onClick={() => onStatusFilterChange('SHIPPED')}
+        >
           <div className="flex items-center justify-between">
             <div>
               <span className="text-xs sm:text-sm font-semibold text-slate-600 block">Đã Xuất Kho</span>
@@ -118,11 +130,10 @@ export const FefoStatsHeader: React.FC<FefoStatsHeaderProps> = ({
           <div className="flex items-center bg-slate-200/80 p-1 rounded-xl border border-slate-200 text-xs shadow-inner">
             <button
               onClick={() => onViewModeChange('table')}
-              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg font-bold transition-all cursor-pointer ${
-                viewMode === 'table'
-                  ? 'bg-white text-indigo-700 shadow-xs'
-                  : 'text-slate-600 hover:text-slate-900'
-              }`}
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg font-bold transition-all cursor-pointer ${viewMode === 'table'
+                ? 'bg-white text-indigo-700 shadow-xs'
+                : 'text-slate-600 hover:text-slate-900'
+                }`}
             >
               <LayoutList className="w-3.5 h-3.5" />
               <span>Dạng Bảng</span>
@@ -130,11 +141,10 @@ export const FefoStatsHeader: React.FC<FefoStatsHeaderProps> = ({
 
             <button
               onClick={() => onViewModeChange('kanban')}
-              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg font-bold transition-all cursor-pointer ${
-                viewMode === 'kanban'
-                  ? 'bg-white text-indigo-700 shadow-xs'
-                  : 'text-slate-600 hover:text-slate-900'
-              }`}
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg font-bold transition-all cursor-pointer ${viewMode === 'kanban'
+                ? 'bg-white text-indigo-700 shadow-xs'
+                : 'text-slate-600 hover:text-slate-900'
+                }`}
             >
               <Columns className="w-3.5 h-3.5" />
               <span>Luồng Kanban</span>
@@ -160,41 +170,37 @@ export const FefoStatsHeader: React.FC<FefoStatsHeaderProps> = ({
             <div className="flex items-center bg-slate-100 p-1 rounded-xl border border-slate-200 text-xs font-semibold">
               <button
                 onClick={() => onStatusFilterChange('ALL')}
-                className={`px-3 py-1.5 rounded-lg transition-all ${
-                  statusFilter === 'ALL'
-                    ? 'bg-white text-slate-900 font-bold shadow-xs'
-                    : 'text-slate-600 hover:text-slate-900'
-                }`}
+                className={`px-3 py-1.5 rounded-lg transition-all ${statusFilter === 'ALL'
+                  ? 'bg-white text-slate-900 font-bold shadow-xs'
+                  : 'text-slate-600 hover:text-slate-900'
+                  }`}
               >
                 Tất Cả
               </button>
               <button
                 onClick={() => onStatusFilterChange('PENDING')}
-                className={`px-3 py-1.5 rounded-lg transition-all ${
-                  statusFilter === 'PENDING'
-                    ? 'bg-white text-amber-700 font-bold shadow-xs'
-                    : 'text-amber-700/80 hover:text-amber-800'
-                }`}
+                className={`px-3 py-1.5 rounded-lg transition-all ${statusFilter === 'PENDING'
+                  ? 'bg-white text-amber-700 font-bold shadow-xs'
+                  : 'text-amber-700/80 hover:text-amber-800'
+                  }`}
               >
                 Chờ Xuất
               </button>
               <button
                 onClick={() => onStatusFilterChange('RESERVED')}
-                className={`px-3 py-1.5 rounded-lg transition-all ${
-                  statusFilter === 'RESERVED'
-                    ? 'bg-white text-blue-700 font-bold shadow-xs'
-                    : 'text-blue-700/80 hover:text-blue-800'
-                }`}
+                className={`px-3 py-1.5 rounded-lg transition-all ${statusFilter === 'RESERVED'
+                  ? 'bg-white text-blue-700 font-bold shadow-xs'
+                  : 'text-blue-700/80 hover:text-blue-800'
+                  }`}
               >
                 Đã Giữ
               </button>
               <button
                 onClick={() => onStatusFilterChange('SHIPPED')}
-                className={`px-3 py-1.5 rounded-lg transition-all ${
-                  statusFilter === 'SHIPPED'
-                    ? 'bg-white text-emerald-700 font-bold shadow-xs'
-                    : 'text-emerald-700/80 hover:text-emerald-800'
-                }`}
+                className={`px-3 py-1.5 rounded-lg transition-all ${statusFilter === 'SHIPPED'
+                  ? 'bg-white text-emerald-700 font-bold shadow-xs'
+                  : 'text-emerald-700/80 hover:text-emerald-800'
+                  }`}
               >
                 Đã Xuất
               </button>

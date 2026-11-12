@@ -33,13 +33,10 @@ export const ProductsHeader: React.FC<ProductsHeaderProps> = ({
               <h1 className="text-xl md:text-2xl font-bold text-slate-900 tracking-tight">
                 Danh Mục Sản Phẩm & Nhà Cung Cấp
               </h1>
-              <span className="text-[11px] font-mono bg-slate-100 text-slate-700 px-2.5 py-0.5 rounded-md border border-slate-200 font-semibold uppercase">
-                Master Data
-              </span>
             </div>
-            <p className="text-xs sm:text-sm text-slate-500 font-medium mt-1">
+            {/* <p className="text-xs sm:text-sm text-slate-500 font-medium mt-1">
               Định mức an toàn (Safety Stock) • Điểm đặt hàng lại (Reorder Point) • Mã vạch Barcode chuẩn GS1
-            </p>
+            </p> */}
           </div>
         </div>
 
@@ -48,22 +45,20 @@ export const ProductsHeader: React.FC<ProductsHeaderProps> = ({
           <div className="flex items-center bg-slate-100 p-1 rounded-xl border border-slate-200 gap-1">
             <button
               onClick={() => setActiveTab('PRODUCTS')}
-              className={`px-3.5 py-2 rounded-lg text-xs font-semibold transition-colors flex items-center gap-2 cursor-pointer ${
-                activeTab === 'PRODUCTS'
-                  ? 'bg-white text-indigo-700 shadow-xs border border-slate-200'
-                  : 'text-slate-600 hover:text-slate-900 border border-transparent'
-              }`}
+              className={`px-3.5 py-2 rounded-lg text-xs font-semibold transition-colors flex items-center gap-2 cursor-pointer ${activeTab === 'PRODUCTS'
+                ? 'bg-white text-indigo-700 shadow-xs border border-slate-200'
+                : 'text-slate-600 hover:text-slate-900 border border-transparent'
+                }`}
             >
               <Package className="w-4 h-4 text-indigo-600" />
               <span>Sản Phẩm ({products.length})</span>
             </button>
             <button
               onClick={() => setActiveTab('SUPPLIERS')}
-              className={`px-3.5 py-2 rounded-lg text-xs font-semibold transition-colors flex items-center gap-2 cursor-pointer ${
-                activeTab === 'SUPPLIERS'
-                  ? 'bg-white text-indigo-700 shadow-xs border border-slate-200'
-                  : 'text-slate-600 hover:text-slate-900 border border-transparent'
-              }`}
+              className={`px-3.5 py-2 rounded-lg text-xs font-semibold transition-colors flex items-center gap-2 cursor-pointer ${activeTab === 'SUPPLIERS'
+                ? 'bg-white text-indigo-700 shadow-xs border border-slate-200'
+                : 'text-slate-600 hover:text-slate-900 border border-transparent'
+                }`}
             >
               <Building2 className="w-4 h-4 text-indigo-600" />
               <span>Nhà Cung Cấp ({suppliers.length})</span>

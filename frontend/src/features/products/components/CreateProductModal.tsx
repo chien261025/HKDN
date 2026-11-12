@@ -67,7 +67,6 @@ export const CreateProductModal: React.FC<CreateProductModalProps> = ({
       isOpen={isOpen}
       onClose={onClose}
       title="Thêm Mặt Hàng SKU Mới Vào Danh Mục"
-      description="Khởi tạo Master Data hàng hóa, định mức an toàn và barcode"
       icon={<Package className="w-5 h-5" />}
       maxWidth="2xl"
     >

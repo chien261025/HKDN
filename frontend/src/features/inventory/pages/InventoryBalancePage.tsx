@@ -135,9 +135,9 @@ export const InventoryBalancePage: React.FC = () => {
             <h1 className="text-xl font-bold text-slate-900 tracking-tight">
               Quản Lý Tồn Kho & Điều Chuyển
             </h1>
-            <p className="text-xs text-slate-500 mt-0.5">
+            {/* <p className="text-xs text-slate-500 mt-0.5">
               Kiểm soát số dư theo vị trí ô kệ, điều chuyển nội bộ và giám sát định mức tồn an toàn (Safety Stock)
-            </p>
+            </p> */}
           </div>
         </div>
       </div>
@@ -147,8 +147,8 @@ export const InventoryBalancePage: React.FC = () => {
         <button
           onClick={() => handleTabChange('balance')}
           className={`flex items-center gap-2 px-4 py-2.5 text-xs sm:text-sm font-semibold border-b-2 transition-all cursor-pointer whitespace-nowrap ${activeTab === 'balance'
-              ? 'border-indigo-600 text-indigo-700 bg-indigo-50/40 rounded-t-lg'
-              : 'border-transparent text-slate-600 hover:text-slate-900 hover:border-slate-300'
+            ? 'border-indigo-600 text-indigo-700 bg-indigo-50/40 rounded-t-lg'
+            : 'border-transparent text-slate-600 hover:text-slate-900 hover:border-slate-300'
             }`}
         >
           <Layers className="w-4 h-4 text-slate-500" />
@@ -161,8 +161,8 @@ export const InventoryBalancePage: React.FC = () => {
         <button
           onClick={() => handleTabChange('alerts')}
           className={`flex items-center gap-2 px-4 py-2.5 text-xs sm:text-sm font-semibold border-b-2 transition-all cursor-pointer whitespace-nowrap ${activeTab === 'alerts'
-              ? 'border-rose-600 text-rose-700 bg-rose-50/40 rounded-t-lg'
-              : 'border-transparent text-slate-600 hover:text-rose-700 hover:border-rose-300'
+            ? 'border-rose-600 text-rose-700 bg-rose-50/40 rounded-t-lg'
+            : 'border-transparent text-slate-600 hover:text-rose-700 hover:border-rose-300'
             }`}
         >
           <ShieldAlert className="w-4 h-4 text-rose-500" />
@@ -177,8 +177,8 @@ export const InventoryBalancePage: React.FC = () => {
         <button
           onClick={() => handleTabChange('transfer')}
           className={`flex items-center gap-2 px-4 py-2.5 text-xs sm:text-sm font-semibold border-b-2 transition-all cursor-pointer whitespace-nowrap ${activeTab === 'transfer'
-              ? 'border-indigo-600 text-indigo-700 bg-indigo-50/40 rounded-t-lg'
-              : 'border-transparent text-slate-600 hover:text-slate-900 hover:border-slate-300'
+            ? 'border-indigo-600 text-indigo-700 bg-indigo-50/40 rounded-t-lg'
+            : 'border-transparent text-slate-600 hover:text-slate-900 hover:border-slate-300'
             }`}
         >
           <ArrowRightLeft className="w-4 h-4 text-slate-500" />
@@ -193,8 +193,8 @@ export const InventoryBalancePage: React.FC = () => {
         <button
           onClick={() => handleTabChange('outbound')}
           className={`flex items-center gap-2 px-4 py-2.5 text-xs sm:text-sm font-semibold border-b-2 transition-all cursor-pointer whitespace-nowrap ${activeTab === 'outbound'
-              ? 'border-indigo-600 text-indigo-700 bg-indigo-50/40 rounded-t-lg'
-              : 'border-transparent text-slate-600 hover:text-slate-900 hover:border-slate-300'
+            ? 'border-indigo-600 text-indigo-700 bg-indigo-50/40 rounded-t-lg'
+            : 'border-transparent text-slate-600 hover:text-slate-900 hover:border-slate-300'
             }`}
         >
           <Clock className="w-4 h-4 text-slate-500" />
@@ -206,8 +206,8 @@ export const InventoryBalancePage: React.FC = () => {
       {notification && (
         <div
           className={`p-3.5 rounded-xl text-xs sm:text-sm font-semibold flex items-center justify-between transition-all ${notification.type === 'success'
-              ? 'bg-emerald-50 text-emerald-800 border border-emerald-200'
-              : 'bg-rose-50 text-rose-800 border border-rose-200'
+            ? 'bg-emerald-50 text-emerald-800 border border-emerald-200'
+            : 'bg-rose-50 text-rose-800 border border-rose-200'
             }`}
         >
           <div className="flex items-center gap-2">
