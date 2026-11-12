@@ -123,15 +123,15 @@ export const DashboardPage: React.FC = () => {
 
       {/* 3. Visual Charts Row (Throughput Area Chart + Zone Capacity Donut) */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 items-stretch">
-        <div className="lg:col-span-7">
+        {/* <div className="lg:col-span-7">
           <ThroughputChartWidget />
-        </div>
-        <div className="lg:col-span-5">
+        </div> */}
+        {/* <div className="lg:col-span-5">
           <ZoneCapacityChartWidget />
-        </div>
+        </div> */}
       </div>
 
-      {/* 4. Full-width Order Fulfillment Pipeline 
+      {/* 4. Full-width Order Fulfillment Pipeline
       còn hast code cầm chỉnh về dữ liệu động*/}
       <FulfillmentPipelineWidget />
 

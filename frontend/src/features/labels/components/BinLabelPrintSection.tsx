@@ -3,6 +3,9 @@ import { Layers, Printer, CheckSquare, Square, Search, RefreshCw } from 'lucide-
 import { useSearchParams } from 'react-router-dom';
 import { BinLabelCard, BinLabelData } from './BinLabelCard';
 import { apiClient } from '../../../services/api';
+import { Pagination } from '../../../components/common';
+
+const PAGE_SIZE = 10;
 
 export const SAMPLE_BIN_LABELS: BinLabelData[] = [
   {
@@ -72,6 +75,7 @@ export const BinLabelPrintSection: React.FC = () => {
   const [selectedBins, setSelectedBins] = useState<string[]>(
     targetBinParam ? [targetBinParam] : SAMPLE_BIN_LABELS.map((b) => b.binBarcode)
   );
+  const [currentPage, setCurrentPage] = useState(1);
 
   useEffect(() => {
     const fetchRealLocations = async () => {
@@ -113,6 +117,16 @@ export const BinLabelPrintSection: React.FC = () => {
       b.bin.toLowerCase().includes(searchQuery.toLowerCase());
     return matchZone && matchQuery;
   });
+  const totalPages = Math.max(1, Math.ceil(filteredLabels.length / PAGE_SIZE));
+  const visibleLabels = filteredLabels.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE);
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [selectedZone, searchQuery]);
+
+  useEffect(() => {
+    setCurrentPage((page) => Math.min(page, totalPages));
+  }, [totalPages]);
 
   const toggleSelectBin = (barcode: string) => {
     setSelectedBins((prev) =>
@@ -198,7 +212,7 @@ export const BinLabelPrintSection: React.FC = () => {
 
       {/* Grid of Printable Labels */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 print-label-sheet">
-        {filteredLabels.map((label) => {
+        {visibleLabels.map((label) => {
           const isSelected = selectedBins.includes(label.binBarcode);
           return (
             <div
@@ -221,6 +235,12 @@ export const BinLabelPrintSection: React.FC = () => {
           );
         })}
       </div>
+      <Pagination
+        currentPage={currentPage}
+        totalItems={filteredLabels.length}
+        pageSize={PAGE_SIZE}
+        onPageChange={setCurrentPage}
+      />
     </div>
   );
 };

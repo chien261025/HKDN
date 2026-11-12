@@ -50,7 +50,6 @@ export const CreateSupplierModal: React.FC<CreateSupplierModalProps> = ({
       isOpen={isOpen}
       onClose={onClose}
       title="Thêm Nhà Cung Cấp Đối Tác Mới"
-      description="Liên kết dữ liệu đối tác cho đơn nhập kho PO & EDI"
       icon={<Building2 className="w-5 h-5" />}
       maxWidth="xl"
     >

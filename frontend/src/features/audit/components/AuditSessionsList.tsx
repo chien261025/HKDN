@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   ClipboardCheck,
   Clock,
@@ -11,6 +11,9 @@ import {
   ScanLine,
 } from 'lucide-react';
 import { AuditSession } from '../types';
+import { Pagination } from '../../../components/common';
+
+const PAGE_SIZE = 10;
 
 interface AuditSessionsListProps {
   sessions: AuditSession[];
@@ -23,6 +26,12 @@ export const AuditSessionsList: React.FC<AuditSessionsListProps> = ({
   onSelectSession,
   onOpenCountingModal,
 }) => {
+  const [currentPage, setCurrentPage] = useState(1);
+  const totalPages = Math.max(1, Math.ceil(sessions.length / PAGE_SIZE));
+  const visibleSessions = sessions.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE);
+
+  useEffect(() => setCurrentPage((page) => Math.min(page, totalPages)), [totalPages]);
+
   return (
     <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
       {/* Header */}
@@ -52,7 +61,7 @@ export const AuditSessionsList: React.FC<AuditSessionsListProps> = ({
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-200 text-slate-700 font-sans">
-            {sessions.map((session) => {
+            {visibleSessions.map((session) => {
               const isCounting = session.status === 'COUNTING';
               const isPendingReview = session.status === 'PENDING_REVIEW';
               const isReconciled = session.status === 'RECONCILED';
@@ -160,6 +169,7 @@ export const AuditSessionsList: React.FC<AuditSessionsListProps> = ({
             })}
           </tbody>
         </table>
+        <Pagination currentPage={currentPage} totalItems={sessions.length} pageSize={PAGE_SIZE} onPageChange={setCurrentPage} />
       </div>
     </div>
   );

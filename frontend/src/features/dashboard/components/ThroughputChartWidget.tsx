@@ -81,17 +81,15 @@ export const ThroughputChartWidget: React.FC = () => {
           <div className="flex items-center bg-slate-100 rounded-lg p-0.5 text-xs font-bold">
             <button
               onClick={() => setTimeRange('TODAY')}
-              className={`px-2.5 py-1 rounded-md transition-all cursor-pointer ${
-                timeRange === 'TODAY' ? 'bg-white text-indigo-700 shadow-xs' : 'text-slate-500 hover:text-slate-800'
-              }`}
+              className={`px-2.5 py-1 rounded-md transition-all cursor-pointer ${timeRange === 'TODAY' ? 'bg-white text-indigo-700 shadow-xs' : 'text-slate-500 hover:text-slate-800'
+                }`}
             >
               Hôm nay (24h)
             </button>
             <button
               onClick={() => setTimeRange('WEEK')}
-              className={`px-2.5 py-1 rounded-md transition-all cursor-pointer ${
-                timeRange === 'WEEK' ? 'bg-white text-indigo-700 shadow-xs' : 'text-slate-500 hover:text-slate-800'
-              }`}
+              className={`px-2.5 py-1 rounded-md transition-all cursor-pointer ${timeRange === 'WEEK' ? 'bg-white text-indigo-700 shadow-xs' : 'text-slate-500 hover:text-slate-800'
+                }`}
             >
               7 ngày qua
             </button>

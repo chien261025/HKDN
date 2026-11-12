@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   ShieldAlert,
   AlertOctagon,
@@ -11,6 +11,9 @@ import {
   TrendingDown
 } from 'lucide-react';
 import { SafetyStockAlert } from '../services/inventoryService';
+import { Pagination } from '../../../components/common';
+
+const PAGE_SIZE = 10;
 
 interface SafetyStockAlertsPanelProps {
   alerts: SafetyStockAlert[];
@@ -22,6 +25,7 @@ export const SafetyStockAlertsPanel: React.FC<SafetyStockAlertsPanelProps> = ({
   onCreatePo,
 }) => {
   const [filterLevel, setFilterLevel] = useState<'ALL' | 'CRITICAL' | 'WARNING'>('ALL');
+  const [currentPage, setCurrentPage] = useState(1);
 
   const criticalCount = alerts.filter(
     (a) => a.alertLevel === 'CRITICAL' || a.alertLevel === 'OUT_OF_STOCK'
@@ -37,6 +41,11 @@ export const SafetyStockAlertsPanel: React.FC<SafetyStockAlertsPanelProps> = ({
     }
     return true;
   });
+  const totalPages = Math.max(1, Math.ceil(filteredAlerts.length / PAGE_SIZE));
+  const visibleAlerts = filteredAlerts.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE);
+
+  useEffect(() => setCurrentPage(1), [filterLevel]);
+  useEffect(() => setCurrentPage((page) => Math.min(page, totalPages)), [totalPages]);
 
   if (alerts.length === 0) {
     return (
@@ -46,7 +55,7 @@ export const SafetyStockAlertsPanel: React.FC<SafetyStockAlertsPanelProps> = ({
         </div>
         <h3 className="text-base font-bold text-slate-900">Mức Tồn Kho Ổn Định</h3>
         <p className="text-xs text-slate-500 mt-1 max-w-md mx-auto">
-          Tất cả sản phẩm đều đảm bảo lượng tồn khả dụng trên ngưỡng an toàn (Safety Stock). Chưa cần lập lệnh nhập bổ sung.
+          Tất cả sản phẩm đều đảm bảo lượng tồn khả dụng trên ngưỡng an toàn. Chưa cần lập lệnh nhập bổ sung.
         </p>
       </div>
     );
@@ -56,7 +65,11 @@ export const SafetyStockAlertsPanel: React.FC<SafetyStockAlertsPanelProps> = ({
     <div className="space-y-4">
       {/* 1. Executive Summary Cards (3 KPI nhẹ nhàng, chuẩn Enterprise) */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-3.5">
-        <div className="bg-white rounded-xl p-4 border border-slate-200 shadow-xs flex items-center justify-between">
+        <div className="bg-white rounded-xl p-4 border border-slate-200 shadow-xs flex items-center justify-between"
+          onClick={() => setFilterLevel('ALL')}
+          role="button"
+          tabIndex={0}
+        >
           <div>
             <div className="text-xs text-slate-500 font-medium">Tổng mặt hàng cần bổ sung</div>
             <div className="text-2xl font-bold text-slate-900 font-mono mt-1">
@@ -68,11 +81,14 @@ export const SafetyStockAlertsPanel: React.FC<SafetyStockAlertsPanelProps> = ({
             <Package className="w-5 h-5" />
           </div>
         </div>
-
-        <div className="bg-white rounded-xl p-4 border border-slate-200 shadow-xs flex items-center justify-between">
+        <div
+          role="button"
+          onClick={() => setFilterLevel('CRITICAL')}
+          className="bg-white rounded-xl p-4 border border-slate-200 shadow-xs flex items-center justify-between"
+        >
           <div>
             <div className="text-xs text-rose-700 font-medium flex items-center gap-1.5">
-              <span className="w-2 h-2 rounded-full bg-rose-500"></span> Cận tồn nguy hiểm (Critical)
+              <span className="w-2 h-2 rounded-full bg-rose-500"></span> Cận tồn nguy hiểm
             </div>
             <div className="text-2xl font-bold text-rose-600 font-mono mt-1">
               {criticalCount} <span className="text-xs font-sans font-normal text-slate-500">mặt hàng</span>
@@ -84,7 +100,10 @@ export const SafetyStockAlertsPanel: React.FC<SafetyStockAlertsPanelProps> = ({
           </div>
         </div>
 
-        <div className="bg-white rounded-xl p-4 border border-slate-200 shadow-xs flex items-center justify-between">
+        <div className="bg-white rounded-xl p-4 border border-slate-200 shadow-xs flex items-center justify-between"
+          role="button"
+          onClick={() => setFilterLevel('WARNING')}
+        >
           <div>
             <div className="text-xs text-amber-700 font-medium flex items-center gap-1.5">
               <span className="w-2 h-2 rounded-full bg-amber-500"></span> Chạm điểm đặt hàng (ROP)
@@ -107,41 +126,38 @@ export const SafetyStockAlertsPanel: React.FC<SafetyStockAlertsPanelProps> = ({
           <div>
             <h3 className="text-sm font-bold text-slate-900 tracking-tight flex items-center gap-2">
               <ShieldAlert className="w-4 h-4 text-slate-700" />
-              Danh Sách Mặt Hàng Cần Đặt Bổ Sung (Reorder List)
+              Danh Sách Mặt Hàng Cần Đặt Bổ Sung
             </h3>
-            <p className="text-xs text-slate-500 mt-0.5">
+            {/* <p className="text-xs text-slate-500 mt-0.5">
               Được tự động tính toán từ Định mức tồn an toàn (Safety Stock) và Điểm đặt hàng lại (ROP)
-            </p>
+            </p> */}
           </div>
 
           <div className="flex items-center gap-1.5 bg-white p-1 rounded-lg border border-slate-200 self-start sm:self-auto text-xs font-medium">
             <button
               onClick={() => setFilterLevel('ALL')}
-              className={`px-2.5 py-1 rounded-md transition-colors ${
-                filterLevel === 'ALL'
-                  ? 'bg-slate-900 text-white font-semibold'
-                  : 'text-slate-600 hover:text-slate-900'
-              }`}
+              className={`px-2.5 py-1 rounded-md transition-colors ${filterLevel === 'ALL'
+                ? 'bg-slate-900 text-white font-semibold'
+                : 'text-slate-600 hover:text-slate-900'
+                }`}
             >
               Tất cả ({alerts.length})
             </button>
             <button
               onClick={() => setFilterLevel('CRITICAL')}
-              className={`px-2.5 py-1 rounded-md transition-colors ${
-                filterLevel === 'CRITICAL'
-                  ? 'bg-rose-600 text-white font-semibold'
-                  : 'text-slate-600 hover:text-rose-700'
-              }`}
+              className={`px-2.5 py-1 rounded-md transition-colors ${filterLevel === 'CRITICAL'
+                ? 'bg-rose-600 text-white font-semibold'
+                : 'text-slate-600 hover:text-rose-700'
+                }`}
             >
               Cận tồn ({criticalCount})
             </button>
             <button
               onClick={() => setFilterLevel('WARNING')}
-              className={`px-2.5 py-1 rounded-md transition-colors ${
-                filterLevel === 'WARNING'
-                  ? 'bg-amber-600 text-white font-semibold'
-                  : 'text-slate-600 hover:text-amber-800'
-              }`}
+              className={`px-2.5 py-1 rounded-md transition-colors ${filterLevel === 'WARNING'
+                ? 'bg-amber-600 text-white font-semibold'
+                : 'text-slate-600 hover:text-amber-800'
+                }`}
             >
               Điểm ROP ({warningCount})
             </button>
@@ -163,7 +179,7 @@ export const SafetyStockAlertsPanel: React.FC<SafetyStockAlertsPanelProps> = ({
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100 text-slate-700 font-sans">
-              {filteredAlerts.map((item) => {
+              {visibleAlerts.map((item) => {
                 const isCritical =
                   item.alertLevel === 'CRITICAL' || item.alertLevel === 'OUT_OF_STOCK';
                 const ratioPct = Math.min(
@@ -189,9 +205,8 @@ export const SafetyStockAlertsPanel: React.FC<SafetyStockAlertsPanelProps> = ({
                     <td className="py-3.5 px-4 font-mono text-xs">
                       <div className="flex items-baseline gap-1.5">
                         <span
-                          className={`text-sm font-extrabold ${
-                            isCritical ? 'text-rose-600' : 'text-amber-700'
-                          }`}
+                          className={`text-sm font-extrabold ${isCritical ? 'text-rose-600' : 'text-amber-700'
+                            }`}
                         >
                           {item.currentAvailable}
                         </span>
@@ -200,9 +215,8 @@ export const SafetyStockAlertsPanel: React.FC<SafetyStockAlertsPanelProps> = ({
                       {/* Mini Bar */}
                       <div className="w-24 bg-slate-200 rounded-full h-1.5 mt-1 overflow-hidden">
                         <div
-                          className={`h-full rounded-full ${
-                            isCritical ? 'bg-rose-500' : 'bg-amber-500'
-                          }`}
+                          className={`h-full rounded-full ${isCritical ? 'bg-rose-500' : 'bg-amber-500'
+                            }`}
                           style={{ width: `${Math.max(8, ratioPct)}%` }}
                         ></div>
                       </div>
@@ -261,6 +275,7 @@ export const SafetyStockAlertsPanel: React.FC<SafetyStockAlertsPanelProps> = ({
               })}
             </tbody>
           </table>
+          <Pagination currentPage={currentPage} totalItems={filteredAlerts.length} pageSize={PAGE_SIZE} onPageChange={setCurrentPage} />
         </div>
       </div>
     </div>

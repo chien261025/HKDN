@@ -7,3 +7,4 @@ export * from './SelectField';
 export * from './EmptyState';
 export * from './BarcodeSvg';
 export * from './QrCodeSvg';
+export * from './Pagination';

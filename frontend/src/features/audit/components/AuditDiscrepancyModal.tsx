@@ -57,7 +57,7 @@ export const AuditDiscrepancyModal: React.FC<AuditDiscrepancyModalProps> = ({
           {/* Summary Banner */}
           <div className="p-4 rounded-xl bg-slate-50 border border-slate-200 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 text-sm">
             <div className="space-y-1">
-              <span className="text-xs text-slate-500">Kết quả kiểm đếm mù (Blind Count từ PDA):</span>
+              {/* <span className="text-xs text-slate-500">Kết quả kiểm đếm mù (Blind Count từ PDA):</span> */}
               <div className="font-semibold text-slate-900">
                 Thủ kho thực hiện: <strong className="text-indigo-600">{session.assignedOperator}</strong>
               </div>
@@ -79,9 +79,9 @@ export const AuditDiscrepancyModal: React.FC<AuditDiscrepancyModalProps> = ({
               <span className="font-bold text-slate-900 uppercase tracking-wider text-xs">
                 Chi Tiết Từng Vị Trí Ô Kệ So Khớp:
               </span>
-              <span className="text-xs text-slate-500 font-mono">
+              {/* <span className="text-xs text-slate-500 font-mono">
                 difference_qty = counted_qty - system_qty
-              </span>
+              </span> */}
             </div>
 
             <div className="rounded-xl border border-slate-200 overflow-hidden bg-white shadow-xs">
@@ -162,7 +162,7 @@ export const AuditDiscrepancyModal: React.FC<AuditDiscrepancyModalProps> = ({
           </div>
 
           {/* Explanation about auto ledger adjustment */}
-          <div className="p-4 rounded-xl bg-indigo-50 border border-indigo-200 text-xs text-slate-700 space-y-1.5">
+          {/* <div className="p-4 rounded-xl bg-indigo-50 border border-indigo-200 text-xs text-slate-700 space-y-1.5">
             <div className="flex items-center gap-2 font-bold text-indigo-900">
               <ShieldCheck className="w-4 h-4 text-indigo-600" />
               <span>Cơ Chế Bút Toán Điều Chỉnh Sổ Cái (Audit Reconciliation):</span>
@@ -170,10 +170,11 @@ export const AuditDiscrepancyModal: React.FC<AuditDiscrepancyModalProps> = ({
             <p className="text-slate-600 leading-relaxed text-xs">
               Khi Quản lý bấm <strong>"Duyệt Cân Đối Kho (Approve Adjustment)"</strong>, hệ thống sẽ tự động sinh bút toán loại <code className="text-amber-700 bg-amber-50 px-1 py-0.5 rounded font-mono font-bold">ADJUSTMENT</code> vào Sổ Cái Bất Biến (stock_ledger) với số lượng chênh lệch để cân bằng số dư tồn kho thực tế, bảo đảm tính minh bạch trước kiểm toán.
             </p>
-          </div>
+          </div> */}
         </div>
 
         {/* Footer */}
+        {/* cần in biên bản */}
         <div className="p-4 md:p-5 border-t border-slate-200 flex items-center justify-between bg-slate-50">
           <button
             onClick={() => alert(`In biên bản kiểm kê cho đợt: ${session.auditCode}`)}

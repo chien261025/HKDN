@@ -85,12 +85,12 @@ export const ChatInputSection: React.FC<ChatInputSectionProps> = ({
           </button>
         </div>
 
-        <div className="flex items-center justify-between px-2 pt-1.5 text-xs text-slate-500 font-medium">
+        {/* <div className="flex items-center justify-between px-2 pt-1.5 text-xs text-slate-500 font-medium">
           <span>Nhấn <kbd className="px-2 py-0.5 rounded bg-slate-100 text-slate-700 border border-slate-200 font-mono text-xs">Enter ↵</kbd> để gửi truy vấn</span>
           <span className="flex items-center gap-1.5 text-emerald-700 font-semibold">
             <CornerDownLeft className="w-3.5 h-3.5 text-emerald-600" /> Auto Sanitize & LIMIT 50 Enforced
           </span>
-        </div>
+        </div> */}
       </form>
     </div>
   );

@@ -1,6 +1,9 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { Eye, MapPin, AlertTriangle, ChevronRight } from 'lucide-react';
 import { OrderItem } from '../../../labels/types';
+import { Pagination } from '../../../../components/common';
+
+const PAGE_SIZE = 10;
 
 interface FefoTableProps {
   orders: OrderItem[];
@@ -8,6 +11,12 @@ interface FefoTableProps {
 }
 
 export const FefoTable: React.FC<FefoTableProps> = ({ orders, onSelectOrder }) => {
+  const [currentPage, setCurrentPage] = useState(1);
+  const totalPages = Math.max(1, Math.ceil(orders.length / PAGE_SIZE));
+  const visibleOrders = orders.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE);
+
+  useEffect(() => setCurrentPage((page) => Math.min(page, totalPages)), [totalPages]);
+
   const getStatusBadge = (status: OrderItem['status']) => {
     switch (status) {
       case 'PENDING':
@@ -43,7 +52,7 @@ export const FefoTable: React.FC<FefoTableProps> = ({ orders, onSelectOrder }) =
             Không tìm thấy đơn hàng nào.
           </div>
         ) : (
-          orders.map((order) => {
+          visibleOrders.map((order) => {
             const isUrgent = order.daysRemaining < 30;
 
             return (
@@ -115,7 +124,7 @@ export const FefoTable: React.FC<FefoTableProps> = ({ orders, onSelectOrder }) =
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-100 font-sans text-slate-800">
-            {orders.map((order) => {
+            {visibleOrders.map((order) => {
               const isUrgent = order.daysRemaining < 30;
 
               return (
@@ -189,6 +198,7 @@ export const FefoTable: React.FC<FefoTableProps> = ({ orders, onSelectOrder }) =
             })}
           </tbody>
         </table>
+        <Pagination currentPage={currentPage} totalItems={orders.length} pageSize={PAGE_SIZE} onPageChange={setCurrentPage} />
       </div>
     </div>
   );

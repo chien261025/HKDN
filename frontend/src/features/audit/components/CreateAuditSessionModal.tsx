@@ -135,12 +135,12 @@ export const CreateAuditSessionModal: React.FC<CreateAuditSessionModalProps> = (
           </div>
 
           {/* Blind count notice */}
-          <div className="p-4 rounded-xl bg-emerald-50 border border-emerald-200 flex items-start gap-2.5 text-xs text-emerald-800">
+          {/* <div className="p-4 rounded-xl bg-emerald-50 border border-emerald-200 flex items-start gap-2.5 text-xs text-emerald-800">
             <EyeOff className="w-4 h-4 flex-shrink-0 mt-0.5 text-emerald-600" />
             <span>
               <strong>Cơ chế Đếm Mù tự động kích hoạt:</strong> Màn hình PDA của Thủ kho sẽ được ẩn toàn bộ số lượng tồn kho hệ thống để đảm bảo số liệu đếm khách quan 100%.
             </span>
-          </div>
+          </div> */}
 
           {/* Ghi chú */}
           <div>
@@ -166,7 +166,7 @@ export const CreateAuditSessionModal: React.FC<CreateAuditSessionModalProps> = (
               type="submit"
               className="flex-1 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-sm shadow-md shadow-emerald-600/20 transition-all active:scale-95"
             >
-              Phát Động Đợt Kiểm Kê
+              Tạo Đợt Kiểm Kê
             </button>
           </div>
         </form>

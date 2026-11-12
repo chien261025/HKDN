@@ -69,23 +69,22 @@ export const BarcodePrintingPage: React.FC<BarcodePrintingPageProps> = ({ onOpen
       </div>
 
       {/* Helpful Hint Banner (Hidden on print) */}
-      <div className="p-3 rounded-lg bg-slate-50 border border-slate-200 text-slate-600 text-xs flex items-center gap-2 no-print font-normal">
+      {/* <div className="p-3 rounded-lg bg-slate-50 border border-slate-200 text-slate-600 text-xs flex items-center gap-2 no-print font-normal">
         <Info className="w-3.5 h-3.5 text-indigo-600 flex-shrink-0" />
         <span>
           Định dạng in ấn đã được cấu hình tối ưu (@media print) cho cả giấy in thường A4 và máy in nhiệt decal (Zebra, Xprinter).
         </span>
-      </div>
+      </div> */}
 
       {/* Segmented Tabs Selector (Hidden on print) */}
       <div className="inline-flex flex-wrap items-center bg-slate-100 p-1 rounded-lg border border-slate-200 gap-1 no-print text-xs">
         <button
           type="button"
           onClick={() => setActiveTab('BINS')}
-          className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md font-medium transition-colors cursor-pointer ${
-            activeTab === 'BINS'
+          className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md font-medium transition-colors cursor-pointer ${activeTab === 'BINS'
               ? 'bg-white text-indigo-700 shadow-xs font-semibold'
               : 'text-slate-600 hover:text-slate-900'
-          }`}
+            }`}
         >
           <MapPin className="w-3.5 h-3.5" />
           <span>Tem Vị Trí Ô Kệ</span>
@@ -94,11 +93,10 @@ export const BarcodePrintingPage: React.FC<BarcodePrintingPageProps> = ({ onOpen
         <button
           type="button"
           onClick={() => setActiveTab('BATCHES')}
-          className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md font-medium transition-colors cursor-pointer ${
-            activeTab === 'BATCHES'
+          className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md font-medium transition-colors cursor-pointer ${activeTab === 'BATCHES'
               ? 'bg-white text-indigo-700 shadow-xs font-semibold'
               : 'text-slate-600 hover:text-slate-900'
-          }`}
+            }`}
         >
           <Tag className="w-3.5 h-3.5" />
           <span>Tem Lô Hàng (FEFO)</span>
@@ -107,11 +105,10 @@ export const BarcodePrintingPage: React.FC<BarcodePrintingPageProps> = ({ onOpen
         <button
           type="button"
           onClick={() => setActiveTab('PALLETS')}
-          className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md font-medium transition-colors cursor-pointer ${
-            activeTab === 'PALLETS'
+          className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md font-medium transition-colors cursor-pointer ${activeTab === 'PALLETS'
               ? 'bg-white text-indigo-700 shadow-xs font-semibold'
               : 'text-slate-600 hover:text-slate-900'
-          }`}
+            }`}
         >
           <Truck className="w-3.5 h-3.5" />
           <span>Phiếu Kiện Pallet A6</span>

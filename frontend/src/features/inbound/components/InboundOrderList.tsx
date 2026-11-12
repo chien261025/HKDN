@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   PackagePlus,
   Clock,
@@ -10,6 +10,9 @@ import {
   Printer
 } from 'lucide-react';
 import { InboundOrder } from '../types';
+import { Pagination } from '../../../components/common';
+
+const PAGE_SIZE = 10;
 
 interface InboundOrderListProps {
   orders: InboundOrder[];
@@ -22,6 +25,14 @@ export const InboundOrderList: React.FC<InboundOrderListProps> = ({
   onSelectOrder,
   onAdvanceStatus,
 }) => {
+  const [currentPage, setCurrentPage] = useState(1);
+  const totalPages = Math.max(1, Math.ceil(orders.length / PAGE_SIZE));
+  const visibleOrders = orders.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE);
+
+  useEffect(() => {
+    setCurrentPage((page) => Math.min(page, totalPages));
+  }, [totalPages]);
+
   return (
     <div className="bg-white rounded-2xl border border-slate-200 shadow-xs overflow-hidden">
       {/* Table Title Bar */}
@@ -47,7 +58,7 @@ export const InboundOrderList: React.FC<InboundOrderListProps> = ({
         {orders.length === 0 ? (
           <div className="text-center py-8 text-xs text-slate-400">Không có đơn nhập kho nào.</div>
         ) : (
-          orders.map((order) => {
+          visibleOrders.map((order) => {
             const isPending = order.status === 'PENDING';
             const isReceived = order.status === 'RECEIVED';
             const isStocked = order.status === 'STOCKED';
@@ -164,7 +175,7 @@ export const InboundOrderList: React.FC<InboundOrderListProps> = ({
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-100 text-slate-800">
-            {orders.map((order) => {
+            {visibleOrders.map((order) => {
               const isPending = order.status === 'PENDING';
               const isReceived = order.status === 'RECEIVED';
               const isStocked = order.status === 'STOCKED';
@@ -259,6 +270,12 @@ export const InboundOrderList: React.FC<InboundOrderListProps> = ({
           </tbody>
         </table>
       </div>
+      <Pagination
+        currentPage={currentPage}
+        totalItems={orders.length}
+        pageSize={PAGE_SIZE}
+        onPageChange={setCurrentPage}
+      />
     </div>
   );
 };

@@ -20,11 +20,11 @@ export const SmartQueryHeader: React.FC<SmartQueryHeaderProps> = ({
         <div>
           <div className="flex items-center gap-2 flex-wrap">
             <h1 className="text-base sm:text-lg font-bold text-slate-900 tracking-tight">
-              Truy Vấn Dữ Liệu Tự Động (Smart Query)
+              Truy Vấn Dữ Liệu Tự Động
             </h1>
-            <span className="inline-flex items-center gap-1 text-[11px] font-medium bg-emerald-50 text-emerald-700 px-2.5 py-0.5 rounded-md border border-emerald-200">
-              <ShieldCheck className="w-3 h-3 text-emerald-600" /> Read-Only Sandbox
-            </span>
+            {/* <span className="inline-flex items-center gap-1 text-[11px] font-medium bg-emerald-50 text-emerald-700 px-2.5 py-0.5 rounded-md border border-emerald-200">
+                <ShieldCheck className="w-3 h-3 text-emerald-600" /> Read-Only Sandbox
+              </span> */}
           </div>
           <p className="text-xs text-slate-500 mt-0.5">
             Tra cứu thông tin kho vận nhanh qua câu hỏi tự nhiên • Kiểm soát an toàn cú pháp qua bộ phân tích AST
@@ -34,10 +34,10 @@ export const SmartQueryHeader: React.FC<SmartQueryHeaderProps> = ({
 
       {/* Right Controls */}
       <div className="flex items-center gap-2 self-end md:self-auto">
-        <div className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-slate-50 border border-slate-200 text-xs text-slate-600">
+        {/* <div className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-slate-50 border border-slate-200 text-xs text-slate-600">
           <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
           <span>Giới hạn 50 dòng kết quả</span>
-        </div>
+        </div> */}
 
         {messageCount > 1 && (
           <button

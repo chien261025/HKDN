@@ -29,9 +29,9 @@ export const UsersHeader: React.FC<UsersHeaderProps> = ({
               <h1 className="text-xl md:text-2xl font-bold text-slate-900 tracking-tight">
                 Quản Lý Tài Khoản & Phân Quyền
               </h1>
-              <span className="text-[11px] font-mono bg-slate-100 text-slate-700 px-2.5 py-0.5 rounded-md border border-slate-200 font-semibold uppercase">
+              {/* <span className="text-[11px] font-mono bg-slate-100 text-slate-700 px-2.5 py-0.5 rounded-md border border-slate-200 font-semibold uppercase">
                 Nhân Sự Hệ Thống
-              </span>
+              </span> */}
             </div>
             <p className="text-xs sm:text-sm text-slate-500 font-medium mt-1">
               Quản lý danh sách nhân viên kho, phân quyền vai trò và kiểm soát tài khoản làm việc

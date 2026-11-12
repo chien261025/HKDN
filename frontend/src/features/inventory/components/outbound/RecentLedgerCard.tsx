@@ -1,6 +1,9 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { LedgerEntryData } from '../../../labels/types';
 import { History, ArrowUpRight, ArrowDownRight, Eye, ShieldCheck } from 'lucide-react';
+import { Pagination } from '../../../../components/common';
+
+const PAGE_SIZE = 10;
 
 interface RecentLedgerCardProps {
   history: LedgerEntryData[];
@@ -11,6 +14,12 @@ export const RecentLedgerCard: React.FC<RecentLedgerCardProps> = ({
   history,
   onSelectEntry,
 }) => {
+  const [currentPage, setCurrentPage] = useState(1);
+  const totalPages = Math.max(1, Math.ceil(history.length / PAGE_SIZE));
+  const visibleHistory = history.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE);
+
+  useEffect(() => setCurrentPage((page) => Math.min(page, totalPages)), [totalPages]);
+
   return (
     <div className="bg-white rounded-2xl border border-slate-200 shadow-xs overflow-hidden space-y-3">
       {/* Tiêu đề */}
@@ -22,9 +31,9 @@ export const RecentLedgerCard: React.FC<RecentLedgerCardProps> = ({
           <div>
             <h2 className="text-sm md:text-base font-extrabold text-slate-900 uppercase tracking-wide flex items-center gap-2">
               <span>Lịch Sử Xuất Nhập Kho Gần Đây</span>
-              <span className="text-xs font-mono font-bold px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200">
+              {/* <span className="text-xs font-mono font-bold px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200">
                 REALTIME
-              </span>
+              </span> */}
             </h2>
             <p className="text-xs sm:text-sm text-slate-600 font-medium mt-0.5">
               Ghi nhận chi tiết mọi giao dịch xuất nhập hàng và biến động số dư ô kệ theo thời gian thực.
@@ -54,7 +63,7 @@ export const RecentLedgerCard: React.FC<RecentLedgerCardProps> = ({
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-200 font-sans">
-            {history.map((item) => {
+            {visibleHistory.map((item) => {
               const isOutbound = item.qtyChange < 0;
 
               return (
@@ -94,8 +103,8 @@ export const RecentLedgerCard: React.FC<RecentLedgerCardProps> = ({
                   <td className="py-4 px-4 text-center">
                     <span
                       className={`inline-flex items-center gap-1 font-mono font-bold px-3 py-1 rounded-full text-xs shadow-xs ${isOutbound
-                          ? 'bg-rose-50 text-rose-700 border border-rose-200'
-                          : 'bg-emerald-50 text-emerald-700 border border-emerald-200'
+                        ? 'bg-rose-50 text-rose-700 border border-rose-200'
+                        : 'bg-emerald-50 text-emerald-700 border border-emerald-200'
                         }`}
                     >
                       {isOutbound ? <ArrowDownRight className="w-3.5 h-3.5 text-rose-600" /> : <ArrowUpRight className="w-3.5 h-3.5 text-emerald-600" />}
@@ -129,6 +138,7 @@ export const RecentLedgerCard: React.FC<RecentLedgerCardProps> = ({
             })}
           </tbody>
         </table>
+        <Pagination currentPage={currentPage} totalItems={history.length} pageSize={PAGE_SIZE} onPageChange={setCurrentPage} />
       </div>
     </div>
   );

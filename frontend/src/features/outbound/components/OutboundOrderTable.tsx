@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   PackageCheck,
   Clock,
@@ -12,6 +12,9 @@ import {
 } from 'lucide-react';
 import { OutboundOrder } from '../types';
 import { OutboundMobileCards } from './OutboundMobileCards';
+import { Pagination } from '../../../components/common';
+
+const PAGE_SIZE = 10;
 
 interface OutboundOrderTableProps {
   orders: OutboundOrder[];
@@ -28,6 +31,12 @@ export const OutboundOrderTable: React.FC<OutboundOrderTableProps> = ({
   onDispatchOrder,
   onOpenPickPath,
 }) => {
+  const [currentPage, setCurrentPage] = useState(1);
+  const totalPages = Math.max(1, Math.ceil(orders.length / PAGE_SIZE));
+  const visibleOrders = orders.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE);
+
+  useEffect(() => setCurrentPage((page) => Math.min(page, totalPages)), [totalPages]);
+
   return (
     <div className="bg-white rounded-2xl border border-slate-200 shadow-xs overflow-hidden">
       {/* Table Header */}
@@ -50,7 +59,7 @@ export const OutboundOrderTable: React.FC<OutboundOrderTableProps> = ({
 
       {/* MOBILE CARD VIEW (Block on mobile < 768px) */}
       <OutboundMobileCards
-        orders={orders}
+        orders={visibleOrders}
         onSelectOrder={onSelectOrder}
         onAllocateAndLock={onAllocateAndLock}
         onDispatchOrder={onDispatchOrder}
@@ -71,7 +80,7 @@ export const OutboundOrderTable: React.FC<OutboundOrderTableProps> = ({
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-100 text-slate-800">
-            {orders.map((order) => {
+            {visibleOrders.map((order) => {
               const isPending = order.status === 'PENDING';
               const isAllocated = order.status === 'ALLOCATED';
               const isPicking = order.status === 'PICKING';
@@ -192,6 +201,7 @@ export const OutboundOrderTable: React.FC<OutboundOrderTableProps> = ({
           </tbody>
         </table>
       </div>
+      <Pagination currentPage={currentPage} totalItems={orders.length} pageSize={PAGE_SIZE} onPageChange={setCurrentPage} />
     </div>
   );
 };

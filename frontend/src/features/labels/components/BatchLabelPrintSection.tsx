@@ -3,6 +3,9 @@ import { Package, Printer, Plus, Minus, Tag } from 'lucide-react';
 import { useSearchParams } from 'react-router-dom';
 import { ProductBatchLabelCard, ProductBatchLabelData } from './ProductBatchLabelCard';
 import { apiClient } from '../../../services/api';
+import { Pagination } from '../../../components/common';
+
+const PAGE_SIZE = 10;
 
 const FALLBACK_PRODUCTS: ProductBatchLabelData[] = [
   {
@@ -46,6 +49,14 @@ export const BatchLabelPrintSection: React.FC = () => {
   const [batchNumber, setBatchNumber] = useState(FALLBACK_PRODUCTS[0].batchNumber);
   const [expiryDate, setExpiryDate] = useState(FALLBACK_PRODUCTS[0].expiryDate || '');
   const [printCopies, setPrintCopies] = useState<number>(4);
+  const [currentPage, setCurrentPage] = useState(1);
+  const totalPages = Math.max(1, Math.ceil(printCopies / PAGE_SIZE));
+  const firstCopy = (currentPage - 1) * PAGE_SIZE;
+  const visibleCopies = Math.min(PAGE_SIZE, printCopies - firstCopy);
+
+  useEffect(() => {
+    setCurrentPage((page) => Math.min(page, totalPages));
+  }, [totalPages]);
 
   useEffect(() => {
     const fetchRealProducts = async () => {
@@ -181,15 +192,21 @@ export const BatchLabelPrintSection: React.FC = () => {
 
       {/* Printable Sheet */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 print-label-sheet">
-        {Array.from({ length: printCopies }).map((_, idx) => (
-          <div key={idx} className="relative">
+        {Array.from({ length: visibleCopies }).map((_, idx) => (
+          <div key={firstCopy + idx} className="relative">
             <span className="absolute top-1.5 right-2 z-10 text-3xs font-mono font-bold text-slate-400 no-print">
-              #{idx + 1}
+              #{firstCopy + idx + 1}
             </span>
             <ProductBatchLabelCard data={currentLabelData} />
           </div>
         ))}
       </div>
+      <Pagination
+        currentPage={currentPage}
+        totalItems={printCopies}
+        pageSize={PAGE_SIZE}
+        onPageChange={setCurrentPage}
+      />
     </div>
   );
 };

@@ -144,7 +144,7 @@ export const AuditCountingModal: React.FC<AuditCountingModalProps> = ({
                 <div className="p-4 rounded-xl border border-slate-200 bg-white space-y-3 shadow-xs">
                   <div className="flex items-center justify-between">
                     <label className="text-xs font-bold text-slate-700 uppercase tracking-wider">
-                      Số Lượng Đếm Thực Tế Tại Ô (Counted Qty)
+                      Số Lượng Đếm Thực Tế
                     </label>
                     <span className="text-xs font-mono text-slate-500">
                       Tồn Hệ Thống: <strong>{currentItem.systemQty} {currentItem.unit}</strong>
@@ -183,21 +183,21 @@ export const AuditCountingModal: React.FC<AuditCountingModalProps> = ({
                       <div className="p-3 rounded-lg bg-rose-50 border border-rose-200 text-rose-800 flex items-center gap-2 text-xs font-semibold">
                         <AlertTriangle className="w-4 h-4 text-rose-600 flex-shrink-0" />
                         <span>
-                          Phát hiện thiếu hụt: <strong className="font-mono text-rose-900">{Math.abs(diff)} {currentItem.unit}</strong> (Hệ thống sẽ sinh bút toán giảm tồn)
+                          Phát hiện thiếu hụt: <strong className="font-mono text-rose-900">{Math.abs(diff)} {currentItem.unit}</strong>
                         </span>
                       </div>
                     ) : (
                       <div className="p-3 rounded-lg bg-amber-50 border border-amber-200 text-amber-800 flex items-center gap-2 text-xs font-semibold">
                         <AlertTriangle className="w-4 h-4 text-amber-600 flex-shrink-0" />
                         <span>
-                          Phát hiện dôi thừa: <strong className="font-mono text-amber-900">+{diff} {currentItem.unit}</strong> (Hệ thống sẽ sinh bút toán tăng tồn)
+                          Phát hiện dôi thừa: <strong className="font-mono text-amber-900">+{diff} {currentItem.unit}</strong>
                         </span>
                       </div>
                     )}
                   </div>
 
                   <div className="space-y-1">
-                    <label className="text-[11px] font-bold text-slate-600">Ghi chú hiện trường (PDA Counter Notes)</label>
+                    <label className="text-[11px] font-bold text-slate-600">Ghi chú hiện trường</label>
                     <input
                       type="text"
                       placeholder="VD: Bao bì rách, hàng rơi cạnh pallet..."
@@ -247,7 +247,7 @@ export const AuditCountingModal: React.FC<AuditCountingModalProps> = ({
         {/* Footer */}
         <div className="p-3 md:p-4 border-t border-slate-200 bg-slate-50 flex items-center justify-between text-xs">
           <span className="text-slate-500 font-mono">
-            Phiên làm việc: {session.assignedOperator} • Mode: PDA Blind Count
+            Phiên làm việc: {session.assignedOperator}
           </span>
           <button
             onClick={onClose}

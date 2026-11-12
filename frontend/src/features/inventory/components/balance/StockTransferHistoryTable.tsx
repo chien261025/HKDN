@@ -1,6 +1,9 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { ArrowRight, CheckCircle2, Clock, ArrowRightLeft } from 'lucide-react';
 import { StockTransferDto } from '../../types';
+import { Pagination } from '../../../../components/common';
+
+const PAGE_SIZE = 10;
 
 interface StockTransferHistoryTableProps {
   transfers: StockTransferDto[];
@@ -12,6 +15,12 @@ export const StockTransferHistoryTable: React.FC<StockTransferHistoryTableProps>
   transfers,
   loading,
 }) => {
+  const [currentPage, setCurrentPage] = useState(1);
+  const totalPages = Math.max(1, Math.ceil(transfers.length / PAGE_SIZE));
+  const visibleTransfers = transfers.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE);
+
+  useEffect(() => setCurrentPage((page) => Math.min(page, totalPages)), [totalPages]);
+
   if (loading) {
     return (
       <div className="bg-white rounded-2xl p-12 border border-slate-200 text-center text-slate-500 shadow-xs">
@@ -49,7 +58,7 @@ export const StockTransferHistoryTable: React.FC<StockTransferHistoryTableProps>
 
       {/* Mobile Card Feed (< md) */}
       <div className="block md:hidden p-3 space-y-3 bg-slate-50/70">
-        {transfers.map((t) => (
+        {visibleTransfers.map((t) => (
           <div key={t.id} className="bg-white rounded-xl border border-slate-200 p-3.5 shadow-2xs space-y-2.5">
             <div className="flex items-start justify-between gap-2">
               <span className="font-mono font-bold text-indigo-700 bg-indigo-50 px-2 py-0.5 rounded border border-indigo-200 text-xs">
@@ -109,7 +118,7 @@ export const StockTransferHistoryTable: React.FC<StockTransferHistoryTableProps>
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-100 text-slate-800">
-            {transfers.map((t) => (
+            {visibleTransfers.map((t) => (
               <tr key={t.id} className="hover:bg-slate-50/70 transition-colors">
                 <td className="py-3 px-4 whitespace-nowrap">
                   <span className="font-mono font-semibold text-indigo-700 bg-indigo-50 px-2 py-0.5 rounded border border-indigo-200 text-xs">
@@ -161,6 +170,7 @@ export const StockTransferHistoryTable: React.FC<StockTransferHistoryTableProps>
           </tbody>
         </table>
       </div>
+      <Pagination currentPage={currentPage} totalItems={transfers.length} pageSize={PAGE_SIZE} onPageChange={setCurrentPage} />
     </div>
   );
 };

@@ -1,8 +1,11 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Search, Filter, Barcode, ShieldAlert, Copy, Check, Printer, Edit2, Box } from 'lucide-react';
 import { ProductItem } from '../types';
 import { ProductMobileCards } from './ProductMobileCards';
 import { getCategoryBadge, getZoneBadge } from '../utils/productBadges';
+import { Pagination } from '../../../components/common';
+
+const PAGE_SIZE = 10;
 
 interface ProductTableProps {
   products: ProductItem[];
@@ -19,6 +22,7 @@ export const ProductTable: React.FC<ProductTableProps> = ({
   const [categoryFilter, setCategoryFilter] = useState<string>('ALL');
   const [stockHealthFilter, setStockHealthFilter] = useState<string>('ALL');
   const [copiedBarcode, setCopiedBarcode] = useState<string | null>(null);
+  const [currentPage, setCurrentPage] = useState(1);
 
   const handleCopy = (code: string) => {
     navigator.clipboard.writeText(code);
@@ -46,6 +50,16 @@ export const ProductTable: React.FC<ProductTableProps> = ({
 
     return matchSearch && matchCategory && matchHealth;
   });
+  const totalPages = Math.max(1, Math.ceil(filteredProducts.length / PAGE_SIZE));
+  const visibleProducts = filteredProducts.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE);
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchTerm, categoryFilter, stockHealthFilter]);
+
+  useEffect(() => {
+    setCurrentPage((page) => Math.min(page, totalPages));
+  }, [totalPages]);
 
   return (
     <div className="bg-white rounded-2xl border border-slate-200 shadow-xs overflow-hidden">
@@ -100,7 +114,7 @@ export const ProductTable: React.FC<ProductTableProps> = ({
       {/* Mobile Card Feed (< md) */}
       <div className="block md:hidden">
         <ProductMobileCards
-          products={filteredProducts}
+          products={visibleProducts}
           copiedBarcode={copiedBarcode}
           onCopyBarcode={handleCopy}
           onPrintBarcode={onPrintBarcode}
@@ -130,7 +144,7 @@ export const ProductTable: React.FC<ProductTableProps> = ({
                 </td>
               </tr>
             ) : (
-              filteredProducts.map((p) => {
+              visibleProducts.map((p) => {
                 const isUnderSafety = p.currentStock <= p.safetyStock;
                 const isUnderReorder = p.currentStock <= p.reorderPoint && !isUnderSafety;
 
@@ -246,6 +260,8 @@ export const ProductTable: React.FC<ProductTableProps> = ({
           </tbody>
         </table>
       </div>
+
+      <Pagination currentPage={currentPage} totalItems={filteredProducts.length} pageSize={PAGE_SIZE} onPageChange={setCurrentPage} />
       
       {/* Footer statistics */}
       <div className="p-3 sm:p-4 bg-slate-50 border-t border-slate-200 text-xs text-slate-600 flex flex-wrap items-center justify-between gap-2 font-mono">
