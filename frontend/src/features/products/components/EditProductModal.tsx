@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Save, Package, Barcode, ShieldAlert, AlertTriangle, Layers } from 'lucide-react';
+import { Save, Package, Barcode, ShieldAlert, AlertTriangle, Trash2 } from 'lucide-react';
 import { ProductItem, ProductCategory, StorageZoneReq, SupplierItem } from '../types';
 import { Modal, Button, InputField, SelectField } from '../../../components/common';
 
@@ -9,6 +9,7 @@ interface EditProductModalProps {
   product: ProductItem | null;
   onUpdateProduct: (product: ProductItem) => void;
   suppliers: SupplierItem[];
+  onDeleteProduct: (product: ProductItem) => void;
 }
 
 export const EditProductModal: React.FC<EditProductModalProps> = ({
@@ -17,6 +18,7 @@ export const EditProductModal: React.FC<EditProductModalProps> = ({
   product,
   onUpdateProduct,
   suppliers,
+  onDeleteProduct,
 }) => {
   const [sku, setSku] = useState('');
   const [barcode, setBarcode] = useState('');
@@ -28,6 +30,7 @@ export const EditProductModal: React.FC<EditProductModalProps> = ({
   const [supplierId, setSupplierId] = useState<string>('');
   const [reorderPoint, setReorderPoint] = useState<number>(50);
   const [safetyStock, setSafetyStock] = useState<number>(20);
+  const [status, setStatus] = useState<ProductItem['status']>('ACTIVE');
 
   useEffect(() => {
     if (product) {
@@ -40,9 +43,11 @@ export const EditProductModal: React.FC<EditProductModalProps> = ({
       setStorageZone(product.storageZone || 'ZONE_A');
       setReorderPoint(product.reorderPoint || 50);
       setSafetyStock(product.safetyStock || 20);
+      setStatus(product.status || 'ACTIVE');
 
       const matchedSupp = suppliers.find((s) => s.code === product.supplierCode);
-      if (matchedSupp) setSupplierId(matchedSupp.id);
+      if (product.supplierId) setSupplierId(product.supplierId);
+      else if (matchedSupp) setSupplierId(matchedSupp.id);
       else if (suppliers.length > 0) setSupplierId(suppliers[0].id);
     }
   }, [product, suppliers]);
@@ -66,7 +71,9 @@ export const EditProductModal: React.FC<EditProductModalProps> = ({
       safetyStock: Number(safetyStock) || 20,
       storageZone,
       supplierCode: selectedSupplier?.code || product.supplierCode,
+      supplierId: selectedSupplier?.id || product.supplierId,
       supplierName: selectedSupplier?.name || product.supplierName,
+      status,
     };
 
     onUpdateProduct(updatedProduct);
@@ -94,6 +101,8 @@ export const EditProductModal: React.FC<EditProductModalProps> = ({
             value={sku}
             disabled
           />
+
+          <SelectField label="Trạng thái sản phẩm" value={status} onChange={(e) => setStatus(e.target.value as ProductItem['status'])} options={[{ value: 'ACTIVE', label: 'Đang hoạt động' }, { value: 'INACTIVE', label: 'Ngưng hoạt động' }]} />
 
           {/* Mã Barcode */}
           <InputField
@@ -194,6 +203,9 @@ export const EditProductModal: React.FC<EditProductModalProps> = ({
 
         {/* Footer Actions */}
         <div className="pt-4 border-t border-slate-100 flex items-center justify-end gap-3">
+          <Button variant="danger" type="button" onClick={() => { if (window.confirm('Xóa mềm sản phẩm này? Sản phẩm sẽ không còn hiển thị trên hệ thống.')) { onDeleteProduct(product); onClose(); } }} icon={<Trash2 className="w-4 h-4" />}>
+            Xóa sản phẩm
+          </Button>
           <Button variant="outline" size="md" onClick={onClose}>
             Hủy bỏ
           </Button>

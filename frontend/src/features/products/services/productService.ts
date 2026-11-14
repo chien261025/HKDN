@@ -1,5 +1,5 @@
 import { apiClient } from '../../../services/api';
-import { ProductItem, SupplierItem } from '../types';
+import { CategoryItem, ProductItem, SupplierItem } from '../types';
 
 export const productService = {
   async getProducts(): Promise<ProductItem[]> {
@@ -19,8 +19,9 @@ export const productService = {
           currentStock: p.sku.includes('MILK') ? 280 : p.sku.includes('SAMS') ? 25 : 75,
           storageZone: p.sku.includes('MILK') ? 'ZONE_B' : 'ZONE_A',
           supplierCode: p.sku.includes('MILK') ? 'SUP-VINAMILK' : p.sku.includes('SAMS') ? 'SUP-SAMSUNG' : 'SUP-UNILEVER',
+          supplierId: p.supplierId ? String(p.supplierId) : undefined,
           supplierName: p.sku.includes('MILK') ? 'Công ty Cổ phần Sữa Việt Nam (Vinamilk)' : p.sku.includes('SAMS') ? 'Công ty TNHH Điện tử Samsung Vina' : 'Unilever Việt Nam',
-          status: 'ACTIVE' as const,
+          status: p.deletedAt ? 'DELETED' : p.isActive === false ? 'INACTIVE' : 'ACTIVE',
         }));
       }
       return [];
@@ -29,6 +30,27 @@ export const productService = {
       return [];
     }
   },
+
+  async getCategories(): Promise<CategoryItem[]> {
+    try {
+      const res = await apiClient.get('/masterdata/categories');
+      return (res.data?.data || []).map((c: any) => ({
+        id: String(c.id), code: c.code, name: c.name, parentId: c.parentId ? String(c.parentId) : null,
+        status: c.deletedAt ? 'DELETED' : c.isActive === false ? 'INACTIVE' : 'ACTIVE',
+      }));
+    } catch (err) { console.warn('Backend categories error:', err); return []; }
+  },
+
+  async updateProductStatus(id: string, isActive: boolean): Promise<void> {
+    await apiClient.patch(`/masterdata/products/${id}/status`, { isActive });
+  },
+  async softDeleteProduct(id: string): Promise<void> { await apiClient.delete(`/masterdata/products/${id}`); },
+  async restoreProduct(id: string): Promise<void> { await apiClient.post(`/masterdata/products/${id}/restore`); },
+  async updateCategoryStatus(id: string, isActive: boolean): Promise<void> {
+    await apiClient.patch(`/masterdata/categories/${id}/status`, { isActive });
+  },
+  async softDeleteCategory(id: string): Promise<void> { await apiClient.delete(`/masterdata/categories/${id}`); },
+  async restoreCategory(id: string): Promise<void> { await apiClient.post(`/masterdata/categories/${id}/restore`); },
 
   async createProduct(product: Partial<ProductItem>): Promise<ProductItem> {
     try {
@@ -40,6 +62,7 @@ export const productService = {
         safetyStock: product.safetyStock || 10,
         reorderPoint: product.reorderPoint || 20,
         categoryId: product.category === 'ELECTRONICS' ? 2 : product.category === 'CHEMICAL' ? 3 : 1,
+        supplierId: product.supplierId ? Number(product.supplierId) : undefined,
       };
       const res = await apiClient.post('/masterdata/products', payload);
       const saved = res.data?.data;
@@ -94,7 +117,7 @@ export const productService = {
           address: 'Khu Công Nghiệp Tân Bình, TP.HCM',
           suppliedCategories: ['GENERAL'],
           activeProductsCount: 1,
-          status: 'ACTIVE' as const,
+          status: s.isActive === false ? 'INACTIVE' : 'ACTIVE' as const,
         }));
       }
       return [];
@@ -110,6 +133,7 @@ export const productService = {
         code: supplier.code,
         name: supplier.name,
         contactPhone: supplier.phone,
+        isActive: supplier.status !== 'INACTIVE',
       };
       const res = await apiClient.post('/masterdata/suppliers', payload);
       const saved = res.data?.data;
@@ -149,7 +173,9 @@ export const productService = {
         unit: product.unit,
         safetyStock: product.safetyStock,
         reorderPoint: product.reorderPoint,
+        isActive: product.status !== 'INACTIVE',
         categoryId: product.category === 'ELECTRONICS' ? 4 : product.category === 'CHEMICAL' ? 5 : 2,
+        supplierId: product.supplierId ? Number(product.supplierId) : undefined,
       };
       const res = await apiClient.put(`/masterdata/products/${id}`, payload);
       const saved = res.data?.data;
@@ -174,6 +200,7 @@ export const productService = {
         name: supplier.name,
         code: supplier.code,
         contactPhone: supplier.phone,
+        isActive: supplier.status !== 'INACTIVE',
       };
       const res = await apiClient.put(`/masterdata/suppliers/${id}`, payload);
       const saved = res.data?.data;

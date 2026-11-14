@@ -10,4 +10,7 @@ public interface ProductService {
     Product getProductBySku(String sku);
     Product createProduct(Product product);
     Product updateProduct(Long id, Product productUpdate);
+    Product updateStatus(Long id, Boolean active);
+    Product softDelete(Long id);
+    Product restore(Long id);
 }

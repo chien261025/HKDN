@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Plus, Package, Barcode, ShieldAlert, AlertTriangle, Layers, Sparkles } from 'lucide-react';
 import { ProductItem, ProductCategory, StorageZoneReq, SupplierItem } from '../types';
 import { Modal, Button, InputField, SelectField } from '../../../components/common';
@@ -27,6 +27,13 @@ export const CreateProductModal: React.FC<CreateProductModalProps> = ({
   const [reorderPoint, setReorderPoint] = useState<number>(50);
   const [safetyStock, setSafetyStock] = useState<number>(20);
   const [initialStock, setInitialStock] = useState<number>(100);
+  const activeSuppliers = suppliers.filter((supplier) => supplier.status === 'ACTIVE');
+
+  useEffect(() => {
+    if (!activeSuppliers.some((supplier) => supplier.id === supplierId)) {
+      setSupplierId(activeSuppliers[0]?.id || '');
+    }
+  }, [suppliers, supplierId, activeSuppliers]);
 
   if (!isOpen) return null;
 
@@ -40,6 +47,7 @@ export const CreateProductModal: React.FC<CreateProductModalProps> = ({
     if (!sku.trim() || !name.trim()) return;
 
     const selectedSupplier = suppliers.find((s) => s.id === supplierId) || suppliers[0];
+    if (!selectedSupplier || selectedSupplier.status === 'INACTIVE') return;
 
     const newProduct: ProductItem = {
       id: 'prod_' + Date.now(),
@@ -54,6 +62,7 @@ export const CreateProductModal: React.FC<CreateProductModalProps> = ({
       currentStock: Number(initialStock) || 0,
       storageZone,
       supplierCode: selectedSupplier?.code || 'SUP-001',
+      supplierId: selectedSupplier.id,
       supplierName: selectedSupplier?.name || 'Nhà Cung Cấp Mặc Định',
       status: 'ACTIVE',
     };
@@ -168,7 +177,7 @@ export const CreateProductModal: React.FC<CreateProductModalProps> = ({
               label="Nhà Cung Cấp Mặc Định"
               value={supplierId}
               onChange={(e) => setSupplierId(e.target.value)}
-              options={suppliers.map((s) => ({
+              options={activeSuppliers.map((s) => ({
                 value: s.id,
                 label: `${s.name} (${s.code})`,
               }))}

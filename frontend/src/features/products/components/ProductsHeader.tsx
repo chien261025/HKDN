@@ -1,10 +1,10 @@
 import React from 'react';
-import { Package, Building2, AlertTriangle, Plus, ShieldAlert } from 'lucide-react';
+import { Package, Building2, AlertTriangle, Plus, ShieldAlert, Tags } from 'lucide-react';
 import { ProductItem, SupplierItem } from '../types';
 
 interface ProductsHeaderProps {
-  activeTab: 'PRODUCTS' | 'SUPPLIERS';
-  setActiveTab: (tab: 'PRODUCTS' | 'SUPPLIERS') => void;
+  activeTab: 'PRODUCTS' | 'SUPPLIERS' | 'CATEGORIES';
+  setActiveTab: (tab: 'PRODUCTS' | 'SUPPLIERS' | 'CATEGORIES') => void;
   products: ProductItem[];
   suppliers: SupplierItem[];
   onOpenCreateModal: () => void;
@@ -26,7 +26,7 @@ export const ProductsHeader: React.FC<ProductsHeaderProps> = ({
       <div className="bg-white rounded-2xl p-5 sm:p-6 border border-slate-200 shadow-xs flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
         <div className="flex items-center gap-4">
           <div className="w-12 h-12 rounded-xl bg-indigo-600 flex items-center justify-center text-white shadow-xs ring-4 ring-indigo-50 shrink-0">
-            {activeTab === 'PRODUCTS' ? <Package className="w-6 h-6" /> : <Building2 className="w-6 h-6" />}
+            {activeTab === 'PRODUCTS' ? <Package className="w-6 h-6" /> : activeTab === 'CATEGORIES' ? <Tags className="w-6 h-6" /> : <Building2 className="w-6 h-6" />}
           </div>
           <div>
             <div className="flex items-center gap-2.5 flex-wrap">
@@ -53,6 +53,7 @@ export const ProductsHeader: React.FC<ProductsHeaderProps> = ({
               <Package className="w-4 h-4 text-indigo-600" />
               <span>Sản Phẩm ({products.length})</span>
             </button>
+            <button onClick={() => setActiveTab('CATEGORIES')} className={`px-3.5 py-2 rounded-lg text-xs font-semibold transition-colors flex items-center gap-2 cursor-pointer ${activeTab === 'CATEGORIES' ? 'bg-white text-indigo-700 shadow-xs border border-slate-200' : 'text-slate-600 hover:text-slate-900 border border-transparent'}`}><Tags className="w-4 h-4 text-indigo-600" /><span>Danh mục</span></button>
             <button
               onClick={() => setActiveTab('SUPPLIERS')}
               className={`px-3.5 py-2 rounded-lg text-xs font-semibold transition-colors flex items-center gap-2 cursor-pointer ${activeTab === 'SUPPLIERS'
@@ -65,13 +66,13 @@ export const ProductsHeader: React.FC<ProductsHeaderProps> = ({
             </button>
           </div>
 
-          <button
+          {activeTab !== 'CATEGORIES' && <button
             onClick={onOpenCreateModal}
             className="flex items-center gap-2 px-4 py-2.5 bg-indigo-600 hover:bg-indigo-700 active:scale-[0.99] text-white rounded-xl text-xs sm:text-sm font-semibold shadow-xs transition-colors shrink-0 cursor-pointer"
           >
             <Plus className="w-4 h-4" />
             <span>{activeTab === 'PRODUCTS' ? 'Thêm Sản Phẩm Mới' : 'Thêm Nhà Cung Cấp'}</span>
-          </button>
+          </button>}
         </div>
       </div>
 

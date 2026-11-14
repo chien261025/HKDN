@@ -43,6 +43,14 @@ public class Product {
     @Column(name = "category_id")
     private Long categoryId;
 
+    @Column(name = "supplier_id")
+    private Long supplierId;
+
+    @com.fasterxml.jackson.annotation.JsonIgnore
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "supplier_id", insertable = false, updatable = false)
+    private Supplier supplier;
+
     @com.fasterxml.jackson.annotation.JsonIgnore
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "category_id", insertable = false, updatable = false)
@@ -67,4 +75,11 @@ public class Product {
     @Column(name = "updated_at")
     @Builder.Default
     private Instant updatedAt = Instant.now();
+
+    @Column(name = "is_active")
+    @Builder.Default
+    private Boolean isActive = true;
+
+    @Column(name = "deleted_at")
+    private Instant deletedAt;
 }
