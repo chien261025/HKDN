@@ -93,6 +93,7 @@ export const ProductMobileCards: React.FC<ProductMobileCardsProps> = ({
 
             {/* Badges: Category & Storage Zone */}
             <div className="flex flex-wrap items-center gap-1.5 pt-1">
+              <span className={`px-2 py-0.5 rounded-md text-[11px] font-semibold border ${p.status === 'ACTIVE' ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : p.status === 'INACTIVE' ? 'bg-amber-50 text-amber-700 border-amber-200' : 'bg-rose-50 text-rose-700 border-rose-200'}`}>{p.status === 'ACTIVE' ? 'Đang hoạt động' : p.status === 'INACTIVE' ? 'Ngưng hoạt động' : 'Đã xóa mềm'}</span>
               {getCategoryBadge(p.category)}
               {getZoneBadge(p.storageZone)}
             </div>

@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Save, Building2, Phone, Mail, MapPin } from 'lucide-react';
 import { SupplierItem } from '../types';
-import { Modal, Button, InputField } from '../../../components/common';
+import { Modal, Button, InputField, SelectField } from '../../../components/common';
 
 interface EditSupplierModalProps {
   isOpen: boolean;
@@ -22,6 +22,7 @@ export const EditSupplierModal: React.FC<EditSupplierModalProps> = ({
   const [phone, setPhone] = useState('');
   const [email, setEmail] = useState('');
   const [address, setAddress] = useState('');
+  const [status, setStatus] = useState<'ACTIVE' | 'INACTIVE'>('ACTIVE');
 
   useEffect(() => {
     if (supplier) {
@@ -31,6 +32,7 @@ export const EditSupplierModal: React.FC<EditSupplierModalProps> = ({
       setPhone(supplier.phone || '');
       setEmail(supplier.email || '');
       setAddress(supplier.address || '');
+      setStatus(supplier.status || 'ACTIVE');
     }
   }, [supplier]);
 
@@ -48,6 +50,7 @@ export const EditSupplierModal: React.FC<EditSupplierModalProps> = ({
       phone: phone.trim() || supplier.phone,
       email: email.trim() || supplier.email,
       address: address.trim() || supplier.address,
+      status,
     };
 
     onUpdateSupplier(updated);
@@ -108,6 +111,8 @@ export const EditSupplierModal: React.FC<EditSupplierModalProps> = ({
           placeholder="sales@vinamilk.com.vn"
           iconRight={<Mail className="w-4 h-4 text-slate-400" />}
         />
+
+        <SelectField label="Trạng thái hợp tác" value={status} onChange={(e) => setStatus(e.target.value as 'ACTIVE' | 'INACTIVE')} options={[{ value: 'ACTIVE', label: 'Đang hợp tác' }, { value: 'INACTIVE', label: 'Ngưng hợp tác' }]} />
 
         <InputField
           label="Địa Chỉ Nhà Máy / Kho Xuất"

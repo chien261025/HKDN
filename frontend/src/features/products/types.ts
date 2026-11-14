@@ -15,8 +15,17 @@ export interface ProductItem {
   currentStock: number;
   storageZone: StorageZoneReq;
   supplierCode: string;
+  supplierId?: string;
   supplierName: string;
-  status: 'ACTIVE' | 'DISCONTINUED';
+  status: 'ACTIVE' | 'INACTIVE' | 'DELETED';
+}
+
+export interface CategoryItem {
+  id: string;
+  code: string;
+  name: string;
+  parentId?: string | null;
+  status: 'ACTIVE' | 'INACTIVE' | 'DELETED';
 }
 
 export interface SupplierItem {

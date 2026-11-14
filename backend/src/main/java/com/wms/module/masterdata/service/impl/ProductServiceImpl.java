@@ -4,6 +4,8 @@ import com.wms.common.exception.BusinessException;
 import com.wms.common.exception.ErrorCode;
 import com.wms.module.masterdata.entity.Product;
 import com.wms.module.masterdata.repository.ProductRepository;
+import com.wms.module.masterdata.repository.SupplierRepository;
+import com.wms.module.masterdata.entity.Supplier;
 import com.wms.module.masterdata.service.ProductService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -20,24 +22,25 @@ import java.util.List;
 public class ProductServiceImpl implements ProductService {
 
     private final ProductRepository productRepository;
+    private final SupplierRepository supplierRepository;
 
     @Override
     @Transactional(readOnly = true)
     public List<Product> getAllProducts() {
-        return productRepository.findAll();
+        return productRepository.findAllByDeletedAtIsNullOrderByCreatedAtDesc();
     }
 
     @Override
     @Transactional(readOnly = true)
     public Product getProductByBarcode(String barcode) {
-        return productRepository.findByBarcode(barcode)
+        return productRepository.findByBarcodeAndDeletedAtIsNull(barcode)
                 .orElseThrow(() -> new BusinessException(ErrorCode.NOT_FOUND, "Không tìm thấy sản phẩm với Barcode: " + barcode));
     }
 
     @Override
     @Transactional(readOnly = true)
     public Product getProductBySku(String sku) {
-        return productRepository.findBySku(sku)
+        return productRepository.findBySkuAndDeletedAtIsNull(sku)
                 .orElseThrow(() -> new BusinessException(ErrorCode.NOT_FOUND, "Không tìm thấy sản phẩm với SKU: " + sku));
     }
 
@@ -46,9 +49,10 @@ public class ProductServiceImpl implements ProductService {
         if (product.getSku() == null || product.getSku().isBlank()) {
             throw new BusinessException(ErrorCode.BAD_REQUEST, "Mã SKU không được để trống!");
         }
-        if (productRepository.findBySku(product.getSku()).isPresent()) {
+        if (productRepository.findBySkuAndDeletedAtIsNull(product.getSku()).isPresent()) {
             throw new BusinessException(ErrorCode.BAD_REQUEST, "Mã SKU đã tồn tại: " + product.getSku());
         }
+        validateSupplierForNewProduct(product.getSupplierId());
         if (product.getBarcode() == null || product.getBarcode().isBlank()) {
             product.setBarcode("893" + System.currentTimeMillis());
         }
@@ -80,7 +84,55 @@ public class ProductServiceImpl implements ProductService {
         if (productUpdate.getCategoryId() != null) {
             existing.setCategoryId(productUpdate.getCategoryId());
         }
+        if (productUpdate.getSupplierId() != null && !productUpdate.getSupplierId().equals(existing.getSupplierId())) {
+            validateSupplierForNewProduct(productUpdate.getSupplierId());
+            existing.setSupplierId(productUpdate.getSupplierId());
+        }
+        if (productUpdate.getIsActive() != null) {
+            existing.setIsActive(productUpdate.getIsActive());
+        }
         existing.setUpdatedAt(Instant.now());
         return productRepository.save(existing);
+    }
+
+    @Override
+    public Product updateStatus(Long id, Boolean active) {
+        Product product = findProduct(id);
+        product.setIsActive(Boolean.TRUE.equals(active));
+        product.setUpdatedAt(Instant.now());
+        return productRepository.save(product);
+    }
+
+    @Override
+    public Product softDelete(Long id) {
+        Product product = findProduct(id);
+        product.setDeletedAt(Instant.now());
+        product.setUpdatedAt(Instant.now());
+        return productRepository.save(product);
+    }
+
+    @Override
+    public Product restore(Long id) {
+        Product product = findProduct(id);
+        product.setDeletedAt(null);
+        product.setIsActive(true);
+        product.setUpdatedAt(Instant.now());
+        return productRepository.save(product);
+    }
+
+    private Product findProduct(Long id) {
+        return productRepository.findById(id)
+                .orElseThrow(() -> new BusinessException(ErrorCode.NOT_FOUND, "Không tìm thấy sản phẩm với ID: " + id));
+    }
+
+    private void validateSupplierForNewProduct(Long supplierId) {
+        if (supplierId == null) {
+            return;
+        }
+        Supplier supplier = supplierRepository.findById(supplierId)
+                .orElseThrow(() -> new BusinessException(ErrorCode.BAD_REQUEST, "Nhà cung cấp không tồn tại!"));
+        if (!Boolean.TRUE.equals(supplier.getIsActive())) {
+            throw new BusinessException(ErrorCode.BAD_REQUEST, "Không thể thêm sản phẩm từ nhà cung cấp đang ngưng hợp tác!");
+        }
     }
 }

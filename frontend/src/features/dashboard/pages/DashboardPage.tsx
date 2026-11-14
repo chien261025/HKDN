@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { DashboardPage as LiveDashboardPage } from './DashboardPageV2';
 import { BinCell } from '../types';
 import { DashboardHeroHeader } from '../components/DashboardHeroHeader';
 import { DashboardKpiCards } from '../components/DashboardKpiCards';
@@ -13,7 +14,7 @@ import { ConcurrencyTestWidget } from '../components/ConcurrencyTestWidget';
 import { PutawayOptimizerWidget } from '../components/PutawayOptimizerWidget';
 import { Sliders, X } from 'lucide-react';
 
-export const DashboardPage: React.FC = () => {
+const LegacyDashboardPage: React.FC = () => {
   const [selectedBin, setSelectedBin] = useState<BinCell | null>(null);
   const [showSimulation, setShowSimulation] = useState(false);
 
@@ -191,3 +192,5 @@ export const DashboardPage: React.FC = () => {
     </div>
   );
 };
+
+export const DashboardPage = LiveDashboardPage;

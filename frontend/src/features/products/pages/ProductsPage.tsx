@@ -7,24 +7,28 @@ import { CreateSupplierModal } from '../components/CreateSupplierModal';
 import { EditProductModal } from '../components/EditProductModal';
 import { EditSupplierModal } from '../components/EditSupplierModal';
 import { BarcodeLabelModal } from '../components/BarcodeLabelModal';
-import { ProductItem, SupplierItem } from '../types';
+import { CategoryItem, ProductItem, SupplierItem } from '../types';
+import { CategoryTable } from '../components/CategoryTable';
 import { productService } from '../services/productService';
 
 export const ProductsPage: React.FC = () => {
-  const [activeTab, setActiveTab] = useState<'PRODUCTS' | 'SUPPLIERS'>('PRODUCTS');
+  const [activeTab, setActiveTab] = useState<'PRODUCTS' | 'SUPPLIERS' | 'CATEGORIES'>('PRODUCTS');
   const [products, setProducts] = useState<ProductItem[]>([]);
   const [suppliers, setSuppliers] = useState<SupplierItem[]>([]);
+  const [categories, setCategories] = useState<CategoryItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
     const fetchData = async () => {
       setIsLoading(true);
-      const [prods, supps] = await Promise.all([
+      const [prods, supps, cats] = await Promise.all([
         productService.getProducts(),
         productService.getSuppliers(),
+        productService.getCategories(),
       ]);
       setProducts(prods);
       setSuppliers(supps);
+      setCategories(cats);
       setIsLoading(false);
     };
     fetchData();
@@ -38,6 +42,7 @@ export const ProductsPage: React.FC = () => {
   const [selectedProductForBarcode, setSelectedProductForBarcode] = useState<ProductItem | null>(null);
 
   const handleOpenCreateModal = () => {
+    if (activeTab === 'CATEGORIES') return;
     if (activeTab === 'PRODUCTS') {
       setIsCreateProductOpen(true);
     } else {
@@ -59,9 +64,28 @@ export const ProductsPage: React.FC = () => {
     setSelectedProductForEdit(product);
   };
 
+  const handleProductStatus = async (product: ProductItem) => {
+    if (product.status === 'DELETED') await productService.restoreProduct(product.id);
+    else if (product.status === 'ACTIVE') await productService.updateProductStatus(product.id, false);
+    else await productService.softDeleteProduct(product.id);
+    setProducts(await productService.getProducts());
+  };
+
+  const handleCategoryStatus = async (category: CategoryItem) => {
+    if (category.status === 'DELETED') await productService.restoreCategory(category.id);
+    else if (category.status === 'ACTIVE') await productService.updateCategoryStatus(category.id, false);
+    else await productService.softDeleteCategory(category.id);
+    setCategories(await productService.getCategories());
+  };
+
   const handleSaveEditProduct = async (updatedProduct: ProductItem) => {
     const saved = await productService.updateProduct(updatedProduct.id, updatedProduct);
     setProducts((prev) => prev.map((p) => (p.id === saved.id ? saved : p)));
+  };
+
+  const handleDeleteProduct = async (product: ProductItem) => {
+    await productService.softDeleteProduct(product.id);
+    setProducts((prev) => prev.filter((item) => item.id !== product.id));
   };
 
   const handleEditSupplier = (supplier: SupplierItem) => {
@@ -95,13 +119,13 @@ export const ProductsPage: React.FC = () => {
           onPrintBarcode={(p) => setSelectedProductForBarcode(p)}
           onEditProduct={handleEditProduct}
         />
-      ) : (
+      ) : activeTab === 'SUPPLIERS' ? (
         <SupplierTable
           suppliers={suppliers}
           onEditSupplier={handleEditSupplier}
           onViewSupplierProducts={handleViewSupplierProducts}
         />
-      )}
+      ) : <CategoryTable categories={categories} onStatusChange={handleCategoryStatus} />}
 
       {/* Create Product Modal */}
       <CreateProductModal
@@ -117,6 +141,7 @@ export const ProductsPage: React.FC = () => {
         onClose={() => setSelectedProductForEdit(null)}
         product={selectedProductForEdit}
         onUpdateProduct={handleSaveEditProduct}
+        onDeleteProduct={handleDeleteProduct}
         suppliers={suppliers}
       />
 

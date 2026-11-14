@@ -37,6 +37,7 @@ public class SupplierServiceImpl implements SupplierService {
         }
         supplier.setCreatedAt(Instant.now());
         supplier.setUpdatedAt(Instant.now());
+        supplier.setIsActive(true);
         return supplierRepository.save(supplier);
     }
 
@@ -54,6 +55,18 @@ public class SupplierServiceImpl implements SupplierService {
         if (supplierUpdate.getCode() != null && !supplierUpdate.getCode().isBlank()) {
             existing.setCode(supplierUpdate.getCode());
         }
+        if (supplierUpdate.getIsActive() != null) {
+            existing.setIsActive(supplierUpdate.getIsActive());
+        }
+        existing.setUpdatedAt(Instant.now());
+        return supplierRepository.save(existing);
+    }
+
+    @Override
+    public Supplier updateStatus(Long id, Boolean active) {
+        Supplier existing = supplierRepository.findById(id)
+                .orElseThrow(() -> new BusinessException(ErrorCode.NOT_FOUND, "Không tìm thấy nhà cung cấp với ID: " + id));
+        existing.setIsActive(Boolean.TRUE.equals(active));
         existing.setUpdatedAt(Instant.now());
         return supplierRepository.save(existing);
     }

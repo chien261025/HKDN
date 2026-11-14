@@ -21,6 +21,7 @@ export const ProductTable: React.FC<ProductTableProps> = ({
   const [searchTerm, setSearchTerm] = useState('');
   const [categoryFilter, setCategoryFilter] = useState<string>('ALL');
   const [stockHealthFilter, setStockHealthFilter] = useState<string>('ALL');
+  const [statusFilter, setStatusFilter] = useState<string>('ALL');
   const [copiedBarcode, setCopiedBarcode] = useState<string | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
 
@@ -48,14 +49,14 @@ export const ProductTable: React.FC<ProductTableProps> = ({
       matchHealth = p.currentStock > p.reorderPoint;
     }
 
-    return matchSearch && matchCategory && matchHealth;
+    return matchSearch && matchCategory && matchHealth && (statusFilter === 'ALL' || p.status === statusFilter);
   });
   const totalPages = Math.max(1, Math.ceil(filteredProducts.length / PAGE_SIZE));
   const visibleProducts = filteredProducts.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE);
 
   useEffect(() => {
     setCurrentPage(1);
-  }, [searchTerm, categoryFilter, stockHealthFilter]);
+  }, [searchTerm, categoryFilter, stockHealthFilter, statusFilter]);
 
   useEffect(() => {
     setCurrentPage((page) => Math.min(page, totalPages));
@@ -77,6 +78,11 @@ export const ProductTable: React.FC<ProductTableProps> = ({
         </div>
 
         <div className="flex flex-wrap items-center gap-2 text-xs">
+          <div className="flex items-center gap-1.5 bg-white px-2.5 py-1.5 rounded-xl border border-slate-200 shadow-2xs">
+            <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)} className="bg-transparent text-slate-700 font-medium focus:outline-none cursor-pointer">
+              <option value="ALL">Tất cả trạng thái</option><option value="ACTIVE">Đang hoạt động</option><option value="INACTIVE">Ngưng hoạt động</option><option value="DELETED">Đã xóa mềm</option>
+            </select>
+          </div>
           {/* Category Filter */}
           <div className="flex items-center gap-1.5 bg-white px-2.5 py-1.5 rounded-xl border border-slate-200 shadow-2xs">
             <Filter className="w-3.5 h-3.5 text-slate-500" />
@@ -176,9 +182,7 @@ export const ProductTable: React.FC<ProductTableProps> = ({
                       <div className="font-semibold text-slate-900 truncate text-sm" title={p.name}>
                         {p.name}
                       </div>
-                      <div className="text-xs text-slate-500 mt-0.5">
-                        Đang kinh doanh
-                      </div>
+                      <div className={`text-xs mt-0.5 font-medium ${p.status === 'ACTIVE' ? 'text-emerald-600' : p.status === 'INACTIVE' ? 'text-amber-600' : 'text-rose-600'}`}>{p.status === 'ACTIVE' ? 'Đang hoạt động' : p.status === 'INACTIVE' ? 'Ngưng hoạt động' : 'Đã xóa mềm'}</div>
                     </td>
 
                     <td className="py-3.5 px-4 space-y-1">

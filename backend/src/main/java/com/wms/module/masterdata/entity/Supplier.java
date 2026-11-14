@@ -36,6 +36,10 @@ public class Supplier {
     @Column(name = "contact_phone", length = 20)
     private String contactPhone;
 
+    @Column(name = "is_active")
+    @Builder.Default
+    private Boolean isActive = true;
+
     @Column(name = "created_at")
     @Builder.Default
     private Instant createdAt = Instant.now();

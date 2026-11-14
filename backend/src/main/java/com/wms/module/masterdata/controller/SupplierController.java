@@ -10,6 +10,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import java.util.Map;
 
 @Slf4j
 @RestController
@@ -38,5 +39,11 @@ public class SupplierController {
     @Operation(summary = "Cập nhật thông tin nhà cung cấp", description = "Cập nhật tên, mã, số điện thoại liên hệ của đối tác")
     public ApiResponse<Supplier> updateSupplier(@PathVariable Long id, @RequestBody Supplier supplierUpdate) {
         return ApiResponse.success("Cập nhật nhà cung cấp thành công!", supplierService.updateSupplier(id, supplierUpdate));
+    }
+
+    @PatchMapping("/{id}/status")
+    @org.springframework.security.access.prepost.PreAuthorize("hasAnyRole('ADMIN', 'WAREHOUSE_MANAGER')")
+    public ApiResponse<Supplier> updateSupplierStatus(@PathVariable Long id, @RequestBody Map<String, Boolean> body) {
+        return ApiResponse.success("Cập nhật trạng thái nhà cung cấp thành công!", supplierService.updateStatus(id, body.getOrDefault("isActive", true)));
     }
 }

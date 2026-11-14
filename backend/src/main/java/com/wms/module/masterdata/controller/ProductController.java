@@ -11,6 +11,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import java.util.Map;
 
 @Slf4j
 @RestController
@@ -55,5 +56,23 @@ public class ProductController {
     @Operation(summary = "Cập nhật thông tin sản phẩm", description = "Cập nhật tên, mã vạch, đơn vị, định mức an toàn, điểm đặt hàng")
     public ApiResponse<Product> updateProduct(@PathVariable Long id, @RequestBody Product productUpdate) {
         return ApiResponse.success("Cập nhật thông tin sản phẩm thành công!", productService.updateProduct(id, productUpdate));
+    }
+
+    @PatchMapping("/{id}/status")
+    @org.springframework.security.access.prepost.PreAuthorize("hasAnyRole('ADMIN', 'WAREHOUSE_MANAGER')")
+    public ApiResponse<Product> updateProductStatus(@PathVariable Long id, @RequestBody Map<String, Boolean> body) {
+        return ApiResponse.success("Cập nhật trạng thái sản phẩm thành công!", productService.updateStatus(id, body.getOrDefault("isActive", true)));
+    }
+
+    @DeleteMapping("/{id}")
+    @org.springframework.security.access.prepost.PreAuthorize("hasAnyRole('ADMIN', 'WAREHOUSE_MANAGER')")
+    public ApiResponse<Product> softDeleteProduct(@PathVariable Long id) {
+        return ApiResponse.success("Đã xóa mềm sản phẩm!", productService.softDelete(id));
+    }
+
+    @PostMapping("/{id}/restore")
+    @org.springframework.security.access.prepost.PreAuthorize("hasAnyRole('ADMIN', 'WAREHOUSE_MANAGER')")
+    public ApiResponse<Product> restoreProduct(@PathVariable Long id) {
+        return ApiResponse.success("Đã khôi phục sản phẩm!", productService.restore(id));
     }
 }
