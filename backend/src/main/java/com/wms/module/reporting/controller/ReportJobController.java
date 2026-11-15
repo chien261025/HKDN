@@ -5,6 +5,8 @@ import com.wms.module.reporting.dto.ExportReportRequest;
 import com.wms.module.reporting.dto.message.ReportTaskMessage;
 import com.wms.module.reporting.mq.ReportTaskProducer;
 import com.wms.module.reporting.service.ExcelStreamingWorker;
+import com.wms.module.reporting.entity.ReportJob;
+import com.wms.module.reporting.repository.ReportJobRepository;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
@@ -15,6 +17,14 @@ import org.springframework.web.bind.annotation.*;
 import java.io.File;
 import java.util.Map;
 import java.util.UUID;
+import java.time.Instant;
+import java.time.YearMonth;
+import java.util.List;
+import org.springframework.core.io.FileSystemResource;
+import org.springframework.core.io.Resource;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
 
 @Slf4j
 @RestController
@@ -26,6 +36,104 @@ public class ReportJobController {
 
     private final ReportTaskProducer reportTaskProducer;
     private final ExcelStreamingWorker excelStreamingWorker;
+    private final ReportJobRepository reportJobRepository;
+
+    @GetMapping("/jobs")
+    @Operation(summary = "Lấy lịch sử xuất báo cáo thực tế")
+    public List<ReportJob> getReportJobs(@RequestParam(required = false) String month) {
+        YearMonth selectedMonth = parseMonth(month);
+        return reportJobRepository.findAllByOrderByCreatedAtDesc().stream()
+                .filter(job -> selectedMonth == null || (job.getCreatedAt() != null && YearMonth.from(job.getCreatedAt().atZone(java.time.ZoneId.systemDefault())).equals(selectedMonth)))
+                .toList();
+    }
+
+    @GetMapping("/transactions/excel")
+    @Operation(summary = "Xuất toàn bộ giao dịch nhập, xuất, điều chuyển ra Excel")
+    public ResponseEntity<Resource> exportTransactionsExcel(@RequestParam(required = false) String month) throws Exception {
+        UUID jobId = UUID.randomUUID();
+        YearMonth selectedMonth = parseMonth(month);
+        File file = generateAndRecord(jobId, "RPT-LEDGER", () -> excelStreamingWorker.generateTransactionReport(jobId, selectedMonth));
+        Resource resource = new FileSystemResource(file);
+        return ResponseEntity.ok()
+                .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=bao-cao-giao-dich-kho-" + jobId + ".xlsx")
+                .contentType(MediaType.parseMediaType("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"))
+                .contentLength(file.length())
+                .body(resource);
+    }
+
+    @GetMapping("/inbound/excel")
+    @Operation(summary = "Xuất báo cáo nhập kho ra Excel")
+    public ResponseEntity<Resource> exportInboundExcel(@RequestParam(required = false) String month) throws Exception {
+        UUID jobId = UUID.randomUUID();
+        YearMonth selectedMonth = parseMonth(month);
+        File file = generateAndRecord(jobId, "RPT-INBOUND", () -> excelStreamingWorker.generateInboundReport(jobId, selectedMonth));
+        return ResponseEntity.ok()
+                .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=bao-cao-nhap-kho-" + jobId + ".xlsx")
+                .contentType(MediaType.parseMediaType("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"))
+                .contentLength(file.length())
+                .body(new FileSystemResource(file));
+    }
+
+    @GetMapping("/expiry/excel")
+    @Operation(summary = "Xuất báo cáo cân đối tồn và hạn dùng FEFO/FIFO")
+    public ResponseEntity<Resource> exportExpiryExcel(@RequestParam(required = false) String month) throws Exception {
+        UUID jobId = UUID.randomUUID(); YearMonth selectedMonth = parseMonth(month); File file = generateAndRecord(jobId, "RPT-EXPIRY", () -> excelStreamingWorker.generateExpiryReport(jobId, selectedMonth));
+        return excel(file, "bao-cao-can-doi-ton-han-dung-" + jobId + ".xlsx");
+    }
+
+    @GetMapping("/slotting/excel")
+    @Operation(summary = "Xuất báo cáo lấp đầy và dung tích ô kệ")
+    public ResponseEntity<Resource> exportSlottingExcel(@RequestParam(required = false) String month) throws Exception {
+        UUID jobId = UUID.randomUUID(); YearMonth selectedMonth = parseMonth(month); File file = generateAndRecord(jobId, "RPT-SLOTTING", () -> excelStreamingWorker.generateSlottingReport(jobId, selectedMonth));
+        return excel(file, "bao-cao-lap-day-o-ke-" + jobId + ".xlsx");
+    }
+
+    @GetMapping("/fulfillment/excel")
+    @Operation(summary = "Xuất báo cáo hiệu suất đơn hàng và SLA")
+    public ResponseEntity<Resource> exportFulfillmentExcel(@RequestParam(required = false) String month) throws Exception {
+        UUID jobId = UUID.randomUUID(); YearMonth selectedMonth = parseMonth(month); File file = generateAndRecord(jobId, "RPT-FULFILLMENT", () -> excelStreamingWorker.generateFulfillmentReport(jobId, selectedMonth));
+        return excel(file, "bao-cao-hieu-suat-don-hang-sla-" + jobId + ".xlsx");
+    }
+
+    private ResponseEntity<Resource> excel(File file, String filename) {
+        return ResponseEntity.ok()
+                .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=" + filename)
+                .contentType(MediaType.parseMediaType("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"))
+                .contentLength(file.length()).body(new FileSystemResource(file));
+    }
+
+    @GetMapping("/jobs/{id}/download")
+    @Operation(summary = "Tải lại báo cáo từ lịch sử xuất")
+    public ResponseEntity<Resource> downloadReportJob(@PathVariable String id) throws Exception {
+        ReportJob job = reportJobRepository.findById(id).orElseThrow(() -> new IllegalArgumentException("Không tìm thấy job báo cáo"));
+        UUID jobId = UUID.fromString(job.getId());
+        YearMonth selectedMonth = job.getCreatedAt() == null ? null : YearMonth.from(job.getCreatedAt().atZone(java.time.ZoneId.systemDefault()));
+        File file = switch (job.getReportName()) {
+            case "RPT-LEDGER" -> excelStreamingWorker.generateTransactionReport(jobId, selectedMonth);
+            case "RPT-INBOUND" -> excelStreamingWorker.generateInboundReport(jobId, selectedMonth);
+            case "RPT-EXPIRY" -> excelStreamingWorker.generateExpiryReport(jobId, selectedMonth);
+            case "RPT-SLOTTING" -> excelStreamingWorker.generateSlottingReport(jobId, selectedMonth);
+            case "RPT-FULFILLMENT" -> excelStreamingWorker.generateFulfillmentReport(jobId, selectedMonth);
+            default -> throw new IllegalArgumentException("Loại báo cáo không được hỗ trợ");
+        };
+        return excel(file, "bao-cao-" + job.getReportName().toLowerCase() + "-" + jobId + ".xlsx");
+    }
+
+    private File generateAndRecord(UUID id, String reportName, ReportFileGenerator generator) throws Exception {
+        ReportJob job = new ReportJob(); job.setId(id.toString()); job.setReportName(reportName); job.setStatus("PROCESSING"); job.setDownloadUrl("/reports/jobs/" + id + "/download"); job.setCreatedAt(Instant.now()); reportJobRepository.save(job);
+        try {
+            File file = generator.generate(); job.setStatus("COMPLETED"); job.setCompletedAt(Instant.now()); reportJobRepository.save(job); return file;
+        } catch (Exception ex) {
+            job.setStatus("FAILED"); job.setErrorMessage(ex.getMessage()); reportJobRepository.save(job); throw ex;
+        }
+    }
+
+    private YearMonth parseMonth(String month) {
+        return month == null || month.isBlank() ? null : YearMonth.parse(month);
+    }
+
+    @FunctionalInterface
+    private interface ReportFileGenerator { File generate() throws Exception; }
 
     @PostMapping("/export")
     @Operation(summary = "Kích hoạt Job xuất báo cáo ngầm qua RabbitMQ",

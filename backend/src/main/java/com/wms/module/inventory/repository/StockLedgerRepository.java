@@ -9,5 +9,6 @@ import java.util.List;
 @Repository
 public interface StockLedgerRepository extends JpaRepository<StockLedger, Long> {
     List<StockLedger> findTop50ByOrderByCreatedAtDesc();
+    List<StockLedger> findByTransactionTypeInOrderByCreatedAtDesc(List<String> transactionTypes);
     List<StockLedger> findByProductIdOrderByCreatedAtDesc(Long productId);
 }

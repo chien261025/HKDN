@@ -4,7 +4,7 @@ import { DashboardPage } from '../../features/dashboard/pages/DashboardPage';
 import { LocationLayoutPage } from '../../features/masterdata/pages/LocationLayoutPage';
 import { InventoryBalancePage } from '../../features/inventory/pages/InventoryBalancePage';
 import { SmartAssistantPage } from '../../features/smartquery/pages/SmartAssistantPage';
-import { ReportsPage } from '../../features/reporting/pages/ReportsPage';
+import { ReportsRealPage as ReportsPage } from '../../features/reporting/pages/ReportsRealPage';
 import { OperatorPortalPage } from '../../features/operator/pages/OperatorPortalPage';
 import { InboundOrdersPage } from '../../features/inbound/pages/InboundOrdersPage';
 import { OutboundOrdersPage } from '../../features/outbound/pages/OutboundOrdersPage';

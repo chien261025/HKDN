@@ -4,6 +4,7 @@ import { ReportTemplateSelector } from '../components/ReportTemplateSelector';
 import { ReportJobsFeed } from '../components/ReportJobsFeed';
 import { ReportOverviewPanel } from '../components/ReportOverviewPanel';
 import { ReportJob, ReportTemplate } from '../types';
+import { reportService } from '../services/reportService';
 
 export const ReportsPage: React.FC = () => {
   const [jobs, setJobs] = useState<ReportJob[]>([
@@ -43,8 +44,62 @@ export const ReportsPage: React.FC = () => {
 
   const [isProcessing, setIsProcessing] = useState(false);
 
-  const handleTriggerExport = (template: ReportTemplate) => {
+  const handleTriggerExport = async (template: ReportTemplate) => {
     setIsProcessing(true);
+    if (template.code === 'RPT-LEDGER') {
+      try {
+        const blob = await reportService.downloadTransactionsExcel();
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = `bao-cao-giao-dich-kho-${new Date().toISOString().slice(0, 10)}.xlsx`;
+        document.body.appendChild(link);
+        link.click();
+        link.remove();
+        URL.revokeObjectURL(url);
+      } finally {
+        setIsProcessing(false);
+      }
+      return;
+    }
+    if (template.code === 'RPT-INBOUND') {
+      try {
+        const blob = await reportService.downloadInboundExcel();
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = `bao-cao-nhap-kho-${new Date().toISOString().slice(0, 10)}.xlsx`;
+        document.body.appendChild(link);
+        link.click();
+        link.remove();
+        URL.revokeObjectURL(url);
+      } finally {
+        setIsProcessing(false);
+      }
+      return;
+    }
+    const realReports: Record<string, { download: () => Promise<Blob>; filename: string }> = {
+      'RPT-EXPIRY': { download: reportService.downloadExpiryExcel, filename: 'bao-cao-can-doi-ton-han-dung' },
+      'RPT-SLOTTING': { download: reportService.downloadSlottingExcel, filename: 'bao-cao-lap-day-o-ke' },
+      'RPT-FULFILLMENT': { download: reportService.downloadFulfillmentExcel, filename: 'bao-cao-hieu-suat-don-hang-sla' },
+    };
+    const realReport = realReports[template.code];
+    if (realReport) {
+      try {
+        const blob = await realReport.download();
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = `${realReport.filename}-${new Date().toISOString().slice(0, 10)}.xlsx`;
+        document.body.appendChild(link);
+        link.click();
+        link.remove();
+        URL.revokeObjectURL(url);
+      } finally {
+        setIsProcessing(false);
+      }
+      return;
+    }
     const randomHex = Math.floor(1000 + Math.random() * 9000);
     const newJobId = `EXP-202610-${randomHex}`;
 
