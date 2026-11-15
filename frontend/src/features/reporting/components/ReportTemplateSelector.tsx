@@ -37,6 +37,16 @@ export const REPORT_TEMPLATES: ReportTemplate[] = [
     badgeColor: 'blue',
   },
   {
+    code: 'RPT-INBOUND',
+    title: 'Báo cáo nhập kho',
+    category: 'Nhập kho & Đối soát',
+    description: 'Chi tiết đơn nhập, nhà cung cấp, sản phẩm, mã lô, số lượng dự kiến và số lượng đã nhận.',
+    estimatedRows: 'Dữ liệu thật',
+    estimatedSize: 'Excel (.xlsx)',
+    format: 'EXCEL',
+    badgeColor: 'blue',
+  },
+  {
     code: 'RPT-SLOTTING',
     title: 'Tỷ Lệ Lấp Đầy & Dung Tích Ô Kệ',
     category: 'Quy Hoạch Mặt Bằng',
