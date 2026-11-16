@@ -128,9 +128,32 @@ docker compose up -d
 - **Tài liệu REST API (Swagger UI):** [http://localhost:8080/api/v1/swagger-ui/index.html](http://localhost:8080/api/v1/swagger-ui/index.html)
 - **RabbitMQ Management Dashboard:** [http://localhost:15672](http://localhost:15672) (`guest` / `guest`)
 - **MinIO Object Storage Console:** [http://localhost:9001](http://localhost:9001) (`minioadmin` / `minioadmin`)
-- **MySQL Database:** `localhost:3306` (`wms_db` / `root` / `123456`)
+- **MySQL Database:** `localhost:3307` (`wms_db` / `root` / `password123`)
 
-### 4.3. Tài khoản demo có sẵn
+### 4.3. Lưu dữ liệu MySQL khi chạy Docker
+
+MySQL sử dụng Docker named volume `hkdn_wms_mysqldata`, được mount vào
+`/var/lib/mysql`. Dữ liệu vẫn còn sau khi build lại image, `docker compose stop`
+hoặc `docker compose down` rồi `docker compose up -d`.
+
+Không dùng `docker compose down -v` hoặc xóa volume Docker nếu chưa sao lưu,
+vì thao tác đó sẽ xóa toàn bộ database. Các file trong `docker/mysql/init` chỉ
+được chạy khi volume MySQL được khởi tạo lần đầu; sửa các file này không làm
+reset dữ liệu đang có.
+
+Sao lưu database:
+
+```bash
+docker exec wms-mysql mysqldump -uroot -ppassword123 wms_db > wms_db_backup.sql
+```
+
+Khôi phục database:
+
+```bash
+Get-Content .\wms_db_backup.sql | docker exec -i wms-mysql mysql -uroot -ppassword123 wms_db
+```
+
+### 4.4. Tài khoản demo có sẵn
 | Tài khoản | Mật khẩu | Vai trò (Role) | Chức năng chính |
 | :--- | :--- | :--- | :--- |
 | `admin` | `123456` | `ROLE_ADMIN` | Quản trị toàn quyền hệ thống |

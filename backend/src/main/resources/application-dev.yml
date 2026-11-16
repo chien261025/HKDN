@@ -65,9 +65,13 @@ jwt:
 # Cấu hình Trợ lý AI
 ai:
   llm:
-    api-key: ${LLM_API_KEY:mock-key}
-    model: gpt-4o-mini
-    max-tokens: 1000
+    enabled: ${AI_ENABLED:true}
+    api-key: ${GEMINI_API_KEY:}
+    base-url: ${GEMINI_BASE_URL:https://generativelanguage.googleapis.com/v1beta}
+    model: ${GEMINI_MODEL:gemini-3.8-flash}
+    max-tokens: ${GEMINI_MAX_TOKENS:1000}
+    temperature: ${GEMINI_TEMPERATURE:0.1}
+    timeout-ms: ${GEMINI_TIMEOUT_MS:30000}
 
 # Cấu hình Logging (DEV - chi tiết hơn)
 logging:

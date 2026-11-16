@@ -5,6 +5,7 @@ import {
   CheckCircle2,
   Clock3,
   FileSpreadsheet,
+  MessageCircle,
   RefreshCw,
   Sparkles,
 } from 'lucide-react';
@@ -13,6 +14,7 @@ interface ReportsHeaderProps {
   completedJobsCount: number;
   activeJobsCount: number;
   reportPeriod?: string;
+  onOpenAssistant?: () => void;
   onRefresh?: () => void;
 }
 
@@ -27,6 +29,7 @@ export const ReportsHeader: React.FC<ReportsHeaderProps> = ({
   completedJobsCount,
   activeJobsCount,
   reportPeriod,
+  onOpenAssistant,
   onRefresh,
 }) => {
   return (
@@ -71,6 +74,8 @@ export const ReportsHeader: React.FC<ReportsHeaderProps> = ({
             <CalendarDays className="h-4 w-4 shrink-0 text-slate-400" />
             <div className="min-w-0"><div className="text-[10px] font-bold uppercase tracking-[0.12em] text-slate-400">Kỳ báo cáo</div><div className="mt-0.5 flex items-center gap-1 text-sm font-semibold capitalize text-slate-800">{formatReportPeriod(reportPeriod)}<ArrowUpRight className="h-3.5 w-3.5 text-slate-400" /></div></div>
           </div>
+
+          {onOpenAssistant && <button type="button" onClick={onOpenAssistant} className="inline-flex h-11 items-center justify-center gap-2 rounded-2xl bg-indigo-600 px-3.5 text-sm font-semibold text-white shadow-sm transition hover:bg-indigo-700" title="Mở trợ lý Gemini"><MessageCircle className="h-4 w-4" /><span>Hỏi Gemini</span></button>}
 
           {onRefresh && <button type="button" onClick={onRefresh} className="inline-flex h-11 items-center justify-center gap-2 rounded-2xl border border-slate-200 bg-white px-3.5 text-sm font-semibold text-slate-600 shadow-sm transition hover:border-slate-300 hover:bg-slate-50 hover:text-slate-950" title="Làm mới trạng thái báo cáo"><RefreshCw className="h-4 w-4" /><span className="sm:hidden">Làm mới</span></button>}
         </div>

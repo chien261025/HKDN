@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { ReportsHeader } from '../components/ReportsHeader';
 import { ReportTemplateSelector } from '../components/ReportTemplateSelector';
 import { ReportJobsFeed } from '../components/ReportJobsFeed';
@@ -15,6 +16,7 @@ const reportMeta: Record<string, { title: string; category: string }> = {
 };
 
 export const ReportsRealPage: React.FC = () => {
+  const navigate = useNavigate();
   const [jobs, setJobs] = useState<ReportJob[]>([]);
   const [isProcessing, setIsProcessing] = useState(false);
   const [selectedMonth, setSelectedMonth] = useState(new Date().toISOString().slice(0, 7));
@@ -69,7 +71,7 @@ export const ReportsRealPage: React.FC = () => {
   const activeCount = jobs.filter((job) => job.status !== 'COMPLETED').length;
 
   return <div className="space-y-5 max-w-7xl mx-auto pb-8">
-    <ReportsHeader completedJobsCount={completedCount} activeJobsCount={activeCount} reportPeriod={selectedMonth} onRefresh={loadJobs} />
+    <ReportsHeader completedJobsCount={completedCount} activeJobsCount={activeCount} reportPeriod={selectedMonth} onOpenAssistant={() => navigate('/smartquery')} onRefresh={loadJobs} />
     <ReportTemplateSelector onTriggerExport={handleTriggerExport} isProcessing={isProcessing} />
     <div className="flex items-center justify-end gap-3 bg-white border border-slate-200 rounded-xl px-4 py-3">
       <label htmlFor="report-month" className="text-sm font-semibold text-slate-700">Tháng báo cáo</label>

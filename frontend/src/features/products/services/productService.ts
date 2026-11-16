@@ -13,21 +13,21 @@ export const productService = {
           name: p.name,
           category: (p.categoryId === 2 ? 'ELECTRONICS' : p.categoryId === 3 ? 'CHEMICAL' : 'FOOD_BEVERAGE') as any,
           unit: p.unit || 'Cái',
-          weightKg: p.sku.includes('OMO') ? 3.65 : p.sku.includes('SAMS') ? 0.35 : 1.05,
+          weightKg: Number(p.weightKg || 0),
           reorderPoint: p.reorderPoint || 20,
           safetyStock: p.safetyStock || 10,
-          currentStock: p.sku.includes('MILK') ? 280 : p.sku.includes('SAMS') ? 25 : 75,
-          storageZone: p.sku.includes('MILK') ? 'ZONE_B' : 'ZONE_A',
-          supplierCode: p.sku.includes('MILK') ? 'SUP-VINAMILK' : p.sku.includes('SAMS') ? 'SUP-SAMSUNG' : 'SUP-UNILEVER',
+          currentStock: Number(p.currentStock || 0),
+          storageZone: p.storageZone || 'UNASSIGNED',
+          supplierCode: p.supplier?.code || (p.supplierId ? String(p.supplierId) : ''),
           supplierId: p.supplierId ? String(p.supplierId) : undefined,
-          supplierName: p.sku.includes('MILK') ? 'Công ty Cổ phần Sữa Việt Nam (Vinamilk)' : p.sku.includes('SAMS') ? 'Công ty TNHH Điện tử Samsung Vina' : 'Unilever Việt Nam',
+          supplierName: p.supplier?.name || '',
           status: p.deletedAt ? 'DELETED' : p.isActive === false ? 'INACTIVE' : 'ACTIVE',
         }));
       }
       return [];
     } catch (err) {
-      console.warn('Backend products error:', err);
-      return [];
+      console.error('Cannot load products from backend:', err);
+      throw err;
     }
   },
 
@@ -38,7 +38,10 @@ export const productService = {
         id: String(c.id), code: c.code, name: c.name, parentId: c.parentId ? String(c.parentId) : null,
         status: c.deletedAt ? 'DELETED' : c.isActive === false ? 'INACTIVE' : 'ACTIVE',
       }));
-    } catch (err) { console.warn('Backend categories error:', err); return []; }
+    } catch (err) {
+      console.error('Cannot load categories from backend:', err);
+      throw err;
+    }
   },
 
   async updateProductStatus(id: string, isActive: boolean): Promise<void> {
@@ -83,7 +86,9 @@ export const productService = {
         status: 'ACTIVE',
       };
     } catch (err) {
-      console.warn('Could not save product to backend:', err);
+      console.error('Could not save product to backend:', err);
+      throw err;
+      /*
       return {
         id: String(Date.now()),
         sku: product.sku!,
@@ -99,7 +104,7 @@ export const productService = {
         supplierCode: product.supplierCode || 'SUP-GENERAL',
         supplierName: product.supplierName || 'Đối Tác Phân Phối',
         status: 'ACTIVE',
-      };
+      }; */
     }
   },
 
@@ -122,8 +127,8 @@ export const productService = {
       }
       return [];
     } catch (err) {
-      console.warn('Backend suppliers error:', err);
-      return [];
+      console.error('Cannot load suppliers from backend:', err);
+      throw err;
     }
   },
 
@@ -150,7 +155,9 @@ export const productService = {
         status: 'ACTIVE',
       };
     } catch (err) {
-      return {
+      console.error('Could not save supplier to backend:', err);
+      throw err;
+      /* return {
         id: String(Date.now()),
         code: supplier.code || 'SUP-' + Date.now(),
         name: supplier.name!,
@@ -161,7 +168,7 @@ export const productService = {
         suppliedCategories: supplier.suppliedCategories || ['GENERAL'],
         activeProductsCount: 0,
         status: 'ACTIVE',
-      };
+      }; */
     }
   },
 
@@ -189,8 +196,8 @@ export const productService = {
         reorderPoint: saved?.reorderPoint || product.reorderPoint!,
       } as ProductItem;
     } catch (err) {
-      console.warn('Could not update product on backend:', err);
-      return product as ProductItem;
+      console.error('Could not update product on backend:', err);
+      throw err;
     }
   },
 
@@ -212,8 +219,8 @@ export const productService = {
         phone: saved?.contactPhone || supplier.phone!,
       } as SupplierItem;
     } catch (err) {
-      console.warn('Could not update supplier on backend:', err);
-      return supplier as SupplierItem;
+      console.error('Could not update supplier on backend:', err);
+      throw err;
     }
   },
 };
