@@ -51,13 +51,13 @@ export const ProductsPage: React.FC = () => {
   };
 
   const handleAddProduct = async (newProduct: ProductItem) => {
-    const created = await productService.createProduct(newProduct);
-    setProducts((prev) => [created, ...prev]);
+    await productService.createProduct(newProduct);
+    setProducts(await productService.getProducts());
   };
 
   const handleAddSupplier = async (newSupplier: SupplierItem) => {
-    const created = await productService.createSupplier(newSupplier);
-    setSuppliers((prev) => [created, ...prev]);
+    await productService.createSupplier(newSupplier);
+    setSuppliers(await productService.getSuppliers());
   };
 
   const handleEditProduct = (product: ProductItem) => {
@@ -79,8 +79,8 @@ export const ProductsPage: React.FC = () => {
   };
 
   const handleSaveEditProduct = async (updatedProduct: ProductItem) => {
-    const saved = await productService.updateProduct(updatedProduct.id, updatedProduct);
-    setProducts((prev) => prev.map((p) => (p.id === saved.id ? saved : p)));
+    await productService.updateProduct(updatedProduct.id, updatedProduct);
+    setProducts(await productService.getProducts());
   };
 
   const handleDeleteProduct = async (product: ProductItem) => {
@@ -93,8 +93,8 @@ export const ProductsPage: React.FC = () => {
   };
 
   const handleSaveEditSupplier = async (updatedSupplier: SupplierItem) => {
-    const saved = await productService.updateSupplier(updatedSupplier.id, updatedSupplier);
-    setSuppliers((prev) => prev.map((s) => (s.id === saved.id ? saved : s)));
+    await productService.updateSupplier(updatedSupplier.id, updatedSupplier);
+    setSuppliers(await productService.getSuppliers());
   };
 
   const handleViewSupplierProducts = (supplier: SupplierItem) => {

@@ -5,6 +5,7 @@ import { ChatMessageItem } from '../components/ChatMessageItem';
 import { ChatInputSection } from '../components/ChatInputSection';
 import { AstSecuritySidebar } from '../components/AstSecuritySidebar';
 import { ChatMessage } from '../types';
+import { smartQueryApi } from '../services/smartQueryApi';
 
 export const SmartAssistantPage: React.FC = () => {
   const navigate = useNavigate();
@@ -45,7 +46,7 @@ export const SmartAssistantPage: React.FC = () => {
     ]);
   };
 
-  const handleSend = (textToSend?: string) => {
+  const handleSend = async (textToSend?: string) => {
     const query = textToSend || input;
     if (!query.trim() || loading) return;
 
@@ -60,83 +61,28 @@ export const SmartAssistantPage: React.FC = () => {
     setInput('');
     setLoading(true);
 
-    setTimeout(() => {
-      let aiResponse: ChatMessage;
-      const lower = query.toLowerCase();
-
-      // Phân tích câu hỏi
-      if (lower.includes('hạn') || lower.includes('fefo') || lower.includes('date')) {
-        aiResponse = {
-          id: `ai-${Date.now()}`,
-          sender: 'ai',
-          timestamp: new Date().toLocaleTimeString('vi-VN'),
-          text: 'Phân tích AST hoàn tất. Đã thực thi truy vấn an toàn (chỉ SELECT + tự động tiêm LIMIT 50):',
-          sqlQuery: "SELECT sku, batch_number, expiry_date, on_hand_qty, location_code FROM v_stock_summary WHERE expiry_date <= CURRENT_DATE + INTERVAL '30 days' ORDER BY expiry_date ASC LIMIT 50;",
-          astStatus: 'LIMIT_INJECTED',
-          executionTimeMs: 19,
-          tableData: [
-            { sku: 'SKU-MILK-100', batch: 'BATCH-MILK-26A', expiryDate: '2026-09-25', onHand: 80, location: 'ZB-B01-R01-S01-B05' },
-            { sku: 'SKU-OMO-MATIC', batch: 'BATCH-OMO-01', expiryDate: '2026-10-07', onHand: 60, location: 'ZA-A01-R02-S01-B03' },
-          ],
-          actionPayload: {
-            label: 'Chuyển sang Điều Phối Phân Bổ Xuất FEFO Cho Các Lô Này',
-            targetUrl: '/inventory',
-            type: 'warning',
-          },
-        };
-      } else if (lower.includes('lấp đầy') || lower.includes('khu a') || lower.includes('khu b') || lower.includes('occupancy')) {
-        aiResponse = {
-          id: `ai-${Date.now()}`,
-          sender: 'ai',
-          timestamp: new Date().toLocaleTimeString('vi-VN'),
-          text: 'Truy vấn thành công! Dưới đây là phân tích tỷ lệ lấp đầy tổng hợp theo từng phân khu:',
-          sqlQuery: "SELECT zone_code, COUNT(id) AS total_bins, SUM(CASE WHEN status='OCCUPIED' THEN 1 ELSE 0 END) AS occupied_bins, ROUND(SUM(CASE WHEN status='OCCUPIED' THEN 1.0 ELSE 0.0 END) / COUNT(id) * 100, 1) || '%' AS occupancy_rate FROM wms_location GROUP BY zone_code LIMIT 50;",
-          astStatus: 'VERIFIED',
-          executionTimeMs: 14,
-          tableData: [
-            { zone: 'ZONE_A (Kho Khô & Điện Tử)', totalBins: 200, occupied: 170, empty: 30, occupancyRate: '85.0%' },
-            { zone: 'ZONE_B (Kho Mát 2-8°C)', totalBins: 100, occupied: 62, empty: 38, occupancyRate: '62.0%' },
-          ],
-          actionPayload: {
-            label: 'Mở Sơ Đồ Không Gian Ô Kệ 2D/3D',
-            targetUrl: '/layout',
-            type: 'primary',
-          },
-        };
-      } else if (lower.includes('thấp hơn') || lower.includes('tồn') || lower.includes('dưới')) {
-        aiResponse = {
-          id: `ai-${Date.now()}`,
-          sender: 'ai',
-          timestamp: new Date().toLocaleTimeString('vi-VN'),
-          text: 'Đã quét bảng tồn kho. Phát hiện 2 sản phẩm có số lượng khả dụng tiệm cận ngưỡng an toàn:',
-          sqlQuery: "SELECT sku, product_name, SUM(on_hand_qty) AS total_on_hand, SUM(reserved_qty) AS total_reserved, (SUM(on_hand_qty) - SUM(reserved_qty)) AS available_qty FROM v_stock_summary GROUP BY sku, product_name HAVING (SUM(on_hand_qty) - SUM(reserved_qty)) < 30 ORDER BY available_qty ASC LIMIT 50;",
-          astStatus: 'VERIFIED',
-          executionTimeMs: 22,
-          tableData: [
-            { sku: 'SKU-SAMS-S24', product: 'Samsung Galaxy S24 Ultra', onHand: 25, reserved: 10, available: 15 },
-            { sku: 'SKU-OMO-MATIC', product: 'Nước giặt OMO Matic 3.6kg', onHand: 60, reserved: 45, available: 15 },
-          ],
-        };
-      } else {
-        aiResponse = {
-          id: `ai-${Date.now()}`,
-          sender: 'ai',
-          timestamp: new Date().toLocaleTimeString('vi-VN'),
-          text: `Đã xử lý yêu cầu "${query}". Cú pháp SQL an toàn được sinh như sau:`,
-          sqlQuery: "SELECT id, transaction_type, delta_qty, reference_code, created_at FROM stock_ledger ORDER BY created_at DESC LIMIT 50;",
-          astStatus: 'VERIFIED',
-          executionTimeMs: 16,
-          tableData: [
-            { id: 108, type: 'INBOUND', delta: '+100', ref: 'PO-2026-001', time: '10/09/2026 22:45' },
-            { id: 107, type: 'OUTBOUND', delta: '-20', ref: 'SO-2026-888', time: '10/09/2026 22:30' },
-            { id: 106, type: 'RESERVED', delta: '+15', ref: 'SO-2026-889', time: '10/09/2026 22:15' },
-          ],
-        };
-      }
-
-      setMessages((prev) => [...prev, aiResponse]);
+    try {
+      const result = await smartQueryApi.chat(query);
+      setMessages((prev) => [...prev, {
+        id: `ai-${Date.now()}`,
+        sender: 'ai',
+        timestamp: new Date().toLocaleTimeString('vi-VN'),
+        text: result.answer,
+        sqlQuery: result.sqlQuery,
+        astStatus: result.astStatus,
+        executionTimeMs: result.executionTimeMs,
+        tableData: result.tableData,
+      }]);
+    } catch (error: any) {
+      setMessages((prev) => [...prev, {
+        id: `ai-error-${Date.now()}`,
+        sender: 'ai',
+        timestamp: new Date().toLocaleTimeString('vi-VN'),
+        text: error?.response?.data?.message || 'Không thể kết nối trợ lý Gemini. Vui lòng kiểm tra cấu hình GEMINI_API_KEY ở backend.',
+      }]);
+    } finally {
       setLoading(false);
-    }, 700);
+    }
   };
 
   // Xử lý khi người dùng bấm nút thử nghiệm tấn công SQL Injection

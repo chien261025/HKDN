@@ -13,11 +13,24 @@ export interface PickWaypoint {
   zone: string;
   rack: string;
   shelf: string;
+  rackKey: string;
+}
+
+export interface FloorRack {
+  key: string;
+  label: string;
+  zone: string;
+  zoneName: string;
+  x: number;
+  fill: string;
+  stroke: string;
+  locations: Array<{ label: string; y: number }>;
 }
 
 interface WarehouseFloorMapSvgProps {
   isOptimal: boolean;
   waypoints: PickWaypoint[];
+  racks: FloorRack[];
   activeStep: number;
   onSelectWaypoint: (step: number) => void;
 }
@@ -25,6 +38,7 @@ interface WarehouseFloorMapSvgProps {
 export const WarehouseFloorMapSvg: React.FC<WarehouseFloorMapSvgProps> = ({
   isOptimal,
   waypoints,
+  racks,
   activeStep,
   onSelectWaypoint,
 }) => {
@@ -127,16 +141,16 @@ export const WarehouseFloorMapSvg: React.FC<WarehouseFloorMapSvgProps> = ({
           { id: 'B1', name: 'DÃY KỆ B1', zone: 'ZONE B • ĐIỆN TỬ', x: 510, fill: '#059669', stroke: '#10b981', prefix: 'B01' },
           { id: 'B2', name: 'DÃY KỆ B2', zone: 'ZONE B • ĐIỆN TỬ', x: 690, fill: '#059669', stroke: '#10b981', prefix: 'B02' },
         ].map((rack) => (
-          <g key={rack.id} id={`rack-${rack.id}`}>
+          <g key={rack.key} id={`rack-${rack.key}`}>
             <rect x={rack.x} y="95" width="130" height="300" fill="#0b1322" stroke={rack.stroke} strokeWidth="2" rx="8" />
             <rect x={rack.x} y="95" width="130" height="42" fill={rack.fill} rx="8" />
-            <text x={rack.x + 65} y="118" fill="#ffffff" fontSize="13" fontWeight="bold" textAnchor="middle">{rack.name}</text>
+            <text x={rack.x + 65} y="118" fill="#ffffff" fontSize="13" fontWeight="bold" textAnchor="middle">{rack.label}</text>
             <text x={rack.x + 65} y="131" fill="#f8fafc" fontSize="8.5" fontWeight="600" textAnchor="middle">{rack.zone}</text>
-            {[155, 212, 269, 326].map((y, idx) => (
-              <g key={`${rack.id}-${idx}`}>
-                <rect x={rack.x + 10} y={y} width="110" height="45" fill="#162032" stroke="#334155" strokeWidth="1" rx="4" />
-                <text x={rack.x + 65} y={y + 27} fill="#94a3b8" fontSize="11" fontWeight="bold" textAnchor="middle">
-                  {rack.prefix}-0{idx + 1}
+            {rack.locations.map((location) => (
+              <g key={`${rack.key}-${location.label}`}>
+                <rect x={rack.x + 10} y={location.y} width="110" height="45" fill="#162032" stroke="#334155" strokeWidth="1" rx="4" />
+                <text x={rack.x + 65} y={location.y + 27} fill="#94a3b8" fontSize="11" fontWeight="bold" textAnchor="middle">
+                  {location.label}
                 </text>
               </g>
             ))}

@@ -2,6 +2,9 @@ package com.wms.module.smartquery.controller;
 
 import com.wms.common.response.ApiResponse;
 import com.wms.module.smartquery.dto.SanitizeSqlRequest;
+import com.wms.module.smartquery.ai.AiChatService;
+import com.wms.module.smartquery.ai.dto.AiChatRequest;
+import com.wms.module.smartquery.ai.dto.AiChatResponse;
 import com.wms.module.smartquery.text2sql.SqlAstSanitizer;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -20,6 +23,13 @@ import java.util.Map;
 public class SmartQueryController {
 
     private final SqlAstSanitizer sqlAstSanitizer;
+    private final AiChatService aiChatService;
+
+    @PostMapping("/chat")
+    @Operation(summary = "Hỏi trợ lý Gemini bằng dữ liệu kho thật")
+    public ApiResponse<AiChatResponse> chat(@Valid @RequestBody AiChatRequest request) {
+        return ApiResponse.success("Gemini đã phân tích dữ liệu kho", aiChatService.chat(request));
+    }
 
     @PostMapping("/sanitize-sql")
     @Operation(summary = "Kiểm duyệt an toàn câu lệnh SQL bằng AST (JSqlParser)",
