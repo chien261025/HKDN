@@ -10,5 +10,6 @@ public interface InventoryAuditService {
     InventoryAuditResponse getAuditById(Long id);
     InventoryAuditResponse createAudit(InventoryAudit audit);
     InventoryAuditResponse recordCount(Long auditId, Long itemId, Integer countedQty, String notes);
+    InventoryAuditResponse recordCount(Long auditId, Long itemId, Long locationId, Long productId, Integer countedQty, String notes);
     InventoryAuditResponse reconcileAudit(Long id);
 }

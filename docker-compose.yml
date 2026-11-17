@@ -48,7 +48,7 @@ services:
 
   # 3. Lưu trữ đối tượng MinIO (Tương thích chuẩn AWS S3)
   wms-minio:
-    image: quay.io/minio/minio:latest
+    image: minio/minio:latest
     container_name: wms-minio
     restart: always
     command: server /data --console-address ":9001"
@@ -108,8 +108,9 @@ services:
       REDIS_PORT: 6379
       RABBITMQ_HOST: wms-rabbitmq
       RABBITMQ_PORT: 5672
-      RABBITMQ_USER: guest
-      RABBITMQ_PASS: guest
+      RABBITMQ_USER: admin1
+      RABBITMQ_PASS: 1234567
+      SPRING_RABBITMQ_LISTENER_SIMPLE_AUTO_STARTUP: "true"
       GEMINI_API_KEY: ${GEMINI_API_KEY:-}
       GEMINI_MODEL: ${GEMINI_MODEL:-gemini-3.8-flash}
       GEMINI_BASE_URL: ${GEMINI_BASE_URL:-https://generativelanguage.googleapis.com/v1beta}

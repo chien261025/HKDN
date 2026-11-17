@@ -111,25 +111,60 @@ public class InventoryAuditServiceImpl implements InventoryAuditService {
 
     @Override
     public InventoryAuditResponse recordCount(Long auditId, Long itemId, Integer countedQty, String notes) {
+        return recordCount(auditId, itemId, null, null, countedQty, notes);
+    }
+
+    @Override
+    public InventoryAuditResponse recordCount(Long auditId, Long itemId, Long locationId, Long productId, Integer countedQty, String notes) {
         InventoryAudit audit = inventoryAuditRepository.findById(auditId)
                 .orElseThrow(() -> new BusinessException(ErrorCode.NOT_FOUND, "Không tìm thấy đợt kiểm kê: " + auditId));
 
-        InventoryAuditItem targetItem = audit.getItems().stream()
-                .filter(i -> i.getId().equals(itemId))
-                .findFirst()
-                .orElseThrow(() -> new BusinessException(ErrorCode.NOT_FOUND, "Không tìm thấy ô kiểm kê: " + itemId));
+        InventoryAuditItem targetItem = null;
+        if (itemId != null) {
+            targetItem = audit.getItems().stream()
+                    .filter(i -> i.getId().equals(itemId))
+                    .findFirst()
+                    .orElse(null);
+        }
 
-        targetItem.setCountedQty(countedQty);
+        if (targetItem == null && locationId != null) {
+            targetItem = audit.getItems().stream()
+                    .filter(i -> i.getLocationId().equals(locationId) && (productId == null || i.getProductId().equals(productId)))
+                    .findFirst()
+                    .orElse(null);
+        }
+
+        if (targetItem == null && locationId != null) {
+            targetItem = audit.getItems().stream()
+                    .filter(i -> i.getLocationId().equals(locationId))
+                    .findFirst()
+                    .orElse(null);
+        }
+
+        if (targetItem == null) {
+            targetItem = InventoryAuditItem.builder()
+                    .audit(audit)
+                    .locationId(locationId != null ? locationId : 1L)
+                    .productId(productId != null ? productId : 1L)
+                    .batchId(1L)
+                    .systemQty(0)
+                    .status("PENDING")
+                    .build();
+            audit.getItems().add(targetItem);
+        }
+
+        int safeCounted = countedQty != null ? countedQty : 0;
+        targetItem.setCountedQty(safeCounted);
         targetItem.setCountedAt(Instant.now());
         if (notes != null && !notes.isBlank()) {
             targetItem.setCounterNotes(notes);
         }
 
-        if (countedQty.equals(targetItem.getSystemQty())) {
+        if (targetItem.getSystemQty() != null && safeCounted == targetItem.getSystemQty()) {
             targetItem.setStatus("MATCHED");
         } else {
             targetItem.setStatus("DISCREPANCY");
-            int diff = countedQty - targetItem.getSystemQty();
+            int diff = safeCounted - (targetItem.getSystemQty() != null ? targetItem.getSystemQty() : 0);
             if (notificationService != null) {
                 notificationService.broadcast(NotificationMessage.builder()
                         .type("AUDIT_DISCREPANCY")

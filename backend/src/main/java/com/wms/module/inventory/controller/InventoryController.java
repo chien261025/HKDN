@@ -79,7 +79,7 @@ public class InventoryController {
             @Valid @RequestBody com.wms.module.inventory.dto.request.RecordCountRequest request
     ) {
         com.wms.module.inventory.dto.response.InventoryAuditResponse saved = inventoryAuditService.recordCount(
-                id, request.getItemId(), request.getCountedQty(), request.getNotes()
+                id, request.getItemId(), request.getLocationId(), request.getProductId(), request.getEffectiveCountedQty(), request.getNotes()
         );
         return ApiResponse.success("Ghi nhận số lượng đếm kiểm kê thành công!", saved);
     }

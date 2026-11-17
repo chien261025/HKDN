@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { PackageCheck, CheckCircle2, ScanLine, MapPin, Calendar, RefreshCw, Truck, AlertCircle } from 'lucide-react';
+import React, { useState, useEffect, useCallback } from 'react';
+import { PackageCheck, CheckCircle2, ScanLine, RefreshCw, Truck, AlertCircle } from 'lucide-react';
 import { operatorService, OutboundOrderDto, PickListItemResponseDto } from '../../services/operatorService';
 import { PickingOrderSelector } from './PickingOrderSelector';
 import { PickingStepCard } from './PickingStepCard';
@@ -23,26 +23,6 @@ export const PickingFefoTab: React.FC<PickingFefoTabProps> = ({
   const [dispatching, setDispatching] = useState(false);
   const [notice, setNotice] = useState<{ msg: string; type: 'success' | 'error' } | null>(null);
 
-  const loadData = async () => {
-    setLoading(true);
-    try {
-      const orderList = await operatorService.getOutboundOrders();
-      setOrders(orderList);
-      if (!selectedOrder && orderList.length > 0) {
-        const firstPending = orderList.find((o) => o.status !== 'DISPATCHED') || orderList[0];
-        setSelectedOrder(firstPending);
-      }
-    } catch (err: any) {
-      setNotice({ msg: 'Lỗi tải đơn xuất kho: ' + err.message, type: 'error' });
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    loadData();
-  }, []);
-
   const handleSelectOrder = async (order: OutboundOrderDto) => {
     setSelectedOrder(order);
     setPickSteps([]);
@@ -51,20 +31,62 @@ export const PickingFefoTab: React.FC<PickingFefoTabProps> = ({
     if (order.items && order.items.length > 0) {
       setLoading(true);
       try {
-        const item = order.items[0];
-        const steps = await operatorService.getFefoPickList(item.productId, item.requestedQty);
-        setPickSteps(steps.map((s) => ({ ...s, picked: false })));
-        setNotice({
-          msg: `Đã kích hoạt FEFO: Gợi ý ${steps.length} vị trí lấy hàng ưu tiên date cũ nhất.`,
-          type: 'success',
-        });
+        const allSteps: PickListItemResponseDto[] = [];
+        for (const item of order.items) {
+          const qty = item.requestedQty || 1;
+          const steps = await operatorService.getFefoPickList(item.productId, qty);
+          allSteps.push(...steps);
+        }
+        setPickSteps(allSteps.map((s, idx) => ({ ...s, stepOrder: idx + 1, picked: false })));
+        if (allSteps.length > 0) {
+          setNotice({
+            msg: `FEFO đã chỉ định ${allSteps.length} bước lấy hàng ưu tiên date cận hạn nhất.`,
+            type: 'success',
+          });
+        } else {
+          setNotice({
+            msg: `Kho hiện không đủ tồn kho khả dụng để phân bổ FEFO cho đơn hàng này.`,
+            type: 'error',
+          });
+        }
       } catch (err: any) {
-        setNotice({ msg: 'Lỗi chạy thuật toán FEFO: ' + err.message, type: 'error' });
+        setNotice({
+          msg: 'Lỗi phân bổ FEFO: ' + (err.response?.data?.message || err.message),
+          type: 'error',
+        });
       } finally {
         setLoading(false);
       }
     }
   };
+
+  const loadData = useCallback(async () => {
+    setLoading(true);
+    try {
+      const orderList = await operatorService.getOutboundOrders();
+      setOrders(orderList);
+
+      const pendingList = orderList.filter((o) => o.status !== 'DISPATCHED' && o.status !== 'SHIPPED');
+      if (pendingList.length > 0) {
+        const target =
+          selectedOrder && pendingList.some((o) => o.id === selectedOrder.id)
+            ? pendingList.find((o) => o.id === selectedOrder.id)!
+            : pendingList[0];
+        await handleSelectOrder(target);
+      } else {
+        setSelectedOrder(null);
+        setPickSteps([]);
+      }
+    } catch (err: any) {
+      setNotice({ msg: 'Lỗi tải đơn xuất kho: ' + err.message, type: 'error' });
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    loadData();
+  }, [loadData]);
 
   useEffect(() => {
     if (scannedCode) {
@@ -84,7 +106,7 @@ export const PickingFefoTab: React.FC<PickingFefoTabProps> = ({
       } else {
         soundEffects.playErrorBuzz();
         setNotice({
-          msg: `[PDA] Đã quét mã: ${scannedCode}. Không khớp với ô kệ hoặc sản phẩm cần nhặt.`,
+          msg: `[PDA] Đã quét mã: ${scannedCode}. Không khớp với ô kệ hoặc sản phẩm của bước cần nhặt.`,
           type: 'error',
         });
       }
@@ -120,19 +142,21 @@ export const PickingFefoTab: React.FC<PickingFefoTabProps> = ({
         type: 'success',
       });
       setPickSteps([]);
+      // Reload remaining orders
+      setTimeout(() => loadData(), 2000);
     } catch (err: any) {
       soundEffects.playErrorBuzz();
-      setNotice({ msg: 'Lỗi xuất kho: ' + err.message, type: 'error' });
+      setNotice({ msg: 'Lỗi xuất kho: ' + (err.response?.data?.message || err.message), type: 'error' });
     } finally {
       setDispatching(false);
     }
   };
 
-  const pendingOrders = orders.filter((o) => o.status !== 'DISPATCHED');
   const allStepsPicked = pickSteps.length > 0 && pickSteps.every((s) => s.picked);
 
   return (
     <div className="space-y-4 pb-20">
+      {/* Header Banner */}
       <div className="p-4 rounded-2xl bg-white border border-slate-200 flex items-center justify-between shadow-xs">
         <div className="flex items-center gap-3">
           <div className="p-2.5 rounded-xl bg-amber-50 text-amber-700 border border-amber-200">
@@ -142,13 +166,13 @@ export const PickingFefoTab: React.FC<PickingFefoTabProps> = ({
             <h2 className="text-xs font-bold text-slate-900 uppercase tracking-wider">
               3. Nhặt Hàng Xuất Kho (FEFO Picking)
             </h2>
-            <p className="text-xs text-slate-500 font-medium">Thuật toán ưu tiên lô cận HSD xuất trước</p>
+            <p className="text-xs text-slate-500 font-medium">Lấy hàng theo lộ trình ô kệ tối ưu & date cũ nhất</p>
           </div>
         </div>
         <button
           onClick={loadData}
           disabled={loading}
-          className="p-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 transition-colors"
+          className="p-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 transition-colors cursor-pointer"
           title="Làm mới danh sách"
         >
           <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
@@ -172,12 +196,14 @@ export const PickingFefoTab: React.FC<PickingFefoTabProps> = ({
         </div>
       )}
 
+      {/* Selector of Active Pending Orders Only */}
       <PickingOrderSelector
         orders={orders}
         selectedOrder={selectedOrder}
         onSelectOrder={handleSelectOrder}
       />
 
+      {/* Active Pick Wave Steps */}
       {selectedOrder && (
         <div className="space-y-3">
           <div className="flex items-center justify-between px-1">
@@ -194,22 +220,20 @@ export const PickingFefoTab: React.FC<PickingFefoTabProps> = ({
             </button>
           </div>
 
-          {pickSteps.length === 0 ? (
+          {loading ? (
+            <div className="bg-white rounded-2xl p-8 border border-slate-200 text-center text-xs text-slate-500 space-y-2">
+              <RefreshCw className="w-8 h-8 text-indigo-500 mx-auto animate-spin" />
+              <p className="font-bold text-slate-800">Đang phân tích tồn kho FEFO theo date cận hạn...</p>
+              <p className="text-slate-400">Tự động sinh các bước lấy hàng tại các ô kệ</p>
+            </div>
+          ) : pickSteps.length === 0 ? (
             <div className="bg-white rounded-2xl p-6 border border-slate-200 text-center text-xs text-slate-500 space-y-2">
               <PackageCheck className="w-8 h-8 text-amber-500 mx-auto opacity-70" />
               <p className="font-bold text-slate-800">
                 {selectedOrder.status === 'DISPATCHED'
-                  ? 'Đơn hàng này đã được xuất kho và bàn giao vận chuyển thành công!'
-                  : 'Bấm nút dưới đây để kích hoạt thuật toán sinh danh sách nhặt FEFO:'}
+                  ? 'Đơn hàng này đã hoàn tất xuất kho và bàn giao vận chuyển!'
+                  : 'Không có vị trí nhặt hàng. Kho không đủ tồn kho khả dụng để phân bổ FEFO cho đơn này.'}
               </p>
-              {selectedOrder.status !== 'DISPATCHED' && (
-                <button
-                  onClick={() => handleSelectOrder(selectedOrder)}
-                  className="px-4 py-2 bg-amber-500 hover:bg-amber-600 text-slate-950 font-bold rounded-xl text-xs shadow-sm transition-all cursor-pointer"
-                >
-                  Sinh Lộ Trình Nhặt FEFO
-                </button>
-              )}
             </div>
           ) : (
             pickSteps.map((step, idx) => (
