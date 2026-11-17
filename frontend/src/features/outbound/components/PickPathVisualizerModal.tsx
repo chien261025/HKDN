@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { X, Navigation, CheckCircle2, ArrowRight, Printer, Smartphone, TrendingUp, Route, Timer, Footprints, Play, Pause, RotateCcw } from 'lucide-react';
 import { OutboundOrder } from '../types';
 import { WarehouseFloorMapSvg, PickWaypoint } from './WarehouseFloorMapSvg';
@@ -7,6 +7,34 @@ interface PickPathVisualizerModalProps {
   isOpen: boolean;
   onClose: () => void;
   order: OutboundOrder | null;
+}
+
+// Bản đồ tọa độ SVG theo Dãy (Aisle) thực tế trong DB
+// Barcode format: WH01-ZA-{aisle}-{rack}-{shelf}-{bin}
+// SVG viewBox: 980 x 540 — hành lang chính ở y=420-490
+const AISLE_SVG_MAP: Record<string, { x: number; zoneLabel: string; zoneClass: 'A' | 'B' }> = {
+  A01: { x: 195, zoneLabel: 'Zone A', zoneClass: 'A' },
+  A02: { x: 375, zoneLabel: 'Zone A', zoneClass: 'A' },
+  B01: { x: 575, zoneLabel: 'Zone B', zoneClass: 'B' },
+  B02: { x: 755, zoneLabel: 'Zone B', zoneClass: 'B' },
+};
+
+// Vị trí y theo shelf trong SVG (S01=tầng thấp nhất, S02=cao hơn...)
+const SHELF_Y_MAP: Record<string, number> = {
+  S01: 326,
+  S02: 269,
+  S03: 212,
+  S04: 155,
+};
+
+/** Giải mã barcode → aisle, rack, shelf, bin
+ *  Format: WH01-ZA-A01-R01-S01-B01  hoặc  WH01-ZB-B01-R01-S01-B05
+ */
+function parseBarcode(barcode: string): { aisle: string; rack: string; shelf: string; bin: string } | null {
+  const parts = barcode.split('-');
+  // parts: [WH01, ZA, A01, R01, S01, B01]
+  if (parts.length < 6) return null;
+  return { aisle: parts[2], rack: parts[3], shelf: parts[4], bin: parts[5] };
 }
 
 export const PickPathVisualizerModal: React.FC<PickPathVisualizerModalProps> = ({
@@ -19,12 +47,75 @@ export const PickPathVisualizerModal: React.FC<PickPathVisualizerModalProps> = (
   const [isPlaying, setIsPlaying] = useState(false);
   const [pdaSynced, setPdaSynced] = useState(false);
 
-  const defaultWaypoints: PickWaypoint[] = [
-    { id: 'wp-1', stepNumber: 1, productName: order?.items[0]?.productName || 'Sữa tươi tiệt trùng Vinamilk 100% 1L', sku: 'SKU-MILK-100', locationBarcode: 'WH01-ZA-A01-R01-S01-B01', qty: 20, x: 195, y: 212, zone: 'Zone A', rack: 'Dãy Kệ A1', shelf: 'Tầng 2 • Ô B01' },
-    { id: 'wp-2', stepNumber: 2, productName: order?.items[1]?.productName || 'Nước giặt OMO Matic Cửa Trên 3.6kg', sku: 'SKU-OMO-MATIC', locationBarcode: 'WH01-ZA-A02-R01-S01-B03', qty: 10, x: 375, y: 269, zone: 'Zone A', rack: 'Dãy Kệ A2', shelf: 'Tầng 3 • Ô B03' },
-    { id: 'wp-3', stepNumber: 3, productName: order?.items[2]?.productName || 'Điện thoại Samsung Galaxy S24 Ultra', sku: 'SKU-SAMS-S24', locationBarcode: 'WH01-ZB-B01-R01-S01-B05', qty: 5, x: 575, y: 212, zone: 'Zone B', rack: 'Dãy Kệ B1', shelf: 'Tầng 2 • Ô B05' },
-    { id: 'wp-4', stepNumber: 4, productName: 'Cà phê hòa tan G7 3in1 Hộp 18 gói', sku: 'SKU-COF-G7', locationBarcode: 'WH01-ZB-B02-R01-S02-B02', qty: 15, x: 755, y: 326, zone: 'Zone B', rack: 'Dãy Kệ B2', shelf: 'Tầng 4 • Ô B02' },
-  ];
+  // ✅ Dùng dữ liệu thật từ order.items[].allocations thay vì hardcode
+  const realWaypoints: PickWaypoint[] = useMemo(() => {
+    if (!order?.items?.length) return [];
+
+    const wps: PickWaypoint[] = [];
+    let step = 1;
+
+    order.items.forEach((item) => {
+      const allocations = item.allocations || [];
+      allocations.forEach((alloc) => {
+        const parsed = parseBarcode(alloc.locationBarcode);
+        if (!parsed) return;
+
+        const svgPos = AISLE_SVG_MAP[parsed.aisle];
+        if (!svgPos) return;
+
+        const svgY = SHELF_Y_MAP[parsed.shelf] ?? 269;
+        const zoneLabel = svgPos.zoneLabel;
+        const rackLabel = `Dãy ${parsed.aisle} • Kệ ${parsed.rack}`;
+        const shelfLabel = `Tầng ${parsed.shelf} • Ô ${parsed.bin}`;
+
+        wps.push({
+          id: `wp-${step}`,
+          stepNumber: step,
+          productName: item.productName,
+          sku: item.sku,
+          locationBarcode: alloc.locationBarcode,
+          qty: alloc.qtyAllocated,
+          x: svgPos.x,
+          y: svgY,
+          zone: zoneLabel,
+          rack: rackLabel,
+          shelf: shelfLabel,
+          rackKey: parsed.aisle,
+        });
+        step++;
+      });
+    });
+
+    return wps;
+  }, [order]);
+
+  // Fallback: nếu chưa ALLOCATED (không có allocations) thì dùng items trực tiếp
+  const fallbackWaypoints: PickWaypoint[] = useMemo(() => {
+    if (!order?.items?.length) return [];
+    return order.items.slice(0, 4).map((item, idx) => {
+      const aisleKeys = Object.keys(AISLE_SVG_MAP);
+      const aisleKey = aisleKeys[idx % aisleKeys.length];
+      const svgPos = AISLE_SVG_MAP[aisleKey];
+      const shelfKeys = Object.keys(SHELF_Y_MAP);
+      const shelfKey = shelfKeys[idx % shelfKeys.length];
+      return {
+        id: `wp-fb-${idx + 1}`,
+        stepNumber: idx + 1,
+        productName: item.productName,
+        sku: item.sku,
+        locationBarcode: `Chưa phân bổ vị trí`,
+        qty: item.requestedQty,
+        x: svgPos.x,
+        y: SHELF_Y_MAP[shelfKey],
+        zone: svgPos.zoneLabel,
+        rack: `Dãy ${aisleKey}`,
+        shelf: `Tầng ${shelfKey}`,
+        rackKey: aisleKey,
+      };
+    });
+  }, [order]);
+
+  const defaultWaypoints = realWaypoints.length > 0 ? realWaypoints : fallbackWaypoints;
 
   // Auto-play mô phỏng bước đi của thủ kho
   useEffect(() => {
@@ -37,8 +128,12 @@ export const PickPathVisualizerModal: React.FC<PickPathVisualizerModalProps> = (
 
   if (!isOpen || !order) return null;
 
-  const distance = isOptimal ? 74 : 168;
-  const estTime = isOptimal ? '2.4 phút' : '5.6 phút';
+  const stopCount = defaultWaypoints.length;
+  // Ước tính khoảng cách & thời gian theo số điểm dừng thực tế
+  const distance = isOptimal ? Math.round(stopCount * 18 + 20) : Math.round(stopCount * 42 + 30);
+  const estTime = isOptimal
+    ? `${((stopCount * 18 + 20) / 50).toFixed(1)} phút`
+    : `${((stopCount * 42 + 30) / 50).toFixed(1)} phút`;
 
   const handleSyncToPda = () => {
     setPdaSynced(true);
@@ -178,7 +273,7 @@ export const PickPathVisualizerModal: React.FC<PickPathVisualizerModalProps> = (
                 <span>Thứ Tự Nhặt Hàng</span>
               </h3>
               <span className="text-xs font-mono font-bold text-indigo-700 bg-indigo-50 px-2 py-0.5 rounded border border-indigo-200">
-                4/4 Điểm Dừng
+                {stopCount}/{stopCount} Điểm Dừng
               </span>
             </div>
 

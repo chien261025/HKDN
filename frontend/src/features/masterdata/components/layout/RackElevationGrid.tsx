@@ -59,7 +59,9 @@ export const RackElevationGrid: React.FC<RackElevationGridProps> = ({
                         <span className="text-slate-300">•</span>
                         <span className="text-xs text-slate-500 font-medium">Khung Thép Chịu Lực</span>
                       </span>
-                      <span className="text-xs text-slate-500">2 Tầng (S01, S02)</span>
+                      <span className="text-xs text-slate-500">
+                        {rackLocations.length} tầng ({[...new Set(rackLocations.map(l => l.shelf))].sort().join(', ')})
+                      </span>
                     </div>
 
                     {/* Danh sách các Tầng / Ô Kệ */}

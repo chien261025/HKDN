@@ -30,7 +30,7 @@ export interface FloorRack {
 interface WarehouseFloorMapSvgProps {
   isOptimal: boolean;
   waypoints: PickWaypoint[];
-  racks: FloorRack[];
+  racks?: FloorRack[]; // optional — sơ đồ SVG tự xây từ waypoints thực tế
   activeStep: number;
   onSelectWaypoint: (step: number) => void;
 }
@@ -134,28 +134,67 @@ export const WarehouseFloorMapSvg: React.FC<WarehouseFloorMapSvgProps> = ({
           LỐI ĐI THOÁT ĐẦU DÃY KỆ (TOP CROSS AISLE)
         </text>
 
-        {/* ================= DÃY KỆ ZONE A & B ================= */}
-        {[
-          { id: 'A1', name: 'DÃY KỆ A1', zone: 'ZONE A • TIÊU DÙNG', x: 130, fill: '#0284c7', stroke: '#38bdf8', prefix: 'A01' },
-          { id: 'A2', name: 'DÃY KỆ A2', zone: 'ZONE A • TIÊU DÙNG', x: 310, fill: '#0284c7', stroke: '#38bdf8', prefix: 'A02' },
-          { id: 'B1', name: 'DÃY KỆ B1', zone: 'ZONE B • ĐIỆN TỬ', x: 510, fill: '#059669', stroke: '#10b981', prefix: 'B01' },
-          { id: 'B2', name: 'DÃY KỆ B2', zone: 'ZONE B • ĐIỆN TỬ', x: 690, fill: '#059669', stroke: '#10b981', prefix: 'B02' },
-        ].map((rack) => (
-          <g key={rack.key} id={`rack-${rack.key}`}>
-            <rect x={rack.x} y="95" width="130" height="300" fill="#0b1322" stroke={rack.stroke} strokeWidth="2" rx="8" />
-            <rect x={rack.x} y="95" width="130" height="42" fill={rack.fill} rx="8" />
-            <text x={rack.x + 65} y="118" fill="#ffffff" fontSize="13" fontWeight="bold" textAnchor="middle">{rack.label}</text>
-            <text x={rack.x + 65} y="131" fill="#f8fafc" fontSize="8.5" fontWeight="600" textAnchor="middle">{rack.zone}</text>
-            {rack.locations.map((location) => (
-              <g key={`${rack.key}-${location.label}`}>
-                <rect x={rack.x + 10} y={location.y} width="110" height="45" fill="#162032" stroke="#334155" strokeWidth="1" rx="4" />
-                <text x={rack.x + 65} y={location.y + 27} fill="#94a3b8" fontSize="11" fontWeight="bold" textAnchor="middle">
-                  {location.label}
+        {/* ================= DÃY KỆ — xây từ waypoints thực tế ================= */}
+        {(() => {
+          // Dựng danh sách dãy kệ duy nhất từ waypoints thực tế
+          const aisleSet = new Map<string, { x: number; zoneLabel: string; zoneClass: string }>();
+          waypoints.forEach((wp) => {
+            if (!aisleSet.has(wp.rackKey)) {
+              const isZoneB = wp.zone.toLowerCase().includes('b') || wp.rackKey.startsWith('B');
+              aisleSet.set(wp.rackKey, {
+                x: wp.x - 65, // căn giữa waypoint trong dãy kệ 130px
+                zoneLabel: wp.zone,
+                zoneClass: isZoneB ? 'B' : 'A',
+              });
+            }
+          });
+
+          // Fallback: nếu không có waypoints thì hiện 4 dãy mặc định từ DB seed
+          const fallbackAisles = new Map([
+            ['A01', { x: 130, zoneLabel: 'Zone A', zoneClass: 'A' }],
+            ['A02', { x: 310, zoneLabel: 'Zone A', zoneClass: 'A' }],
+            ['B01', { x: 510, zoneLabel: 'Zone B', zoneClass: 'B' }],
+            ['B02', { x: 690, zoneLabel: 'Zone B', zoneClass: 'B' }],
+          ]);
+
+          const displayAisles = aisleSet.size > 0 ? aisleSet : fallbackAisles;
+
+          // Shelf rows cố định cho mỗi dãy (S01→S04 từ dưới lên)
+          const shelfRows = [
+            { label: 'S04', y: 148 },
+            { label: 'S03', y: 205 },
+            { label: 'S02', y: 262 },
+            { label: 'S01', y: 319 },
+          ];
+
+          return Array.from(displayAisles.entries()).map(([aisleKey, info]) => {
+            const isZoneB = info.zoneClass === 'B';
+            const fillColor = isZoneB ? '#059669' : '#0284c7';
+            const strokeColor = isZoneB ? '#10b981' : '#38bdf8';
+            const zoneName = isZoneB ? `${info.zoneLabel} • KHO MÁT` : `${info.zoneLabel} • TIÊU DÙNG`;
+
+            return (
+              <g key={aisleKey} id={`rack-${aisleKey}`}>
+                <rect x={info.x} y="95" width="130" height="300" fill="#0b1322" stroke={strokeColor} strokeWidth="2" rx="8" />
+                <rect x={info.x} y="95" width="130" height="42" fill={fillColor} rx="8" />
+                <text x={info.x + 65} y="118" fill="#ffffff" fontSize="13" fontWeight="bold" textAnchor="middle">
+                  DÃY {aisleKey}
                 </text>
+                <text x={info.x + 65} y="131" fill="#f8fafc" fontSize="8.5" fontWeight="600" textAnchor="middle">
+                  {zoneName}
+                </text>
+                {shelfRows.map((shelf) => (
+                  <g key={`${aisleKey}-${shelf.label}`}>
+                    <rect x={info.x + 10} y={shelf.y} width="110" height="45" fill="#162032" stroke="#334155" strokeWidth="1" rx="4" />
+                    <text x={info.x + 65} y={shelf.y + 27} fill="#94a3b8" fontSize="11" fontWeight="bold" textAnchor="middle">
+                      {shelf.label}
+                    </text>
+                  </g>
+                ))}
               </g>
-            ))}
-          </g>
-        ))}
+            );
+          });
+        })()}
 
         {/* ================= ĐƯỜNG DẪN DI CHUYỂN PHÁT SÁNG ================= */}
         <path d={pathD} fill="none" stroke={isOptimal ? '#38bdf8' : '#f43f5e'} strokeWidth="8" strokeOpacity="0.3" strokeLinecap="round" strokeLinejoin="round" filter="url(#neonGlow)" />

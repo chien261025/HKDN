@@ -26,6 +26,11 @@ spring:
     port: ${RABBITMQ_PORT:5672}
     username: ${RABBITMQ_USER:guest}
     password: ${RABBITMQ_PASS:guest}
+    # DEV: tắt auto-startup của listener nếu RabbitMQ chưa chạy
+    listener:
+      simple:
+        auto-startup: false          # ← Consumer không tự khởi động khi boot
+        missing-queues-fatal: false  # ← Không crash nếu queue chưa tồn tại
     template:
       retry:
         enabled: true
