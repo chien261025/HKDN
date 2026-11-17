@@ -1,6 +1,5 @@
 package com.wms.module.inventory.dto.request;
 
-import jakarta.validation.constraints.NotNull;
 import lombok.*;
 
 @Getter
@@ -10,11 +9,19 @@ import lombok.*;
 @Builder
 public class RecordCountRequest {
 
-    @NotNull(message = "ItemId không được để trống")
     private Long itemId;
 
-    @NotNull(message = "Số lượng đếm không được để trống")
+    private Long locationId;
+
+    private Long productId;
+
     private Integer countedQty;
 
+    private Integer actualQuantity;
+
     private String notes;
+
+    public Integer getEffectiveCountedQty() {
+        return countedQty != null ? countedQty : actualQuantity;
+    }
 }

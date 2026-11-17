@@ -43,13 +43,12 @@ spring:
   rabbitmq:
     host: ${RABBITMQ_HOST:localhost}
     port: ${RABBITMQ_PORT:5672}
-    username: ${RABBITMQ_USER:guest}
-    password: ${RABBITMQ_PASS:guest}
-    # DEV: tắt auto-startup của listener nếu RabbitMQ chưa chạy
+    username: ${RABBITMQ_USER:admin1}
+    password: ${RABBITMQ_PASS:1234567}
     listener:
       simple:
-        auto-startup: false # ← Consumer không tự khởi động khi boot
-        missing-queues-fatal: false # ← Không crash nếu queue chưa tồn tại
+        auto-startup: ${RABBITMQ_LISTENER_AUTO_STARTUP:true}
+        missing-queues-fatal: false
     template:
       retry:
         enabled: true

@@ -5,10 +5,14 @@ import { LocationDto } from '../../services/operatorService';
 export interface ActivePutawayTask {
   id: string;
   orderId?: number;
+  orderCode?: string;
   orderItemId?: number;
   productId?: number;
   sku: string;
   productName: string;
+  unit?: string;
+  batchNumber?: string;
+  expiryDate?: string;
   weightKg: number;
   qty: number;
   preferredZone: string;
@@ -38,7 +42,9 @@ export const PutawayActiveTaskCard: React.FC<PutawayActiveTaskCardProps> = ({
   return (
     <div className="bg-white rounded-2xl p-5 border-2 border-indigo-500 shadow-md space-y-4 animate-in fade-in">
       <div className="flex items-center justify-between pb-3 border-b border-slate-100">
-        <span className="text-xs font-black text-indigo-900 uppercase">Đang Thực Hiện Cất Hàng</span>
+        <span className="text-xs font-black text-indigo-900 uppercase">
+          {activeTask.orderCode ? `Cất Hàng Đơn ${activeTask.orderCode}` : 'Đang Thực Hiện Cất Hàng'}
+        </span>
         <span className="px-2 py-0.5 rounded-full text-xs font-bold bg-indigo-100 text-indigo-800 font-mono">
           THUẬT TOÁN CHỈ ĐỊNH
         </span>
@@ -47,10 +53,12 @@ export const PutawayActiveTaskCard: React.FC<PutawayActiveTaskCardProps> = ({
       <div>
         <span className="text-xs text-slate-500 font-medium">Mặt hàng:</span>
         <div className="font-bold text-slate-900 text-sm">{activeTask.productName}</div>
-        <div className="text-xs text-slate-500 mt-1 flex items-center gap-3 font-mono">
-          <span>SKU: {activeTask.sku}</span>
-          <span>• {activeTask.qty} cái</span>
-          <span>• {activeTask.weightKg}kg</span>
+        <div className="text-xs text-slate-500 mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 font-mono">
+          <span>SKU: <strong className="text-slate-700">{activeTask.sku}</strong></span>
+          <span>• Số lượng: <strong className="text-indigo-700">{activeTask.qty} {activeTask.unit || 'cái'}</strong></span>
+          <span>• Trọng lượng: <strong>{activeTask.weightKg}kg</strong></span>
+          {activeTask.batchNumber && <span>• Lô: <strong>{activeTask.batchNumber}</strong></span>}
+          {activeTask.expiryDate && <span>• HSD: <strong>{activeTask.expiryDate}</strong></span>}
         </div>
       </div>
 

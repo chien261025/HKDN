@@ -148,7 +148,6 @@ export const InboundStagingTab: React.FC<InboundStagingTabProps> = ({
           <span className="text-xs font-bold text-slate-700 uppercase tracking-wider">
             Đơn PO Chờ Nhận ({pendingOrders.length})
           </span>
-          <span className="text-xs text-slate-500 font-mono">Dữ liệu PostgreSQL</span>
         </div>
 
         {pendingOrders.length === 0 ? (

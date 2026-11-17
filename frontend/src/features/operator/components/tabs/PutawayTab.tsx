@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { Layers, CheckCircle2, ArrowRight } from 'lucide-react';
+import React, { useState, useEffect, useCallback } from 'react';
+import { Layers, CheckCircle2, ArrowRight, RefreshCw, Box } from 'lucide-react';
 import { operatorService } from '../../services/operatorService';
 import { PutawayActiveTaskCard, ActivePutawayTask } from './PutawayActiveTaskCard';
 import { soundEffects } from '../../utils/soundEffects';
@@ -21,48 +21,80 @@ export const PutawayTab: React.FC<PutawayTabProps> = ({
   const [feedback, setFeedback] = useState<{ msg: string; type: 'success' | 'error' } | null>(null);
   const [stagingQueue, setStagingQueue] = useState<ActivePutawayTask[]>([]);
 
-  useEffect(() => {
-    const fetchReceivedOrders = async () => {
-      try {
-        const [orders, products] = await Promise.all([
-          operatorService.getInboundOrders(),
-          operatorService.getProducts(),
-        ]);
-        const receivedOrders = orders.filter((o) => o.status === 'RECEIVED');
-        if (receivedOrders.length > 0) {
-          const dynamicTasks: ActivePutawayTask[] = [];
-          for (const o of receivedOrders) {
-            for (const item of o.items || []) {
-              const prod = products.find((p) => p.id === item.productId);
-              const sku = prod?.sku || (item.productId === 1 ? 'SKU-MILK-100' : item.productId === 2 ? 'SKU-SAMS-S24' : 'SKU-OMO-MATIC');
-              const name = prod?.name || (item.productId === 1 ? 'Sữa tươi tiệt trùng Vinamilk 100% 1L' : item.productId === 2 ? 'Điện thoại Samsung Galaxy S24 Ultra' : 'Nước giặt OMO Matic 3.6kg');
-              const zone = sku.includes('MILK') ? 'ZONE_B' : 'ZONE_A';
-              const weight = sku.includes('OMO') ? 150.0 : sku.includes('MILK') ? 30.0 : 5.0;
+  const fetchReceivedOrders = useCallback(async () => {
+    setLoading(true);
+    try {
+      const [orders, products] = await Promise.all([
+        operatorService.getInboundOrders(),
+        operatorService.getProducts(),
+      ]);
+      const receivedOrders = orders.filter((o) => o.status === 'RECEIVED');
+      if (receivedOrders.length > 0) {
+        const dynamicTasks: ActivePutawayTask[] = [];
+        for (const o of receivedOrders) {
+          for (const item of o.items || []) {
+            const prod = products.find((p) => p.id === item.productId);
+            const sku = prod?.sku || `SKU-PROD-${item.productId}`;
+            const name = prod?.name || `Sản phẩm #${item.productId}`;
+            const unit = prod?.unit || 'kiện';
 
-              dynamicTasks.push({
-                id: `po-${o.id}-it-${item.id}`,
-                orderId: o.id,
-                orderItemId: item.id,
-                productId: item.productId,
-                sku,
-                productName: name,
-                weightKg: weight,
-                qty: item.receivedQty || item.expectedQty,
-                preferredZone: zone,
-                status: 'PENDING',
-              });
-            }
+            // Phân loại phân khu phù hợp:
+            // ZONE_B: Thực phẩm mát, sữa, đồ uống
+            // ZONE_A: Hàng khô, hóa mỹ phẩm, điện tử
+            const isCoolOrBeverage =
+              sku.includes('MILK') ||
+              sku.includes('YOG') ||
+              sku.includes('BEER') ||
+              sku.includes('COCA') ||
+              sku.includes('WATER') ||
+              sku.includes('TEA');
+            const zone = isCoolOrBeverage ? 'ZONE_B' : 'ZONE_A';
+
+            // Tính toán trọng lượng thực tế của lô hàng (kg)
+            const unitWeightKg = sku.includes('OMO')
+              ? 3.6
+              : sku.includes('MILK')
+              ? 1.0
+              : sku.includes('WATER')
+              ? 0.5
+              : sku.includes('BEER') || sku.includes('COCA')
+              ? 0.35
+              : 0.8;
+            const itemQty = item.receivedQty || item.expectedQty || 1;
+            const totalWeight = Math.round(itemQty * unitWeightKg);
+
+            dynamicTasks.push({
+              id: `po-${o.id}-it-${item.id}`,
+              orderId: o.id,
+              orderCode: o.orderCode,
+              orderItemId: item.id,
+              productId: item.productId,
+              sku,
+              productName: name,
+              unit,
+              batchNumber: item.batchNumber,
+              expiryDate: item.expiryDate,
+              weightKg: totalWeight,
+              qty: itemQty,
+              preferredZone: zone,
+              status: 'PENDING',
+            });
           }
-          setStagingQueue(dynamicTasks);
-        } else {
-          setStagingQueue([]);
         }
-      } catch (err) {
-        console.warn('Could not load received orders for putaway:', err);
+        setStagingQueue(dynamicTasks);
+      } else {
+        setStagingQueue([]);
       }
-    };
-    fetchReceivedOrders();
+    } catch (err: any) {
+      console.warn('Could not load received orders for putaway:', err);
+    } finally {
+      setLoading(false);
+    }
   }, []);
+
+  useEffect(() => {
+    fetchReceivedOrders();
+  }, [fetchReceivedOrders]);
 
   useEffect(() => {
     if (scannedCode) {
@@ -77,16 +109,23 @@ export const PutawayTab: React.FC<PutawayTabProps> = ({
     setLoading(true);
     setFeedback(null);
     try {
-      const suggested = await operatorService.suggestPutawayLocation(task.preferredZone, task.weightKg);
+      const loc = await operatorService.suggestPutawayLocation(task.preferredZone, task.weightKg);
       soundEffects.playSuccessBeep();
-      setActiveTask({ ...task, suggestedLocation: suggested, status: 'SUGGESTED' });
+      setActiveTask({
+        ...task,
+        suggestedLocation: loc,
+        status: 'SUGGESTED',
+      });
       setFeedback({
-        msg: `Thuật toán gợi ý vị trí: ${suggested.binBarcode} (Tầng ${suggested.shelf}, Tải trọng: ${suggested.maxWeightKg}kg)`,
+        msg: `Chỉ định vị trí: Ô ${loc.binBarcode} (${loc.zoneCode} - Tầng ${loc.shelf}) đáp ứng đủ tải trọng ${task.weightKg}kg.`,
         type: 'success',
       });
     } catch (err: any) {
       soundEffects.playErrorBuzz();
-      setFeedback({ msg: 'Lỗi chạy thuật toán cất hàng: ' + err.message, type: 'error' });
+      setFeedback({
+        msg: 'Lỗi tìm ô kệ: ' + (err.response?.data?.message || err.message),
+        type: 'error',
+      });
     } finally {
       setLoading(false);
     }
@@ -113,6 +152,8 @@ export const PutawayTab: React.FC<PutawayTabProps> = ({
           productId: activeTask.productId,
           locationId: activeTask.suggestedLocation.id,
           quantity: activeTask.qty,
+          batchNumber: activeTask.batchNumber,
+          expiryDate: activeTask.expiryDate,
         });
       } catch (err: any) {
         console.warn('Backend putaway sync notice:', err);
@@ -124,7 +165,7 @@ export const PutawayTab: React.FC<PutawayTabProps> = ({
     );
     soundEffects.playCompleteChime();
     setFeedback({
-      msg: `Thành công: Đã cất ${activeTask.qty} cái ${activeTask.productName} vào ô ${targetBarcode} an toàn!`,
+      msg: `Thành công: Đã cất ${activeTask.qty} ${activeTask.unit || 'kiện'} ${activeTask.productName} vào ô ${targetBarcode} an toàn!`,
       type: 'success',
     });
     setActiveTask(null);
@@ -137,6 +178,7 @@ export const PutawayTab: React.FC<PutawayTabProps> = ({
 
   return (
     <div className="space-y-4 pb-20">
+      {/* Header Banner */}
       <div className="p-4 rounded-2xl bg-white border border-slate-200 flex items-center justify-between shadow-xs">
         <div className="flex items-center gap-3">
           <div className="p-2.5 rounded-xl bg-indigo-50 text-indigo-700 border border-indigo-200">
@@ -146,12 +188,22 @@ export const PutawayTab: React.FC<PutawayTabProps> = ({
             <h2 className="text-xs font-bold text-slate-900 uppercase tracking-wider">
               2. Cất Hàng Lên Ô Kệ (Put-Away)
             </h2>
-            <p className="text-xs text-slate-500 font-medium">Thuật toán phân tích tải trọng & Zone tự động</p>
+            <p className="text-xs text-slate-500 font-medium">Chỉ định ô kệ theo tải trọng & phân khu chuyên biệt</p>
           </div>
         </div>
-        <span className="text-xs font-mono font-bold px-2.5 py-1 rounded-lg bg-indigo-50 text-indigo-800 border border-indigo-200">
-          {pendingQueue.length} KIỆN CHỜ
-        </span>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={fetchReceivedOrders}
+            disabled={loading}
+            className="p-2 rounded-xl text-slate-500 hover:text-slate-800 hover:bg-slate-100 transition-colors"
+            title="Tải lại danh sách"
+          >
+            <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin text-indigo-600' : ''}`} />
+          </button>
+          <span className="text-xs font-mono font-bold px-2.5 py-1 rounded-lg bg-indigo-50 text-indigo-800 border border-indigo-200">
+            {pendingQueue.length} KIỆN
+          </span>
+        </div>
       </div>
 
       {feedback && (
@@ -171,6 +223,7 @@ export const PutawayTab: React.FC<PutawayTabProps> = ({
         </div>
       )}
 
+      {/* Active Putaway Action Card */}
       {activeTask && activeTask.suggestedLocation && (
         <PutawayActiveTaskCard
           activeTask={activeTask}
@@ -182,12 +235,12 @@ export const PutawayTab: React.FC<PutawayTabProps> = ({
         />
       )}
 
+      {/* List of Pending Putaway Items */}
       <div className="space-y-3">
         <div className="flex items-center justify-between px-1">
           <span className="text-xs font-bold text-slate-700 uppercase tracking-wider">
-            Hàng Chờ Cất Tại Khu Đệm ({pendingQueue.length})
+            Kiện Hàng Chờ Cất Tại Khu Đệm ({pendingQueue.length})
           </span>
-          <span className="text-xs text-slate-500 font-mono">Thuật toán Directed Put-away</span>
         </div>
 
         {pendingQueue.length === 0 && completedQueue.length === 0 && (
@@ -208,25 +261,34 @@ export const PutawayTab: React.FC<PutawayTabProps> = ({
             className="bg-white rounded-2xl p-4 border border-slate-200 shadow-xs hover:border-indigo-300 transition-all space-y-3"
           >
             <div className="flex items-start justify-between">
-              <div>
-                <span className="font-bold text-slate-900 text-sm">{task.productName}</span>
-                <div className="flex items-center gap-2 mt-1 text-xs text-slate-500 font-mono">
-                  <span>SKU: {task.sku}</span>
-                  <span>• {task.qty} cái</span>
-                  <span>• <span className="text-indigo-700 font-bold">{task.weightKg}kg</span></span>
+              <div className="space-y-1.5 flex-1 pr-2">
+                <div className="flex items-center gap-2">
+                  <span className="font-mono text-2xs font-extrabold px-2 py-0.5 rounded bg-slate-100 text-slate-800 border border-slate-200">
+                    {task.orderCode || 'ĐƠN PO'}
+                  </span>
+                  <span className="px-2 py-0.5 rounded-full text-2xs font-bold bg-indigo-50 text-indigo-700 border border-indigo-200">
+                    {task.preferredZone === 'ZONE_B' ? 'Khu B • Hàng Mát & Đồ Uống' : 'Khu A • Hàng Tiêu Dùng & Hóa Mỹ Phẩm'}
+                  </span>
+                </div>
+                <div className="font-bold text-slate-900 text-sm leading-snug">{task.productName}</div>
+                <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-slate-600 font-mono pt-0.5">
+                  <span>SKU: <strong className="text-slate-800">{task.sku}</strong></span>
+                  <span>• Số lượng: <strong className="text-indigo-700">{task.qty} {task.unit}</strong></span>
+                  <span>• Trọng tải: <strong>{task.weightKg}kg</strong></span>
+                  {task.batchNumber && <span>• Lô: <strong>{task.batchNumber}</strong></span>}
+                  {task.expiryDate && (
+                    <span>• HSD: <strong>{new Date(task.expiryDate).toLocaleDateString('vi-VN')}</strong></span>
+                  )}
                 </div>
               </div>
-              <span className="px-2 py-0.5 rounded-full text-xs font-bold bg-slate-100 text-slate-700">
-                {task.preferredZone}
-              </span>
             </div>
 
-            <div className="flex items-center justify-end pt-1">
+            <div className="flex items-center justify-end pt-2 border-t border-slate-100">
               <button
                 type="button"
                 disabled={loading}
                 onClick={() => handleRequestSuggestion(task)}
-                className="flex items-center gap-2 px-4 py-2 bg-indigo-600 hover:bg-indigo-700 active:bg-indigo-800 text-white rounded-xl text-xs font-bold shadow-md shadow-indigo-200 transition-all cursor-pointer"
+                className="flex items-center gap-2 px-4 py-2 bg-indigo-600 hover:bg-indigo-700 active:bg-indigo-800 text-white rounded-xl text-xs font-bold shadow-sm transition-all cursor-pointer"
               >
                 <ArrowRight className="w-4 h-4" />
                 <span>Gợi Ý Vị Trí Cất Tối Ưu</span>
@@ -246,8 +308,9 @@ export const PutawayTab: React.FC<PutawayTabProps> = ({
                   <div className="flex items-center gap-2">
                     <CheckCircle2 className="w-4 h-4 text-emerald-600" />
                     <span className="font-bold text-slate-800">{cq.productName}</span>
+                    <span className="text-slate-500 font-mono">({cq.qty} {cq.unit})</span>
                   </div>
-                  <span className="text-emerald-700 font-semibold bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200">
+                  <span className="text-emerald-700 font-semibold bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200 text-2xs">
                     ĐÃ LÊN KỆ AN TOÀN
                   </span>
                 </div>

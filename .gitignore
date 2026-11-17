@@ -51,6 +51,7 @@ Thumbs.db
 # Temporary Scratch Scripts #
 scratch/
 .m2/
+maven-repo/
 love-rain-3d/
 
 # Environment & Secrets #

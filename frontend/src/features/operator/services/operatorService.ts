@@ -6,6 +6,7 @@ export interface InboundOrderItemDto {
   expectedQty: number;
   receivedQty: number;
   batchNumber?: string;
+  expiryDate?: string;
   status: string;
 }
 
@@ -66,6 +67,33 @@ export interface PickListItemResponseDto {
 }
 
 
+export interface AuditItemDto {
+  id: number;
+  auditId: number;
+  locationId: number;
+  locationBarcode: string;
+  zoneCode?: string;
+  aisle?: string;
+  rack?: string;
+  shelf?: string;
+  bin?: string;
+  productId: number;
+  sku: string;
+  barcode?: string;
+  productName: string;
+  categoryName?: string;
+  unit: string;
+  batchId?: number;
+  batchNumber?: string;
+  expiryDate?: string;
+  systemQty?: number;
+  countedQty?: number | null;
+  differenceQty?: number | null;
+  status: string; // PENDING, MATCHED, DISCREPANCY, ADJUSTED
+  counterNotes?: string;
+  countedAt?: string;
+}
+
 export interface AuditSessionDto {
   id: number;
   auditCode: string;
@@ -73,6 +101,10 @@ export interface AuditSessionDto {
   status: string;
   notes?: string;
   createdAt: string;
+  totalBins?: number;
+  countedBins?: number;
+  discrepanciesCount?: number;
+  items?: AuditItemDto[];
 }
 
 export interface ProductDto {
@@ -226,9 +258,11 @@ export const operatorService = {
     locationId: number,
     productId: number,
     actualQuantity: number,
-    notes?: string
+    notes?: string,
+    itemId?: number
   ): Promise<any> {
     const res = await apiClient.post(`/inventory/audit/${auditId}/count`, {
+      itemId,
       locationId,
       productId,
       actualQuantity,
