@@ -120,7 +120,8 @@ smart-wms/
 ### 4.1. Khởi động toàn bộ hệ thống bằng Docker
 Từ thư mục gốc dự án:
 ```bash
-docker compose up -d
+docker compose down
+docker compose up -d --build
 ```
 
 ### 4.2. Các địa chỉ dịch vụ

@@ -5,6 +5,7 @@ import com.wms.module.reporting.service.ExcelStreamingWorker;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.amqp.rabbit.annotation.RabbitListener;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Component;
 
 import java.io.File;
@@ -12,12 +13,21 @@ import java.io.File;
 @Slf4j
 @Component
 @RequiredArgsConstructor
+// Chỉ kích hoạt Consumer khi spring.rabbitmq.listener.simple.auto-startup=true
+// (mặc định dev=false → tránh lỗi Authentication failure khi RabbitMQ chưa chạy)
+@ConditionalOnProperty(
+        prefix = "spring.rabbitmq.listener.simple",
+        name = "auto-startup",
+        havingValue = "true",
+        matchIfMissing = false
+)
 public class ReportTaskConsumer {
 
     private final ExcelStreamingWorker excelStreamingWorker;
 
     /**
      * Lắng nghe và tiêu thụ các task xuất file nặng từ RabbitMQ Queue
+     * Chỉ hoạt động khi RabbitMQ online (auto-startup=true)
      */
     @RabbitListener(queues = "wms.report.task.queue")
     public void consumeReportTask(ReportTaskMessage task) {

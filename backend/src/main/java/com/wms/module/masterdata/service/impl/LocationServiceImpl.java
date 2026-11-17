@@ -101,9 +101,11 @@ public class LocationServiceImpl implements LocationService {
                     status = "OCCUPIED";
                 }
 
-                currentWeight = (loc.getShelf() != null && loc.getShelf().equals("S01"))
-                        ? BigDecimal.valueOf(Math.min(150.0, loc.getMaxWeightKg().doubleValue()))
-                        : BigDecimal.valueOf(Math.min(30.0, loc.getMaxWeightKg().doubleValue()));
+                // Ước tính tải trọng thực tế: lấy 60% maxWeight nếu ô đang chứa hàng
+                // (currentWeight thực tế cần sensor IoT; tạm dùng quy tắc nghiệp vụ)
+                currentWeight = loc.getMaxWeightKg()
+                        .multiply(BigDecimal.valueOf(0.6))
+                        .setScale(1, java.math.RoundingMode.HALF_UP);
             }
 
             return LocationOccupancyDto.builder()
