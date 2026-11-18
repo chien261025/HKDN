@@ -244,9 +244,9 @@ export const CreatePoModal: React.FC<CreatePoModalProps> = ({ onClose, onCreateO
             </button>
             <button
               type="submit"
-              className="flex-1 py-3 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold shadow-md shadow-indigo-200 cursor-pointer transition-all"
+              className="flex-1 py-3 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold shadow-sm shadow-blue-200 cursor-pointer transition-all"
             >
-              Phát Hành Đơn PO
+              Tạo Đơn Nhập Kho
             </button>
           </div>
         </form>

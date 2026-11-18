@@ -75,7 +75,29 @@ export const DashboardPage: React.FC = () => {
   ];
 
   return <div className="mx-auto max-w-[1600px] space-y-6 pb-12">
-    <section className="rounded-3xl bg-slate-950 px-6 py-7 text-white shadow-xl sm:px-8"><div className="flex flex-col justify-between gap-6 lg:flex-row lg:items-end"><div><div className="mb-3 flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.2em] text-indigo-300"><Database className="h-4 w-4" /> Dữ liệu vận hành trực tiếp</div><h1 className="text-2xl font-bold tracking-tight sm:text-3xl">Tổng quan vận hành kho</h1><p className="mt-2 max-w-2xl text-sm leading-6 text-slate-300">Theo dõi đơn hàng, tồn kho, mặt bằng và truy vấn dữ liệu từ cùng một màn hình.</p></div><button onClick={() => void load()} disabled={loading} className="inline-flex items-center justify-center gap-2 rounded-xl border border-slate-700 bg-slate-900 px-4 py-2.5 text-sm font-semibold text-slate-100 transition hover:border-indigo-400 hover:bg-slate-800 disabled:opacity-70"><RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} /> Cập nhật dữ liệu</button></div></section>
+    <section className="rounded-2xl border border-slate-200/90 bg-white p-6 sm:p-7 shadow-sm">
+      <div className="flex flex-col justify-between gap-6 lg:flex-row lg:items-center">
+        <div className="flex items-center gap-4">
+          <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-blue-600 text-white shadow-md shadow-blue-200 ring-4 ring-blue-50 sm:h-14 sm:w-14">
+            <LayoutGrid className="h-6 w-6 sm:h-7 sm:w-7 text-white" />
+          </div>
+          <div>
+            <div className="mb-1 flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-blue-600">
+              <Database className="h-3.5 w-3.5" /> Dữ liệu vận hành trực tiếp
+            </div>
+            <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-slate-900">Tổng quan vận hành kho</h1>
+            <p className="mt-0.5 text-xs sm:text-sm text-slate-500">Theo dõi đơn hàng, tồn kho, mặt bằng và truy vấn dữ liệu từ cùng một màn hình.</p>
+          </div>
+        </div>
+        <button
+          onClick={() => void load()}
+          disabled={loading}
+          className="inline-flex items-center justify-center gap-2 rounded-xl bg-blue-600 hover:bg-blue-700 active:scale-[0.99] px-4 py-2.5 text-sm font-bold text-white shadow-sm shadow-blue-200 transition disabled:opacity-70 cursor-pointer"
+        >
+          <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} /> Cập nhật dữ liệu
+        </button>
+      </div>
+    </section>
     {error && <div className="flex items-center justify-between rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700"><span>{error}</span><button onClick={() => void load()} className="font-semibold underline">Thử lại</button></div>}
     <section className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">{metricCards.map(item => { const Icon = item.icon; return <div key={item.label} className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm"><div className="flex items-start justify-between"><p className="text-xs font-bold uppercase tracking-wide text-slate-500">{item.label}</p><span className={`rounded-xl p-2 ${item.color}`}><Icon className="h-5 w-5" /></span></div><p className="mt-4 text-3xl font-extrabold tracking-tight text-slate-900">{loading ? '—' : fmt(item.value)} <span className="text-sm font-semibold text-slate-400">{item.unit}</span></p></div>; })}</section>
     <section><div className="mb-3"><h2 className="text-lg font-bold text-slate-900">Vận hành kho</h2><p className="text-sm text-slate-500">Đi tới đúng nghiệp vụ cần xử lý</p></div><div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">{operations.map(x => card(x.title, x.description, x.path, x.icon, x.color, metrics[x.key]))}</div></section>

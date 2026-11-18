@@ -83,8 +83,14 @@ export const InboundStagingTab: React.FC<InboundStagingTabProps> = ({
     }
   };
 
-  const pendingOrders = orders.filter((o) => o.status === 'PENDING');
-  const receivedOrders = orders.filter((o) => o.status === 'RECEIVED');
+  const pendingOrders = orders
+    .filter((o) => o.status === 'PENDING')
+    .slice()
+    .sort((a, b) => b.id - a.id);
+  const receivedOrders = orders
+    .filter((o) => o.status === 'RECEIVED')
+    .slice()
+    .sort((a, b) => b.id - a.id);
 
   return (
     <div className="space-y-4 pb-20">

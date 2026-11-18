@@ -126,7 +126,7 @@ const AppContent: React.FC = () => {
   };
 
   return (
-    <div className="flex h-screen bg-slate-100 text-slate-900 font-sans overflow-hidden relative">
+    <div className="flex h-screen bg-slate-50 text-slate-900 font-sans overflow-hidden relative">
       {/* Sidebar Navigation */}
       <AppSidebar
         isSidebarCollapsed={isSidebarCollapsed}
@@ -139,7 +139,7 @@ const AppContent: React.FC = () => {
       />
 
       {/* Main Content Arena */}
-      <div className="flex-1 flex flex-col overflow-hidden relative z-10 bg-slate-100 min-w-0">
+      <div className="flex-1 flex flex-col overflow-hidden relative z-10 bg-slate-50 min-w-0">
         {/* Top Header Bar */}
         <AppHeader
           isSidebarCollapsed={isSidebarCollapsed}
@@ -151,7 +151,7 @@ const AppContent: React.FC = () => {
         />
 
         {/* Dynamic Route View */}
-        <main className="flex-1 overflow-y-auto p-3 sm:p-4 md:p-6 bg-slate-100/70 relative">
+        <main className="flex-1 overflow-y-auto p-3 sm:p-4 md:p-6 bg-slate-50 relative">
           <AppRoutes onOpenScanner={() => setShowScanner(true)} />
         </main>
       </div>

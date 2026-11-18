@@ -120,6 +120,16 @@ export const PutawayTab: React.FC<PutawayTabProps> = ({
         msg: `Chỉ định vị trí: Ô ${loc.binBarcode} (${loc.zoneCode} - Tầng ${loc.shelf}) đáp ứng đủ tải trọng ${task.weightKg}kg.`,
         type: 'success',
       });
+      // Tự động cuộn lên đầu để thủ kho nhìn thấy ngay ô kệ được chỉ định
+      setTimeout(() => {
+        const anchor = document.getElementById('putaway-active-card-anchor');
+        if (anchor) {
+          anchor.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        } else {
+          const mainEl = document.querySelector('main');
+          if (mainEl) mainEl.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+      }, 80);
     } catch (err: any) {
       soundEffects.playErrorBuzz();
       setFeedback({
@@ -224,6 +234,7 @@ export const PutawayTab: React.FC<PutawayTabProps> = ({
       )}
 
       {/* Active Putaway Action Card */}
+      <div id="putaway-active-card-anchor" className="scroll-mt-4" />
       {activeTask && activeTask.suggestedLocation && (
         <PutawayActiveTaskCard
           activeTask={activeTask}

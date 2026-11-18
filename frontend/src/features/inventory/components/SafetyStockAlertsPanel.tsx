@@ -137,7 +137,7 @@ export const SafetyStockAlertsPanel: React.FC<SafetyStockAlertsPanelProps> = ({
             <button
               onClick={() => setFilterLevel('ALL')}
               className={`px-2.5 py-1 rounded-md transition-colors ${filterLevel === 'ALL'
-                ? 'bg-slate-900 text-white font-semibold'
+                ? 'bg-blue-600 text-white font-semibold shadow-xs'
                 : 'text-slate-600 hover:text-slate-900'
                 }`}
             >
@@ -263,7 +263,7 @@ export const SafetyStockAlertsPanel: React.FC<SafetyStockAlertsPanelProps> = ({
                             ? onCreatePo(item)
                             : (window.location.href = '/inbound')
                         }
-                        className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-slate-900 hover:bg-indigo-600 active:bg-indigo-700 text-white rounded-lg text-xs font-semibold transition-colors shadow-2xs cursor-pointer"
+                        className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-blue-600 hover:bg-blue-700 active:scale-[0.98] text-white rounded-lg text-xs font-semibold transition-all shadow-xs cursor-pointer"
                         title="Tạo đơn mua hàng nhập kho PO để bù tồn"
                       >
                         <ShoppingCart className="w-3.5 h-3.5" />
