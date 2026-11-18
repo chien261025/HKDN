@@ -16,44 +16,41 @@ export const LayoutHeader: React.FC<LayoutHeaderProps> = ({
   onSearchChange,
 }) => {
   return (
-    <div className="bg-white rounded-xl p-5 border border-slate-200 space-y-4 shadow-xs">
+    <div className="bg-white rounded-2xl p-5 sm:p-6 border border-slate-200/90 space-y-4 shadow-sm">
       {/* Top row: Title + Zone Switcher */}
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-        <div className="flex items-center gap-3.5">
-          <div className="w-10 h-10 rounded-lg bg-indigo-600 flex items-center justify-center text-white shadow-xs flex-shrink-0">
-            <Layers className="w-5 h-5 text-white" />
+        <div className="flex items-center gap-4">
+          <div className="w-12 h-12 rounded-xl bg-blue-600 flex items-center justify-center text-white shadow-md shadow-blue-200 ring-4 ring-blue-50 flex-shrink-0">
+            <Layers className="w-6 h-6 text-white" />
           </div>
           <div>
             <div className="flex items-center gap-2 flex-wrap">
-              <h1 className="text-lg md:text-xl font-bold text-slate-900 tracking-tight">
+              <h1 className="text-xl md:text-2xl font-bold text-slate-900 tracking-tight">
                 Sơ Đồ Vị Trí Ô Kệ
               </h1>
-              {/* <span className="text-[11px] font-medium bg-slate-100 text-slate-700 px-2 py-0.5 rounded-md border border-slate-200">
-                Kho Tổng Tân Bình
-              </span> */}
             </div>
-            <p className="text-xs text-slate-500 font-normal mt-0.5">
+            <p className="text-xs sm:text-sm text-slate-500 font-normal mt-0.5">
               Phân cấp lưu trữ: Khu (Zone) • Dãy (Aisle) • Kệ (Rack) • Tầng (Shelf) • Ô Chứa (Bin)
             </p>
           </div>
         </div>
 
         {/* Zone Buttons */}
-        <div className="flex items-center bg-slate-100 p-1 rounded-lg border border-slate-200 gap-1 flex-wrap text-xs">
+        <div className="flex items-center bg-slate-100 p-1 rounded-xl border border-slate-200 gap-1 flex-wrap text-xs">
           <button
             onClick={() => onSelectZone('ZONE_A')}
-            className={`px-3 py-1.5 rounded-md font-medium transition-colors cursor-pointer ${selectedZone === 'ZONE_A'
-                ? 'bg-white text-indigo-700 shadow-xs font-semibold'
-                : 'text-slate-600 hover:text-slate-900'
+            className={`px-3.5 py-2 rounded-lg font-medium transition-colors cursor-pointer ${selectedZone === 'ZONE_A'
+              ? 'bg-white text-blue-700 shadow-xs font-bold'
+              : 'text-slate-600 hover:text-slate-900'
               }`}
           >
             Khu A: Hàng Khô & Điện Tử
           </button>
           <button
             onClick={() => onSelectZone('ZONE_B')}
-            className={`px-3 py-1.5 rounded-md font-medium transition-colors cursor-pointer ${selectedZone === 'ZONE_B'
-                ? 'bg-white text-indigo-700 shadow-xs font-semibold'
-                : 'text-slate-600 hover:text-slate-900'
+            className={`px-3.5 py-2 rounded-lg font-medium transition-colors cursor-pointer ${selectedZone === 'ZONE_B'
+              ? 'bg-white text-blue-700 shadow-xs font-bold'
+              : 'text-slate-600 hover:text-slate-900'
               }`}
           >
             Khu B: Kho Mát (2-8°C)

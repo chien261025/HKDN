@@ -49,11 +49,11 @@ export const OutboundOrderTable: React.FC<OutboundOrderTableProps> = ({
             <h2 className="text-sm sm:text-base font-bold text-slate-900">
               Danh Sách Đơn Xuất Kho
             </h2>
-            <p className="text-xs text-slate-500 hidden sm:block">Phân bổ tồn kho FEFO</p>
+            <p className="text-xs text-slate-500 hidden sm:block">Phân bổ tự động ưu tiên lô cận hạn (FEFO)</p>
           </div>
         </div>
         <span className="text-xs font-mono font-semibold text-slate-700 bg-white px-2.5 py-1 rounded-lg border border-slate-200 shadow-2xs">
-          {orders.length} Đơn SO
+          {orders.length} Đơn Xuất
         </span>
       </div>
 
@@ -119,10 +119,10 @@ export const OutboundOrderTable: React.FC<OutboundOrderTableProps> = ({
                     <div className="w-40 space-y-1">
                       <div className="flex justify-between text-xs font-mono text-slate-600">
                         <span>
-                          {isPending && '1. Chờ duyệt'}
-                          {isAllocated && '2. Khóa FEFO'}
-                          {isPicking && '3. Nhặt hàng'}
-                          {isDispatched && '4. Xuất kho'}
+                          {isPending && '1. Chờ phân bổ'}
+                          {isAllocated && '2. Đã giữ hàng'}
+                          {isPicking && '3. Đang lấy hàng'}
+                          {isDispatched && '4. Đã xuất xưởng'}
                         </span>
                         <span className="font-semibold text-amber-700">{progressPercent}%</span>
                       </div>
@@ -137,23 +137,23 @@ export const OutboundOrderTable: React.FC<OutboundOrderTableProps> = ({
                   </td>
                   <td className="py-3.5 px-4 font-mono text-xs">
                     {isPending && (
-                      <span className="inline-flex items-center gap-1.5 text-amber-700 bg-amber-50 px-2.5 py-1 rounded-lg border border-amber-200 font-semibold">
-                        <Clock className="w-3.5 h-3.5 text-amber-600" /> PENDING
+                      <span className="inline-flex items-center gap-1.5 text-amber-700 bg-amber-50 px-2.5 py-1 rounded-lg border border-amber-200 font-semibold" title="Đơn mới, chưa giữ chỗ tồn kho">
+                        <Clock className="w-3.5 h-3.5 text-amber-600" /> CHỜ PHÂN BỔ
                       </span>
                     )}
                     {isAllocated && (
-                      <span className="inline-flex items-center gap-1.5 text-indigo-700 bg-indigo-50 px-2.5 py-1 rounded-lg border border-indigo-200 font-semibold">
-                        <Lock className="w-3.5 h-3.5 text-indigo-600" /> FEFO LOCKED
+                      <span className="inline-flex items-center gap-1.5 text-indigo-700 bg-indigo-50 px-2.5 py-1 rounded-lg border border-indigo-200 font-semibold" title="Đã khóa giữ đúng lô cận date cho đơn này">
+                        <Lock className="w-3.5 h-3.5 text-indigo-600" /> ĐÃ GIỮ HÀNG
                       </span>
                     )}
                     {isPicking && (
-                      <span className="inline-flex items-center gap-1.5 text-blue-700 bg-blue-50 px-2.5 py-1 rounded-lg border border-blue-200 font-semibold">
-                        <ShieldCheck className="w-3.5 h-3.5 text-blue-600" /> PICKING
+                      <span className="inline-flex items-center gap-1.5 text-blue-700 bg-blue-50 px-2.5 py-1 rounded-lg border border-blue-200 font-semibold" title="Thủ kho đang đi nhặt hàng theo lộ trình">
+                        <ShieldCheck className="w-3.5 h-3.5 text-blue-600" /> ĐANG LẤY HÀNG
                       </span>
                     )}
                     {isDispatched && (
-                      <span className="inline-flex items-center gap-1.5 text-emerald-700 bg-emerald-50 px-2.5 py-1 rounded-lg border border-emerald-200 font-semibold">
-                        <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" /> DISPATCHED
+                      <span className="inline-flex items-center gap-1.5 text-emerald-700 bg-emerald-50 px-2.5 py-1 rounded-lg border border-emerald-200 font-semibold" title="Xe tải đã bốc hàng rời kho">
+                        <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" /> ĐÃ XUẤT XƯỞNG
                       </span>
                     )}
                   </td>
@@ -163,15 +163,17 @@ export const OutboundOrderTable: React.FC<OutboundOrderTableProps> = ({
                         <button
                           onClick={() => onAllocateAndLock(order.id)}
                           className="px-2.5 py-1.5 bg-amber-50 hover:bg-amber-100 text-amber-800 border border-amber-200 rounded-lg text-xs font-semibold transition-colors flex items-center gap-1 cursor-pointer"
+                          title="Tự động tìm lô cận date và khóa giữ tồn kho"
                         >
                           <Lock className="w-3.5 h-3.5 text-amber-700" />
-                          <span>Khóa FEFO</span>
+                          <span>Phân Bổ Lô</span>
                         </button>
                       )}
                       {(isAllocated || isPicking) && (
                         <button
                           onClick={() => onDispatchOrder(order.id)}
                           className="px-2.5 py-1.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-200 rounded-lg text-xs font-semibold transition-colors flex items-center gap-1 cursor-pointer"
+                          title="Bàn giao xe tải và chính thức trừ tồn kho"
                         >
                           <Truck className="w-3.5 h-3.5 text-emerald-600" />
                           <span>Xuất Kho</span>
@@ -181,6 +183,7 @@ export const OutboundOrderTable: React.FC<OutboundOrderTableProps> = ({
                         <button
                           onClick={() => onOpenPickPath(order)}
                           className="inline-flex items-center gap-1 px-2.5 py-1.5 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200 rounded-lg text-xs font-semibold transition-colors cursor-pointer shadow-2xs"
+                          title="Xem bản đồ hướng dẫn đường đi ngắn nhất trong kho"
                         >
                           <Navigation className="w-3.5 h-3.5 text-indigo-600" />
                           <span>Lộ Trình</span>
@@ -189,9 +192,10 @@ export const OutboundOrderTable: React.FC<OutboundOrderTableProps> = ({
                       <button
                         onClick={() => onSelectOrder(order)}
                         className="inline-flex items-center gap-1 px-2.5 py-1.5 bg-white hover:bg-slate-100 text-slate-700 border border-slate-200 rounded-lg text-xs font-semibold transition-colors cursor-pointer shadow-2xs"
+                        title="Xem danh sách chi tiết các mặt hàng cần lấy"
                       >
                         <Eye className="w-3.5 h-3.5 text-slate-500" />
-                        <span>Pick List</span>
+                        <span>Phiếu Nhặt</span>
                       </button>
                     </div>
                   </td>

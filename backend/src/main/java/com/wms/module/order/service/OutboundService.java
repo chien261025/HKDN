@@ -287,6 +287,13 @@ public class OutboundService {
 
                         qtyToDeduct -= deduct;
                     }
+
+                    if (qtyToDeduct > 0) {
+                        throw new BusinessException(ErrorCode.INSUFFICIENT_STOCK,
+                                String.format("Không đủ hàng khả dụng trong kho để xuất đơn %s! Sản phẩm ID %d còn thiếu %d cái",
+                                        order.getOrderCode(), item.getProductId(), qtyToDeduct));
+                    }
+
                     item.setAllocatedQty(item.getRequestedQty());
                     item.setPickedQty(item.getRequestedQty());
                     item.setStatus("SHIPPED");

@@ -145,9 +145,9 @@ export const CreateOutboundModal: React.FC<CreateOutboundModalProps> = ({
                 onChange={(e) => setPriority(e.target.value as any)}
                 className="w-full p-2.5 rounded-xl bg-white border border-slate-300 text-amber-800 font-bold focus:outline-none focus:border-indigo-600 focus:ring-2 focus:ring-indigo-100"
               >
-                <option value="NORMAL">Bình Thường (NORMAL)</option>
-                <option value="HIGH">Ưu Tiên Cao (HIGH)</option>
-                <option value="URGENT">Hỏa Tốc (URGENT)</option>
+                <option value="NORMAL">Bình Thường</option>
+                <option value="HIGH">Ưu Tiên Cao</option>
+                <option value="URGENT">Hỏa Tốc</option>
               </select>
             </div>
           </div>
@@ -251,7 +251,7 @@ export const CreateOutboundModal: React.FC<CreateOutboundModalProps> = ({
               type="submit"
               className="flex-1 py-3 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold shadow-md shadow-indigo-200 cursor-pointer transition-all"
             >
-              Tạo Đơn & Phân Bổ FEFO
+              Tạo Đơn Xuất Kho
             </button>
           </div>
         </form>

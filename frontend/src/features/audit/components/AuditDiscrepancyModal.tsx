@@ -39,8 +39,8 @@ export const AuditDiscrepancyModal: React.FC<AuditDiscrepancyModalProps> = ({
             <div>
               <div className="flex items-center gap-2.5">
                 <h3 className="font-bold text-base text-slate-900">Đối Soát Kiểm Kê & Bút Toán Cân Đối: {session.auditCode}</h3>
-                <span className="text-xs font-mono font-bold px-2.5 py-0.5 rounded bg-emerald-50 text-emerald-700 border border-emerald-200">
-                  {session.status}
+                <span className="text-xs font-bold px-2.5 py-0.5 rounded bg-emerald-50 text-emerald-700 border border-emerald-200">
+                  {session.status === 'RECONCILED' ? 'ĐÃ CÂN ĐỐI' : session.status === 'PENDING_REVIEW' ? 'CHỜ DUYỆT' : 'ĐANG ĐẾM'}
                 </span>
               </div>
               <p className="text-xs text-slate-500 mt-0.5">{session.title} • Phạm vi: {session.scope}</p>

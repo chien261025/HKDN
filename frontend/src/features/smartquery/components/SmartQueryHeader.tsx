@@ -11,23 +11,20 @@ export const SmartQueryHeader: React.FC<SmartQueryHeaderProps> = ({
   messageCount,
 }) => {
   return (
-    <div className="bg-white rounded-xl p-4 sm:p-5 border border-slate-200 shadow-xs flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+    <div className="bg-white rounded-2xl p-5 sm:p-6 border border-slate-200/90 shadow-sm flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
       {/* Title & Status */}
-      <div className="flex items-center gap-3.5">
-        <div className="w-10 h-10 rounded-lg bg-indigo-600 flex items-center justify-center text-white shadow-xs flex-shrink-0">
-          <Search className="w-5 h-5 text-white" />
+      <div className="flex items-center gap-4">
+        <div className="w-12 h-12 rounded-xl bg-blue-600 flex items-center justify-center text-white shadow-md shadow-blue-200 ring-4 ring-blue-50 flex-shrink-0">
+          <Search className="w-6 h-6 text-white" />
         </div>
         <div>
           <div className="flex items-center gap-2 flex-wrap">
-            <h1 className="text-base sm:text-lg font-bold text-slate-900 tracking-tight">
+            <h1 className="text-xl sm:text-2xl font-bold text-slate-900 tracking-tight">
               Truy Vấn Dữ Liệu Tự Động
             </h1>
-            {/* <span className="inline-flex items-center gap-1 text-[11px] font-medium bg-emerald-50 text-emerald-700 px-2.5 py-0.5 rounded-md border border-emerald-200">
-                <ShieldCheck className="w-3 h-3 text-emerald-600" /> Read-Only Sandbox
-              </span> */}
           </div>
-          <p className="text-xs text-slate-500 mt-0.5">
-            Tra cứu thông tin kho vận nhanh qua câu hỏi tự nhiên • Kiểm soát an toàn cú pháp qua bộ phân tích AST
+          <p className="text-xs sm:text-sm text-slate-500 font-normal mt-0.5">
+            Tra cứu thông tin kho vận nhanh qua câu hỏi tự nhiên • Kiểm soát an toàn cú pháp AST
           </p>
         </div>
       </div>
