@@ -30,7 +30,7 @@ export const RackElevationGrid: React.FC<RackElevationGridProps> = ({
             {/* Tiêu đề Dãy */}
             <div className="flex items-center justify-between pb-3 border-b border-slate-200">
               <div className="flex items-center gap-2.5">
-                <span className="w-2.5 h-2.5 rounded-full bg-indigo-600"></span>
+                <span className="w-2.5 h-2.5 rounded-full bg-blue-600"></span>
                 <h2 className="text-sm font-bold text-slate-900 uppercase tracking-wider font-mono">
                   DÃY HÀNG: {aisle}
                 </h2>
@@ -55,7 +55,7 @@ export const RackElevationGrid: React.FC<RackElevationGridProps> = ({
                     {/* Header Khung Kệ */}
                     <div className="flex items-center justify-between text-xs font-mono">
                       <span className="text-slate-700 font-bold flex items-center gap-2">
-                        <span className="text-indigo-600 font-black">KỆ {rack}</span>
+                        <span className="text-blue-600 font-black">KỆ {rack}</span>
                         <span className="text-slate-300">•</span>
                         <span className="text-xs text-slate-500 font-medium">Khung Thép Chịu Lực</span>
                       </span>
@@ -99,14 +99,14 @@ export const RackElevationGrid: React.FC<RackElevationGridProps> = ({
                             onClick={() => onSelectBin(bin)}
                             className={`p-3.5 rounded-xl border text-left cursor-pointer transition-all ${
                               isSelected
-                                ? 'bg-indigo-50/70 border-indigo-500 ring-2 ring-indigo-500/20 shadow-sm'
+                                ? 'bg-blue-50/70 border-blue-500 ring-2 ring-blue-500/20 shadow-sm'
                                 : 'bg-white border-slate-200 hover:border-slate-300 hover:bg-slate-50/50 shadow-xs'
                             }`}
                           >
                             {/* Dòng 1: Barcode + Trạng thái */}
                             <div className="flex items-center justify-between text-xs font-mono">
                               <div className="flex items-center gap-2">
-                                <span className="font-bold text-indigo-700 bg-indigo-50 px-2.5 py-0.5 rounded border border-indigo-200 text-xs">
+                                <span className="font-bold text-blue-700 bg-blue-50 px-2.5 py-0.5 rounded border border-blue-200 text-xs">
                                   {bin.barcode}
                                 </span>
                                 <span className="text-xs text-slate-500 font-medium">

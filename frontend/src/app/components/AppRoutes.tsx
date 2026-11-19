@@ -10,6 +10,7 @@ import { InboundOrdersPage } from '../../features/inbound/pages/InboundOrdersPag
 import { OutboundOrdersPage } from '../../features/outbound/pages/OutboundOrdersPage';
 import { AuditManagementPage } from '../../features/audit/pages/AuditManagementPage';
 import { ProductsPage } from '../../features/products/pages/ProductsPage';
+import { WarehousesManagementPage } from '../../features/masterdata/pages/WarehousesManagementPage';
 import { UsersManagementPage } from '../../features/users/pages/UsersManagementPage';
 import { BarcodePrintingPage } from '../../features/labels/pages/BarcodePrintingPage';
 import { ProtectedRoute } from '../../features/auth/components/ProtectedRoute';
@@ -31,6 +32,7 @@ export const AppRoutes: React.FC<AppRoutesProps> = ({ onOpenScanner }) => {
         } 
       />
       <Route path="/products" element={<ProtectedRoute routePath="/products"><ProductsPage /></ProtectedRoute>} />
+      <Route path="/warehouses" element={<ProtectedRoute routePath="/warehouses"><WarehousesManagementPage /></ProtectedRoute>} />
       <Route path="/inbound" element={<ProtectedRoute routePath="/inbound"><InboundOrdersPage /></ProtectedRoute>} />
       <Route path="/outbound" element={<ProtectedRoute routePath="/outbound"><OutboundOrdersPage /></ProtectedRoute>} />
       <Route path="/layout" element={<ProtectedRoute routePath="/layout"><LocationLayoutPage /></ProtectedRoute>} />

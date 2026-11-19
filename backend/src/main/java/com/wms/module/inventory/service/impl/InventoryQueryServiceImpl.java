@@ -15,9 +15,11 @@ import com.wms.module.inventory.service.InventoryQueryService;
 import com.wms.module.masterdata.entity.Category;
 import com.wms.module.masterdata.entity.Location;
 import com.wms.module.masterdata.entity.Product;
+import com.wms.module.masterdata.entity.Warehouse;
 import com.wms.module.masterdata.repository.CategoryRepository;
 import com.wms.module.masterdata.repository.LocationRepository;
 import com.wms.module.masterdata.repository.ProductRepository;
+import com.wms.module.masterdata.repository.WarehouseRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -36,6 +38,7 @@ public class InventoryQueryServiceImpl implements InventoryQueryService {
     private final LocationRepository locationRepository;
     private final ProductBatchRepository productBatchRepository;
     private final CategoryRepository categoryRepository;
+    private final WarehouseRepository warehouseRepository;
     private final UserRepository userRepository;
 
     @Override
@@ -54,6 +57,8 @@ public class InventoryQueryServiceImpl implements InventoryQueryService {
                 .collect(Collectors.toMap(ProductBatch::getId, b -> b, (a, b) -> a));
         Map<Long, Category> categoryMap = categoryRepository.findAll().stream()
                 .collect(Collectors.toMap(Category::getId, c -> c, (a, b) -> a));
+        Map<Long, Warehouse> warehouseMap = warehouseRepository.findAll().stream()
+                .collect(Collectors.toMap(Warehouse::getId, w -> w, (a, b) -> a));
 
         LocalDate soonThreshold = LocalDate.now().plusDays(30);
 
@@ -77,6 +82,10 @@ public class InventoryQueryServiceImpl implements InventoryQueryService {
                 }
             }
 
+            Long whId = loc != null && loc.getWarehouseId() != null ? loc.getWarehouseId() : 1L;
+            Warehouse wh = warehouseMap.get(whId);
+            String whName = wh != null ? wh.getName() : "Kho Tổng Tân Bình";
+
             return InventoryBalanceResponse.builder()
                     .id(inv.getId())
                     .productId(inv.getProductId())
@@ -85,6 +94,8 @@ public class InventoryQueryServiceImpl implements InventoryQueryService {
                     .productName(prod != null ? prod.getName() : "Sản Phẩm #" + inv.getProductId())
                     .categoryName(cat != null ? cat.getName() : "Hàng tiêu dùng")
                     .unit(prod != null ? prod.getUnit() : "Cái")
+                    .warehouseId(whId)
+                    .warehouseName(whName)
                     .locationId(inv.getLocationId())
                     .locationBarcode(loc != null ? loc.getBinBarcode() : "LOC-" + inv.getLocationId())
                     .zoneCode(loc != null ? loc.getZoneCode() : "")
