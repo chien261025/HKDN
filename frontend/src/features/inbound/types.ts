@@ -13,6 +13,7 @@ export interface InboundOrderItem {
   status?: 'PENDING' | 'RECEIVED' | 'COMPLETED';
   batchNumber?: string;
   expiryDate?: string;
+  unitPrice?: number;
   putawayLocation?: string;
   unit: string;
 }
@@ -26,6 +27,7 @@ export interface InboundOrder {
   createdAt: string;
   status: InboundStatus;
   items: InboundOrderItem[];
+  totalValue?: number;
   notes?: string;
   approvedBy?: string;
 }

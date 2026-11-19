@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { X, Building2, Calendar, CheckCircle2, Clock, Truck, Layers, Printer, MapPin } from 'lucide-react';
+import { X, Building2, Calendar, CheckCircle2, Clock, Truck, Layers, Printer, MapPin, DollarSign, ShieldCheck } from 'lucide-react';
 import { InboundOrder } from '../types';
 import { Pagination } from '../../../components/common';
 
@@ -24,9 +24,13 @@ export const InboundDetailModal: React.FC<InboundDetailModalProps> = ({ order, o
   const isReceived = order.status === 'RECEIVED';
   const isStocked = order.status === 'STOCKED';
 
+  const totalQuantity = order.items.reduce((sum, item) => sum + (item.expectedQty || 0), 0);
+  const totalReceived = order.items.reduce((sum, item) => sum + (item.receivedQty || 0), 0);
+  const totalOrderValue = order.totalValue || order.items.reduce((sum, item) => sum + (item.expectedQty * (item.unitPrice || 0)), 0);
+
   return (
     <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4 z-50 animate-in fade-in duration-200">
-      <div className="bg-white rounded-2xl max-w-3xl w-full border border-slate-200 shadow-2xl overflow-hidden text-slate-900 flex flex-col max-h-[90vh]">
+      <div className="bg-white rounded-2xl max-w-4xl w-full border border-slate-200 shadow-2xl overflow-hidden text-slate-900 flex flex-col max-h-[90vh]">
         {/* Modal Header */}
         <div className="p-5 border-b border-slate-200 flex items-center justify-between bg-slate-50">
           <div className="flex items-center gap-3">
@@ -53,6 +57,34 @@ export const InboundDetailModal: React.FC<InboundDetailModalProps> = ({ order, o
 
         {/* Modal Body */}
         <div className="p-6 space-y-5 overflow-y-auto text-sm">
+          {/* Quick Metrics Bar */}
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+            <div className="p-3 bg-slate-50 border border-slate-200 rounded-xl">
+              <span className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider block">Tổng Giá Trị PO</span>
+              <div className="font-black text-indigo-700 text-base mt-0.5 font-mono">
+                {totalOrderValue.toLocaleString('vi-VN')} đ
+              </div>
+            </div>
+            <div className="p-3 bg-slate-50 border border-slate-200 rounded-xl">
+              <span className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider block">Quy Mô Hàng</span>
+              <div className="font-black text-slate-800 text-base mt-0.5 font-mono">
+                {order.items.length} SKU ({totalQuantity} sp)
+              </div>
+            </div>
+            <div className="p-3 bg-slate-50 border border-slate-200 rounded-xl">
+              <span className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider block">Thực Nhận / Cất Kệ</span>
+              <div className="font-black text-emerald-700 text-base mt-0.5 font-mono">
+                {totalReceived} / {totalQuantity} sp
+              </div>
+            </div>
+            <div className="p-3 bg-slate-50 border border-slate-200 rounded-xl">
+              <span className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider block">Hạn Giao Hàng</span>
+              <div className="font-bold text-slate-800 text-sm mt-1 font-mono">
+                {order.expectedDeliveryDate}
+              </div>
+            </div>
+          </div>
+
           {/* Timeline 3 bước */}
           <div className="p-4 rounded-xl bg-slate-50 border border-slate-200">
             <div className="text-xs font-bold text-slate-700 uppercase font-mono mb-3">
@@ -66,7 +98,7 @@ export const InboundDetailModal: React.FC<InboundDetailModalProps> = ({ order, o
                   <CheckCircle2 className="w-4 h-4 text-emerald-600" />
                   <span>1. Phát Hành PO</span>
                 </div>
-                <div className="text-xs text-slate-600 font-mono">Duyệt bởi Trưởng kho</div>
+                <div className="text-xs text-slate-600 font-mono">Đơn giá mua & Đặt hàng</div>
               </div>
 
               {/* Bước 2 */}
@@ -81,7 +113,7 @@ export const InboundDetailModal: React.FC<InboundDetailModalProps> = ({ order, o
                   <Truck className="w-4 h-4 text-indigo-600" />
                   <span>2. Khu Đệm (Staging)</span>
                 </div>
-                <div className="text-xs text-slate-600 font-mono">Quét mã kiểm đếm thực tế</div>
+                <div className="text-xs text-slate-600 font-mono">Quét mã kiểm đếm & tạo lô</div>
               </div>
 
               {/* Bước 3 */}
@@ -96,15 +128,23 @@ export const InboundDetailModal: React.FC<InboundDetailModalProps> = ({ order, o
                   <Layers className="w-4 h-4 text-emerald-600" />
                   <span>3. Cất Lên Kệ (Put-away)</span>
                 </div>
-                <div className="text-xs text-slate-600 font-mono">Theo dõi tải trọng an toàn</div>
+                <div className="text-xs text-slate-600 font-mono">Ghi sổ cái Stock Ledger</div>
               </div>
+            </div>
+          </div>
+
+          {/* Quy tắc WMS Box */}
+          <div className="p-3 rounded-xl bg-blue-50/70 border border-blue-200 flex items-start gap-2.5 text-xs text-blue-900 leading-relaxed">
+            <ShieldCheck className="w-4 h-4 text-blue-600 shrink-0 mt-0.5" />
+            <div>
+              <strong className="font-bold">Nguyên tắc cốt lõi:</strong> Hệ thống <strong>không cộng tồn kho</strong> khi mới lập PO. Tồn kho khả dụng On-hand và Sổ cái giao dịch (Stock Ledger) chỉ được ghi nhận bất biến khi nhân viên kho hoàn tất bước <strong>Cất Lên Kệ (Put-away)</strong>.
             </div>
           </div>
 
           {/* Bảng danh sách mặt hàng */}
           <div className="space-y-2.5">
             <div className="flex items-center justify-between">
-              <span className="font-bold text-slate-800 text-sm">Danh Sách Hàng Hóa Thực Nhận:</span>
+              <span className="font-bold text-slate-800 text-sm">Danh Sách Mặt Hàng Chi Tiết:</span>
               <span className="text-xs font-mono font-semibold text-slate-600">
                 Giao dự kiến: {order.expectedDeliveryDate}
               </span>
@@ -116,43 +156,57 @@ export const InboundDetailModal: React.FC<InboundDetailModalProps> = ({ order, o
                   <tr>
                     <th className="py-3 px-4">Mặt Hàng (SKU)</th>
                     <th className="py-3 px-4">Lô & HSD</th>
+                    <th className="py-3 px-4 text-right">Đơn Giá Mua</th>
                     <th className="py-3 px-4 text-center">Đặt / Nhận</th>
+                    <th className="py-3 px-4 text-right">Thành Tiền</th>
                     <th className="py-3 px-4">Vị Trí Cất Kệ</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-200 text-slate-800">
-                  {visibleItems.map((item) => (
-                    <tr key={item.id} className="hover:bg-slate-50">
-                      <td className="py-3 px-4">
-                        <div className="font-sans font-bold text-slate-900 text-sm">{item.productName}</div>
-                        <div className="text-xs text-slate-600 font-mono font-medium mt-0.5">{item.sku}</div>
-                      </td>
+                  {visibleItems.map((item) => {
+                    const price = item.unitPrice || 0;
+                    const subtotal = price * item.expectedQty;
+                    return (
+                      <tr key={item.id} className="hover:bg-slate-50">
+                        <td className="py-3 px-4">
+                          <div className="font-sans font-bold text-slate-900 text-sm">{item.productName}</div>
+                          <div className="text-xs text-slate-600 font-mono font-medium mt-0.5">{item.sku}</div>
+                        </td>
 
-                      <td className="py-3 px-4 text-xs font-mono">
-                        <div className="text-slate-900">Lô: <strong className="text-indigo-700 font-bold">{item.batchNumber || 'Tự động gán'}</strong></div>
-                        <div className="text-amber-800 font-semibold mt-0.5">HSD: {item.expiryDate || 'Theo bao bì'}</div>
-                      </td>
+                        <td className="py-3 px-4 text-xs font-mono">
+                          <div className="text-slate-900">Lô: <strong className="text-indigo-700 font-bold">{item.batchNumber || 'Tự động gán'}</strong></div>
+                          <div className="text-amber-800 font-semibold mt-0.5">HSD: {item.expiryDate || 'Theo bao bì'}</div>
+                        </td>
 
-                      <td className="py-3 px-4 text-center font-mono">
-                        <div className="text-sm font-black text-slate-900">
-                          <span className="text-indigo-700">{item.receivedQty}</span> / {item.expectedQty} {item.unit}
-                        </div>
-                      </td>
+                        <td className="py-3 px-4 text-right text-xs font-mono font-bold text-slate-700">
+                          {price > 0 ? `${price.toLocaleString('vi-VN')} đ` : '-'}
+                        </td>
 
-                      <td className="py-3 px-4 text-xs font-mono">
-                        {item.putawayLocation ? (
-                          <span className="flex items-center gap-1 text-emerald-800 font-bold bg-emerald-50 px-2 py-0.5 rounded border border-emerald-300">
-                            <MapPin className="w-3.5 h-3.5 text-emerald-600" />
-                            {item.putawayLocation}
-                          </span>
-                        ) : (
-                          <span className="text-slate-500 italic font-sans text-xs">
-                            {isStocked ? 'ZA-A01-R01-S01-B01' : 'Chờ cất hàng...'}
-                          </span>
-                        )}
-                      </td>
-                    </tr>
-                  ))}
+                        <td className="py-3 px-4 text-center font-mono">
+                          <div className="text-sm font-black text-slate-900">
+                            <span className="text-indigo-700">{item.receivedQty}</span> / {item.expectedQty} {item.unit}
+                          </div>
+                        </td>
+
+                        <td className="py-3 px-4 text-right text-xs font-mono font-bold text-indigo-700">
+                          {subtotal > 0 ? `${subtotal.toLocaleString('vi-VN')} đ` : '-'}
+                        </td>
+
+                        <td className="py-3 px-4 text-xs font-mono">
+                          {item.putawayLocation ? (
+                            <span className="flex items-center gap-1 text-emerald-800 font-bold bg-emerald-50 px-2 py-0.5 rounded border border-emerald-300">
+                              <MapPin className="w-3.5 h-3.5 text-emerald-600" />
+                              {item.putawayLocation}
+                            </span>
+                          ) : (
+                            <span className="text-slate-500 italic font-sans text-xs">
+                              {isStocked ? 'ZA-A01-R01-S01-B01' : 'Chờ cất hàng...'}
+                            </span>
+                          )}
+                        </td>
+                      </tr>
+                    );
+                  })}
                 </tbody>
               </table>
               <Pagination
