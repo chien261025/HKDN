@@ -48,7 +48,8 @@ services:
 
   # 3. Lưu trữ đối tượng MinIO (Tương thích chuẩn AWS S3)
   wms-minio:
-    image: minio/minio:latest
+    # MinIO-compatible community fork; upstream public images are no longer available.
+    image: docker.io/pgsty/silo:RELEASE.2026-11-12T00-00-00Z
     container_name: wms-minio
     restart: always
     command: server /data --console-address ":9001"

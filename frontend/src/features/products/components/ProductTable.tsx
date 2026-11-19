@@ -137,7 +137,7 @@ export const ProductTable: React.FC<ProductTableProps> = ({
               <th className="py-3 px-4">Tên Sản Phẩm</th>
               <th className="py-3 px-4">Phân Loại & Vùng</th>
               <th className="py-3 px-4">Nhà Cung Cấp</th>
-              <th className="py-3 px-4 text-center">Tồn / Định Mức</th>
+              <th className="py-3 px-4 text-center">Tồn Cuối / Định Mức</th>
               <th className="py-3 px-4">Quy Cách</th>
               <th className="py-3 px-4 text-right">Thao Tác</th>
             </tr>

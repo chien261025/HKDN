@@ -101,7 +101,7 @@ export const ProductMobileCards: React.FC<ProductMobileCardsProps> = ({
             {/* Stock Progress & Benchmarks */}
             <div className="pt-2 border-t border-slate-100">
               <div className="flex items-center justify-between">
-                <span className="text-xs text-slate-500">Tồn kho khả dụng:</span>
+                <span className="text-xs text-slate-500">Tồn cuối trong kho:</span>
                 <span
                   className={`text-sm font-bold font-mono ${
                     isUnderSafety

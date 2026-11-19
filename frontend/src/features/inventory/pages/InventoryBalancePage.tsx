@@ -7,20 +7,29 @@ import { StockTransferHistoryTable } from '../components/balance/StockTransferHi
 import { SafetyStockAlertsPanel } from '../components/SafetyStockAlertsPanel';
 import { StockTransferModal } from '../components/StockTransferModal';
 import { StockLedgerModal, LedgerEntryData } from '../components/StockLedgerModal';
+import { RecentLedgerCard } from '../components/outbound/RecentLedgerCard';
 import { inventoryService, SafetyStockAlert } from '../services/inventoryService';
+import { OutboundStock } from '../../outbound/types';
+import { WarehouseClosingBalances } from '../components/WarehouseClosingBalances';
+import { PRIMARY_WAREHOUSE } from '../../../config/warehouse';
 
 export const InventoryBalancePage: React.FC = () => {
-  const [activeTab, setActiveTab] = useState<'outbound' | 'balance' | 'transfer' | 'alerts'>('balance');
+  const [activeTab, setActiveTab] = useState<'outbound' | 'balance' | 'ledger' | 'transfer' | 'alerts'>('balance');
   const [, startTransition] = useTransition();
 
-  const handleTabChange = (tab: 'outbound' | 'balance' | 'transfer' | 'alerts') => {
+  const handleTabChange = (tab: 'outbound' | 'balance' | 'ledger' | 'transfer' | 'alerts') => {
+    if (tab === 'ledger') inventoryService.getRecentLedger().then(data => setLedgers(data.filter(l => l.warehouseId === PRIMARY_WAREHOUSE.id))).catch(() =>
+      setNotification({ type: 'error', message: 'Không tải được sổ cái từ backend.' }));
+    if (tab === 'balance' || tab === 'ledger') loadStockData();
     startTransition(() => {
       setActiveTab(tab);
     });
   };
   const [stocks, setStocks] = useState<StockItem[]>([]);
+  const [closingBalances, setClosingBalances] = useState<OutboundStock[]>([]);
   const [transfers, setTransfers] = useState<StockTransferDto[]>([]);
   const [alerts, setAlerts] = useState<SafetyStockAlert[]>([]);
+  const [ledgers, setLedgers] = useState<LedgerEntryData[]>([]);
   const [loadingTransfers, setLoadingTransfers] = useState(false);
   const [notification, setNotification] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
 
@@ -33,7 +42,11 @@ export const InventoryBalancePage: React.FC = () => {
   const [showLedgerModal, setShowLedgerModal] = useState(false);
 
   const loadStockData = () => {
-    inventoryService.getInventoryBalances().then(setStocks);
+    Promise.all([inventoryService.getInventoryBalances(), inventoryService.getClosingBalances()]).then(([data, balances]) => {
+      setStocks(data.filter(s => s.warehouseId === PRIMARY_WAREHOUSE.id && s.onHandQty > 0));
+      setClosingBalances(balances);
+    }).catch(() =>
+      setNotification({ type: 'error', message: 'Không tải được tồn kho từ backend.' }));
   };
 
   const loadTransfers = async () => {
@@ -50,6 +63,8 @@ export const InventoryBalancePage: React.FC = () => {
     loadStockData();
     loadTransfers();
     inventoryService.getSafetyStockAlerts().then(setAlerts);
+    inventoryService.getRecentLedger().then(data => setLedgers(data.filter(l => l.warehouseId === PRIMARY_WAREHOUSE.id))).catch(() =>
+      setNotification({ type: 'error', message: 'Không tải được sổ cái từ backend.' }));
   }, []);
 
   // Xử lý giữ hàng từ bảng tồn kho (Tab 2)
@@ -62,21 +77,12 @@ export const InventoryBalancePage: React.FC = () => {
       return;
     }
 
-    await inventoryService.reserveStock(item.productId, item.locationId || 5, item.batchId || 1, qty);
-
-    setStocks((prev) =>
-      prev.map((s) => {
-        if (s.id === item.id) {
-          const newReserved = s.reservedQty + qty;
-          return {
-            ...s,
-            reservedQty: newReserved,
-            availableQty: s.onHandQty - newReserved,
-          };
-        }
-        return s;
-      })
-    );
+    const reserved = await inventoryService.reserveStock(item.productId, item.locationId!, item.batchId!, qty);
+    if (!reserved) {
+      setNotification({ type: 'error', message: 'Không giữ được hàng. Vui lòng kiểm tra tồn kho và thử lại.' });
+      return;
+    }
+    loadStockData();
 
     setNotification({
       type: 'success',
@@ -101,26 +107,21 @@ export const InventoryBalancePage: React.FC = () => {
   };
 
   // Xem Sổ Cái từ bảng tồn kho thực tế (Tab 2)
-  const handleViewLedgerFromTable = (item: StockItem) => {
-    const entry: LedgerEntryData = {
-      id: `LEDGER-BAL-${item.id}-${Date.now().toString().slice(-4)}`,
-      transactionType: 'INBOUND',
-      referenceCode: `IN-LOT-${item.batchNumber}`,
-      locationBarcode: item.locationBarcode,
-      productSku: item.sku,
-      productName: item.name,
-      batchNumber: item.batchNumber,
-      expiryDate: item.expiryDate,
-      qtyChange: item.onHandQty,
-      balanceBefore: 0,
-      balanceAfter: item.onHandQty,
-      performedBy: 'Hệ Thống',
-      notes: `Nhập lưu kho và xếp vào ô kệ: ${item.locationBarcode}`,
-      timestamp: new Date().toLocaleTimeString('vi-VN') + ' - ' + new Date().toLocaleDateString('vi-VN'),
-      hashSignature: `0x${Array.from({ length: 32 }, () => Math.floor(Math.random() * 16).toString(16)).join('')}`,
-    };
+  const handleViewLedgerFromTable = async (item: StockItem) => {
+    try {
+    const currentLedgers = await inventoryService.getRecentLedger();
+    setLedgers(currentLedgers.filter(l => l.warehouseId === PRIMARY_WAREHOUSE.id));
+    const entry = currentLedgers.find((ledger) => ledger.productSku === item.sku
+      && ledger.locationBarcode === item.locationBarcode && ledger.batchNumber === item.batchNumber);
+    if (!entry) {
+      setNotification({ type: 'error', message: 'Không tìm thấy bút toán sổ cái gần đây cho dòng tồn kho này.' });
+      return;
+    }
     setActiveLedgerEntry(entry);
     setShowLedgerModal(true);
+    } catch {
+      setNotification({ type: 'error', message: 'Không tải được sổ cái từ backend.' });
+    }
   };
 
   return (
@@ -156,6 +157,13 @@ export const InventoryBalancePage: React.FC = () => {
           <span className="px-1.5 py-0.2 rounded-full text-2xs bg-slate-100 text-slate-600 font-mono">
             {stocks.length}
           </span>
+        </button>
+
+        <button
+          onClick={() => handleTabChange('ledger')}
+          className={`flex items-center gap-2 px-4 py-2.5 text-xs sm:text-sm font-semibold border-b-2 whitespace-nowrap ${activeTab === 'ledger' ? 'border-indigo-600 text-indigo-700' : 'border-transparent text-slate-600 hover:text-slate-900'}`}
+        >
+          <Clock className="w-4 h-4" /> Sổ Cái Nhập Xuất
         </button>
 
         <button
@@ -227,12 +235,16 @@ export const InventoryBalancePage: React.FC = () => {
       {/* Hiển thị Tab tương ứng với GPU-Accelerated Transition mượt mà */}
       <div key={activeTab} className="tab-panel-transition">
         {activeTab === 'balance' && (
-          <StockBalanceTable
-            stocks={stocks}
-            onReserveItem={handleReserveFromTable}
-            onViewLedger={handleViewLedgerFromTable}
-            onTransfer={handleOpenTransfer}
-          />
+          <div className="space-y-4">
+            <WarehouseClosingBalances balances={closingBalances} />
+            <h3 className="font-semibold text-slate-800">Chi tiết tồn cuối theo lô và ô kệ</h3>
+            <StockBalanceTable
+              stocks={stocks}
+              onReserveItem={handleReserveFromTable}
+              onViewLedger={handleViewLedgerFromTable}
+              onTransfer={handleOpenTransfer}
+            />
+          </div>
         )}
 
         {activeTab === 'transfer' && (
@@ -240,6 +252,14 @@ export const InventoryBalancePage: React.FC = () => {
             transfers={transfers}
             loading={loadingTransfers}
           />
+        )}
+
+        {activeTab === 'ledger' && (
+          <div className="space-y-4">
+            <WarehouseClosingBalances balances={closingBalances} />
+            <h3 className="font-semibold text-slate-800">Lịch sử biến động · Số dư tại thời điểm giao dịch</h3>
+            <RecentLedgerCard history={ledgers} onSelectEntry={(entry) => { setActiveLedgerEntry(entry); setShowLedgerModal(true); }} />
+          </div>
         )}
 
         {activeTab === 'outbound' && (

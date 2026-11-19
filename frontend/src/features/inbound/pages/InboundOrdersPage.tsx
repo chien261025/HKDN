@@ -10,69 +10,67 @@ export const InboundOrdersPage: React.FC = () => {
   const [orders, setOrders] = useState<InboundOrder[]>([]);
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [selectedOrder, setSelectedOrder] = useState<InboundOrder | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [busyOrderId, setBusyOrderId] = useState<string | null>(null);
 
   useEffect(() => {
-    inboundService.getInboundOrders().then(setOrders);
+    inboundService.getInboundOrders().then(setOrders).catch(() =>
+      setError('Không tải được đơn nhập từ backend.'));
   }, []);
 
   const handleCreateOrder = async (newOrder: InboundOrder) => {
-    const saved = await inboundService.createInboundOrder(newOrder);
-    setOrders((prev) => [saved, ...prev]);
+    try {
+      setError(null);
+      await inboundService.createInboundOrder(newOrder);
+      setOrders(await inboundService.getInboundOrders());
+    } catch (err: any) {
+      setError(err.response?.data?.message || err.message || 'Không thể tạo đơn nhập kho');
+      throw err;
+    }
   };
 
   const handleAdvanceStatus = async (orderId: string) => {
     const targetOrder = orders.find((o) => o.id === orderId);
-    if (!targetOrder) return;
+    if (!targetOrder || busyOrderId) return;
 
-    if (targetOrder.status === 'PENDING') {
-      await inboundService.receiveOrder(orderId);
-      setOrders((prev) =>
-        prev.map((order) => {
-          if (order.id !== orderId) return order;
-          return {
-            ...order,
-            status: 'RECEIVED',
-            items: order.items.map((it) => ({
-              ...it,
-              receivedQty: it.expectedQty,
-              batchNumber: `BATCH-${it.sku.slice(-4)}-${Date.now().toString().slice(-3)}`,
-              expiryDate: '2026-12-30',
-            })),
-          };
-        })
-      );
-    } else if (targetOrder.status === 'RECEIVED') {
-      const firstItem = targetOrder.items[0];
-      const prodId = firstItem?.sku?.includes('MILK') ? 1 : firstItem?.sku?.includes('SAMS') ? 2 : 3;
-      const targetLoc = prodId === 1 ? 5 : 1;
-
-      await inboundService.executePutaway({
-        orderId: Number(targetOrder.id),
-        productId: prodId,
-        locationId: targetLoc,
-        quantity: firstItem ? (firstItem.receivedQty || firstItem.expectedQty) : 10,
-        batchNumber: firstItem?.batchNumber,
-      });
-
-      setOrders((prev) =>
-        prev.map((order) => {
-          if (order.id !== orderId) return order;
-          return {
-            ...order,
-            status: 'STOCKED',
-            items: order.items.map((it) => ({
-              ...it,
-              stockedQty: it.receivedQty || it.expectedQty,
-              putawayLocation: targetLoc === 5 ? 'WH01-ZB-B01-R01-S01-B05' : 'WH01-ZA-A01-R01-S01-B01',
-            })),
-          };
-        })
-      );
+    setBusyOrderId(orderId);
+    setError(null);
+    try {
+      if (targetOrder.status === 'PENDING') {
+        await inboundService.receiveOrder(orderId);
+      } else if (targetOrder.status === 'RECEIVED') {
+        for (const item of targetOrder.items) {
+          if (item.productBatchId != null) continue;
+          if (!item.productId || !Number.isFinite(Number(item.id))) {
+            throw new Error(`Dòng hàng ${item.sku} thiếu mã sản phẩm hoặc mã dòng đơn`);
+          }
+          await inboundService.executePutaway({
+            orderId: Number(targetOrder.id),
+            orderItemId: Number(item.id),
+            productId: item.productId,
+            locationId: item.productId === 1 ? 5 : 1,
+            quantity: item.receivedQty || item.expectedQty,
+            batchNumber: item.batchNumber,
+            expiryDate: item.expiryDate || undefined,
+          });
+        }
+      }
+      setOrders(await inboundService.getInboundOrders());
+    } catch (err: any) {
+      setError(err.response?.data?.message || err.message || 'Không thể cập nhật đơn nhập kho');
+      try {
+        setOrders(await inboundService.getInboundOrders());
+      } catch {
+        // Keep the previous list if refreshing fails after a write error.
+      }
+    } finally {
+      setBusyOrderId(null);
     }
   };
 
   return (
     <div className="space-y-5 max-w-7xl mx-auto pb-8">
+      {error && <div role="alert" className="rounded-xl border border-red-200 bg-red-50 p-3 text-sm text-red-700">{error}</div>}
       {/* Header with Metrics */}
       <InboundHeader
         orders={orders}
@@ -82,6 +80,7 @@ export const InboundOrdersPage: React.FC = () => {
       {/* Orders Table */}
       <InboundOrderList
         orders={orders}
+        busyOrderId={busyOrderId}
         onSelectOrder={(order) => setSelectedOrder(order)}
         onAdvanceStatus={handleAdvanceStatus}
       />

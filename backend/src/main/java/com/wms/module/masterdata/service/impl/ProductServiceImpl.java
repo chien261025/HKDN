@@ -23,11 +23,19 @@ public class ProductServiceImpl implements ProductService {
 
     private final ProductRepository productRepository;
     private final SupplierRepository supplierRepository;
+    private final com.wms.module.inventory.service.WarehouseStockService warehouseStockService;
 
     @Override
     @Transactional(readOnly = true)
     public List<Product> getAllProducts() {
-        return productRepository.findAllByDeletedAtIsNullOrderByCreatedAtDesc();
+        java.util.Map<Long, Integer> closing = warehouseStockService.getClosingBalances(true).stream()
+                .filter(stock -> Long.valueOf(1L).equals(stock.getWarehouseId()))
+                .collect(java.util.stream.Collectors.toMap(
+                        com.wms.module.order.dto.response.OutboundStockResponse::getProductId,
+                        com.wms.module.order.dto.response.OutboundStockResponse::getOnHandQty));
+        List<Product> products = productRepository.findAllByDeletedAtIsNullOrderByCreatedAtDesc();
+        products.forEach(product -> product.setCurrentStock(closing.getOrDefault(product.getId(), 0)));
+        return products;
     }
 
     @Override
@@ -127,7 +135,7 @@ public class ProductServiceImpl implements ProductService {
 
     private void validateSupplierForNewProduct(Long supplierId) {
         if (supplierId == null) {
-            return;
+            throw new BusinessException(ErrorCode.BAD_REQUEST, "Sản phẩm phải thuộc một nhà cung cấp");
         }
         Supplier supplier = supplierRepository.findById(supplierId)
                 .orElseThrow(() -> new BusinessException(ErrorCode.BAD_REQUEST, "Nhà cung cấp không tồn tại!"));

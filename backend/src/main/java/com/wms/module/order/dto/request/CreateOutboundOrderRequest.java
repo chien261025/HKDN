@@ -23,6 +23,9 @@ public class CreateOutboundOrderRequest {
     private Long warehouseId;
 
     private String customerName;
+    @NotNull(message = "Vui lòng chọn đối tác nhận hàng của kho")
+    @Positive(message = "Đối tác nhận hàng không hợp lệ")
+    private Long partnerId;
 
     private String notes;
 

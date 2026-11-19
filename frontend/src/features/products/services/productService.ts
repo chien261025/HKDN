@@ -1,28 +1,37 @@
 import { apiClient } from '../../../services/api';
 import { CategoryItem, ProductItem, SupplierItem } from '../types';
+import { inventoryService } from '../../inventory/services/inventoryService';
+import { PRIMARY_WAREHOUSE } from '../../../config/warehouse';
 
 export const productService = {
-  async getProducts(): Promise<ProductItem[]> {
+  async getProducts(stockedOnly = false): Promise<ProductItem[]> {
     try {
-      const res = await apiClient.get('/masterdata/products');
+      const [res, closingBalances, supplierResponse] = await Promise.all([
+        apiClient.get('/masterdata/products'), inventoryService.getClosingBalances(),
+        apiClient.get('/masterdata/suppliers'),
+      ]);
+      const suppliers = new Map<number, { code: string; name: string }>((supplierResponse.data.data || [])
+        .map((s: any) => [Number(s.id), { code: s.code, name: s.name }]));
+      const stockByProduct = new Map(closingBalances.filter(s => s.warehouseId === PRIMARY_WAREHOUSE.id)
+        .map(s => [s.productId, s.onHandQty]));
       if (res.data?.data && Array.isArray(res.data.data)) {
         return res.data.data.map((p: any) => ({
           id: String(p.id),
           sku: p.sku,
           barcode: p.barcode,
           name: p.name,
-          category: (p.categoryId === 2 ? 'ELECTRONICS' : p.categoryId === 3 ? 'CHEMICAL' : 'FOOD_BEVERAGE') as any,
+          category: ([3, 4].includes(p.categoryId) ? 'ELECTRONICS' : p.categoryId === 5 ? 'CHEMICAL' : 'FOOD_BEVERAGE') as any,
           unit: p.unit || 'Cái',
           weightKg: Number(p.weightKg || 0),
           reorderPoint: p.reorderPoint || 20,
           safetyStock: p.safetyStock || 10,
-          currentStock: Number(p.currentStock || 0),
+          currentStock: stockByProduct.get(Number(p.id)) ?? 0,
           storageZone: p.storageZone || 'UNASSIGNED',
-          supplierCode: p.supplier?.code || (p.supplierId ? String(p.supplierId) : ''),
+          supplierCode: suppliers.get(Number(p.supplierId))?.code || '',
           supplierId: p.supplierId ? String(p.supplierId) : undefined,
-          supplierName: p.supplier?.name || '',
+          supplierName: suppliers.get(Number(p.supplierId))?.name || '',
           status: p.deletedAt ? 'DELETED' : p.isActive === false ? 'INACTIVE' : 'ACTIVE',
-        }));
+        })).filter((p: ProductItem) => !stockedOnly || p.currentStock > 0);
       }
       return [];
     } catch (err) {

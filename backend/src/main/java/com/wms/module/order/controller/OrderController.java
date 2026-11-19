@@ -60,6 +60,17 @@ public class OrderController {
         return ApiResponse.success("Lấy danh sách đơn xuất kho thành công!", outboundService.getAllOutboundOrders());
     }
 
+    @GetMapping("/outbound/partners")
+    public ApiResponse<List<com.wms.module.masterdata.entity.Supplier>> getOutboundPartners(
+            @RequestParam(defaultValue = "1") Long warehouseId) {
+        return ApiResponse.success(outboundService.getWarehousePartners(warehouseId));
+    }
+
+    @GetMapping("/outbound/available-products")
+    public ApiResponse<List<com.wms.module.order.dto.response.OutboundStockResponse>> getOutboundProducts(@RequestParam(defaultValue = "false") boolean includeUnavailable) {
+        return ApiResponse.success("Danh sách sản phẩm có thể xuất kho", outboundService.getStockProducts(includeUnavailable));
+    }
+
     @PostMapping("/outbound")
     @org.springframework.security.access.prepost.PreAuthorize("hasAnyRole('ADMIN', 'WAREHOUSE_MANAGER')")
     @Operation(summary = "Tạo mới đơn xuất hàng SO", description = "Tạo mới đơn xuất hàng bán cho khách hàng")
