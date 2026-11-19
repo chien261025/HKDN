@@ -33,17 +33,18 @@ export const ProductsPage: React.FC = () => {
     setIsLoading(true);
     try {
       const [prods, supps, cats, balances, whs] = await Promise.all([
-        productService.getProducts(true),
-        productService.getSuppliers(),
-        productService.getCategories(),
-        inventoryService.getInventoryBalances(),
-        warehouseService.getWarehouses(),
+        productService.getProducts(false),
+        productService.getSuppliers().catch(() => []),
+        productService.getCategories().catch(() => []),
+        inventoryService.getInventoryBalances().catch(() => []),
+        warehouseService.getWarehouses().catch(() => []),
       ]);
       setProducts(prods);
       setSuppliers(supps);
       setCategories(cats);
       setInventoryBalances(balances);
       setWarehouses(whs);
+      setError('');
     } catch (err) {
       console.error('Error fetching data for ProductsPage:', err);
       setError('Không tải được danh mục và tồn cuối trong kho.');
