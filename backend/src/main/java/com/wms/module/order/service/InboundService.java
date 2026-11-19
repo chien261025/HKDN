@@ -9,7 +9,9 @@ import com.wms.module.inventory.repository.InventoryRepository;
 import com.wms.module.inventory.repository.ProductBatchRepository;
 import com.wms.module.inventory.repository.StockLedgerRepository;
 import com.wms.module.masterdata.entity.Location;
+import com.wms.module.masterdata.entity.Product;
 import com.wms.module.masterdata.repository.LocationRepository;
+import com.wms.module.masterdata.repository.ProductRepository;
 import com.wms.module.order.dto.request.ExecutePutawayRequest;
 import com.wms.module.order.entity.InboundOrder;
 import com.wms.module.order.entity.InboundOrderItem;
@@ -30,6 +32,7 @@ import java.util.List;
 public class InboundService {
 
     private final LocationRepository locationRepository;
+    private final ProductRepository productRepository;
     private final InboundOrderRepository inboundOrderRepository;
     private final ProductBatchRepository productBatchRepository;
     private final InventoryRepository inventoryRepository;
@@ -60,6 +63,16 @@ public class InboundService {
         if (request.getItems() != null) {
             java.util.List<InboundOrderItem> items = new java.util.ArrayList<>();
             for (com.wms.module.order.dto.request.CreateInboundOrderRequest.ItemRequest itemReq : request.getItems()) {
+                Product product = productRepository.findById(itemReq.getProductId())
+                        .orElseThrow(() -> new BusinessException(ErrorCode.NOT_FOUND,
+                                "Không tìm thấy sản phẩm: " + itemReq.getProductId()));
+                if (!Boolean.TRUE.equals(product.getIsActive()) || product.getDeletedAt() != null) {
+                    throw new BusinessException(ErrorCode.BAD_REQUEST, "Sản phẩm không còn hoạt động: " + product.getName());
+                }
+                if (!request.getSupplierId().equals(product.getSupplierId())) {
+                    throw new BusinessException(ErrorCode.BAD_REQUEST,
+                            "Sản phẩm " + product.getName() + " không thuộc nhà cung cấp đã chọn");
+                }
                 InboundOrderItem item = InboundOrderItem.builder()
                         .inboundOrder(order)
                         .productId(itemReq.getProductId())
@@ -109,7 +122,7 @@ public class InboundService {
         if (order.getItems() != null) {
             for (InboundOrderItem item : order.getItems()) {
                 item.setReceivedQty(item.getExpectedQty());
-                item.setStatus("COMPLETED");
+                item.setStatus("RECEIVED");
             }
         }
         return inboundOrderRepository.save(order);
@@ -159,8 +172,34 @@ public class InboundService {
         InboundOrder order = inboundOrderRepository.findById(request.getOrderId())
                 .orElseThrow(() -> new BusinessException(ErrorCode.NOT_FOUND, "Không tìm thấy đơn nhập: " + request.getOrderId()));
 
+        // Product identity must come from the inbound order. Do not allow a
+        // stale/inferred client ID to write stock into another product.
+        boolean productBelongsToOrder = order.getItems() != null && order.getItems().stream()
+                .anyMatch(item -> request.getProductId().equals(item.getProductId()));
+        if (!productBelongsToOrder) {
+            throw new BusinessException(ErrorCode.BAD_REQUEST,
+                    "Product " + request.getProductId() + " does not belong to inbound order " + order.getOrderCode());
+        }
+
         if ("STOCKED".equalsIgnoreCase(order.getStatus())) {
             throw new BusinessException(ErrorCode.BAD_REQUEST, "Đơn nhập kho " + order.getOrderCode() + " đã hoàn tất cất hàng (STOCKED) trước đó!");
+        }
+        if (!"RECEIVED".equalsIgnoreCase(order.getStatus())) {
+            throw new BusinessException(ErrorCode.BAD_REQUEST, "Đơn nhập chưa được tiếp nhận: " + order.getOrderCode());
+        }
+
+        InboundOrderItem targetItem = order.getItems().stream()
+                .filter(item -> request.getOrderItemId() != null && request.getOrderItemId().equals(item.getId()))
+                .findFirst()
+                .orElseThrow(() -> new BusinessException(ErrorCode.BAD_REQUEST, "Dòng hàng không thuộc đơn nhập"));
+        if (!request.getProductId().equals(targetItem.getProductId())) {
+            throw new BusinessException(ErrorCode.BAD_REQUEST, "Sản phẩm không khớp dòng đơn nhập");
+        }
+        if (targetItem.getProductBatchId() != null) {
+            throw new BusinessException(ErrorCode.BAD_REQUEST, "Dòng hàng đã được cất lên kệ");
+        }
+        if (request.getQuantity() > targetItem.getReceivedQty()) {
+            throw new BusinessException(ErrorCode.BAD_REQUEST, "Số lượng cất vượt số lượng đã nhận");
         }
 
         Location location = locationRepository.findById(request.getLocationId())
@@ -186,7 +225,7 @@ public class InboundService {
                     return productBatchRepository.save(newBatch);
                 });
 
-        Inventory inventory = inventoryRepository.findByProductIdAndLocationIdAndBatchId(
+        Inventory inventory = inventoryRepository.findByProductLocationAndBatchForUpdate(
                 request.getProductId(), request.getLocationId(), batch.getId())
                 .orElseGet(() -> Inventory.builder()
                         .productId(request.getProductId())
@@ -198,6 +237,7 @@ public class InboundService {
                         .build());
 
         inventory.setOnHandQty(inventory.getOnHandQty() + request.getQuantity());
+        inventory.setLastUpdatedAt(Instant.now());
         inventoryRepository.saveAndFlush(inventory);
 
         StockLedger ledger = StockLedger.builder()
@@ -212,26 +252,11 @@ public class InboundService {
                 .notes("Cất hàng từ khu đệm Staging lên ô kệ " + location.getBinBarcode())
                 .createdAt(Instant.now())
                 .build();
-        stockLedgerRepository.save(ledger);
+        stockLedgerRepository.saveAndFlush(ledger);
 
-        if (order.getItems() != null) {
-            boolean allStocked = true;
-            for (InboundOrderItem item : order.getItems()) {
-                if (request.getOrderItemId() != null && request.getOrderItemId().equals(item.getId())) {
-                    item.setReceivedQty(request.getQuantity());
-                    item.setStatus("COMPLETED");
-                } else if (item.getProductId() != null && item.getProductId().equals(request.getProductId())) {
-                    item.setReceivedQty(request.getQuantity());
-                    item.setStatus("COMPLETED");
-                }
-                if (!"COMPLETED".equalsIgnoreCase(item.getStatus())) {
-                    allStocked = false;
-                }
-            }
-            if (allStocked) {
-                order.setStatus("STOCKED");
-            }
-        } else {
+        targetItem.setProductBatchId(batch.getId());
+        targetItem.setStatus("COMPLETED");
+        if (order.getItems().stream().allMatch(item -> item.getProductBatchId() != null)) {
             order.setStatus("STOCKED");
         }
 

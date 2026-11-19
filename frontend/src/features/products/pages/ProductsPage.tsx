@@ -26,12 +26,14 @@ export const ProductsPage: React.FC = () => {
   const [warehouses, setWarehouses] = useState<WarehouseItem[]>([]);
   const [activeWarehouseId, setActiveWarehouseId] = useState<string>(() => warehouseService.getActiveWarehouseId());
   const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState('');
+  const [notice, setNotice] = useState('');
 
   const fetchData = async () => {
     setIsLoading(true);
     try {
       const [prods, supps, cats, balances, whs] = await Promise.all([
-        productService.getProducts(),
+        productService.getProducts(true),
         productService.getSuppliers(),
         productService.getCategories(),
         inventoryService.getInventoryBalances(),
@@ -44,6 +46,7 @@ export const ProductsPage: React.FC = () => {
       setWarehouses(whs);
     } catch (err) {
       console.error('Error fetching data for ProductsPage:', err);
+      setError('Không tải được danh mục và tồn cuối trong kho.');
     } finally {
       setIsLoading(false);
     }
@@ -140,8 +143,9 @@ export const ProductsPage: React.FC = () => {
 
   const handleAddProduct = async (newProduct: ProductItem) => {
     await productService.createProduct(newProduct);
-    const updated = await productService.getProducts();
+    const updated = await productService.getProducts(true);
     setProducts(updated);
+    setNotice('Đã đăng ký sản phẩm mới thành công.');
   };
 
   const handleAddSupplier = async (newSupplier: SupplierItem) => {
@@ -158,7 +162,7 @@ export const ProductsPage: React.FC = () => {
     if (product.status === 'DELETED') await productService.restoreProduct(product.id);
     else if (product.status === 'ACTIVE') await productService.updateProductStatus(product.id, false);
     else await productService.softDeleteProduct(product.id);
-    setProducts(await productService.getProducts());
+    setProducts(await productService.getProducts(true));
   };
 
   const handleCategoryStatus = async (category: CategoryItem) => {
@@ -170,7 +174,7 @@ export const ProductsPage: React.FC = () => {
 
   const handleSaveEditProduct = async (updatedProduct: ProductItem) => {
     await productService.updateProduct(updatedProduct.id, updatedProduct);
-    setProducts(await productService.getProducts());
+    setProducts(await productService.getProducts(true));
   };
 
   const handleDeleteProduct = async (product: ProductItem) => {
@@ -201,6 +205,9 @@ export const ProductsPage: React.FC = () => {
         suppliers={suppliers}
         onOpenCreateModal={handleOpenCreateModal}
       />
+
+      {error && <p role="alert" className="rounded-xl bg-rose-50 p-3 text-sm text-rose-700">{error}</p>}
+      {notice && <p role="status" className="rounded-xl bg-emerald-50 p-3 text-sm text-emerald-700">{notice}</p>}
 
       {/* Warehouse Filter Indicator Banner */}
       {activeTab === 'PRODUCTS' && (

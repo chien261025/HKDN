@@ -1,114 +1,88 @@
-import React, { useState, useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { X, Plus, Trash2, PackageCheck } from 'lucide-react';
-import { OutboundOrder, CustomerOption } from '../types';
-import { productService } from '../../products/services/productService';
-import { ProductItem } from '../../products/types';
+import { OutboundOrder, OutboundStock } from '../types';
+import { outboundService } from '../services/outboundService';
+import { inventoryService } from '../../inventory/services/inventoryService';
+import { SupplierItem } from '../../products/types';
+import { PRIMARY_WAREHOUSE } from '../../../config/warehouse';
 
-interface CreateOutboundModalProps {
+interface Props {
   onClose: () => void;
-  onCreateOrder: (order: OutboundOrder) => void;
+  onCreateOrder: (order: OutboundOrder) => Promise<void>;
 }
 
-const CUSTOMERS: CustomerOption[] = [
-  { code: 'CUST-WMT', name: 'Chuỗi Siêu Thị WinMart+', address: 'Hà Nội & TP.HCM', phone: '1800-6868' },
-  { code: 'CUST-BHX', name: 'Hệ Thống Bách Hóa Xanh', address: 'Toàn quốc', phone: '1900-1908' },
-  { code: 'CUST-BIGC', name: 'Đại Siêu Thị Go! (BigC)', address: 'Thăng Long, Hà Nội', phone: '024-3784-8888' },
-];
-
-export const CreateOutboundModal: React.FC<CreateOutboundModalProps> = ({
-  onClose,
-  onCreateOrder,
-}) => {
-  const [customerCode, setCustomerCode] = useState('CUST-WMT');
-  const [requiredDate, setRequiredDate] = useState('2026-11-15');
-  const [priority, setPriority] = useState<'NORMAL' | 'HIGH' | 'URGENT'>('HIGH');
-  const [notes, setNotes] = useState('Xuất ưu tiên hàng date ngắn theo FEFO, đóng pallet cẩn thận.');
-  const [availableProducts, setAvailableProducts] = useState<ProductItem[]>([]);
-
-  const [items, setItems] = useState<Array<{ productId?: number; sku: string; productName: string; requestedQty: number; unit: string }>>([
-    { sku: 'SKU-MILK-100', productName: 'Sữa tươi Vinamilk 100% 1L', requestedQty: 20, unit: 'Hộp' },
-  ]);
+export const CreateOutboundModal: React.FC<Props> = ({ onClose, onCreateOrder }) => {
+  const [stock, setStock] = useState<OutboundStock[]>([]);
+  const warehouseId = PRIMARY_WAREHOUSE.id;
+  const [partners, setPartners] = useState<Pick<SupplierItem, 'id' | 'code' | 'name'>[]>([]);
+  const [partnerId, setPartnerId] = useState('');
+  const partner = partners.find(p => p.id === partnerId);
+  const [notes, setNotes] = useState('');
+  const [items, setItems] = useState<Array<{ productId: number | null; qty: number }>>([]);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState('');
 
   useEffect(() => {
-    productService.getProducts().then((prods) => {
-      if (prods && prods.length > 0) {
-        setAvailableProducts(prods);
-        setItems([
-          {
-            productId: Number(prods[0].id),
-            sku: prods[0].sku,
-            productName: prods[0].name,
-            requestedQty: 20,
-            unit: prods[0].unit,
-          },
-        ]);
-      }
-    });
+    let active = true;
+    Promise.all([inventoryService.getClosingBalances(), outboundService.getWarehousePartners()]).then(([data, recipients]) => {
+      if (!active) return;
+      setStock(data);
+      setPartners(recipients);
+    }).catch(() => {
+      if (active) setError('Không tải được tồn cuối hoặc đối tác của kho. Vui lòng đóng và mở lại để thử lại.');
+    }).finally(() => { if (active) setLoading(false); });
+    return () => { active = false; };
   }, []);
 
-  const handleAddItem = () => {
-    if (availableProducts.length > 0) {
-      const p = availableProducts[items.length % availableProducts.length];
-      setItems((prev) => [
-        ...prev,
-        { productId: Number(p.id), sku: p.sku, productName: p.name, requestedQty: 10, unit: p.unit },
-      ]);
-    } else {
-      setItems((prev) => [
-        ...prev,
-        { sku: 'SKU-OMO-MATIC', productName: 'Nước giặt OMO Matic 3.6kg', requestedQty: 15, unit: 'Túi' },
-      ]);
-    }
-  };
+  const products = stock.filter(p => p.warehouseId === warehouseId && p.availableQty > 0);
+  const valid = items.length > 0 && items.every(i => i.productId !== null && Number.isInteger(i.qty) && i.qty > 0
+    && i.qty <= (products.find(p => p.productId === i.productId)?.availableQty ?? 0));
+  const inputClass = 'w-full rounded-lg border border-slate-300 bg-white p-2.5 text-sm text-slate-900';
 
-  const handleRemoveItem = (index: number) => {
-    setItems((prev) => prev.filter((_, idx) => idx !== index));
-  };
-
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    const customer = CUSTOMERS.find((c) => c.code === customerCode) || CUSTOMERS[0];
-    const soNumber = `SO-2026-${Math.floor(100 + Math.random() * 900)}`;
-
-    const newOrder: OutboundOrder = {
-      id: `so-${Date.now()}`,
-      soCode: soNumber,
-      customerName: customer.name,
-      shippingAddress: customer.address,
-      orderDate: 'Hôm nay',
-      requiredDate,
-      priority,
-      status: 'PENDING',
-      notes,
-      items: items.map((it, idx) => ({
-        id: `item-${idx + 1}`,
-        productId: it.productId,
-        sku: it.sku,
-        productName: it.productName,
-        requestedQty: it.requestedQty,
-        allocatedQty: 0,
-        pickedQty: 0,
-        unit: it.unit,
-        allocations: [],
-      })),
-    };
-
-    onCreateOrder(newOrder);
-    onClose();
+  const submit = async (event: React.FormEvent) => {
+    event.preventDefault();
+    if (!valid || saving || !partner) return;
+    setSaving(true);
+    setError('');
+    try {
+      await onCreateOrder({
+        id: '', soCode: `SO-${Date.now()}`, warehouseId,
+        customerName: partner.name, partnerId: Number(partner.id), shippingAddress: '', orderDate: '', requiredDate: '',
+        priority: 'NORMAL', status: 'PENDING', notes,
+        items: items.map((i, index) => {
+          const p = products.find(p => p.productId === i.productId)!;
+          return { id: String(index), productId: p.productId, sku: p.sku, productName: p.name,
+            requestedQty: i.qty, allocatedQty: 0, pickedQty: 0, unit: p.unit, allocations: [] };
+        }),
+      });
+      onClose();
+    } catch (err: any) {
+      setError(err.response?.data?.message || err.message || 'Không tạo được đơn xuất kho.');
+      try { setStock(await inventoryService.getClosingBalances()); } catch { /* Keep form for retry. */ }
+    } finally { setSaving(false); }
   };
 
   return (
-    <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4 z-50 animate-in fade-in duration-200">
-      <div className="bg-white rounded-2xl max-w-xl w-full border border-slate-200 shadow-2xl overflow-hidden text-slate-900">
-        <div className="p-5 border-b border-slate-200 flex items-center justify-between bg-slate-50">
-          <div className="flex items-center gap-2.5">
-            <PackageCheck className="w-5 h-5 text-indigo-600" />
-            <h3 className="font-bold text-base text-slate-900">Tạo Đơn Xuất Kho Mới (SO)</h3>
-          </div>
-          <button onClick={onClose} className="p-1 rounded-lg text-slate-400 hover:text-slate-700 cursor-pointer">
-            <X className="w-5 h-5" />
-          </button>
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 p-4 backdrop-blur-sm">
+      <div role="dialog" aria-modal="true" aria-labelledby="outbound-title" className="max-h-[90vh] w-full max-w-4xl overflow-y-auto rounded-2xl bg-white text-slate-900 shadow-2xl">
+        <div className="flex items-center justify-between border-b p-5">
+          <h3 id="outbound-title" className="flex items-center gap-2 font-bold"><PackageCheck className="h-5 w-5 text-indigo-600" />Tạo đơn xuất kho</h3>
+          <button type="button" disabled={saving} onClick={onClose} aria-label="Đóng"><X /></button>
         </div>
+<<<<<<< HEAD
+        <form onSubmit={submit} className="space-y-5 p-5">
+          {error && <p role="alert" className="rounded-lg bg-rose-50 p-3 text-sm text-rose-700">{error}</p>}
+          {loading ? <p>Đang tải tồn kho…</p> : products.length === 0 && <p className="rounded-lg bg-amber-50 p-3 text-sm text-amber-800">Kho chưa có sản phẩm khả dụng để xuất.</p>}
+          <div className="grid gap-4 sm:grid-cols-2">
+            <label className="space-y-1 text-sm font-semibold">Kho xuất
+              <input aria-label="Kho xuất" className={`${inputClass} bg-slate-100`} value={PRIMARY_WAREHOUSE.name} readOnly />
+            </label>
+            <label className="space-y-1 text-sm font-semibold">Khách hàng / Đơn vị nhận
+              <select aria-label="Khách hàng / Đơn vị nhận" className={inputClass} value={partnerId} onChange={e => setPartnerId(e.target.value)} required disabled={loading || saving}>
+                <option value="" disabled>Chọn đối tác của kho</option>
+                {partners.map(p => <option key={p.id} value={p.id}>{p.name} ({p.code})</option>)}
+=======
 
         <form onSubmit={handleSubmit} className="p-6 space-y-4 text-sm">
           <div>
@@ -148,96 +122,44 @@ export const CreateOutboundModal: React.FC<CreateOutboundModalProps> = ({
                 <option value="NORMAL">Bình Thường</option>
                 <option value="HIGH">Ưu Tiên Cao</option>
                 <option value="URGENT">Hỏa Tốc</option>
+>>>>>>> 36fa9b52849e24e253b8552373cbd59e9c2fe860
               </select>
-            </div>
+            </label>
           </div>
-
-          <div className="space-y-2">
-            <div className="flex items-center justify-between">
-              <label className="text-slate-700 font-bold">Mặt Hàng Cần Xuất ({items.length}):</label>
-              <button
-                type="button"
-                onClick={handleAddItem}
-                className="flex items-center gap-1.5 text-indigo-600 hover:text-indigo-800 font-bold text-xs cursor-pointer"
-              >
-                <Plus className="w-4 h-4" />
-                <span>Thêm mặt hàng</span>
-              </button>
-            </div>
-
-            <div className="space-y-2.5 max-h-48 overflow-y-auto pr-1">
-              {items.map((it, idx) => (
-                <div key={idx} className="p-3 rounded-xl bg-slate-50 border border-slate-200 flex items-center gap-2.5">
-                  <div className="flex-1">
-                    <select
-                      value={it.sku}
-                      onChange={(e) => {
-                        const newSku = e.target.value;
-                        const matched = availableProducts.find((p) => p.sku === newSku);
-                        setItems((prev) =>
-                          prev.map((item, i) =>
-                            i === idx
-                              ? {
-                                ...item,
-                                productId: matched ? Number(matched.id) : undefined,
-                                sku: newSku,
-                                productName: matched ? matched.name : item.productName,
-                                unit: matched ? matched.unit : item.unit,
-                              }
-                              : item
-                          )
-                        );
-                      }}
-                      className="w-full p-2 rounded-lg bg-white border border-slate-300 text-slate-900 text-xs font-semibold focus:outline-none focus:border-indigo-600"
-                    >
-                      {availableProducts.map((p) => (
-                        <option key={p.id} value={p.sku}>
-                          {p.name} ({p.sku})
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-
-                  <div className="w-24">
-                    <input
-                      type="number"
-                      value={it.requestedQty}
-                      min="1"
-                      onChange={(e) => {
-                        const val = parseInt(e.target.value) || 1;
-                        setItems((prev) =>
-                          prev.map((item, i) => (i === idx ? { ...item, requestedQty: val } : item))
-                        );
-                      }}
-                      className="w-full p-2 rounded-lg bg-white border border-slate-300 text-slate-900 font-mono font-bold text-xs text-center focus:outline-none focus:border-indigo-600"
-                    />
-                  </div>
-
-                  <span className="text-xs font-bold text-slate-600 w-12 text-center">{it.unit}</span>
-
-                  {items.length > 1 && (
-                    <button
-                      type="button"
-                      onClick={() => handleRemoveItem(idx)}
-                      className="p-1 text-slate-400 hover:text-rose-600 cursor-pointer"
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </button>
-                  )}
-                </div>
-              ))}
-            </div>
+          {!loading && partners.length === 0 && <p role="alert" className="text-sm text-amber-700">Chưa có đối tác đang hoạt động có sản phẩm trong kho.</p>}
+          <div className="flex items-center justify-between">
+            <h4 className="font-semibold">Sản phẩm xuất ({items.length})</h4>
+            <button type="button" className="flex items-center gap-1 text-sm font-semibold text-indigo-600 disabled:opacity-40" disabled={loading || saving || items.length >= products.length} onClick={() => setItems(prev => [...prev, { productId: null, qty: 1 }])}><Plus className="h-4 w-4" />Thêm sản phẩm</button>
           </div>
-
-          <div>
-            <label className="text-slate-700 font-bold block mb-1.5">Ghi Chú Đơn Xuất:</label>
-            <input
-              type="text"
-              value={notes}
-              onChange={(e) => setNotes(e.target.value)}
-              className="w-full p-2.5 rounded-xl bg-white border border-slate-300 text-slate-900 text-sm focus:outline-none focus:border-indigo-600 focus:ring-2 focus:ring-indigo-100"
-            />
+          <div className="overflow-x-auto">
+            <table className="w-full text-left text-sm">
+              <thead className="bg-slate-50 text-slate-600"><tr><th className="p-2">Sản phẩm</th><th className="p-2">Tồn cuối hiện tại</th><th className="p-2">Khả dụng</th><th className="p-2">Số lượng xuất</th><th className="p-2">Tồn cuối sau xuất</th><th /></tr></thead>
+              <tbody>
+                {items.map((item, index) => {
+                  const p = products.find(p => p.productId === item.productId);
+                  return <tr key={index} className="border-b">
+                    <td className="min-w-56 p-2"><select aria-label={`Sản phẩm ${index + 1}`} className={inputClass} value={item.productId ?? ''} required disabled={saving} onChange={e => setItems(prev => prev.map((i, n) => n === index ? { productId: Number(e.target.value), qty: 1 } : i))}>
+                      <option value="" disabled>Chọn sản phẩm từ tồn cuối</option>
+                      {item.productId !== null && !p && <option value={item.productId} disabled>Sản phẩm đã hết tồn khả dụng</option>}
+                      {products.filter(p => p.productId === item.productId || !items.some(i => i.productId === p.productId)).map(p => <option key={p.productId} value={p.productId}>{p.name} ({p.sku})</option>)}
+                    </select><span className="text-xs text-slate-500">{p?.unit}</span></td>
+                    <td className="p-2 tabular-nums">{p?.onHandQty.toLocaleString('vi-VN') ?? '—'}</td>
+                    <td className="p-2 tabular-nums">{p?.availableQty.toLocaleString('vi-VN') ?? 0}</td>
+                    <td className="p-2"><input aria-label={`Số lượng xuất ${index + 1}`} type="number" min={1} max={p?.availableQty ?? 0} step={1} required disabled={saving || !p} className={`${inputClass} min-w-24`} value={item.qty || ''} onChange={e => setItems(prev => prev.map((i, n) => n === index ? { ...i, qty: Number(e.target.value) } : i))} /></td>
+                    <td className="p-2 font-semibold text-emerald-700 tabular-nums">{p ? (p.onHandQty - item.qty).toLocaleString('vi-VN') : '—'}</td>
+                    <td className="p-2"><button type="button" aria-label={`Xóa sản phẩm ${index + 1}`} disabled={saving} onClick={() => setItems(prev => prev.filter((_, n) => n !== index))}><Trash2 className="h-4 w-4 text-rose-600" /></button></td>
+                  </tr>;
+                })}
+              </tbody>
+            </table>
           </div>
+<<<<<<< HEAD
+          <p className="text-xs text-slate-500">Tồn cuối dự kiến = tồn hiện tại − số lượng xuất. Tồn thực tế chỉ giảm khi xác nhận xuất kho; hàng được lấy theo FEFO trong kho của đơn.</p>
+          <label className="block space-y-1 text-sm font-semibold">Ghi chú<input className={inputClass} value={notes} onChange={e => setNotes(e.target.value)} disabled={saving} /></label>
+          <div className="flex justify-end gap-3 border-t pt-4">
+            <button type="button" disabled={saving} onClick={onClose} className="rounded-lg bg-slate-100 px-5 py-2.5 font-semibold">Hủy</button>
+            <button type="submit" disabled={loading || saving || !valid || !partner} className="rounded-lg bg-indigo-600 px-5 py-2.5 font-semibold text-white disabled:opacity-40">{saving ? 'Đang tạo…' : 'Tạo đơn xuất kho'}</button>
+=======
 
           <div className="flex gap-3 pt-3 border-t border-slate-200">
             <button
@@ -253,6 +175,7 @@ export const CreateOutboundModal: React.FC<CreateOutboundModalProps> = ({
             >
               Tạo Đơn Xuất Kho
             </button>
+>>>>>>> 36fa9b52849e24e253b8552373cbd59e9c2fe860
           </div>
         </form>
       </div>

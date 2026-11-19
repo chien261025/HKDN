@@ -1,5 +1,6 @@
 import { apiClient } from '../../../services/api';
 import { StockItem, LedgerEntryData } from '../../labels/types';
+import { OutboundStock } from '../../outbound/types';
 
 export interface SafetyStockAlert {
   productId: number;
@@ -19,6 +20,10 @@ export interface SafetyStockAlert {
 }
 
 export const inventoryService = {
+  async getClosingBalances(): Promise<OutboundStock[]> {
+    const res = await apiClient.get('/inventory/closing-balances');
+    return res.data.data;
+  },
   async getInventoryBalances(): Promise<StockItem[]> {
     try {
       const res = await apiClient.get('/inventory');
@@ -48,7 +53,7 @@ export const inventoryService = {
       return [];
     } catch (err) {
       console.warn('Backend inventory balances error:', err);
-      return [];
+      throw err;
     }
   },
 
@@ -83,6 +88,7 @@ export const inventoryService = {
       if (res.data?.data && Array.isArray(res.data.data) && res.data.data.length > 0) {
         return res.data.data.map((l: any) => ({
           id: String(l.id),
+          warehouseId: l.warehouseId,
           transactionType: (l.transactionType || 'OUTBOUND') as any,
           referenceCode: l.referenceCode || `TX-${l.id}`,
           locationBarcode: l.locationBarcode || `LOC-${l.locationId}`,
@@ -102,7 +108,7 @@ export const inventoryService = {
       return [];
     } catch (err) {
       console.warn('Backend stock ledger not reachable:', err);
-      return [];
+      throw err;
     }
   },
 

@@ -26,6 +26,9 @@ import java.time.Instant;
 @AllArgsConstructor
 @Builder
 public class Product {
+    @jakarta.persistence.Transient
+    @Builder.Default
+    private Integer currentStock = 0;
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)

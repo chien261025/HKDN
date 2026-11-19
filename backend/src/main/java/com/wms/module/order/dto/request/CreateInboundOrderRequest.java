@@ -23,6 +23,7 @@ public class CreateInboundOrderRequest {
 
     private Long warehouseId;
 
+    @NotNull(message = "Nhà cung cấp không được để trống")
     private Long supplierId;
 
     private String notes;

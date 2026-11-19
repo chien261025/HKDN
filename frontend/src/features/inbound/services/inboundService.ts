@@ -1,5 +1,5 @@
 import { apiClient } from '../../../services/api';
-import { InboundOrder, InboundOrderItem, InboundStatus } from '../types';
+import { InboundOrder, InboundStatus } from '../types';
 
 export const inboundService = {
   async getInboundOrders(): Promise<InboundOrder[]> {
@@ -9,8 +9,8 @@ export const inboundService = {
         return res.data.data.map((o: any) => ({
           id: String(o.id),
           poCode: o.orderCode || `PO-${o.id}`,
-          supplierCode: o.supplier?.code || (o.supplierId === 1 ? 'SUP-VINAMILK' : o.supplierId === 2 ? 'SUP-SAMSUNG' : 'SUP-UNILEVER'),
-          supplierName: o.supplier?.name || (o.supplierId === 1 ? 'Công ty Cổ phần Sữa Việt Nam (Vinamilk)' : o.supplierId === 2 ? 'Công ty TNHH Điện tử Samsung Vina' : 'Unilever Việt Nam'),
+          supplierCode: o.supplier?.code || `SUP-${o.supplierId}`,
+          supplierName: o.supplier?.name || `Nhà cung cấp #${o.supplierId}`,
           expectedDeliveryDate: o.createdAt ? new Date(o.createdAt).toISOString().split('T')[0] : '2026-09-25',
           createdAt: o.createdAt ? new Date(o.createdAt).toLocaleString('vi-VN') : '',
           status: (o.status || 'PENDING') as InboundStatus,
@@ -19,14 +19,18 @@ export const inboundService = {
           items: (o.items && o.items.length > 0)
             ? o.items.map((i: any) => ({
                 id: String(i.id),
-                sku: i.product?.sku || (i.productId === 1 ? 'SKU-MILK-100' : i.productId === 2 ? 'SKU-SAMS-S24' : 'SKU-OMO-MATIC'),
-                productName: i.product?.name || (i.productId === 1 ? 'Sữa tươi tiệt trùng Vinamilk 100% 1L' : i.productId === 2 ? 'Điện thoại Samsung Galaxy S24 Ultra' : 'Nước giặt OMO Matic 3.6kg'),
+                productId: i.productId,
+                productBatchId: i.productBatchId,
+                // ✅ Lấy tên/SKU từ quan hệ product thực tế của backend
+                sku: i.product?.sku || i.sku || `SKU-${i.productId}`,
+                productName: i.product?.name || i.productName || `Sản phẩm #${i.productId}`,
                 expectedQty: i.expectedQty || 0,
                 receivedQty: i.receivedQty || 0,
                 stockedQty: o.status === 'STOCKED' ? (i.expectedQty || 0) : 0,
+                status: i.status,
                 batchNumber: i.batchNumber || 'BATCH-NEW',
                 expiryDate: i.expiryDate || '',
-                unit: i.product?.unit || (i.productId === 1 ? 'Hộp' : i.productId === 2 ? 'Chiếc' : 'Túi'),
+                unit: i.product?.unit || i.unit || 'Cái',
               }))
             : [],
         }));
@@ -34,20 +38,20 @@ export const inboundService = {
       return [];
     } catch (err) {
       console.warn('Backend inbound orders error:', err);
-      return [];
+      throw err;
     }
   },
 
   async createInboundOrder(order: Partial<InboundOrder> & { supplierId?: number }): Promise<InboundOrder> {
-    try {
       const payload = {
         orderCode: order.poCode || 'PO-' + Date.now(),
         warehouseId: 1,
-        supplierId: order.supplierId || (order.supplierCode === 'SUP-VINAMILK' ? 1 : order.supplierCode === 'SUP-SAMSUNG' ? 2 : 3),
+        supplierId: order.supplierId,
         status: 'PENDING',
         notes: order.notes,
         items: (order.items || []).map((it: any) => ({
-          productId: it.productId || (it.sku?.includes('MILK') ? 1 : it.sku?.includes('SAMS') ? 2 : 3),
+          // ✅ Dùng productId thực từ item (đã được set từ CreatePoModal qua productService.getProducts())
+          productId: it.productId,
           expectedQty: it.expectedQty,
           batchNumber: it.batchNumber || 'BATCH-' + Date.now().toString().slice(-4),
           expiryDate: it.expiryDate || '2026-12-31',
@@ -56,41 +60,33 @@ export const inboundService = {
       };
       const res = await apiClient.post('/orders/inbound', payload);
       const saved = res.data?.data;
+      if (!saved?.id) throw new Error('Backend did not return a saved inbound order');
       return {
-        id: String(saved?.id || Date.now()),
-        poCode: saved?.orderCode || order.poCode!,
+        id: String(saved.id),
+        poCode: saved.orderCode,
         supplierCode: order.supplierCode!,
         supplierName: order.supplierName!,
         expectedDeliveryDate: order.expectedDeliveryDate || '2026-09-30',
         createdAt: new Date().toLocaleString('vi-VN'),
         status: 'PENDING',
-        items: order.items || [],
+        items: (saved.items || []).map((item: any) => ({
+          id: String(item.id), productId: item.productId,
+          productBatchId: item.productBatchId,
+          sku: item.product?.sku || `SKU-${item.productId}`,
+          productName: item.product?.name || `Sản phẩm #${item.productId}`,
+          expectedQty: item.expectedQty, receivedQty: item.receivedQty || 0,
+          stockedQty: 0, batchNumber: item.batchNumber,
+          status: item.status,
+          expiryDate: item.expiryDate, unit: item.product?.unit || 'Cái',
+        })),
         notes: order.notes,
         approvedBy: order.approvedBy || 'Trần Trưởng Kho',
       };
-    } catch (err) {
-      console.warn('Could not save PO to backend, saving locally:', err);
-      return {
-        id: String(Date.now()),
-        poCode: order.poCode || 'PO-' + Date.now(),
-        supplierCode: order.supplierCode || 'SUP-DEMO',
-        supplierName: order.supplierName || 'Nhà Cung Cấp Demo',
-        expectedDeliveryDate: order.expectedDeliveryDate || '2026-09-30',
-        createdAt: new Date().toLocaleString('vi-VN'),
-        status: 'PENDING',
-        items: order.items || [],
-        notes: order.notes,
-        approvedBy: order.approvedBy || 'Trần Trưởng Kho',
-      };
-    }
+
   },
 
   async receiveOrder(id: string): Promise<void> {
-    try {
-      await apiClient.put(`/orders/inbound/${id}/receive`);
-    } catch (err) {
-      console.warn('Could not call receive API on backend:', err);
-    }
+    await apiClient.put(`/orders/inbound/${id}/receive`);
   },
 
   async suggestLocation(preferredZone: string, totalWeightKg: number) {
@@ -109,15 +105,12 @@ export const inboundService = {
   async executePutaway(payload: {
     orderId: number;
     productId: number;
+    orderItemId: number;
     locationId: number;
     quantity: number;
     batchNumber?: string;
     expiryDate?: string;
   }): Promise<void> {
-    try {
-      await apiClient.post('/orders/inbound/putaway', payload);
-    } catch (err) {
-      console.warn('Could not call putaway API on backend:', err);
-    }
+    await apiClient.post('/orders/inbound/putaway', payload);
   },
 };
