@@ -124,21 +124,85 @@ export const InventoryBalancePage: React.FC = () => {
     }
   };
 
+  const totalUnits = stocks.reduce((acc, s) => acc + (s.onHandQty || 0), 0);
+  const totalReserved = stocks.reduce((acc, s) => acc + (s.reservedQty || 0), 0);
+
   return (
     <div className="space-y-5 max-w-[1600px] mx-auto pb-10">
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-        <div className="flex items-center gap-3.5">
-          <div className="w-11 h-11 rounded-xl bg-slate-900 text-white flex items-center justify-center shadow-xs flex-shrink-0">
-            <Package className="w-5 h-5" />
+      {/* Header Banner */}
+      <div className="bg-white rounded-2xl p-5 sm:p-6 border border-slate-200/90 shadow-sm flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+        <div className="flex items-center gap-4">
+          <div className="w-12 h-12 rounded-xl bg-blue-600 flex items-center justify-center text-white shadow-md shadow-blue-200 shrink-0 ring-4 ring-blue-50">
+            <Package className="w-6 h-6 text-white" />
           </div>
           <div>
-            <h1 className="text-xl font-bold text-slate-900 tracking-tight">
+            <h1 className="text-xl sm:text-2xl font-bold text-slate-900 tracking-tight">
               Quản Lý Tồn Kho & Điều Chuyển
             </h1>
-            {/* <p className="text-xs text-slate-500 mt-0.5">
-              Kiểm soát số dư theo vị trí ô kệ, điều chuyển nội bộ và giám sát định mức tồn an toàn (Safety Stock)
-            </p> */}
+            <p className="text-xs sm:text-sm text-slate-500 font-normal mt-0.5">
+              Kiểm soát số dư theo vị trí ô kệ, điều chuyển nội bộ và giám sát định mức an toàn
+            </p>
+          </div>
+        </div>
+      </div>
+
+      {/* 4 KPI Metrics */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3.5">
+        <div className="bg-white rounded-2xl p-4 sm:p-5 border border-slate-200/90 shadow-xs hover:border-slate-300 transition-colors">
+          <div className="flex items-start justify-between">
+            <div>
+              <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider block">Dòng Lưu Kho</span>
+              <div className="text-2xl sm:text-3xl font-extrabold text-slate-900 font-mono mt-1.5 tabular-nums">{stocks.length}</div>
+            </div>
+            <div className="p-2.5 rounded-xl bg-slate-100 text-slate-700 border border-slate-200">
+              <Layers className="w-5 h-5" />
+            </div>
+          </div>
+          <div className="mt-2 text-xs text-slate-500 font-medium">Vị trí ô kệ đang lưu hàng</div>
+        </div>
+
+        <div className="bg-white rounded-2xl p-4 sm:p-5 border border-slate-200/90 shadow-xs hover:border-slate-300 transition-colors">
+          <div className="flex items-start justify-between">
+            <div>
+              <span className="text-xs font-semibold text-blue-700 uppercase tracking-wider block">Tổng Tồn Thực Tế</span>
+              <div className="text-2xl sm:text-3xl font-extrabold text-blue-600 font-mono mt-1.5 tabular-nums">
+                {totalUnits.toLocaleString('vi-VN')}
+              </div>
+            </div>
+            <div className="p-2.5 rounded-xl bg-blue-50 text-blue-700 border border-blue-200">
+              <Package className="w-5 h-5" />
+            </div>
+          </div>
+          <div className="mt-2 text-xs text-slate-500 font-medium">Tổng số lượng sản phẩm lưu trữ</div>
+        </div>
+
+        <div className="bg-white rounded-2xl p-4 sm:p-5 border border-slate-200/90 shadow-xs hover:border-slate-300 transition-colors">
+          <div className="flex items-start justify-between">
+            <div>
+              <span className="text-xs font-semibold text-amber-700 uppercase tracking-wider block">Đang Khóa Cho Đơn</span>
+              <div className="text-2xl sm:text-3xl font-extrabold text-amber-600 font-mono mt-1.5 tabular-nums">
+                {totalReserved.toLocaleString('vi-VN')}
+              </div>
+            </div>
+            <div className="p-2.5 rounded-xl bg-amber-50 text-amber-700 border border-amber-200">
+              <Clock className="w-5 h-5" />
+            </div>
+          </div>
+          <div className="mt-2 text-xs text-slate-500 font-medium">Số lượng đã cấp phát chờ xuất</div>
+        </div>
+
+        <div className="bg-white rounded-2xl p-4 sm:p-5 border border-slate-200/90 shadow-xs hover:border-slate-300 transition-colors">
+          <div className="flex items-start justify-between">
+            <div>
+              <span className="text-xs font-semibold text-rose-700 uppercase tracking-wider block">Cảnh Báo Thiếu Hụt</span>
+              <div className="text-2xl sm:text-3xl font-extrabold text-rose-600 font-mono mt-1.5 tabular-nums">{alerts.length}</div>
+            </div>
+            <div className="p-2.5 rounded-xl bg-rose-50 text-rose-700 border border-rose-200">
+              <ShieldAlert className="w-5 h-5" />
+            </div>
+          </div>
+          <div className="mt-2 text-xs text-rose-600 font-medium">
+            {alerts.length > 0 ? 'Mặt hàng dưới mức tồn an toàn' : 'Tồn kho ổn định'}
           </div>
         </div>
       </div>
@@ -148,7 +212,7 @@ export const InventoryBalancePage: React.FC = () => {
         <button
           onClick={() => handleTabChange('balance')}
           className={`flex items-center gap-2 px-4 py-2.5 text-xs sm:text-sm font-semibold border-b-2 transition-all cursor-pointer whitespace-nowrap ${activeTab === 'balance'
-            ? 'border-indigo-600 text-indigo-700 bg-indigo-50/40 rounded-t-lg'
+            ? 'border-blue-600 text-blue-700 bg-blue-50/50 rounded-t-lg'
             : 'border-transparent text-slate-600 hover:text-slate-900 hover:border-slate-300'
             }`}
         >
@@ -185,7 +249,7 @@ export const InventoryBalancePage: React.FC = () => {
         <button
           onClick={() => handleTabChange('transfer')}
           className={`flex items-center gap-2 px-4 py-2.5 text-xs sm:text-sm font-semibold border-b-2 transition-all cursor-pointer whitespace-nowrap ${activeTab === 'transfer'
-            ? 'border-indigo-600 text-indigo-700 bg-indigo-50/40 rounded-t-lg'
+            ? 'border-blue-600 text-blue-700 bg-blue-50/50 rounded-t-lg'
             : 'border-transparent text-slate-600 hover:text-slate-900 hover:border-slate-300'
             }`}
         >
@@ -201,7 +265,7 @@ export const InventoryBalancePage: React.FC = () => {
         <button
           onClick={() => handleTabChange('outbound')}
           className={`flex items-center gap-2 px-4 py-2.5 text-xs sm:text-sm font-semibold border-b-2 transition-all cursor-pointer whitespace-nowrap ${activeTab === 'outbound'
-            ? 'border-indigo-600 text-indigo-700 bg-indigo-50/40 rounded-t-lg'
+            ? 'border-blue-600 text-blue-700 bg-blue-50/50 rounded-t-lg'
             : 'border-transparent text-slate-600 hover:text-slate-900 hover:border-slate-300'
             }`}
         >

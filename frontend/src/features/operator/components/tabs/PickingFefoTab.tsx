@@ -40,7 +40,7 @@ export const PickingFefoTab: React.FC<PickingFefoTabProps> = ({
         setPickSteps(allSteps.map((s, idx) => ({ ...s, stepOrder: idx + 1, picked: false })));
         if (allSteps.length > 0) {
           setNotice({
-            msg: `FEFO đã chỉ định ${allSteps.length} bước lấy hàng ưu tiên date cận hạn nhất.`,
+            msg: `Hệ thống đã chọn ${allSteps.length} vị trí lấy hàng ưu tiên lô có hạn dùng gần nhất (FEFO).`,
             type: 'success',
           });
         } else {
@@ -208,7 +208,7 @@ export const PickingFefoTab: React.FC<PickingFefoTabProps> = ({
         <div className="space-y-3">
           <div className="flex items-center justify-between px-1">
             <span className="text-xs font-bold text-slate-700 uppercase tracking-wider">
-              Lộ Trình Nhặt FEFO: {selectedOrder.orderCode}
+              Lộ Trình Lấy Hàng Ưu Tiên Date: {selectedOrder.orderCode}
             </span>
             <button
               type="button"

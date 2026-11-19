@@ -38,7 +38,7 @@ export const AuditLocationList: React.FC<AuditLocationListProps> = ({
               onClick={() => onSelectItem(idx)}
               className={`w-full text-left p-3 rounded-xl border transition-all text-xs font-mono flex items-center justify-between ${
                 isSelected
-                  ? 'bg-emerald-50/70 border-emerald-500 ring-1 ring-emerald-500 text-emerald-950 font-bold shadow-xs'
+                  ? 'bg-blue-50 border-blue-500 ring-1 ring-blue-500 text-blue-950 font-bold shadow-xs'
                   : isCounted
                   ? 'bg-white border-slate-200 text-slate-700 hover:border-slate-300'
                   : 'bg-white/60 border-dashed border-slate-300 text-slate-500 hover:bg-white'

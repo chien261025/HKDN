@@ -200,7 +200,7 @@ export const AppSidebar: React.FC<AppSidebarProps> = ({
                         onClick={onCloseMobile}
                         className={`group relative flex items-center justify-center w-10 h-10 mx-auto rounded-lg transition-colors ${
                           isActive
-                            ? 'bg-indigo-600 text-white shadow-sm'
+                            ? 'bg-blue-600 text-white shadow-sm'
                             : 'text-slate-400 hover:text-white hover:bg-slate-800/60'
                         }`}
                       >
@@ -217,9 +217,9 @@ export const AppSidebar: React.FC<AppSidebarProps> = ({
                       key={item.path}
                       to={item.path}
                       onClick={onCloseMobile}
-                      className={`flex items-center justify-between px-3 py-2 rounded-lg text-xs font-medium transition-colors ${
+                      className={`flex items-center justify-between px-3 py-2 rounded-lg text-xs font-semibold transition-colors ${
                         isActive
-                          ? 'bg-indigo-600 text-white shadow-sm'
+                          ? 'bg-blue-600 text-white shadow-sm shadow-blue-500/20'
                           : 'text-slate-400 hover:text-slate-100 hover:bg-slate-800/50'
                       }`}
                     >

@@ -122,7 +122,7 @@ export const PutawayOptimizerWidget: React.FC = () => {
 
       <button
         onClick={calculatePutAway}
-        className="w-full py-2.5 bg-slate-900 hover:bg-slate-800 text-white font-semibold rounded-xl text-xs flex items-center justify-center gap-2 transition-all shadow-xs hover:shadow hover:-translate-y-0.5 active:translate-y-0 cursor-pointer"
+        className="w-full py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl text-xs flex items-center justify-center gap-2 transition-all shadow-sm shadow-blue-200 active:scale-[0.99] cursor-pointer"
       >
         <Sparkles className="w-4 h-4 text-amber-300" />
         <span>Phân Tích Vị Trí Cất Hàng Tối Ưu</span>

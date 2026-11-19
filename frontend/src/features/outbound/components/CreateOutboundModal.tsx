@@ -70,6 +70,7 @@ export const CreateOutboundModal: React.FC<Props> = ({ onClose, onCreateOrder })
           <h3 id="outbound-title" className="flex items-center gap-2 font-bold"><PackageCheck className="h-5 w-5 text-indigo-600" />Tạo đơn xuất kho</h3>
           <button type="button" disabled={saving} onClick={onClose} aria-label="Đóng"><X /></button>
         </div>
+<<<<<<< HEAD
         <form onSubmit={submit} className="space-y-5 p-5">
           {error && <p role="alert" className="rounded-lg bg-rose-50 p-3 text-sm text-rose-700">{error}</p>}
           {loading ? <p>Đang tải tồn kho…</p> : products.length === 0 && <p className="rounded-lg bg-amber-50 p-3 text-sm text-amber-800">Kho chưa có sản phẩm khả dụng để xuất.</p>}
@@ -81,6 +82,47 @@ export const CreateOutboundModal: React.FC<Props> = ({ onClose, onCreateOrder })
               <select aria-label="Khách hàng / Đơn vị nhận" className={inputClass} value={partnerId} onChange={e => setPartnerId(e.target.value)} required disabled={loading || saving}>
                 <option value="" disabled>Chọn đối tác của kho</option>
                 {partners.map(p => <option key={p.id} value={p.id}>{p.name} ({p.code})</option>)}
+=======
+
+        <form onSubmit={handleSubmit} className="p-6 space-y-4 text-sm">
+          <div>
+            <label className="text-slate-700 font-bold block mb-1.5">Khách Hàng / Đối Tác Nhận:</label>
+            <select
+              value={customerCode}
+              onChange={(e) => setCustomerCode(e.target.value)}
+              className="w-full p-2.5 rounded-xl bg-white border border-slate-300 text-slate-900 font-medium focus:outline-none focus:border-indigo-600 focus:ring-2 focus:ring-indigo-100"
+            >
+              {CUSTOMERS.map((c) => (
+                <option key={c.code} value={c.code}>
+                  {c.name} ({c.code})
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div className="grid grid-cols-2 gap-3.5">
+            <div>
+              <label className="text-slate-700 font-bold block mb-1.5">Hạn Giao Hàng:</label>
+              <input
+                type="date"
+                value={requiredDate}
+                onChange={(e) => setRequiredDate(e.target.value)}
+                required
+                className="w-full p-2.5 rounded-xl bg-white border border-slate-300 text-slate-900 font-mono focus:outline-none focus:border-indigo-600 focus:ring-2 focus:ring-indigo-100"
+              />
+            </div>
+
+            <div>
+              <label className="text-slate-700 font-bold block mb-1.5">Mức Độ Ưu Tiên:</label>
+              <select
+                value={priority}
+                onChange={(e) => setPriority(e.target.value as any)}
+                className="w-full p-2.5 rounded-xl bg-white border border-slate-300 text-amber-800 font-bold focus:outline-none focus:border-indigo-600 focus:ring-2 focus:ring-indigo-100"
+              >
+                <option value="NORMAL">Bình Thường</option>
+                <option value="HIGH">Ưu Tiên Cao</option>
+                <option value="URGENT">Hỏa Tốc</option>
+>>>>>>> 36fa9b52849e24e253b8552373cbd59e9c2fe860
               </select>
             </label>
           </div>
@@ -111,11 +153,29 @@ export const CreateOutboundModal: React.FC<Props> = ({ onClose, onCreateOrder })
               </tbody>
             </table>
           </div>
+<<<<<<< HEAD
           <p className="text-xs text-slate-500">Tồn cuối dự kiến = tồn hiện tại − số lượng xuất. Tồn thực tế chỉ giảm khi xác nhận xuất kho; hàng được lấy theo FEFO trong kho của đơn.</p>
           <label className="block space-y-1 text-sm font-semibold">Ghi chú<input className={inputClass} value={notes} onChange={e => setNotes(e.target.value)} disabled={saving} /></label>
           <div className="flex justify-end gap-3 border-t pt-4">
             <button type="button" disabled={saving} onClick={onClose} className="rounded-lg bg-slate-100 px-5 py-2.5 font-semibold">Hủy</button>
             <button type="submit" disabled={loading || saving || !valid || !partner} className="rounded-lg bg-indigo-600 px-5 py-2.5 font-semibold text-white disabled:opacity-40">{saving ? 'Đang tạo…' : 'Tạo đơn xuất kho'}</button>
+=======
+
+          <div className="flex gap-3 pt-3 border-t border-slate-200">
+            <button
+              type="button"
+              onClick={onClose}
+              className="flex-1 py-3 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 hover:text-slate-900 font-bold cursor-pointer"
+            >
+              Hủy
+            </button>
+            <button
+              type="submit"
+              className="flex-1 py-3 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold shadow-md shadow-indigo-200 cursor-pointer transition-all"
+            >
+              Tạo Đơn Xuất Kho
+            </button>
+>>>>>>> 36fa9b52849e24e253b8552373cbd59e9c2fe860
           </div>
         </form>
       </div>

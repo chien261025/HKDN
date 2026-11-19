@@ -39,12 +39,12 @@ export const ReportsHeader: React.FC<ReportsHeaderProps> = ({
 
       <div className="relative grid gap-6 p-5 sm:p-7 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-center">
         <div className="flex min-w-0 items-start gap-4">
-          <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-slate-950 text-emerald-300 shadow-lg shadow-slate-950/15 sm:h-14 sm:w-14">
-            <FileSpreadsheet className="h-6 w-6 sm:h-7 sm:w-7" strokeWidth={1.8} />
+          <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-blue-600 text-white shadow-md shadow-blue-200 ring-4 ring-blue-50 sm:h-14 sm:w-14">
+            <FileSpreadsheet className="h-6 w-6 sm:h-7 sm:w-7 text-white" strokeWidth={1.8} />
           </div>
           <div className="min-w-0">
             <div className="mb-2 flex flex-wrap items-center gap-2">
-              <span className="inline-flex items-center gap-1.5 rounded-full border border-emerald-200 bg-emerald-50 px-2.5 py-1 text-[11px] font-bold uppercase tracking-[0.12em] text-emerald-700">
+              <span className="inline-flex items-center gap-1.5 rounded-full border border-blue-200 bg-blue-50 px-2.5 py-1 text-[11px] font-bold uppercase tracking-[0.12em] text-blue-700">
                 <Sparkles className="h-3 w-3" /> Báo cáo vận hành
               </span>
               {activeJobsCount > 0 && (

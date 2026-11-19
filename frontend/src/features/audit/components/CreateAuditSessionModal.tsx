@@ -72,7 +72,7 @@ export const CreateAuditSessionModal: React.FC<CreateAuditSessionModalProps> = (
         {/* Header */}
         <div className="p-4 md:p-5 border-b border-slate-200 flex items-center justify-between bg-slate-50">
           <div className="flex items-center gap-2.5">
-            <div className="p-2 rounded-xl bg-emerald-50 text-emerald-600 border border-emerald-200">
+            <div className="p-2 rounded-xl bg-blue-50 text-blue-600 border border-blue-200">
               <ClipboardCheck className="w-5 h-5" />
             </div>
             <h3 className="font-bold text-lg text-slate-900">Tạo Đợt Kiểm Kê Kho Mới</h3>
@@ -164,7 +164,7 @@ export const CreateAuditSessionModal: React.FC<CreateAuditSessionModalProps> = (
             </button>
             <button
               type="submit"
-              className="flex-1 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-sm shadow-md shadow-emerald-600/20 transition-all active:scale-95"
+              className="flex-1 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-sm shadow-sm shadow-blue-200 transition-all active:scale-[0.99] cursor-pointer"
             >
               Tạo Đợt Kiểm Kê
             </button>

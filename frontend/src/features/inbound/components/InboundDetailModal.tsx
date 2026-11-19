@@ -36,8 +36,10 @@ export const InboundDetailModal: React.FC<InboundDetailModalProps> = ({ order, o
             <div>
               <div className="flex items-center gap-2.5">
                 <h3 className="font-bold text-base text-slate-900">Chi Tiết Đơn Nhập Kho: {order.poCode}</h3>
-                <span className="text-xs font-mono font-bold px-2.5 py-0.5 rounded bg-indigo-50 text-indigo-700 border border-indigo-200">
-                  {order.status}
+                <span className={`text-xs font-bold px-2.5 py-0.5 rounded border ${
+                  isStocked ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : isReceived ? 'bg-blue-50 text-blue-700 border-blue-200' : 'bg-amber-50 text-amber-700 border-amber-200'
+                }`}>
+                  {isPending ? 'CHỜ TIẾP NHẬN' : isReceived ? 'TẠI KHU ĐỆM' : 'ĐÃ CẤT KỆ'}
                 </span>
               </div>
               <p className="text-xs text-slate-600 font-medium mt-0.5">{order.supplierName}</p>

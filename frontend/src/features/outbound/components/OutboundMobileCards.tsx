@@ -61,22 +61,22 @@ export const OutboundMobileCards: React.FC<OutboundMobileCardsProps> = ({
 
               {isPending && (
                 <span className="inline-flex items-center gap-1 text-[11px] font-mono font-bold text-amber-700 bg-amber-50 px-2 py-0.5 rounded-md border border-amber-200 shrink-0">
-                  <Clock className="w-3 h-3" /> PENDING
+                  <Clock className="w-3 h-3" /> CHỜ PHÂN BỔ
                 </span>
               )}
               {isAllocated && (
                 <span className="inline-flex items-center gap-1 text-[11px] font-mono font-bold text-indigo-700 bg-indigo-50 px-2 py-0.5 rounded-md border border-indigo-200 shrink-0">
-                  <Lock className="w-3 h-3" /> FEFO
+                  <Lock className="w-3 h-3" /> ĐÃ GIỮ HÀNG
                 </span>
               )}
               {isPicking && (
                 <span className="inline-flex items-center gap-1 text-[11px] font-mono font-bold text-blue-700 bg-blue-50 px-2 py-0.5 rounded-md border border-blue-200 shrink-0">
-                  <ShieldCheck className="w-3 h-3" /> PICKING
+                  <ShieldCheck className="w-3 h-3" /> ĐANG LẤY HÀNG
                 </span>
               )}
               {isDispatched && (
                 <span className="inline-flex items-center gap-1 text-[11px] font-mono font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-md border border-emerald-200 shrink-0">
-                  <CheckCircle2 className="w-3 h-3" /> DISPATCHED
+                  <CheckCircle2 className="w-3 h-3" /> ĐÃ XUẤT XƯỞNG
                 </span>
               )}
             </div>
@@ -97,10 +97,10 @@ export const OutboundMobileCards: React.FC<OutboundMobileCardsProps> = ({
             <div className="space-y-1">
               <div className="flex justify-between text-[11px] font-mono text-slate-600">
                 <span>
-                  {isPending && '1. Chờ duyệt'}
-                  {isAllocated && '2. Khóa FEFO'}
-                  {isPicking && '3. Nhặt hàng'}
-                  {isDispatched && '4. Xuất kho'}
+                  {isPending && '1. Chờ phân bổ'}
+                  {isAllocated && '2. Đã giữ hàng'}
+                  {isPicking && '3. Đang lấy hàng'}
+                  {isDispatched && '4. Đã xuất xưởng'}
                 </span>
                 <span className="font-bold text-amber-700">{progressPercent}%</span>
               </div>
@@ -121,7 +121,7 @@ export const OutboundMobileCards: React.FC<OutboundMobileCardsProps> = ({
                   className="flex-1 py-2 px-2.5 bg-amber-600 hover:bg-amber-700 text-white rounded-lg text-xs font-semibold shadow-xs transition-colors flex items-center justify-center gap-1 cursor-pointer"
                 >
                   <Lock className="w-3.5 h-3.5" />
-                  <span>Khóa FEFO</span>
+                  <span>Phân Bổ Lô</span>
                 </button>
               )}
               {(isAllocated || isPicking) && (

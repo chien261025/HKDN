@@ -22,7 +22,7 @@ export const OutboundDetailModal: React.FC<OutboundDetailModalProps> = ({ order,
             </div>
             <div>
               <div className="flex items-center gap-2.5">
-                <h3 className="font-bold text-base text-slate-900">Lệnh Xuất & Danh Sách Nhặt Hàng (Pick List)</h3>
+                <h3 className="font-bold text-base text-slate-900">Chi Tiết Đơn Xuất & Phiếu Lấy Hàng</h3>
                 <span className="text-xs font-mono font-bold px-2.5 py-0.5 rounded bg-amber-50 text-amber-800 border border-amber-300">
                   {order.soCode}
                 </span>
@@ -58,9 +58,9 @@ export const OutboundDetailModal: React.FC<OutboundDetailModalProps> = ({ order,
           <div className="space-y-2.5">
             <div className="flex items-center justify-between">
               <span className="font-bold text-slate-800 uppercase tracking-wider text-xs sm:text-sm">
-                Lộ Trình Nhặt Hàng Tối Ưu Theo FEFO (Pick Route):
+                Lộ Trình Lấy Hàng Ưu Tiên Hạn Ngắn Trước (FEFO):
               </span>
-              <span className="text-xs text-amber-800 font-mono font-bold">Hạn ngắn đi trước</span>
+              <span className="text-xs text-amber-800 font-mono font-bold">Lô cận hạn xuất trước</span>
             </div>
 
             <div className="space-y-3">

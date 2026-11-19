@@ -19,21 +19,18 @@ export const UsersHeader: React.FC<UsersHeaderProps> = ({
   return (
     <div className="space-y-4">
       {/* Top Banner Row */}
-      <div className="bg-white rounded-2xl p-5 md:p-6 border border-slate-200 shadow-xs flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+      <div className="bg-white rounded-2xl p-5 md:p-6 border border-slate-200/90 shadow-sm flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
         <div className="flex items-center gap-4">
-          <div className="w-12 h-12 rounded-xl bg-indigo-600 flex items-center justify-center text-white shadow-xs ring-4 ring-indigo-50 shrink-0">
-            <Shield className="w-6 h-6" />
+          <div className="w-12 h-12 rounded-xl bg-blue-600 flex items-center justify-center text-white shadow-md shadow-blue-200 ring-4 ring-blue-50 shrink-0">
+            <Shield className="w-6 h-6 text-white" />
           </div>
           <div>
             <div className="flex items-center gap-2.5 flex-wrap">
               <h1 className="text-xl md:text-2xl font-bold text-slate-900 tracking-tight">
                 Quản Lý Tài Khoản & Phân Quyền
               </h1>
-              {/* <span className="text-[11px] font-mono bg-slate-100 text-slate-700 px-2.5 py-0.5 rounded-md border border-slate-200 font-semibold uppercase">
-                Nhân Sự Hệ Thống
-              </span> */}
             </div>
-            <p className="text-xs sm:text-sm text-slate-500 font-medium mt-1">
+            <p className="text-xs sm:text-sm text-slate-500 font-normal mt-0.5">
               Quản lý danh sách nhân viên kho, phân quyền vai trò và kiểm soát tài khoản làm việc
             </p>
           </div>
@@ -43,7 +40,7 @@ export const UsersHeader: React.FC<UsersHeaderProps> = ({
         <div className="flex items-center gap-3 self-stretch md:self-auto justify-end">
           <button
             onClick={onOpenCreateModal}
-            className="flex items-center gap-2 px-4 py-2.5 bg-indigo-600 hover:bg-indigo-700 active:scale-[0.99] text-white rounded-xl text-xs sm:text-sm font-semibold shadow-xs transition-colors shrink-0 cursor-pointer"
+            className="flex items-center gap-2 px-4 py-2.5 bg-blue-600 hover:bg-blue-700 active:scale-[0.99] text-white rounded-xl text-xs sm:text-sm font-bold shadow-sm shadow-blue-200 transition-all shrink-0 cursor-pointer"
           >
             <Plus className="w-4 h-4" />
             <span>Thêm Tài Khoản</span>
