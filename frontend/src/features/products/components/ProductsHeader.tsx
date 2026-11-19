@@ -1,5 +1,5 @@
 import React from 'react';
-import { Package, Building2, AlertTriangle, Plus, ShieldAlert, Tags, DollarSign } from 'lucide-react';
+import { Package, Building2, AlertTriangle, Plus, ShieldAlert, Tags, DollarSign, Download } from 'lucide-react';
 import { ProductItem, SupplierItem } from '../types';
 
 interface ProductsHeaderProps {
@@ -35,6 +35,64 @@ export const ProductsHeader: React.FC<ProductsHeaderProps> = ({
     return val.toLocaleString() + ' ₫';
   };
 
+  const handleExportCsv = () => {
+    if (products.length === 0) return;
+    const headers = [
+      'Mã SKU',
+      'Mã Barcode',
+      'Tên Sản Phẩm',
+      'Thương Hiệu',
+      'Xuất Xứ',
+      'Đơn Vị Tính',
+      'Trọng Lượng (kg)',
+      'Kích Thước (cm)',
+      'Thể Tích CBM (m3)',
+      'Giá Nhập (VND)',
+      'Giá Bán (VND)',
+      'Tồn Kho',
+      'Tồn An Toàn (Min)',
+      'Điểm Đặt Hàng (ROP)',
+      'Tồn Tối Đa (Max)',
+      'Tổng Giá Trị Tồn (VND)',
+      'Nhà Cung Cấp',
+      'Vùng Lưu Kho',
+      'Trạng Thái Kinh Doanh',
+    ];
+
+    const rows = products.map((p) => [
+      `"${p.sku}"`,
+      `"${p.barcode}"`,
+      `"${(p.name || '').replace(/"/g, '""')}"`,
+      `"${(p.brand || '').replace(/"/g, '""')}"`,
+      `"${(p.origin || '').replace(/"/g, '""')}"`,
+      `"${p.unit}"`,
+      p.weightKg || 1,
+      `"${p.lengthCm || 20}x${p.widthCm || 15}x${p.heightCm || 10}"`,
+      p.volumeCbm || 0.003,
+      p.purchasePrice || 0,
+      p.sellingPrice || 0,
+      p.currentStock || 0,
+      p.safetyStock || 0,
+      p.reorderPoint || 0,
+      p.maxStock || 500,
+      (p.currentStock || 0) * (p.purchasePrice || 0),
+      `"${(p.supplierName || '').replace(/"/g, '""')}"`,
+      `"${p.storageZone}"`,
+      `"${p.businessStatus || 'ACTIVE'}"`,
+    ]);
+
+    const csvContent = '\uFEFF' + [headers.join(','), ...rows.map((r) => r.join(','))].join('\r\n');
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.setAttribute('download', `WMS_Danh_Muc_Hang_Hoa_${new Date().toISOString().slice(0, 10)}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+  };
+
   return (
     <div className="space-y-4">
       {/* Top Banner Row */}
@@ -61,7 +119,7 @@ export const ProductsHeader: React.FC<ProductsHeaderProps> = ({
           </div>
         </div>
 
-        {/* Tab switchers & Create button */}
+        {/* Tab switchers & Action buttons */}
         <div className="flex items-center gap-3 self-stretch md:self-auto justify-between md:justify-end flex-wrap">
           <div className="flex items-center bg-slate-100 p-1 rounded-xl border border-slate-200 gap-1">
             <button
@@ -99,15 +157,28 @@ export const ProductsHeader: React.FC<ProductsHeaderProps> = ({
             </button>
           </div>
 
-          {activeTab !== 'CATEGORIES' && (
-            <button
-              onClick={onOpenCreateModal}
-              className="flex items-center gap-2 px-4 py-2.5 bg-blue-600 hover:bg-blue-700 active:scale-[0.99] text-white rounded-xl text-xs sm:text-sm font-bold shadow-sm shadow-blue-200 transition-all shrink-0 cursor-pointer"
-            >
-              <Plus className="w-4 h-4" />
-              <span>{activeTab === 'PRODUCTS' ? 'Thêm Sản Phẩm Mới' : 'Thêm Nhà Cung Cấp'}</span>
-            </button>
-          )}
+          <div className="flex items-center gap-2">
+            {activeTab === 'PRODUCTS' && products.length > 0 && (
+              <button
+                onClick={handleExportCsv}
+                title="Xuất bảng danh mục hàng hóa ra file CSV/Excel"
+                className="flex items-center gap-1.5 px-3.5 py-2.5 bg-white hover:bg-slate-100 text-slate-700 border border-slate-200 rounded-xl text-xs sm:text-sm font-semibold shadow-2xs transition-colors shrink-0 cursor-pointer"
+              >
+                <Download className="w-4 h-4 text-slate-500" />
+                <span>Xuất CSV</span>
+              </button>
+            )}
+
+            {activeTab !== 'CATEGORIES' && (
+              <button
+                onClick={onOpenCreateModal}
+                className="flex items-center gap-2 px-4 py-2.5 bg-blue-600 hover:bg-blue-700 active:scale-[0.99] text-white rounded-xl text-xs sm:text-sm font-bold shadow-sm shadow-blue-200 transition-all shrink-0 cursor-pointer"
+              >
+                <Plus className="w-4 h-4" />
+                <span>{activeTab === 'PRODUCTS' ? 'Thêm Sản Phẩm Mới' : 'Thêm Nhà Cung Cấp'}</span>
+              </button>
+            )}
+          </div>
         </div>
       </div>
 

@@ -1,19 +1,21 @@
 -- V7: Enrich Product Master Data with Pricing, Dimensions, Brand, Origin, Image, Capacity & Business Status
+SET NAMES utf8mb4;
+SET CHARACTER SET utf8mb4;
 
 ALTER TABLE wms_product
-    ADD COLUMN description VARCHAR(500) NULL AFTER name,
-    ADD COLUMN brand VARCHAR(100) NULL AFTER unit,
-    ADD COLUMN origin VARCHAR(100) NULL AFTER brand,
-    ADD COLUMN image_url VARCHAR(500) NULL AFTER origin,
-    ADD COLUMN storage_condition VARCHAR(50) DEFAULT 'AMBIENT' AFTER image_url,
-    ADD COLUMN weight_kg DECIMAL(10,2) DEFAULT 1.00 AFTER storage_condition,
-    ADD COLUMN length_cm DECIMAL(10,2) DEFAULT 20.00 AFTER weight_kg,
-    ADD COLUMN width_cm DECIMAL(10,2) DEFAULT 15.00 AFTER length_cm,
-    ADD COLUMN height_cm DECIMAL(10,2) DEFAULT 10.00 AFTER width_cm,
-    ADD COLUMN max_stock INT DEFAULT 500 AFTER reorder_point,
-    ADD COLUMN purchase_price DECIMAL(15,2) DEFAULT 0.00 AFTER max_stock,
-    ADD COLUMN selling_price DECIMAL(15,2) DEFAULT 0.00 AFTER purchase_price,
-    ADD COLUMN business_status VARCHAR(30) DEFAULT 'ACTIVE' AFTER selling_price;
+    ADD COLUMN IF NOT EXISTS description VARCHAR(500) NULL AFTER name,
+    ADD COLUMN IF NOT EXISTS brand VARCHAR(100) NULL AFTER unit,
+    ADD COLUMN IF NOT EXISTS origin VARCHAR(100) NULL AFTER brand,
+    ADD COLUMN IF NOT EXISTS image_url VARCHAR(500) NULL AFTER origin,
+    ADD COLUMN IF NOT EXISTS storage_condition VARCHAR(50) DEFAULT 'AMBIENT' AFTER image_url,
+    ADD COLUMN IF NOT EXISTS weight_kg DECIMAL(10,2) DEFAULT 1.00 AFTER storage_condition,
+    ADD COLUMN IF NOT EXISTS length_cm DECIMAL(10,2) DEFAULT 20.00 AFTER weight_kg,
+    ADD COLUMN IF NOT EXISTS width_cm DECIMAL(10,2) DEFAULT 15.00 AFTER length_cm,
+    ADD COLUMN IF NOT EXISTS height_cm DECIMAL(10,2) DEFAULT 10.00 AFTER width_cm,
+    ADD COLUMN IF NOT EXISTS max_stock INT DEFAULT 500 AFTER reorder_point,
+    ADD COLUMN IF NOT EXISTS purchase_price DECIMAL(15,2) DEFAULT 0.00 AFTER max_stock,
+    ADD COLUMN IF NOT EXISTS selling_price DECIMAL(15,2) DEFAULT 0.00 AFTER purchase_price,
+    ADD COLUMN IF NOT EXISTS business_status VARCHAR(30) DEFAULT 'ACTIVE' AFTER selling_price;
 
 -- Seed rich enterprise data for existing 15 items
 UPDATE wms_product SET

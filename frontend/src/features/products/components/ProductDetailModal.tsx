@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import {
   X,
   Package,
@@ -17,9 +17,13 @@ import {
   CheckCircle2,
   AlertCircle,
   QrCode,
+  Calendar,
+  MapPin,
+  Clock,
 } from 'lucide-react';
 import { ProductItem } from '../types';
 import { getCategoryBadge, getZoneBadge } from '../utils/productBadges';
+import { StockItem } from '../../labels/types';
 
 interface ProductDetailModalProps {
   isOpen: boolean;
@@ -27,6 +31,7 @@ interface ProductDetailModalProps {
   product: ProductItem | null;
   onEditProduct: (product: ProductItem) => void;
   onPrintBarcode: (product: ProductItem) => void;
+  inventoryBalances?: StockItem[];
 }
 
 export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
@@ -35,12 +40,24 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
   product,
   onEditProduct,
   onPrintBarcode,
+  inventoryBalances = [],
 }) => {
   if (!isOpen || !product) return null;
 
   const isUnderSafety = product.currentStock <= product.safetyStock;
   const isUnderReorder = product.currentStock <= product.reorderPoint && !isUnderSafety;
   const inventoryValue = product.currentStock * (product.purchasePrice || 0);
+
+  // Filter all active warehouse batches belonging to this product
+  const productBatches = useMemo(() => {
+    if (!product || !inventoryBalances) return [];
+    return inventoryBalances.filter(
+      (b) =>
+        b.sku === product.sku ||
+        String(b.productId) === String(product.id) ||
+        (b.name && b.name.toLowerCase() === product.name.toLowerCase())
+    );
+  }, [product, inventoryBalances]);
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-xs p-4 overflow-y-auto animate-fade-in">
@@ -135,11 +152,11 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
                   <span className="text-slate-400">Xuất xứ:</span>{' '}
                   <span className="font-semibold text-slate-800">{product.origin || 'Việt Nam'}</span>
                 </div>
-                <div>
+                <div className="col-span-2">
                   <span className="text-slate-400">Nhà cung cấp:</span>{' '}
                   <span className="font-semibold text-slate-800">{product.supplierName}</span>
                 </div>
-                <div className="flex items-center gap-1 font-mono">
+                <div className="col-span-2 flex items-center gap-1 font-mono">
                   <Barcode className="w-3.5 h-3.5 text-blue-600" />
                   <span className="font-bold text-slate-800">{product.barcode}</span>
                 </div>
@@ -277,6 +294,69 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
                 </div>
               </div>
             </div>
+          </div>
+
+          {/* Box 4: Phân biệt rõ Sản phẩm vs Lô Hàng (Batch/Lot) & Hạn Sử Dụng FEFO */}
+          <div className="p-4 rounded-2xl border border-slate-200 bg-white shadow-2xs space-y-3">
+            <div className="flex items-center justify-between border-b border-slate-100 pb-2">
+              <div className="flex items-center gap-2 text-xs font-bold text-slate-800">
+                <Calendar className="w-4 h-4 text-amber-600" />
+                <span>Các Lô Hàng (Batch/Lot) Đang Lưu Kho & Hạn Dùng FEFO</span>
+              </div>
+              <span className="text-[11px] text-slate-500">
+                Phân biệt giữa Sản Phẩm và Lô Hàng
+              </span>
+            </div>
+
+            {productBatches.length === 0 ? (
+              <div className="py-4 text-center text-xs text-slate-400 italic">
+                Hiện chưa có lô hàng cụ thể nào được phân bổ trong kho cho mặt hàng này.
+              </div>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full text-left text-xs font-mono">
+                  <thead>
+                    <tr className="border-b border-slate-200 text-slate-500 text-[11px]">
+                      <th className="py-2 px-2">Số Lô (Batch No)</th>
+                      <th className="py-2 px-2">Vị Trí Ô Kệ</th>
+                      <th className="py-2 px-2">Hạn Sử Dụng (EXP)</th>
+                      <th className="py-2 px-2 text-right">Tồn Thực Tế</th>
+                      <th className="py-2 px-2 text-right">Khả Dụng</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100">
+                    {productBatches.map((batch, idx) => (
+                      <tr key={idx} className="hover:bg-slate-50">
+                        <td className="py-2 px-2 font-bold text-indigo-700">
+                          {batch.batchNumber || 'BATCH-STD-01'}
+                        </td>
+                        <td className="py-2 px-2 flex items-center gap-1 text-slate-700">
+                          <MapPin className="w-3 h-3 text-slate-400" />
+                          <span>{batch.locationBarcode || 'Khu Lưu Trữ'}</span>
+                        </td>
+                        <td className="py-2 px-2">
+                          <span
+                            className={`px-1.5 py-0.5 rounded text-[10px] font-bold ${
+                              batch.isExpiringSoon
+                                ? 'bg-rose-100 text-rose-700 border border-rose-200'
+                                : 'bg-emerald-50 text-emerald-700 border border-emerald-200'
+                            }`}
+                          >
+                            {batch.expiryDate || '2026-12-31'}
+                          </span>
+                        </td>
+                        <td className="py-2 px-2 text-right font-bold text-slate-900">
+                          {batch.onHandQty} {product.unit}
+                        </td>
+                        <td className="py-2 px-2 text-right text-emerald-600 font-bold">
+                          {batch.availableQty} {product.unit}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
           </div>
         </div>
 
