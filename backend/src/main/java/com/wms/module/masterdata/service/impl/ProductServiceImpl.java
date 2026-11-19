@@ -77,17 +77,56 @@ public class ProductServiceImpl implements ProductService {
         if (productUpdate.getName() != null && !productUpdate.getName().isBlank()) {
             existing.setName(productUpdate.getName());
         }
+        if (productUpdate.getDescription() != null) {
+            existing.setDescription(productUpdate.getDescription());
+        }
         if (productUpdate.getBarcode() != null && !productUpdate.getBarcode().isBlank()) {
             existing.setBarcode(productUpdate.getBarcode());
         }
         if (productUpdate.getUnit() != null && !productUpdate.getUnit().isBlank()) {
             existing.setUnit(productUpdate.getUnit());
         }
+        if (productUpdate.getBrand() != null) {
+            existing.setBrand(productUpdate.getBrand());
+        }
+        if (productUpdate.getOrigin() != null) {
+            existing.setOrigin(productUpdate.getOrigin());
+        }
+        if (productUpdate.getImageUrl() != null) {
+            existing.setImageUrl(productUpdate.getImageUrl());
+        }
+        if (productUpdate.getStorageCondition() != null) {
+            existing.setStorageCondition(productUpdate.getStorageCondition());
+        }
+        if (productUpdate.getWeightKg() != null) {
+            existing.setWeightKg(productUpdate.getWeightKg());
+        }
+        if (productUpdate.getLengthCm() != null) {
+            existing.setLengthCm(productUpdate.getLengthCm());
+        }
+        if (productUpdate.getWidthCm() != null) {
+            existing.setWidthCm(productUpdate.getWidthCm());
+        }
+        if (productUpdate.getHeightCm() != null) {
+            existing.setHeightCm(productUpdate.getHeightCm());
+        }
         if (productUpdate.getSafetyStock() != null) {
             existing.setSafetyStock(productUpdate.getSafetyStock());
         }
         if (productUpdate.getReorderPoint() != null) {
             existing.setReorderPoint(productUpdate.getReorderPoint());
+        }
+        if (productUpdate.getMaxStock() != null) {
+            existing.setMaxStock(productUpdate.getMaxStock());
+        }
+        if (productUpdate.getPurchasePrice() != null) {
+            existing.setPurchasePrice(productUpdate.getPurchasePrice());
+        }
+        if (productUpdate.getSellingPrice() != null) {
+            existing.setSellingPrice(productUpdate.getSellingPrice());
+        }
+        if (productUpdate.getBusinessStatus() != null) {
+            existing.setBusinessStatus(productUpdate.getBusinessStatus());
         }
         if (productUpdate.getCategoryId() != null) {
             existing.setCategoryId(productUpdate.getCategoryId());
