@@ -278,6 +278,7 @@ public class OutboundService {
                     .mapToInt(PickAllocation::getAllocatedQty).sum();
             if (item.getRequestedQty() <= 0 || allocated != item.getRequestedQty()) {
                 throw new BusinessException(ErrorCode.INSUFFICIENT_STOCK, "Phân bổ không khớp số lượng cần xuất!");
+            }
             for (PickAllocation alloc : allocations) {
                 if ("CANCELLED".equals(alloc.getStatus())) continue;
                 int deduct = alloc.getAllocatedQty();

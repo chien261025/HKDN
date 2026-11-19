@@ -7,8 +7,9 @@ export const productService = {
   async getProducts(stockedOnly = false): Promise<ProductItem[]> {
     try {
       const [res, closingBalances, supplierResponse] = await Promise.all([
-        apiClient.get('/masterdata/products'), inventoryService.getClosingBalances(),
-        apiClient.get('/masterdata/suppliers'),
+        apiClient.get('/masterdata/products'),
+        inventoryService.getClosingBalances().catch(() => []),
+        apiClient.get('/masterdata/suppliers').catch(() => ({ data: { data: [] } })),
       ]);
       const suppliers = new Map<number, { code: string; name: string }>((supplierResponse.data.data || [])
         .map((s: any) => [Number(s.id), { code: s.code, name: s.name }]));
