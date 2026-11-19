@@ -321,6 +321,7 @@ export const ProductsPage: React.FC = () => {
         product={selectedProductForDetail}
         onEditProduct={handleEditProduct}
         onPrintBarcode={(p) => setSelectedProductForBarcode(p)}
+        inventoryBalances={inventoryBalances}
       />
     </div>
   );
