@@ -272,12 +272,107 @@ public class OutboundService {
         // A direct dispatch uses the same warehouse-scoped FEFO allocation in this transaction.
         if ("PENDING".equals(order.getStatus())) allocateOutboundOrderFefo(id);
         Long currentUserId = com.wms.module.identity.util.SecurityUtils.getCurrentUserIdOrDefault(userRepository, 1L);
+<<<<<<< HEAD
         for (OutboundOrderItem item : order.getItems()) {
             List<PickAllocation> allocations = pickAllocationRepository.findByOutboundOrderItemId(item.getId());
             int allocated = allocations.stream().filter(a -> !"CANCELLED".equals(a.getStatus()))
                     .mapToInt(PickAllocation::getAllocatedQty).sum();
             if (item.getRequestedQty() <= 0 || allocated != item.getRequestedQty()) {
                 throw new BusinessException(ErrorCode.INSUFFICIENT_STOCK, "Phân bổ không khớp số lượng cần xuất!");
+=======
+
+        if (order.getItems() != null) {
+            for (OutboundOrderItem item : order.getItems()) {
+                List<PickAllocation> allocations = pickAllocationRepository.findByOutboundOrderItemId(item.getId());
+
+                if (allocations != null && !allocations.isEmpty()) {
+                    // Xuất kho theo đúng các Lô và Ô kệ đã được cấp phát FEFO
+                    for (PickAllocation alloc : allocations) {
+                        if ("PICKED".equals(alloc.getStatus()) || "CANCELLED".equals(alloc.getStatus())) {
+                            continue;
+                        }
+
+                        Inventory inv = inventoryRepository.findByProductIdAndLocationIdAndBatchId(
+                                alloc.getProductId(), alloc.getLocationId(), alloc.getBatchId()
+                        ).orElse(null);
+
+                        if (inv != null) {
+                            int deduct = alloc.getAllocatedQty();
+                            inv.setOnHandQty(Math.max(0, inv.getOnHandQty() - deduct));
+                            inv.setReservedQty(Math.max(0, inv.getReservedQty() - deduct));
+                            inv.setLastUpdatedAt(Instant.now());
+                            inventoryRepository.saveAndFlush(inv);
+
+                            StockLedger ledger = StockLedger.builder()
+                                    .transactionType("OUTBOUND")
+                                    .referenceCode(order.getOrderCode())
+                                    .locationId(alloc.getLocationId())
+                                    .productId(alloc.getProductId())
+                                    .batchId(alloc.getBatchId())
+                                    .qtyChange(-deduct)
+                                    .balanceAfter(inv.getOnHandQty())
+                                    .performedBy(currentUserId)
+                                    .notes("Bàn giao vận chuyển đơn xuất SO: " + order.getOrderCode())
+                                    .createdAt(Instant.now())
+                                    .build();
+                            stockLedgerRepository.save(ledger);
+                        }
+
+                        alloc.setStatus("PICKED");
+                        alloc.setPickedQty(alloc.getAllocatedQty());
+                        alloc.setPickedAt(Instant.now());
+                        pickAllocationRepository.save(alloc);
+                    }
+                    item.setAllocatedQty(item.getRequestedQty());
+                    item.setPickedQty(item.getRequestedQty());
+                    item.setStatus("SHIPPED");
+                } else {
+                    // Fallback nếu đơn chưa phân bổ trước đó
+                    int qtyToDeduct = item.getRequestedQty();
+                    List<Inventory> inventories = inventoryRepository.findByProductIdAndOnHandQtyGreaterThanOrderByReservedQtyDesc(item.getProductId(), 0);
+                    if (inventories == null || inventories.isEmpty()) {
+                        inventories = inventoryRepository.findAll().stream()
+                                .filter(inv -> inv.getProductId().equals(item.getProductId()) && inv.getOnHandQty() > 0)
+                                .sorted((a, b) -> Integer.compare(b.getReservedQty(), a.getReservedQty()))
+                                .toList();
+                    }
+
+                    for (Inventory inv : inventories) {
+                        if (qtyToDeduct <= 0) break;
+                        int deduct = Math.min(qtyToDeduct, inv.getOnHandQty());
+                        inv.setOnHandQty(inv.getOnHandQty() - deduct);
+                        inv.setReservedQty(Math.max(0, inv.getReservedQty() - deduct));
+                        inv.setLastUpdatedAt(Instant.now());
+                        inventoryRepository.saveAndFlush(inv);
+
+                        StockLedger ledger = StockLedger.builder()
+                                .transactionType("OUTBOUND")
+                                .referenceCode(order.getOrderCode())
+                                .locationId(inv.getLocationId())
+                                .productId(item.getProductId())
+                                .batchId(inv.getBatchId())
+                                .qtyChange(-deduct)
+                                .balanceAfter(inv.getOnHandQty())
+                                .performedBy(currentUserId)
+                                .notes("Bàn giao vận chuyển đơn xuất SO: " + order.getOrderCode())
+                                .createdAt(Instant.now())
+                                .build();
+                        stockLedgerRepository.save(ledger);
+
+                        qtyToDeduct -= deduct;
+                    }
+
+                    if (qtyToDeduct > 0) {
+                        throw new BusinessException(ErrorCode.INSUFFICIENT_STOCK,
+                                String.format("Không đủ hàng khả dụng trong kho để xuất đơn %s! Sản phẩm ID %d còn thiếu %d cái",
+                                        order.getOrderCode(), item.getProductId(), qtyToDeduct));
+                    }
+
+                    item.setAllocatedQty(item.getRequestedQty());
+                    item.setPickedQty(item.getRequestedQty());
+                    item.setStatus("SHIPPED");
+                }
+>>>>>>> 36fa9b52849e24e253b8552373cbd59e9c2fe860
             }
             for (PickAllocation alloc : allocations) {
                 if ("CANCELLED".equals(alloc.getStatus())) continue;

@@ -39,7 +39,7 @@ export const PickingStepCard: React.FC<PickingStepCardProps> = ({
           </div>
         </div>
         <div className="text-right">
-          <div className="text-2xs font-mono text-slate-500 uppercase">Hạn dùng (FEFO):</div>
+          <div className="text-2xs font-mono text-slate-500 uppercase">Hạn dùng (Cận date trước):</div>
           <div className="text-xs font-mono font-bold text-rose-700 flex items-center gap-1 mt-0.5">
             <Calendar className="w-3.5 h-3.5" />
             {step.expiryDate}
@@ -58,7 +58,7 @@ export const PickingStepCard: React.FC<PickingStepCardProps> = ({
         {step.picked ? (
           <div className="flex items-center gap-2 text-emerald-700 text-xs font-bold font-mono">
             <CheckCircle2 className="w-4 h-4 text-emerald-600" />
-            <span>ĐÃ NHẶT XONG {step.pickQty} CÁI</span>
+            <span>ĐÃ LẤY XONG {step.pickQty} CÁI</span>
           </div>
         ) : (
           <button
@@ -67,7 +67,7 @@ export const PickingStepCard: React.FC<PickingStepCardProps> = ({
             className="w-full py-2 bg-amber-500 hover:bg-amber-600 text-slate-950 font-bold rounded-xl text-xs flex items-center justify-center gap-2 shadow-sm transition-all cursor-pointer"
           >
             <ScanLine className="w-4 h-4" />
-            <span>Xác Nhận Đã Nhặt Bước {index + 1}</span>
+            <span>Xác Nhận Đã Lấy Xong Bước {index + 1}</span>
           </button>
         )}
       </div>

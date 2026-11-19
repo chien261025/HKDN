@@ -59,6 +59,14 @@ public class StockTransferService {
         Location toLoc = locationRepository.findById(request.getToLocationId())
                 .orElseThrow(() -> new BusinessException(ErrorCode.NOT_FOUND, "Không tìm thấy ô kệ đích: " + request.getToLocationId()));
 
+        if (!Boolean.TRUE.equals(fromLoc.getIsActive())) {
+            throw new BusinessException(ErrorCode.BAD_REQUEST, "Ô kệ nguồn " + fromLoc.getBinBarcode() + " đang bị khóa hoặc ngưng hoạt động!");
+        }
+
+        if (!Boolean.TRUE.equals(toLoc.getIsActive())) {
+            throw new BusinessException(ErrorCode.BAD_REQUEST, "Ô kệ đích " + toLoc.getBinBarcode() + " đang bị khóa hoặc ngưng hoạt động!");
+        }
+
         Product product = productRepository.findById(request.getProductId())
                 .orElseThrow(() -> new BusinessException(ErrorCode.NOT_FOUND, "Không tìm thấy sản phẩm: " + request.getProductId()));
 

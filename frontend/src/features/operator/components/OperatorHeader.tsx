@@ -47,14 +47,14 @@ export const OperatorHeader: React.FC<OperatorHeaderProps> = ({ onOpenScanner })
       {/* Main Operator Row */}
       <div className="flex items-center justify-between pt-2.5">
         <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-indigo-600 flex items-center justify-center text-white font-black text-sm shadow-sm">
+          <div className="w-10 h-10 rounded-xl bg-blue-600 flex items-center justify-center text-white font-black text-sm shadow-sm">
             {initials}
           </div>
           <div>
             <div className="flex items-center gap-2">
               <h1 className="text-sm font-bold text-slate-900">{session.fullName || 'Lê Thủ Kho'}</h1>
-              <span className="text-xs font-mono font-bold px-2 py-0.5 rounded bg-emerald-50 text-emerald-800 border border-emerald-200">
-                OPERATOR
+              <span className="text-xs font-bold px-2 py-0.5 rounded bg-blue-50 text-blue-800 border border-blue-200">
+                THỦ KHO
               </span>
             </div>
             <p className="text-xs text-slate-500 font-medium">@{session.username || 'operator01'} • Hiện trường kho</p>
@@ -64,7 +64,7 @@ export const OperatorHeader: React.FC<OperatorHeaderProps> = ({ onOpenScanner })
         <div className="flex items-center gap-2">
           <button
             onClick={onOpenScanner}
-            className="flex items-center gap-1.5 px-3.5 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-bold shadow-sm transition-all active:scale-95 cursor-pointer"
+            className="flex items-center gap-1.5 px-3.5 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold shadow-sm transition-all active:scale-95 cursor-pointer"
           >
             <ScanLine className="w-4 h-4" />
             <span>Quét Mã</span>

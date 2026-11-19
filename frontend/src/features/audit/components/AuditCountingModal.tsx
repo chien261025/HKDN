@@ -75,24 +75,24 @@ export const AuditCountingModal: React.FC<AuditCountingModalProps> = ({
     <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-3 sm:p-4 z-50 animate-in fade-in duration-200">
       <div className="bg-white rounded-2xl max-w-4xl w-full border border-slate-200 shadow-2xl overflow-hidden text-slate-800 flex flex-col max-h-[92vh]">
         {/* Top Header */}
-        <div className="p-4 md:p-5 border-b border-slate-200 flex items-center justify-between bg-slate-900 text-white">
+        <div className="p-4 md:p-5 border-b border-slate-200 flex items-center justify-between bg-slate-50">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 flex items-center justify-center">
-              <ScanLine className="w-5 h-5 animate-pulse" />
+            <div className="w-10 h-10 rounded-xl bg-blue-50 text-blue-600 border border-blue-200 flex items-center justify-center">
+              <ScanLine className="w-5 h-5 text-blue-600" />
             </div>
             <div>
               <div className="flex items-center gap-2">
-                <h3 className="font-bold text-base text-white">Mô Phỏng Quét PDA Kiểm Đếm Thực Địa</h3>
-                <span className="text-xs font-mono font-bold px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
+                <h3 className="font-bold text-base text-slate-900">Mô Phỏng Quét PDA Kiểm Đếm Thực Địa</h3>
+                <span className="text-xs font-mono font-bold px-2 py-0.5 rounded bg-blue-50 text-blue-700 border border-blue-200">
                   {session.auditCode}
                 </span>
               </div>
-              <p className="text-xs text-slate-400 mt-0.5">
-                Quét mã vạch vị trí/sản phẩm ➔ Hệ thống tự động tính chênh lệch thừa thiếu theo thời gian thực
+              <p className="text-xs text-slate-500 mt-0.5">
+                Quét mã vạch vị trí / sản phẩm ➔ Hệ thống tự động tính chênh lệch thừa thiếu theo thời gian thực
               </p>
             </div>
           </div>
-          <button onClick={onClose} className="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 transition-colors">
+          <button onClick={onClose} className="p-1.5 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-colors cursor-pointer">
             <X className="w-5 h-5" />
           </button>
         </div>
@@ -111,32 +111,32 @@ export const AuditCountingModal: React.FC<AuditCountingModalProps> = ({
           <div className="md:col-span-7 p-5 overflow-y-auto space-y-4">
             {currentItem ? (
               <>
-                <div className="p-4 rounded-xl bg-slate-900 text-white space-y-3 relative overflow-hidden">
+                <div className="p-4 rounded-xl bg-slate-50 border border-slate-200 text-slate-800 space-y-3 relative overflow-hidden">
                   <div className="flex items-start justify-between">
                     <div>
-                      <span className="text-[10px] uppercase font-bold tracking-wider text-emerald-400">
+                      <span className="text-[11px] uppercase font-bold tracking-wider text-blue-700">
                         Vị Trí & Mã Vạch Ô Kệ Hiện Tại
                       </span>
-                      <div className="text-base font-black font-mono text-white flex items-center gap-2 mt-0.5">
-                        <MapPin className="w-4 h-4 text-emerald-400" />
+                      <div className="text-base font-black font-mono text-slate-900 flex items-center gap-2 mt-0.5">
+                        <MapPin className="w-4 h-4 text-blue-600" />
                         {currentItem.locationBarcode}
                       </div>
                     </div>
                     <button
                       onClick={handleSimulateScan}
                       disabled={isScanning}
-                      className="px-3 py-1.5 bg-emerald-500 hover:bg-emerald-600 text-slate-950 font-bold rounded-lg text-xs flex items-center gap-1.5 transition-all shadow-xs"
+                      className="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-lg text-xs flex items-center gap-1.5 transition-all shadow-xs cursor-pointer"
                     >
                       <Barcode className="w-4 h-4" />
-                      <span>{isScanning ? 'Đang Quét...' : 'Quét Mã Barcode'}</span>
+                      <span>{isScanning ? 'Đang Quét...' : 'Quét Mã Vạch'}</span>
                     </button>
                   </div>
 
-                  <div className="pt-2 border-t border-slate-800 text-xs text-slate-300 space-y-1">
-                    <div className="font-sans font-bold text-slate-100">{currentItem.productName}</div>
-                    <div className="font-mono text-slate-400 flex items-center gap-3">
-                      <span>SKU: <strong className="text-white">{currentItem.sku}</strong></span>
-                      <span>Lô: <strong className="text-amber-400">{currentItem.batchNumber}</strong></span>
+                  <div className="pt-2 border-t border-slate-200 text-xs text-slate-600 space-y-1">
+                    <div className="font-sans font-bold text-slate-900">{currentItem.productName}</div>
+                    <div className="font-mono text-slate-500 flex items-center gap-3">
+                      <span>Mã SP: <strong className="text-slate-800">{currentItem.sku}</strong></span>
+                      <span>Số Lô: <strong className="text-amber-800">{currentItem.batchNumber}</strong></span>
                     </div>
                   </div>
                 </div>
@@ -211,7 +211,7 @@ export const AuditCountingModal: React.FC<AuditCountingModalProps> = ({
                 <button
                   onClick={handleSaveCount}
                   disabled={isSaving}
-                  className="w-full py-3 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl text-sm flex items-center justify-center gap-2 shadow-md shadow-emerald-600/20 transition-all active:scale-98"
+                  className="w-full py-3 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl text-sm flex items-center justify-center gap-2 shadow-sm shadow-blue-200 transition-all active:scale-98 cursor-pointer"
                 >
                   <Save className="w-4 h-4" />
                   <span>{isSaving ? 'Đang Lưu...' : 'Ghi Nhận Kết Quả & Chuyển Ô Kế Tiếp'}</span>

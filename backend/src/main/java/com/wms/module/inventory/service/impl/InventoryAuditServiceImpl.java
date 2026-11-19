@@ -116,6 +116,10 @@ public class InventoryAuditServiceImpl implements InventoryAuditService {
 
     @Override
     public InventoryAuditResponse recordCount(Long auditId, Long itemId, Long locationId, Long productId, Integer countedQty, String notes) {
+        if (countedQty != null && countedQty < 0) {
+            throw new BusinessException(ErrorCode.BAD_REQUEST, "Số lượng kiểm đếm thực tế không được là số âm!");
+        }
+
         InventoryAudit audit = inventoryAuditRepository.findById(auditId)
                 .orElseThrow(() -> new BusinessException(ErrorCode.NOT_FOUND, "Không tìm thấy đợt kiểm kê: " + auditId));
 
@@ -206,6 +210,11 @@ public class InventoryAuditServiceImpl implements InventoryAuditService {
             throw new BusinessException(ErrorCode.BAD_REQUEST, "Đợt kiểm kê này đã được phê duyệt và cân đối trước đó!");
         }
 
+        boolean hasUncounted = audit.getItems() != null && audit.getItems().stream().anyMatch(i -> i.getCountedQty() == null);
+        if (hasUncounted && !"COMPLETED".equals(audit.getStatus())) {
+            throw new BusinessException(ErrorCode.BAD_REQUEST, "Đợt kiểm kê vẫn còn ô kệ chưa được đếm xong, không thể duyệt đối soát!");
+        }
+
         Long currentUserId = SecurityUtils.getCurrentUserIdOrDefault(userRepository, 1L);
         String adjCode = "ADJ-" + audit.getAuditCode();
 
@@ -231,7 +240,7 @@ public class InventoryAuditServiceImpl implements InventoryAuditService {
                 ).orElse(null);
 
                 if (inv != null) {
-                    inv.setOnHandQty(inv.getOnHandQty() + diff);
+                    inv.setOnHandQty(Math.max(0, inv.getOnHandQty() + diff));
                     inv.setLastUpdatedAt(Instant.now());
                     inventoryRepository.saveAndFlush(inv);
 

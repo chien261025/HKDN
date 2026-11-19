@@ -174,7 +174,7 @@ export const StockBalanceTable: React.FC<StockBalanceTableProps> = ({
                           setReserveModalItem(item);
                           setReserveQty(5);
                         }}
-                        className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-medium transition-colors cursor-pointer shadow-2xs"
+                        className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold transition-colors cursor-pointer shadow-xs"
                       >
                         <Lock className="w-3 h-3" />
                         <span>Giữ Hàng</span>

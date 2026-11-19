@@ -112,12 +112,12 @@ export const OperatorPortalPage: React.FC = () => {
             onClick={() => setActiveTab('STAGING')}
             className={`flex flex-col items-center gap-0.5 py-1 px-2 rounded-xl transition-all cursor-pointer ${
               activeTab === 'STAGING'
-                ? 'text-cyan-700 bg-cyan-50 font-bold scale-105 shadow-2xs'
+                ? 'text-blue-600 bg-blue-50 font-bold scale-105 shadow-2xs'
                 : 'text-slate-500 hover:text-slate-900'
             }`}
           >
             <Truck className="w-4.5 h-4.5" />
-            <span className="text-[11px] tracking-tight">1. Nhận PO</span>
+            <span className="text-[11px] tracking-tight">1. Nhận Hàng</span>
           </button>
 
           {/* Tab 2: Putaway */}
@@ -126,7 +126,7 @@ export const OperatorPortalPage: React.FC = () => {
             onClick={() => setActiveTab('PUTAWAY')}
             className={`flex flex-col items-center gap-0.5 py-1 px-2 rounded-xl transition-all cursor-pointer ${
               activeTab === 'PUTAWAY'
-                ? 'text-indigo-700 bg-indigo-50 font-bold scale-105 shadow-2xs'
+                ? 'text-blue-600 bg-blue-50 font-bold scale-105 shadow-2xs'
                 : 'text-slate-500 hover:text-slate-900'
             }`}
           >
@@ -140,12 +140,12 @@ export const OperatorPortalPage: React.FC = () => {
             onClick={() => setActiveTab('PICKING')}
             className={`flex flex-col items-center gap-0.5 py-1 px-2 rounded-xl transition-all cursor-pointer ${
               activeTab === 'PICKING'
-                ? 'text-amber-700 bg-amber-50 font-bold scale-105 shadow-2xs'
+                ? 'text-blue-600 bg-blue-50 font-bold scale-105 shadow-2xs'
                 : 'text-slate-500 hover:text-slate-900'
             }`}
           >
             <PackageCheck className="w-4.5 h-4.5" />
-            <span className="text-[11px] tracking-tight">3. Nhặt SO</span>
+            <span className="text-[11px] tracking-tight">3. Lấy Hàng</span>
           </button>
 
           {/* Tab 4: Transfer */}
@@ -154,7 +154,7 @@ export const OperatorPortalPage: React.FC = () => {
             onClick={() => setActiveTab('TRANSFER')}
             className={`flex flex-col items-center gap-0.5 py-1 px-2 rounded-xl transition-all cursor-pointer ${
               activeTab === 'TRANSFER'
-                ? 'text-purple-700 bg-purple-50 font-bold scale-105 shadow-2xs'
+                ? 'text-blue-600 bg-blue-50 font-bold scale-105 shadow-2xs'
                 : 'text-slate-500 hover:text-slate-900'
             }`}
           >
@@ -168,7 +168,7 @@ export const OperatorPortalPage: React.FC = () => {
             onClick={() => setActiveTab('AUDIT')}
             className={`flex flex-col items-center gap-0.5 py-1 px-2 rounded-xl transition-all cursor-pointer ${
               activeTab === 'AUDIT'
-                ? 'text-emerald-700 bg-emerald-50 font-bold scale-105 shadow-2xs'
+                ? 'text-blue-600 bg-blue-50 font-bold scale-105 shadow-2xs'
                 : 'text-slate-500 hover:text-slate-900'
             }`}
           >

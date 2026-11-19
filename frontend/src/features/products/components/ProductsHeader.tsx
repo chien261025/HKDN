@@ -23,10 +23,10 @@ export const ProductsHeader: React.FC<ProductsHeaderProps> = ({
   return (
     <div className="space-y-4">
       {/* Top Banner Row */}
-      <div className="bg-white rounded-2xl p-5 sm:p-6 border border-slate-200 shadow-xs flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+      <div className="bg-white rounded-2xl p-5 sm:p-6 border border-slate-200/90 shadow-sm flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
         <div className="flex items-center gap-4">
-          <div className="w-12 h-12 rounded-xl bg-indigo-600 flex items-center justify-center text-white shadow-xs ring-4 ring-indigo-50 shrink-0">
-            {activeTab === 'PRODUCTS' ? <Package className="w-6 h-6" /> : activeTab === 'CATEGORIES' ? <Tags className="w-6 h-6" /> : <Building2 className="w-6 h-6" />}
+          <div className="w-12 h-12 rounded-xl bg-blue-600 flex items-center justify-center text-white shadow-md shadow-blue-200 ring-4 ring-blue-50 shrink-0">
+            {activeTab === 'PRODUCTS' ? <Package className="w-6 h-6 text-white" /> : activeTab === 'CATEGORIES' ? <Tags className="w-6 h-6 text-white" /> : <Building2 className="w-6 h-6 text-white" />}
           </div>
           <div>
             <div className="flex items-center gap-2.5 flex-wrap">
@@ -34,9 +34,9 @@ export const ProductsHeader: React.FC<ProductsHeaderProps> = ({
                 Danh Mục Sản Phẩm & Nhà Cung Cấp
               </h1>
             </div>
-            {/* <p className="text-xs sm:text-sm text-slate-500 font-medium mt-1">
-              Định mức an toàn (Safety Stock) • Điểm đặt hàng lại (Reorder Point) • Mã vạch Barcode chuẩn GS1
-            </p> */}
+            <p className="text-xs sm:text-sm text-slate-500 font-normal mt-0.5">
+              Định mức an toàn (Safety Stock) • Điểm đặt hàng lại (ROP) • Mã vạch Barcode chuẩn GS1
+            </p>
           </div>
         </div>
 
@@ -46,29 +46,29 @@ export const ProductsHeader: React.FC<ProductsHeaderProps> = ({
             <button
               onClick={() => setActiveTab('PRODUCTS')}
               className={`px-3.5 py-2 rounded-lg text-xs font-semibold transition-colors flex items-center gap-2 cursor-pointer ${activeTab === 'PRODUCTS'
-                ? 'bg-white text-indigo-700 shadow-xs border border-slate-200'
+                ? 'bg-white text-blue-700 shadow-xs border border-slate-200'
                 : 'text-slate-600 hover:text-slate-900 border border-transparent'
                 }`}
             >
-              <Package className="w-4 h-4 text-indigo-600" />
+              <Package className="w-4 h-4 text-blue-600" />
               <span>Sản Phẩm ({products.length})</span>
             </button>
-            <button onClick={() => setActiveTab('CATEGORIES')} className={`px-3.5 py-2 rounded-lg text-xs font-semibold transition-colors flex items-center gap-2 cursor-pointer ${activeTab === 'CATEGORIES' ? 'bg-white text-indigo-700 shadow-xs border border-slate-200' : 'text-slate-600 hover:text-slate-900 border border-transparent'}`}><Tags className="w-4 h-4 text-indigo-600" /><span>Danh mục</span></button>
+            <button onClick={() => setActiveTab('CATEGORIES')} className={`px-3.5 py-2 rounded-lg text-xs font-semibold transition-colors flex items-center gap-2 cursor-pointer ${activeTab === 'CATEGORIES' ? 'bg-white text-blue-700 shadow-xs border border-slate-200' : 'text-slate-600 hover:text-slate-900 border border-transparent'}`}><Tags className="w-4 h-4 text-blue-600" /><span>Danh mục</span></button>
             <button
               onClick={() => setActiveTab('SUPPLIERS')}
               className={`px-3.5 py-2 rounded-lg text-xs font-semibold transition-colors flex items-center gap-2 cursor-pointer ${activeTab === 'SUPPLIERS'
-                ? 'bg-white text-indigo-700 shadow-xs border border-slate-200'
+                ? 'bg-white text-blue-700 shadow-xs border border-slate-200'
                 : 'text-slate-600 hover:text-slate-900 border border-transparent'
                 }`}
             >
-              <Building2 className="w-4 h-4 text-indigo-600" />
+              <Building2 className="w-4 h-4 text-blue-600" />
               <span>Nhà Cung Cấp ({suppliers.length})</span>
             </button>
           </div>
 
           {activeTab !== 'CATEGORIES' && <button
             onClick={onOpenCreateModal}
-            className="flex items-center gap-2 px-4 py-2.5 bg-indigo-600 hover:bg-indigo-700 active:scale-[0.99] text-white rounded-xl text-xs sm:text-sm font-semibold shadow-xs transition-colors shrink-0 cursor-pointer"
+            className="flex items-center gap-2 px-4 py-2.5 bg-blue-600 hover:bg-blue-700 active:scale-[0.99] text-white rounded-xl text-xs sm:text-sm font-bold shadow-sm shadow-blue-200 transition-all shrink-0 cursor-pointer"
           >
             <Plus className="w-4 h-4" />
             <span>{activeTab === 'PRODUCTS' ? 'Thêm Sản Phẩm Mới' : 'Thêm Nhà Cung Cấp'}</span>
