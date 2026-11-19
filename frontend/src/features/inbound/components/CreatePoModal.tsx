@@ -257,16 +257,10 @@ export const CreatePoModal: React.FC<CreatePoModalProps> = ({ onClose, onCreateO
             </button>
             <button
               type="submit"
-<<<<<<< HEAD
-              disabled={submitting || items.length === 0}
-              className="flex-1 py-3 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold shadow-md shadow-indigo-200 cursor-pointer transition-all"
-            >
-              {submitting ? 'Đang tạo đơn...' : 'Phát Hành Đơn PO'}
-=======
+disabled={submitting || items.length === 0}
               className="flex-1 py-3 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold shadow-sm shadow-blue-200 cursor-pointer transition-all"
             >
-              Tạo Đơn Nhập Kho
->>>>>>> 36fa9b52849e24e253b8552373cbd59e9c2fe860
+              {submitting ? 'Đang tạo đơn...' : 'Tạo Đơn Nhập Kho'}
             </button>
           </div>
         </form>

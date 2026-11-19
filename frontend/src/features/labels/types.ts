@@ -1,5 +1,4 @@
 export interface StockItem {
-  warehouseId?: number;
   id: number;
   productId: number;
   warehouseId?: number;
