@@ -9,6 +9,7 @@ import { CreateSupplierModal } from '../components/CreateSupplierModal';
 import { EditProductModal } from '../components/EditProductModal';
 import { EditSupplierModal } from '../components/EditSupplierModal';
 import { BarcodeLabelModal } from '../components/BarcodeLabelModal';
+import { ProductDetailModal } from '../components/ProductDetailModal';
 import { CategoryItem, ProductItem, SupplierItem } from '../types';
 import { CategoryTable } from '../components/CategoryTable';
 import { productService } from '../services/productService';
@@ -132,6 +133,7 @@ export const ProductsPage: React.FC = () => {
   const [selectedProductForEdit, setSelectedProductForEdit] = useState<ProductItem | null>(null);
   const [selectedSupplierForEdit, setSelectedSupplierForEdit] = useState<SupplierItem | null>(null);
   const [selectedProductForBarcode, setSelectedProductForBarcode] = useState<ProductItem | null>(null);
+  const [selectedProductForDetail, setSelectedProductForDetail] = useState<ProductItem | null>(null);
 
   const handleOpenCreateModal = () => {
     if (activeTab === 'CATEGORIES') return;
@@ -260,6 +262,7 @@ export const ProductsPage: React.FC = () => {
           products={displayedProducts}
           onPrintBarcode={(p) => setSelectedProductForBarcode(p)}
           onEditProduct={handleEditProduct}
+          onViewDetail={(p) => setSelectedProductForDetail(p)}
         />
       ) : activeTab === 'SUPPLIERS' ? (
         <SupplierTable
@@ -309,6 +312,15 @@ export const ProductsPage: React.FC = () => {
         isOpen={!!selectedProductForBarcode}
         onClose={() => setSelectedProductForBarcode(null)}
         product={selectedProductForBarcode}
+      />
+
+      {/* Full Master Data Specification Detail Modal */}
+      <ProductDetailModal
+        isOpen={!!selectedProductForDetail}
+        onClose={() => setSelectedProductForDetail(null)}
+        product={selectedProductForDetail}
+        onEditProduct={handleEditProduct}
+        onPrintBarcode={(p) => setSelectedProductForBarcode(p)}
       />
     </div>
   );

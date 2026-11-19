@@ -1,17 +1,42 @@
-export type ProductCategory = 'FOOD_BEVERAGE' | 'CHEMICAL' | 'ELECTRONICS' | 'PHARMA' | 'GENERAL';
+export type ProductCategory =
+  | 'FOOD_BEVERAGE'
+  | 'CHEMICAL'
+  | 'ELECTRONICS'
+  | 'PHARMA'
+  | 'GENERAL'
+  | 'PHARMACEUTICAL'
+  | 'FASHION';
 
-export type StorageZoneReq = 'ZONE_A' | 'ZONE_B'; // ZONE_A: Khô & Điện tử, ZONE_B: Kho Mát 2-8°C
+export type StorageZoneReq = 'ZONE_A' | 'ZONE_B' | 'ZONE_C' | 'ZONE_D' | 'UNASSIGNED'; 
+// ZONE_A: Khô & Điện tử (Ambient Dry), ZONE_B: Kho Mát (Cool 2-8°C), ZONE_C: Kho Đông (-18°C), ZONE_D: Hàng Giá Trị Cao (Secure High Value)
+
+export type StorageConditionType = 'AMBIENT' | 'COOL' | 'COLD' | 'SECURE';
+
+export type ProductBusinessStatus = 'ACTIVE' | 'SUSPENDED' | 'DISCONTINUED';
 
 export interface ProductItem {
   id: string;
   sku: string;
   barcode: string;
   name: string;
+  description?: string;
   category: ProductCategory;
   unit: string;
+  brand?: string;
+  origin?: string;
+  imageUrl?: string;
+  storageCondition?: StorageConditionType;
   weightKg: number;
+  lengthCm?: number;
+  widthCm?: number;
+  heightCm?: number;
+  volumeCbm?: number; // CBM (m3) = (L * W * H) / 1,000,000
   reorderPoint: number;
   safetyStock: number;
+  maxStock?: number;
+  purchasePrice?: number; // Giá vốn / Giá nhập chuẩn (VNĐ)
+  sellingPrice?: number;  // Giá bán / Giá xuất đề xuất (VNĐ)
+  businessStatus?: ProductBusinessStatus;
   currentStock: number;
   storageZone: StorageZoneReq;
   supplierCode: string;
