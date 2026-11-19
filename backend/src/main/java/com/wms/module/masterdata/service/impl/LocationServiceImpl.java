@@ -66,7 +66,13 @@ public class LocationServiceImpl implements LocationService {
         LocalDate thresholdDate = LocalDate.now().plusDays(30);
 
         return locations.stream().map(loc -> {
-            boolean isZoneB = loc.getZoneCode() != null && loc.getZoneCode().contains("B");
+            String zoneCode = loc.getZoneCode() != null ? loc.getZoneCode() : "ZONE_A";
+            String zoneName = zoneCode.contains("B")
+                    ? "Kho Mát & Thực Phẩm (Cold Storage 2-8°C)"
+                    : zoneCode.contains("C")
+                    ? "Kho Hàng Giá Trị Cao & Điện Tử (Secure Zone)"
+                    : "Kho Hàng Khô & Tiêu Dùng (Ambient Dry)";
+
             com.wms.module.inventory.entity.Inventory inv = invByLoc.get(loc.getId());
 
             String status = "EMPTY";
@@ -108,10 +114,17 @@ public class LocationServiceImpl implements LocationService {
                         .setScale(1, java.math.RoundingMode.HALF_UP);
             }
 
+            Long whId = loc.getWarehouseId() != null ? loc.getWarehouseId() : 1L;
+            String whCode = loc.getBinBarcode() != null && loc.getBinBarcode().contains("-")
+                    ? loc.getBinBarcode().split("-")[0]
+                    : (whId == 2 ? "WH02" : whId == 3 ? "WH03" : whId == 4 ? "WH04" : "WH01");
+
             return LocationOccupancyDto.builder()
                     .id(loc.getId())
-                    .zone(isZoneB ? "ZONE_B" : "ZONE_A")
-                    .zoneName(isZoneB ? "Kho Lạnh & Sữa (Cold Storage 2-8°C)" : "Kho Khô & Điện Tử (Ambient)")
+                    .warehouseId(whId)
+                    .warehouseCode(whCode)
+                    .zone(zoneCode)
+                    .zoneName(zoneName)
                     .aisle(loc.getAisle())
                     .rack(loc.getRack())
                     .shelf(loc.getShelf())
@@ -127,7 +140,7 @@ public class LocationServiceImpl implements LocationService {
                     .qty(qty)
                     .batch(batch)
                     .expiry(expiry)
-                    .temperature(isZoneB ? "4.0°C" : "24.0°C")
+                    .temperature("ZONE_B".equals(zoneCode) ? "4.0°C" : "24.0°C")
                     .build();
         }).toList();
     }

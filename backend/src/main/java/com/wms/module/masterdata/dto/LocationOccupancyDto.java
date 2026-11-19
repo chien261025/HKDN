@@ -14,6 +14,8 @@ import java.time.LocalDate;
 @AllArgsConstructor
 public class LocationOccupancyDto {
     private Long id;
+    private Long warehouseId;
+    private String warehouseCode;
     private String zone;
     private String zoneName;
     private String aisle;

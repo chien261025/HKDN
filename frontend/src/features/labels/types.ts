@@ -1,6 +1,8 @@
 export interface StockItem {
   id: number;
   productId: number;
+  warehouseId?: number;
+  warehouseName?: string;
   locationId?: number;
   batchId?: number;
   sku: string;

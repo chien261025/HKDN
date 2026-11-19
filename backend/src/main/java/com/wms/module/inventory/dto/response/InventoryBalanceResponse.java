@@ -21,6 +21,9 @@ public class InventoryBalanceResponse {
     private String categoryName;
     private String unit;
 
+    private Long warehouseId;
+    private String warehouseName;
+
     private Long locationId;
     private String locationBarcode;
     private String zoneCode;
