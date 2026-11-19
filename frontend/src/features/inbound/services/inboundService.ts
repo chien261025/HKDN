@@ -6,22 +6,12 @@ export const inboundService = {
     try {
       const res = await apiClient.get('/orders/inbound');
       if (res.data?.data && Array.isArray(res.data.data)) {
-        return res.data.data.map((o: any) => ({
-          id: String(o.id),
-          poCode: o.orderCode || `PO-${o.id}`,
-          supplierCode: o.supplier?.code || `SUP-${o.supplierId}`,
-          supplierName: o.supplier?.name || `Nhà cung cấp #${o.supplierId}`,
-          expectedDeliveryDate: o.createdAt ? new Date(o.createdAt).toISOString().split('T')[0] : '2026-09-25',
-          createdAt: o.createdAt ? new Date(o.createdAt).toLocaleString('vi-VN') : '',
-          status: (o.status || 'PENDING') as InboundStatus,
-          approvedBy: 'Trần Trưởng Kho',
-          notes: o.notes || '',
-          items: (o.items && o.items.length > 0)
+        return res.data.data.map((o: any) => {
+          const items = (o.items && o.items.length > 0)
             ? o.items.map((i: any) => ({
                 id: String(i.id),
                 productId: i.productId,
                 productBatchId: i.productBatchId,
-                // ✅ Lấy tên/SKU từ quan hệ product thực tế của backend
                 sku: i.product?.sku || i.sku || `SKU-${i.productId}`,
                 productName: i.product?.name || i.productName || `Sản phẩm #${i.productId}`,
                 expectedQty: i.expectedQty || 0,
@@ -30,10 +20,27 @@ export const inboundService = {
                 status: i.status,
                 batchNumber: i.batchNumber || 'BATCH-NEW',
                 expiryDate: i.expiryDate || '',
+                unitPrice: Number(i.unitPrice || i.product?.purchasePrice || 0),
                 unit: i.product?.unit || i.unit || 'Cái',
               }))
-            : [],
-        }));
+            : [];
+
+          const totalValue = items.reduce((sum: number, it: any) => sum + (it.expectedQty * (it.unitPrice || 0)), 0);
+
+          return {
+            id: String(o.id),
+            poCode: o.orderCode || `PO-${o.id}`,
+            supplierCode: o.supplier?.code || `SUP-${o.supplierId}`,
+            supplierName: o.supplier?.name || `Nhà cung cấp #${o.supplierId}`,
+            expectedDeliveryDate: o.createdAt ? new Date(o.createdAt).toISOString().split('T')[0] : '2026-09-25',
+            createdAt: o.createdAt ? new Date(o.createdAt).toLocaleString('vi-VN') : '',
+            status: (o.status || 'PENDING') as InboundStatus,
+            approvedBy: 'Trần Trưởng Kho',
+            notes: o.notes || '',
+            items,
+            totalValue,
+          };
+        });
       }
       return [];
     } catch (err) {
@@ -43,46 +50,51 @@ export const inboundService = {
   },
 
   async createInboundOrder(order: Partial<InboundOrder> & { supplierId?: number }): Promise<InboundOrder> {
-      const payload = {
-        orderCode: order.poCode || 'PO-' + Date.now(),
-        warehouseId: 1,
-        supplierId: order.supplierId,
-        status: 'PENDING',
-        notes: order.notes,
-        items: (order.items || []).map((it: any) => ({
-          // ✅ Dùng productId thực từ item (đã được set từ CreatePoModal qua productService.getProducts())
-          productId: it.productId,
-          expectedQty: it.expectedQty,
-          batchNumber: it.batchNumber || 'BATCH-' + Date.now().toString().slice(-4),
-          expiryDate: it.expiryDate || '2026-12-31',
-          unitPrice: 50000,
-        })),
-      };
-      const res = await apiClient.post('/orders/inbound', payload);
-      const saved = res.data?.data;
-      if (!saved?.id) throw new Error('Backend did not return a saved inbound order');
-      return {
-        id: String(saved.id),
-        poCode: saved.orderCode,
-        supplierCode: order.supplierCode!,
-        supplierName: order.supplierName!,
-        expectedDeliveryDate: order.expectedDeliveryDate || '2026-09-30',
-        createdAt: new Date().toLocaleString('vi-VN'),
-        status: 'PENDING',
-        items: (saved.items || []).map((item: any) => ({
-          id: String(item.id), productId: item.productId,
-          productBatchId: item.productBatchId,
-          sku: item.product?.sku || `SKU-${item.productId}`,
-          productName: item.product?.name || `Sản phẩm #${item.productId}`,
-          expectedQty: item.expectedQty, receivedQty: item.receivedQty || 0,
-          stockedQty: 0, batchNumber: item.batchNumber,
-          status: item.status,
-          expiryDate: item.expiryDate, unit: item.product?.unit || 'Cái',
-        })),
-        notes: order.notes,
-        approvedBy: order.approvedBy || 'Trần Trưởng Kho',
-      };
-
+    const payload = {
+      orderCode: order.poCode || 'PO-' + Date.now(),
+      warehouseId: 1,
+      supplierId: order.supplierId,
+      status: 'PENDING',
+      notes: order.notes,
+      items: (order.items || []).map((it: any) => ({
+        productId: it.productId,
+        expectedQty: it.expectedQty,
+        batchNumber: it.batchNumber || 'BATCH-' + Date.now().toString().slice(-4),
+        expiryDate: it.expiryDate || '2026-12-31',
+        unitPrice: it.unitPrice || 0,
+      })),
+    };
+    const res = await apiClient.post('/orders/inbound', payload);
+    const saved = res.data?.data;
+    if (!saved?.id) throw new Error('Backend did not return a saved inbound order');
+    const items = (saved.items || []).map((item: any) => ({
+      id: String(item.id),
+      productId: item.productId,
+      productBatchId: item.productBatchId,
+      sku: item.product?.sku || `SKU-${item.productId}`,
+      productName: item.product?.name || `Sản phẩm #${item.productId}`,
+      expectedQty: item.expectedQty,
+      receivedQty: item.receivedQty || 0,
+      stockedQty: 0,
+      batchNumber: item.batchNumber,
+      status: item.status,
+      unitPrice: Number(item.unitPrice || 0),
+      expiryDate: item.expiryDate,
+      unit: item.product?.unit || 'Cái',
+    }));
+    return {
+      id: String(saved.id),
+      poCode: saved.orderCode,
+      supplierCode: order.supplierCode!,
+      supplierName: order.supplierName!,
+      expectedDeliveryDate: order.expectedDeliveryDate || '2026-09-30',
+      createdAt: new Date().toLocaleString('vi-VN'),
+      status: 'PENDING',
+      items,
+      totalValue: items.reduce((sum: number, it: any) => sum + (it.expectedQty * (it.unitPrice || 0)), 0),
+      notes: order.notes,
+      approvedBy: order.approvedBy || 'Trần Trưởng Kho',
+    };
   },
 
   async receiveOrder(id: string): Promise<void> {
@@ -104,8 +116,8 @@ export const inboundService = {
 
   async executePutaway(payload: {
     orderId: number;
-    productId: number;
     orderItemId: number;
+    productId: number;
     locationId: number;
     quantity: number;
     batchNumber?: string;
