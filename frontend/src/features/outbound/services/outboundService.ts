@@ -1,13 +1,24 @@
 import { apiClient } from '../../../services/api';
-import { OutboundOrder, OutboundItem, OutboundStatus } from '../types';
+import { OutboundOrder, OutboundStock, OutboundStatus } from '../types';
+import { SupplierItem } from '../../products/types';
+import { PRIMARY_WAREHOUSE } from '../../../config/warehouse';
 
 export const outboundService = {
+  async getWarehousePartners(): Promise<Pick<SupplierItem, 'id' | 'code' | 'name'>[]> {
+    const res = await apiClient.get('/orders/outbound/partners', { params: { warehouseId: PRIMARY_WAREHOUSE.id } });
+    return res.data.data.map((p: any) => ({ id: String(p.id), code: p.code, name: p.name }));
+  },
+  async getAvailableProducts(includeUnavailable = false): Promise<OutboundStock[]> {
+    const res = await apiClient.get('/orders/outbound/available-products', { params: { includeUnavailable } });
+    return res.data.data;
+  },
   async getOutboundOrders(): Promise<OutboundOrder[]> {
     try {
       const res = await apiClient.get('/orders/outbound');
       if (res.data?.data && Array.isArray(res.data.data)) {
         return res.data.data.map((o: any) => ({
           id: String(o.id),
+          warehouseId: o.warehouseId,
           soCode: o.orderCode || `SO-${o.id}`,
           customerName: o.customerName || 'Khách Hàng Doanh Nghiệp',
           shippingAddress: 'Kho Phân Phối Trung Tâm',
@@ -50,12 +61,13 @@ export const outboundService = {
     try {
       const payload = {
         orderCode: order.soCode || 'SO-' + Date.now(),
-        warehouseId: 1,
+        warehouseId: order.warehouseId,
         customerName: order.customerName,
+        partnerId: order.partnerId,
         status: 'PENDING',
         notes: order.notes,
         items: (order.items || []).map((it: any) => ({
-          productId: it.productId || 1,
+          productId: it.productId,
           requestedQty: it.requestedQty,
           allocatedQty: 0,
           pickedQty: 0,
@@ -67,6 +79,7 @@ export const outboundService = {
       if (!saved) return null;
       return {
         id: String(saved.id),
+        warehouseId: saved.warehouseId,
         soCode: saved.orderCode,
         customerName: saved.customerName,
         shippingAddress: order.shippingAddress || 'Kho Phân Phối',
@@ -95,7 +108,7 @@ export const outboundService = {
       };
     } catch (err) {
       console.warn('Could not save SO to backend:', err);
-      return null;
+      throw err;
     }
   },
 
@@ -105,7 +118,7 @@ export const outboundService = {
       return true;
     } catch (err) {
       console.warn('Could not allocate order FEFO:', err);
-      return false;
+      throw err;
     }
   },
 
@@ -115,7 +128,7 @@ export const outboundService = {
       return true;
     } catch (err) {
       console.warn('Could not dispatch order on backend:', err);
-      return false;
+      throw err;
     }
   },
 

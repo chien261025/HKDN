@@ -13,6 +13,7 @@ import java.time.LocalDate;
 @NoArgsConstructor
 @AllArgsConstructor
 public class StockLedgerResponse {
+    private Long warehouseId;
     private Long id;
     private String transactionType;
     private String referenceCode;

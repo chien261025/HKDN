@@ -1,4 +1,5 @@
 export interface StockItem {
+  warehouseId?: number;
   id: number;
   productId: number;
   locationId?: number;
@@ -71,6 +72,7 @@ export interface InventoryStats {
 }
 
 export interface LedgerEntryData {
+  warehouseId?: number;
   id: string;
   transactionType: 'OUTBOUND' | 'INBOUND' | 'ADJUSTMENT' | 'TRANSFER';
   referenceCode: string;

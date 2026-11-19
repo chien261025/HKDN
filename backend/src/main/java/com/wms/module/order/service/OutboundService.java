@@ -17,11 +17,14 @@ import com.wms.module.masterdata.entity.Product;
 import com.wms.module.masterdata.repository.CategoryRepository;
 import com.wms.module.masterdata.repository.LocationRepository;
 import com.wms.module.masterdata.repository.ProductRepository;
+import com.wms.module.masterdata.repository.SupplierRepository;
+import com.wms.module.masterdata.entity.Supplier;
 import com.wms.module.notification.dto.NotificationMessage;
 import com.wms.module.notification.service.NotificationService;
 import com.wms.module.order.dto.request.CreateOutboundOrderRequest;
 import com.wms.module.order.dto.response.OutboundOrderItemResponse;
 import com.wms.module.order.dto.response.OutboundOrderResponse;
+import com.wms.module.order.dto.response.OutboundStockResponse;
 import com.wms.module.order.dto.response.PickAllocationResponse;
 import com.wms.module.order.dto.response.PickListItemResponse;
 import com.wms.module.order.entity.OutboundOrder;
@@ -56,6 +59,37 @@ public class OutboundService {
     private final StockLedgerRepository stockLedgerRepository;
     private final NotificationService notificationService;
     private final UserRepository userRepository;
+    private final SupplierRepository supplierRepository;
+    private final com.wms.module.inventory.service.WarehouseStockService warehouseStockService;
+
+    @Transactional(readOnly = true)
+    public List<Supplier> getWarehousePartners(Long warehouseId) {
+        Set<Long> warehouseProducts = getStockProducts(true).stream()
+                .filter(stock -> warehouseId.equals(stock.getWarehouseId()))
+                .map(OutboundStockResponse::getProductId).collect(Collectors.toSet());
+        Set<Long> partnerIds = productRepository.findAll().stream()
+                .filter(product -> warehouseProducts.contains(product.getId()))
+                .map(Product::getSupplierId).filter(Objects::nonNull).collect(Collectors.toSet());
+        return supplierRepository.findAll().stream()
+                .filter(partner -> partnerIds.contains(partner.getId()) && Boolean.TRUE.equals(partner.getIsActive()))
+                .sorted(Comparator.comparing(Supplier::getName)).toList();
+    }
+
+    @Transactional(readOnly = true)
+    public List<OutboundStockResponse> getAvailableProducts() {
+        return getStockProducts(false);
+    }
+
+    @Transactional(readOnly = true)
+    public List<OutboundStockResponse> getStockProducts(boolean includeUnavailable) {
+        return warehouseStockService.getClosingBalances(includeUnavailable);
+    }
+
+    private boolean isInWarehouse(Inventory inv, Long warehouseId) {
+        return locationRepository.findById(inv.getLocationId())
+                .map(location -> warehouseId.equals(location.getWarehouseId())
+                        && Boolean.TRUE.equals(location.getIsActive())).orElse(false);
+    }
 
     @Transactional(readOnly = true)
     public List<OutboundOrderResponse> getAllOutboundOrders() {
@@ -75,6 +109,30 @@ public class OutboundService {
 
     @Transactional
     public OutboundOrderResponse createOutboundOrder(CreateOutboundOrderRequest request) {
+        if (request.getItems() == null || request.getItems().isEmpty()) {
+            throw new BusinessException(ErrorCode.BAD_REQUEST, "Đơn xuất phải có ít nhất một sản phẩm!");
+        }
+        Long warehouseId = request.getWarehouseId() != null ? request.getWarehouseId() : 1L;
+        if (request.getPartnerId() != null) {
+            Supplier partner = getWarehousePartners(warehouseId).stream()
+                    .filter(p -> p.getId().equals(request.getPartnerId())).findFirst()
+                    .orElseThrow(() -> new BusinessException(ErrorCode.BAD_REQUEST, "Đơn vị nhận không phải đối tác đang hoạt động của kho!"));
+            request.setCustomerName(partner.getName());
+        }
+        Map<Long, Integer> available = getAvailableProducts().stream()
+                .filter(p -> warehouseId.equals(p.getWarehouseId()))
+                .collect(Collectors.toMap(OutboundStockResponse::getProductId, OutboundStockResponse::getAvailableQty));
+        Set<Long> seen = new HashSet<>();
+        for (CreateOutboundOrderRequest.ItemRequest item : request.getItems()) {
+            if (item == null || item.getProductId() == null || item.getRequestedQty() == null
+                    || item.getRequestedQty() <= 0 || !seen.add(item.getProductId())) {
+                throw new BusinessException(ErrorCode.BAD_REQUEST, "Sản phẩm không hợp lệ, bị trùng hoặc số lượng xuất không hợp lệ!");
+            }
+            if (item.getRequestedQty() > available.getOrDefault(item.getProductId(), 0)) {
+                throw new BusinessException(ErrorCode.INSUFFICIENT_STOCK,
+                        "Sản phẩm " + item.getProductId() + " không đủ tồn khả dụng trong kho đã chọn!");
+            }
+        }
         String code = request.getOrderCode() != null && !request.getOrderCode().isBlank()
                 ? request.getOrderCode()
                 : "SO-" + System.currentTimeMillis() % 1000000;
@@ -96,7 +154,7 @@ public class OutboundService {
                         .outboundOrder(order)
                         .productId(itemReq.getProductId())
                         .requestedQty(itemReq.getRequestedQty())
-                        .allocatedQty(itemReq.getAllocatedQty() != null ? itemReq.getAllocatedQty() : 0)
+                        .allocatedQty(0)
                         .pickedQty(0)
                         .unitPrice(itemReq.getUnitPrice() != null ? itemReq.getUnitPrice() : java.math.BigDecimal.ZERO)
                         .status("PENDING")
@@ -112,11 +170,11 @@ public class OutboundService {
 
     @Transactional
     public OutboundOrderResponse allocateOutboundOrderFefo(Long id) {
-        OutboundOrder order = outboundOrderRepository.findById(id)
+        OutboundOrder order = outboundOrderRepository.findForUpdate(id)
                 .orElseThrow(() -> new BusinessException(ErrorCode.NOT_FOUND, "Không tìm thấy đơn xuất: " + id));
 
-        if ("DISPATCHED".equalsIgnoreCase(order.getStatus())) {
-            throw new BusinessException(ErrorCode.BAD_REQUEST, "Đơn xuất đã bàn giao vận chuyển, không thể cấp phát lại!");
+        if (!"PENDING".equalsIgnoreCase(order.getStatus())) {
+            throw new BusinessException(ErrorCode.BAD_REQUEST, "Chỉ có thể cấp phát đơn đang chờ duyệt!");
         }
 
         if (order.getItems() != null) {
@@ -126,6 +184,7 @@ public class OutboundService {
                 item.getAllocations().clear();
 
                 int required = item.getRequestedQty();
+                if (required <= 0) throw new BusinessException(ErrorCode.BAD_REQUEST, "Số lượng xuất phải lớn hơn 0!");
                 List<ProductBatch> activeBatches = productBatchRepository.findActiveBatchesOrderByExpiryAsc(item.getProductId(), LocalDate.now());
                 if (activeBatches.isEmpty()) {
                     throw new BusinessException(ErrorCode.INSUFFICIENT_STOCK,
@@ -143,7 +202,11 @@ public class OutboundService {
                     }
                     for (Inventory inv : batchInvs) {
                         if (remaining <= 0) break;
-                        int avail = inv.getAvailableQty();
+                        if (!isInWarehouse(inv, order.getWarehouseId())) continue;
+                        Inventory locked = inventoryRepository.findByProductLocationAndBatchForUpdate(
+                                inv.getProductId(), inv.getLocationId(), inv.getBatchId())
+                                .orElseThrow(() -> new BusinessException(ErrorCode.INSUFFICIENT_STOCK, "Không tìm thấy tồn kho!"));
+                        int avail = locked.getAvailableQty();
                         if (avail <= 0) continue;
                         int toTake = Math.min(avail, remaining);
 
@@ -198,117 +261,64 @@ public class OutboundService {
 
     @Transactional
     public OutboundOrderResponse dispatchOutboundOrder(Long id) {
-        OutboundOrder order = outboundOrderRepository.findById(id)
+        OutboundOrder order = outboundOrderRepository.findForUpdate(id)
                 .orElseThrow(() -> new BusinessException(ErrorCode.NOT_FOUND, "Không tìm thấy đơn xuất: " + id));
-
-        if ("DISPATCHED".equalsIgnoreCase(order.getStatus())) {
-            throw new BusinessException(ErrorCode.BAD_REQUEST, "Đơn xuất kho " + order.getOrderCode() + " đã hoàn tất bàn giao vận chuyển trước đó!");
+        if (!Set.of("PENDING", "ALLOCATED", "PICKING").contains(order.getStatus())) {
+            throw new BusinessException(ErrorCode.BAD_REQUEST, "Đơn xuất đã hoàn tất hoặc không thể xuất kho!");
         }
-
+        if (order.getItems() == null || order.getItems().isEmpty()) {
+            throw new BusinessException(ErrorCode.BAD_REQUEST, "Đơn xuất không có sản phẩm!");
+        }
+        // A direct dispatch uses the same warehouse-scoped FEFO allocation in this transaction.
+        if ("PENDING".equals(order.getStatus())) allocateOutboundOrderFefo(id);
         Long currentUserId = com.wms.module.identity.util.SecurityUtils.getCurrentUserIdOrDefault(userRepository, 1L);
-
-        if (order.getItems() != null) {
-            for (OutboundOrderItem item : order.getItems()) {
-                List<PickAllocation> allocations = pickAllocationRepository.findByOutboundOrderItemId(item.getId());
-
-                if (allocations != null && !allocations.isEmpty()) {
-                    // Xuất kho theo đúng các Lô và Ô kệ đã được cấp phát FEFO
-                    for (PickAllocation alloc : allocations) {
-                        if ("PICKED".equals(alloc.getStatus()) || "CANCELLED".equals(alloc.getStatus())) {
-                            continue;
-                        }
-
-                        Inventory inv = inventoryRepository.findByProductIdAndLocationIdAndBatchId(
-                                alloc.getProductId(), alloc.getLocationId(), alloc.getBatchId()
-                        ).orElse(null);
-
-                        if (inv != null) {
-                            int deduct = alloc.getAllocatedQty();
-                            inv.setOnHandQty(Math.max(0, inv.getOnHandQty() - deduct));
-                            inv.setReservedQty(Math.max(0, inv.getReservedQty() - deduct));
-                            inv.setLastUpdatedAt(Instant.now());
-                            inventoryRepository.saveAndFlush(inv);
-
-                            StockLedger ledger = StockLedger.builder()
-                                    .transactionType("OUTBOUND")
-                                    .referenceCode(order.getOrderCode())
-                                    .locationId(alloc.getLocationId())
-                                    .productId(alloc.getProductId())
-                                    .batchId(alloc.getBatchId())
-                                    .qtyChange(-deduct)
-                                    .balanceAfter(inv.getOnHandQty())
-                                    .performedBy(currentUserId)
-                                    .notes("Bàn giao vận chuyển đơn xuất SO: " + order.getOrderCode())
-                                    .createdAt(Instant.now())
-                                    .build();
-                            stockLedgerRepository.save(ledger);
-                        }
-
-                        alloc.setStatus("PICKED");
-                        alloc.setPickedQty(alloc.getAllocatedQty());
-                        alloc.setPickedAt(Instant.now());
-                        pickAllocationRepository.save(alloc);
-                    }
-                    item.setAllocatedQty(item.getRequestedQty());
-                    item.setPickedQty(item.getRequestedQty());
-                    item.setStatus("SHIPPED");
-                } else {
-                    // Fallback nếu đơn chưa phân bổ trước đó
-                    int qtyToDeduct = item.getRequestedQty();
-                    List<Inventory> inventories = inventoryRepository.findByProductIdAndOnHandQtyGreaterThanOrderByReservedQtyDesc(item.getProductId(), 0);
-                    if (inventories == null || inventories.isEmpty()) {
-                        inventories = inventoryRepository.findAll().stream()
-                                .filter(inv -> inv.getProductId().equals(item.getProductId()) && inv.getOnHandQty() > 0)
-                                .sorted((a, b) -> Integer.compare(b.getReservedQty(), a.getReservedQty()))
-                                .toList();
-                    }
-
-                    for (Inventory inv : inventories) {
-                        if (qtyToDeduct <= 0) break;
-                        int deduct = Math.min(qtyToDeduct, inv.getOnHandQty());
-                        inv.setOnHandQty(inv.getOnHandQty() - deduct);
-                        inv.setReservedQty(Math.max(0, inv.getReservedQty() - deduct));
-                        inv.setLastUpdatedAt(Instant.now());
-                        inventoryRepository.saveAndFlush(inv);
-
-                        StockLedger ledger = StockLedger.builder()
-                                .transactionType("OUTBOUND")
-                                .referenceCode(order.getOrderCode())
-                                .locationId(inv.getLocationId())
-                                .productId(item.getProductId())
-                                .batchId(inv.getBatchId())
-                                .qtyChange(-deduct)
-                                .balanceAfter(inv.getOnHandQty())
-                                .performedBy(currentUserId)
-                                .notes("Bàn giao vận chuyển đơn xuất SO: " + order.getOrderCode())
-                                .createdAt(Instant.now())
-                                .build();
-                        stockLedgerRepository.save(ledger);
-
-                        qtyToDeduct -= deduct;
-                    }
-                    item.setAllocatedQty(item.getRequestedQty());
-                    item.setPickedQty(item.getRequestedQty());
-                    item.setStatus("SHIPPED");
-                }
+        for (OutboundOrderItem item : order.getItems()) {
+            List<PickAllocation> allocations = pickAllocationRepository.findByOutboundOrderItemId(item.getId());
+            int allocated = allocations.stream().filter(a -> !"CANCELLED".equals(a.getStatus()))
+                    .mapToInt(PickAllocation::getAllocatedQty).sum();
+            if (item.getRequestedQty() <= 0 || allocated != item.getRequestedQty()) {
+                throw new BusinessException(ErrorCode.INSUFFICIENT_STOCK, "Phân bổ không khớp số lượng cần xuất!");
             }
+            for (PickAllocation alloc : allocations) {
+                if ("CANCELLED".equals(alloc.getStatus())) continue;
+                int deduct = alloc.getAllocatedQty();
+                Inventory inv = inventoryRepository.findByProductLocationAndBatchForUpdate(
+                        alloc.getProductId(), alloc.getLocationId(), alloc.getBatchId())
+                        .orElseThrow(() -> new BusinessException(ErrorCode.INSUFFICIENT_STOCK, "Không tìm thấy tồn kho đã phân bổ!"));
+                boolean activeBatch = productBatchRepository.findActiveBatchesOrderByExpiryAsc(item.getProductId(), LocalDate.now())
+                        .stream().anyMatch(batch -> batch.getId().equals(alloc.getBatchId()));
+                if (!item.getProductId().equals(alloc.getProductId()) || !isInWarehouse(inv, order.getWarehouseId())
+                        || !activeBatch || deduct <= 0 || inv.getOnHandQty() < deduct || inv.getReservedQty() < deduct) {
+                    throw new BusinessException(ErrorCode.INSUFFICIENT_STOCK,
+                            "Tồn kho không đủ hoặc lô hàng không hợp lệ trong kho của đơn xuất!");
+                }
+                inv.setOnHandQty(inv.getOnHandQty() - deduct);
+                inv.setReservedQty(inv.getReservedQty() - deduct);
+                inv.setLastUpdatedAt(Instant.now());
+                inventoryRepository.saveAndFlush(inv);
+                stockLedgerRepository.save(StockLedger.builder()
+                        .transactionType("OUTBOUND").referenceCode(order.getOrderCode())
+                        .locationId(inv.getLocationId()).productId(inv.getProductId()).batchId(inv.getBatchId())
+                        .qtyChange(-deduct).balanceAfter(inv.getOnHandQty()).performedBy(currentUserId)
+                        .notes("Xuất kho đơn SO: " + order.getOrderCode()).createdAt(Instant.now()).build());
+                alloc.setStatus("PICKED");
+                alloc.setPickedQty(deduct);
+                alloc.setPickedAt(Instant.now());
+                pickAllocationRepository.save(alloc);
+            }
+            item.setAllocatedQty(item.getRequestedQty());
+            item.setPickedQty(item.getRequestedQty());
+            item.setStatus("SHIPPED");
         }
-
         order.setStatus("DISPATCHED");
         order.setUpdatedAt(Instant.now());
         OutboundOrder saved = outboundOrderRepository.save(order);
-
         if (notificationService != null) {
             notificationService.broadcast(NotificationMessage.builder()
-                    .type("OUTBOUND_ORDER_CREATED")
-                    .title("Xuất Kho Đơn Hàng " + order.getOrderCode())
-                    .message("Đơn hàng " + order.getOrderCode() + " đã hoàn tất kiểm đếm và bàn giao vận chuyển thành công.")
-                    .severity("SUCCESS")
-                    .referenceCode(order.getOrderCode())
-                    .link("/outbound")
-                    .build());
+                    .type("OUTBOUND_ORDER_DISPATCHED").title("Xuất Kho " + order.getOrderCode())
+                    .message("Đã xuất đủ hàng và cập nhật tồn cuối kho.").severity("SUCCESS")
+                    .referenceCode(order.getOrderCode()).link("/outbound").build());
         }
-
         return toResponse(saved);
     }
 

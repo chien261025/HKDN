@@ -124,12 +124,45 @@ docker compose down
 docker compose up -d --build
 ```
 
+Backend được Maven biên dịch trực tiếp từ mã nguồn trong lúc build Docker image;
+không dùng lại file JAR cũ trong `backend/target`. Sau khi sửa backend, chạy lại
+lệnh build/khởi động ở trên để container nhận các API mới.
+
+> **MinIO image:** Docker Hub no longer serves `minio/minio`, and the Quay
+> copy rejects anonymous pulls. The `wms-minio` service now uses
+> `docker.io/pgsty/silo:RELEASE.2026-11-12T00-00-00Z`, a community-maintained
+> MinIO-compatible fork ([SILO compatibility](https://silo.pgsty.com/compatibility/server/)).
+> It retains the S3 endpoint, credentials, ports, and named data volume.
+> If you encounter `pull access denied for minio/minio`, use the updated
+> Compose configuration and rerun the startup command above.
+
 ### 4.2. Các địa chỉ dịch vụ
 - **Giao diện Web Kho (Frontend):** [http://localhost:3000](http://localhost:3000)
 - **Tài liệu REST API (Swagger UI):** [http://localhost:8080/api/v1/swagger-ui/index.html](http://localhost:8080/api/v1/swagger-ui/index.html)
 - **RabbitMQ Management Dashboard:** [http://localhost:15672](http://localhost:15672) (`guest` / `guest`)
 - **MinIO Object Storage Console:** [http://localhost:9001](http://localhost:9001) (`minioadmin` / `minioadmin`)
 - **MySQL Database:** `localhost:3307` (`wms_db` / `root` / `password123`)
+
+### Luồng tạo đơn và xuất kho
+
+- Danh mục hàng trong kho, tồn kho, tổng hợp sổ cái và form xuất dùng chung API
+  `/inventory/closing-balances`. Tồn cuối được cộng theo sản phẩm trong Kho Tổng
+  Tân Bình (Khu A & B), không cộng lẫn kho khác. Danh mục chỉ hiện hàng còn tồn;
+  sản phẩm mới đăng ký vẫn có thể chọn để nhập hàng trước khi xuất hiện ở danh mục này.
+- Form xuất chọn sẵn kho Tân Bình; đơn vị nhận phải chọn từ các đối tác đang hoạt động
+  có sản phẩm được quản lý tại kho. Backend kiểm tra đối tác và lấy tên từ danh mục.
+- Sổ cái hiển thị bảng tồn cuối hiện tại cùng lịch sử biến động. Số dư của từng
+  bút toán là số dư sau giao dịch tại thời điểm đó, không bị ghi đè bằng tồn hiện tại.
+
+- Kho xuất được chọn sẵn; chọn đối tác nhận và thêm sản phẩm. Danh sách chỉ gồm sản phẩm
+  còn tồn khả dụng trong kho đó, thuộc lô đang hoạt động và chưa hết hạn.
+- Form hiển thị tồn hiện tại, khả dụng và tồn cuối dự kiến = tồn hiện tại − số lượng xuất.
+  Tạo đơn chưa trừ tồn thực tế; cấp phát FEFO chỉ giữ hàng cho đơn.
+- Khi xác nhận xuất kho, hệ thống trừ đúng số lượng theo lô và vị trí trong kho
+  của đơn, giải phóng phần hàng đã giữ và ghi sổ cái. Thiếu hàng sẽ hủy toàn bộ
+  thao tác; đơn đã xuất không được xuất lần thứ hai.
+- Bảng **Tồn cuối trong kho** trên trang đơn xuất tự tải lại sau khi xuất thành công.
+  Trang tồn kho cũng hiển thị **Tồn Cuối (Thực Tế)** theo từng lô và ô kệ.
 
 ### 4.3. Lưu dữ liệu MySQL khi chạy Docker
 

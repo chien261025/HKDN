@@ -10,6 +10,7 @@ import { BarcodeLabelModal } from '../components/BarcodeLabelModal';
 import { CategoryItem, ProductItem, SupplierItem } from '../types';
 import { CategoryTable } from '../components/CategoryTable';
 import { productService } from '../services/productService';
+import { PRIMARY_WAREHOUSE } from '../../../config/warehouse';
 
 export const ProductsPage: React.FC = () => {
   const [activeTab, setActiveTab] = useState<'PRODUCTS' | 'SUPPLIERS' | 'CATEGORIES'>('PRODUCTS');
@@ -17,19 +18,24 @@ export const ProductsPage: React.FC = () => {
   const [suppliers, setSuppliers] = useState<SupplierItem[]>([]);
   const [categories, setCategories] = useState<CategoryItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState('');
+  const [notice, setNotice] = useState('');
 
   useEffect(() => {
     const fetchData = async () => {
       setIsLoading(true);
-      const [prods, supps, cats] = await Promise.all([
-        productService.getProducts(),
-        productService.getSuppliers(),
-        productService.getCategories(),
-      ]);
-      setProducts(prods);
-      setSuppliers(supps);
-      setCategories(cats);
-      setIsLoading(false);
+      try {
+        const [prods, supps, cats] = await Promise.all([
+          productService.getProducts(true),
+          productService.getSuppliers(),
+          productService.getCategories(),
+        ]);
+        setProducts(prods);
+        setSuppliers(supps);
+        setCategories(cats);
+      } catch {
+        setError('Không tải được danh mục và tồn cuối trong kho.');
+      } finally { setIsLoading(false); }
     };
     fetchData();
   }, []);
@@ -52,7 +58,8 @@ export const ProductsPage: React.FC = () => {
 
   const handleAddProduct = async (newProduct: ProductItem) => {
     await productService.createProduct(newProduct);
-    setProducts(await productService.getProducts());
+    setProducts(await productService.getProducts(true));
+    setNotice('Đã đăng ký sản phẩm. Sản phẩm sẽ xuất hiện trong danh mục hàng trong kho sau khi nhập hàng và cất lên kệ.');
   };
 
   const handleAddSupplier = async (newSupplier: SupplierItem) => {
@@ -68,7 +75,7 @@ export const ProductsPage: React.FC = () => {
     if (product.status === 'DELETED') await productService.restoreProduct(product.id);
     else if (product.status === 'ACTIVE') await productService.updateProductStatus(product.id, false);
     else await productService.softDeleteProduct(product.id);
-    setProducts(await productService.getProducts());
+    setProducts(await productService.getProducts(true));
   };
 
   const handleCategoryStatus = async (category: CategoryItem) => {
@@ -80,7 +87,7 @@ export const ProductsPage: React.FC = () => {
 
   const handleSaveEditProduct = async (updatedProduct: ProductItem) => {
     await productService.updateProduct(updatedProduct.id, updatedProduct);
-    setProducts(await productService.getProducts());
+    setProducts(await productService.getProducts(true));
   };
 
   const handleDeleteProduct = async (product: ProductItem) => {
@@ -111,6 +118,10 @@ export const ProductsPage: React.FC = () => {
         suppliers={suppliers}
         onOpenCreateModal={handleOpenCreateModal}
       />
+
+      {error && <p role="alert" className="rounded-xl bg-rose-50 p-3 text-sm text-rose-700">{error}</p>}
+      {notice && <p role="status" className="rounded-xl bg-emerald-50 p-3 text-sm text-emerald-700">{notice}</p>}
+      {activeTab === 'PRODUCTS' && <p className="text-sm text-slate-600">{PRIMARY_WAREHOUSE.name} · {isLoading ? 'Đang tải tồn cuối…' : 'Danh mục chỉ hiển thị sản phẩm còn tồn. Số lượng là tồn cuối, đồng nhất với tồn kho và sổ cái.'}</p>}
 
       {/* Main Table Content */}
       {activeTab === 'PRODUCTS' ? (
