@@ -66,7 +66,7 @@ export const StockBalanceMobileCards: React.FC<StockBalanceMobileCardsProps> = (
           {/* Quantities 3-Column Grid */}
           <div className="grid grid-cols-3 gap-2 text-center pt-1">
             <div className="p-2 rounded-lg bg-slate-50 border border-slate-200/70">
-              <div className="text-[11px] text-slate-500">Thực Tế</div>
+              <div className="text-[11px] text-slate-500">Tồn Cuối</div>
               <div className="text-sm font-bold font-mono text-slate-900 mt-0.5">
                 {item.onHandQty.toLocaleString('vi-VN')}
               </div>

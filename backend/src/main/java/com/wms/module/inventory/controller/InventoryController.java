@@ -34,6 +34,11 @@ public class InventoryController {
         return ApiResponse.success("Lấy số dư tồn kho thành công!", inventories);
     }
 
+    @GetMapping("/closing-balances")
+    public ApiResponse<List<com.wms.module.order.dto.response.OutboundStockResponse>> getClosingBalances() {
+        return ApiResponse.success(inventoryQueryService.getClosingBalances());
+    }
+
     @GetMapping("/alerts/safety-stock")
     @Operation(summary = "Cảnh báo Tồn kho an toàn & Điểm tái đặt hàng (Safety Stock Alert & ROP)",
                description = "Quét toàn bộ sản phẩm trong kho, phát hiện các mặt hàng có tồn khả dụng chạm ngưỡng Tồn an toàn hoặc Điểm đặt hàng lại (ROP).")

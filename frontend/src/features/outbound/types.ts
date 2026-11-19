@@ -21,6 +21,8 @@ export interface OutboundItem {
 }
 
 export interface OutboundOrder {
+  partnerId?: number;
+  warehouseId?: number;
   id: string;
   soCode: string;
   customerName: string;
@@ -40,4 +42,14 @@ export interface CustomerOption {
   name: string;
   address: string;
   phone: string;
+}
+
+export interface OutboundStock {
+  productId: number;
+  warehouseId: number;
+  sku: string;
+  name: string;
+  unit: string;
+  onHandQty: number;
+  availableQty: number;
 }

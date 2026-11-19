@@ -9,6 +9,7 @@ import java.util.List;
 import java.util.Optional;
 
 public interface InventoryQueryService {
+    List<com.wms.module.order.dto.response.OutboundStockResponse> getClosingBalances();
     List<InventoryBalanceResponse> getAllBalances();
     List<StockLedgerResponse> getRecentLedgers(int limit);
     Optional<Inventory> getInventory(Long productId, Long locationId, Long batchId);

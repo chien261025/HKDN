@@ -40,7 +40,7 @@ export const OutboundOrderTable: React.FC<OutboundOrderTableProps> = ({
   return (
     <div className="bg-white rounded-2xl border border-slate-200 shadow-xs overflow-hidden">
       {/* Table Header */}
-      <div className="p-4 sm:p-5 border-b border-slate-200 flex items-center justify-between bg-slate-50/80">
+      {/* <div className="p-4 sm:p-5 border-b border-slate-200 flex items-center justify-between bg-slate-50/80">
         <div className="flex items-center gap-2.5">
           <div className="p-2 rounded-lg bg-amber-50 text-amber-700 border border-amber-200">
             <PackageCheck className="w-4 h-4" />
@@ -55,7 +55,7 @@ export const OutboundOrderTable: React.FC<OutboundOrderTableProps> = ({
         <span className="text-xs font-mono font-semibold text-slate-700 bg-white px-2.5 py-1 rounded-lg border border-slate-200 shadow-2xs">
           {orders.length} Đơn Xuất
         </span>
-      </div>
+      </div> */}
 
       {/* MOBILE CARD VIEW (Block on mobile < 768px) */}
       <OutboundMobileCards

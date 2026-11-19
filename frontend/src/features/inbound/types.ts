@@ -2,11 +2,15 @@ export type InboundStatus = 'PENDING' | 'RECEIVED' | 'STOCKED' | 'CANCELLED';
 
 export interface InboundOrderItem {
   id: string;
+  /** Backend product identifier; this is the source of truth during put-away. */
+  productId?: number;
+  productBatchId?: number;
   sku: string;
   productName: string;
   expectedQty: number;
   receivedQty: number;
   stockedQty: number;
+  status?: 'PENDING' | 'RECEIVED' | 'COMPLETED';
   batchNumber?: string;
   expiryDate?: string;
   putawayLocation?: string;

@@ -40,6 +40,13 @@ public class InventoryQueryServiceImpl implements InventoryQueryService {
     private final CategoryRepository categoryRepository;
     private final WarehouseRepository warehouseRepository;
     private final UserRepository userRepository;
+    private final com.wms.module.inventory.service.WarehouseStockService warehouseStockService;
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<com.wms.module.order.dto.response.OutboundStockResponse> getClosingBalances() {
+        return warehouseStockService.getClosingBalances(true);
+    }
 
     @Override
     @Transactional(readOnly = true)
@@ -62,7 +69,10 @@ public class InventoryQueryServiceImpl implements InventoryQueryService {
 
         LocalDate soonThreshold = LocalDate.now().plusDays(30);
 
-        return allInventory.stream().map(inv -> {
+        return allInventory.stream()
+                .filter(inv -> productMap.containsKey(inv.getProductId())
+                        && productMap.get(inv.getProductId()).getDeletedAt() == null)
+                .map(inv -> {
             Product prod = productMap.get(inv.getProductId());
             Location loc = locationMap.get(inv.getLocationId());
             ProductBatch batch = batchMap.get(inv.getBatchId());
@@ -89,6 +99,7 @@ public class InventoryQueryServiceImpl implements InventoryQueryService {
             return InventoryBalanceResponse.builder()
                     .id(inv.getId())
                     .productId(inv.getProductId())
+                    .warehouseId(loc != null ? loc.getWarehouseId() : null)
                     .sku(prod != null ? prod.getSku() : "SKU-" + inv.getProductId())
                     .barcode(prod != null ? prod.getBarcode() : "")
                     .productName(prod != null ? prod.getName() : "Sản Phẩm #" + inv.getProductId())
@@ -142,6 +153,7 @@ public class InventoryQueryServiceImpl implements InventoryQueryService {
             int before = (l.getBalanceAfter() != null ? l.getBalanceAfter() : 0) - (l.getQtyChange() != null ? l.getQtyChange() : 0);
 
             return StockLedgerResponse.builder()
+                    .warehouseId(loc != null ? loc.getWarehouseId() : null)
                     .id(l.getId())
                     .transactionType(l.getTransactionType())
                     .referenceCode(l.getReferenceCode())

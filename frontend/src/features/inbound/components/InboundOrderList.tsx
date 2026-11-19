@@ -16,12 +16,14 @@ const PAGE_SIZE = 10;
 
 interface InboundOrderListProps {
   orders: InboundOrder[];
+  busyOrderId?: string | null;
   onSelectOrder: (order: InboundOrder) => void;
   onAdvanceStatus: (orderId: string) => void;
 }
 
 export const InboundOrderList: React.FC<InboundOrderListProps> = ({
   orders,
+  busyOrderId,
   onSelectOrder,
   onAdvanceStatus,
 }) => {
@@ -137,7 +139,12 @@ export const InboundOrderList: React.FC<InboundOrderListProps> = ({
                   {isPending && (
                     <button
                       onClick={() => onAdvanceStatus(order.id)}
+<<<<<<< HEAD
+                      disabled={busyOrderId === order.id}
+                      className="flex-1 py-2 px-3 bg-indigo-600 hover:bg-indigo-700 active:scale-[0.99] text-white rounded-lg text-xs font-semibold shadow-xs transition-colors cursor-pointer"
+=======
                       className="flex-1 py-2 px-3 bg-blue-600 hover:bg-blue-700 active:scale-[0.99] text-white rounded-lg text-xs font-bold shadow-xs transition-colors cursor-pointer"
+>>>>>>> 36fa9b52849e24e253b8552373cbd59e9c2fe860
                     >
                       Nhận Vào Đệm
                     </button>
@@ -145,7 +152,12 @@ export const InboundOrderList: React.FC<InboundOrderListProps> = ({
                   {isReceived && (
                     <button
                       onClick={() => onAdvanceStatus(order.id)}
+<<<<<<< HEAD
+                      disabled={busyOrderId === order.id}
+                      className="flex-1 py-2 px-3 bg-emerald-600 hover:bg-emerald-700 active:scale-[0.99] text-white rounded-lg text-xs font-semibold shadow-xs transition-colors cursor-pointer"
+=======
                       className="flex-1 py-2 px-3 bg-emerald-600 hover:bg-emerald-700 active:scale-[0.99] text-white rounded-lg text-xs font-bold shadow-xs transition-colors cursor-pointer"
+>>>>>>> 36fa9b52849e24e253b8552373cbd59e9c2fe860
                     >
                       Cất Lên Kệ
                     </button>
@@ -248,7 +260,12 @@ export const InboundOrderList: React.FC<InboundOrderListProps> = ({
                       {isPending && (
                         <button
                           onClick={() => onAdvanceStatus(order.id)}
+<<<<<<< HEAD
+                          disabled={busyOrderId === order.id}
+                          className="px-2.5 py-1.5 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200 rounded-lg text-xs font-semibold transition-colors cursor-pointer"
+=======
                           className="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-xs font-bold shadow-xs transition-colors cursor-pointer"
+>>>>>>> 36fa9b52849e24e253b8552373cbd59e9c2fe860
                         >
                           Nhận Vào Đệm
                         </button>
@@ -256,7 +273,12 @@ export const InboundOrderList: React.FC<InboundOrderListProps> = ({
                       {isReceived && (
                         <button
                           onClick={() => onAdvanceStatus(order.id)}
+<<<<<<< HEAD
+                          disabled={busyOrderId === order.id}
+                          className="px-2.5 py-1.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-200 rounded-lg text-xs font-semibold transition-colors cursor-pointer"
+=======
                           className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-bold shadow-xs transition-colors cursor-pointer"
+>>>>>>> 36fa9b52849e24e253b8552373cbd59e9c2fe860
                         >
                           Cất Lên Kệ
                         </button>
