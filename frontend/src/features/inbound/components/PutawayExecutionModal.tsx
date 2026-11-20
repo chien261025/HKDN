@@ -161,7 +161,7 @@ export const PutawayExecutionModal: React.FC<Props> = ({ order, onClose, onConfi
           {canSubmit ? (
             <span>Xác nhận cất kệ và ghi sổ cái</span>
           ) : (
-            <span className="text-xs">Đang bị khóa (Nhập số lượng $\le$ {remaining.toLocaleString()} & chọn ô kệ hợp lệ)</span>
+            <span className="text-xs">Đang bị khóa (Nhập số lượng ≤ {remaining.toLocaleString()} & chọn ô kệ hợp lệ)</span>
           )}
         </button>
       </div>
