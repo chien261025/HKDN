@@ -144,37 +144,7 @@ export function analyzeProductAndGenerateSku(productName: string, existingSkus: 
     });
   }
 
-  // 4. Nhóm Thực phẩm & Đồ uống Khô (Food & Beverage - Kho Khô Zone A)
-  const foodKeywords = [
-    'nuoc mam', 'mam', 'sua', 'banh', 'keo', 'tra', 'ca phe', 'bia', 'ruou',
-    'thit', 'ca', 'gao', 'mi', 'gia vi', 'dau an', 'nuoc ngot', 'snack', 'pate',
-    'nuoc tuong', 'tuong ot', 'bot ngot', 'hat nem', 'muoi', 'duong', 'nam ngu', 'chin su',
-    'heineken', 'tiger', 'vinamilk', 'thuc pham'
-  ];
-  if (hasAnyKeyword(clean, foodKeywords)) {
-    let tag = 'FOOD';
-    if (clean.includes('nuoc mam') || clean.includes('mam')) tag = 'MAM';
-    else if (clean.includes('sua')) tag = 'MILK';
-    else if (clean.includes('bia')) tag = 'BEER';
-    else if (clean.includes('ca phe') || clean.includes('coffee')) tag = 'CAFE';
-    else if (clean.includes('banh') || clean.includes('keo')) tag = 'SNACK';
-    else if (clean.includes('gao')) tag = 'RICE';
-
-    return done({
-      sku: `SKU-FOOD-${tag}-${randomSuffix}`,
-      category: 'FOOD_BEVERAGE',
-      categoryLabel: 'Thực Phẩm & Đồ Uống (F&B)',
-      storageZone: 'ZONE_A',
-      storageCondition: 'AMBIENT',
-      unit: clean.includes('nuoc mam') || clean.includes('dau an') ? 'Chai' : 'Thùng',
-      isExpiryManaged: true,
-      outboundStrategy: 'FEFO',
-      shelfLifeDays: 365,
-      reason: 'Nhận diện Thực Phẩm / Đồ Uống Khô (Kho Khô Zone A, quản lý hạn dùng FEFO)',
-    });
-  }
-
-  // 5. Nhóm Điện tử & Công nghệ (Electronics)
+  // 4. Nhóm Điện tử & Công nghệ (Electronics)
   const elecKeywords = [
     'dien thoai', 'iphone', 'samsung', 'xiaomi', 'oppo', 'laptop', 'macbook', 'dell',
     'hp', 'asus', 'may tinh', 'pc', 'chuot', 'ban phim', 'tai nghe', 'airpods',
@@ -207,7 +177,7 @@ export function analyzeProductAndGenerateSku(productName: string, existingSkus: 
     });
   }
 
-  // 6. Nhóm Nội thất / Bàn ghế (Furniture & Decor)
+  // 5. Nhóm Nội thất / Bàn ghế (Furniture & Decor)
   const furnitureKeywords = [
     'ban', 'ghe', 'giuong', 'sofa', 'ke sach', 'dem', 'guong', 'nem',
     'ban lam viec', 'ban an', 'ghe xoay', 'cong thai hoc', 'noi that', 'gia go',
@@ -235,13 +205,13 @@ export function analyzeProductAndGenerateSku(productName: string, existingSkus: 
     });
   }
 
-  // 7. Nhóm Thời trang / Dệt may (Fashion)
+  // 6. Nhóm Thời trang / Dệt may (Fashion)
   const fashionKeywords = [
-    'ao', 'quan', 'vay', 'dam', 'giay', 'dep', 'non', 'mu', 'tat', 'vo',
+    'ao', 'quan', 'vay', 'ao dam', 'vay dam', 'dam lien', 'giay', 'dep', 'non', 'mu', 'tat', 'vo',
     'that lung', 'balo', 'tui xach', 'dong ho', 'so mi', 'polo',
     'jean', 'kaki', 'sneaker', 'khoac', 'hoodie'
   ];
-  if (hasAnyKeyword(clean, fashionKeywords)) {
+  if (hasAnyKeyword(clean, fashionKeywords) || productName.toLowerCase().includes('đầm')) {
     let tag = 'FASH';
     if (clean.includes('ao')) tag = 'AO';
     else if (clean.includes('quan')) tag = 'QUAN';
@@ -259,6 +229,36 @@ export function analyzeProductAndGenerateSku(productName: string, existingSkus: 
       outboundStrategy: 'FIFO',
       shelfLifeDays: 0,
       reason: 'Nhận diện Nhóm Thời Trang & May Mặc (Kho Khô Zone A)',
+    });
+  }
+
+  // 7. Nhóm Thực phẩm & Đồ uống Khô (Food & Beverage - Kho Khô Zone A)
+  const foodKeywords = [
+    'nuoc mam', 'mam', 'sua', 'banh', 'banh keo', 'keo ngot', 'socola', 'tra', 'ca phe', 'bia', 'ruou',
+    'thit', 'ca', 'gao', 'mi', 'gia vi', 'dau an', 'nuoc ngot', 'snack', 'pate',
+    'nuoc tuong', 'tuong ot', 'bot ngot', 'hat nem', 'muoi', 'duong', 'nam ngu', 'chin su',
+    'heineken', 'tiger', 'vinamilk', 'thuc pham'
+  ];
+  if (hasAnyKeyword(clean, foodKeywords) || productName.toLowerCase().includes('kẹo') || clean.includes('mam')) {
+    let tag = 'FOOD';
+    if (clean.includes('nuoc mam') || clean.includes('mam')) tag = 'MAM';
+    else if (clean.includes('sua')) tag = 'MILK';
+    else if (clean.includes('bia')) tag = 'BEER';
+    else if (clean.includes('ca phe') || clean.includes('coffee')) tag = 'CAFE';
+    else if (clean.includes('banh') || clean.includes('keo') || productName.toLowerCase().includes('kẹo')) tag = 'SNACK';
+    else if (clean.includes('gao')) tag = 'RICE';
+
+    return done({
+      sku: `SKU-FOOD-${tag}-${randomSuffix}`,
+      category: 'FOOD_BEVERAGE',
+      categoryLabel: 'Thực Phẩm & Đồ Uống (F&B)',
+      storageZone: 'ZONE_A',
+      storageCondition: 'AMBIENT',
+      unit: clean.includes('nuoc mam') || clean.includes('dau an') ? 'Chai' : 'Thùng',
+      isExpiryManaged: true,
+      outboundStrategy: 'FEFO',
+      shelfLifeDays: 365,
+      reason: 'Nhận diện Thực Phẩm / Đồ Uống Khô (Kho Khô Zone A, quản lý hạn dùng FEFO)',
     });
   }
 

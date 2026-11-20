@@ -223,7 +223,7 @@ public class AiSkuService {
         }
 
         // 6. Thời trang & May mặc
-        if (hasAny(clean, "ao", "quan", "vay", "dam", "giay", "dep", "non", "mu", "tat", "that lung", "balo", "tui xach", "dong ho", "so mi", "polo", "jean")) {
+        if (hasAny(clean, "ao", "quan", "vay", "ao dam", "vay dam", "dam lien", "giay", "dep", "non", "mu", "tat", "that lung", "balo", "tui xach", "dong ho", "so mi", "polo", "jean") || productName.toLowerCase().contains("đầm")) {
             String tag = clean.contains("ao") ? "AO" : clean.contains("quan") ? "QUAN" : clean.contains("giay") ? "SHOES" : "FASH";
             return AiSkuSuggestionDto.builder()
                     .sku("SKU-FASH-" + tag + "-" + randomSuffix)
@@ -240,19 +240,36 @@ public class AiSkuService {
                     .build();
         }
 
-        // 7. Mặc định Thực phẩm & Đồ uống khô (F&B)
-        String foodTag = clean.contains("mam") ? "MAM" : clean.contains("sua") ? "MILK" : clean.contains("bia") ? "BEER" : clean.contains("gao") ? "RICE" : "FOOD";
+        // 7. Thực phẩm & Đồ uống khô (Kho Khô Zone A, FEFO)
+        if (hasAny(clean, "nuoc mam", "mam", "sua", "bia", "ruou", "nuoc ngot", "banh", "keo", "tra", "ca phe", "gao", "mi tom", "dau an", "gia vi", "pate", "snack", "heineken", "tiger", "vinamilk", "nam ngu", "chin su", "thuc pham") || clean.contains("mam")) {
+            String foodTag = clean.contains("mam") ? "MAM" : clean.contains("sua") ? "MILK" : clean.contains("bia") ? "BEER" : clean.contains("gao") ? "RICE" : clean.contains("ca phe") ? "CAFE" : "FOOD";
+            return AiSkuSuggestionDto.builder()
+                    .sku("SKU-FOOD-" + foodTag + "-" + randomSuffix)
+                    .category("FOOD_BEVERAGE")
+                    .categoryLabel("Thực Phẩm & Đồ Uống (F&B)")
+                    .storageZone("ZONE_A")
+                    .storageCondition("AMBIENT")
+                    .unit(clean.contains("mam") || clean.contains("dau an") ? "Chai" : "Thùng")
+                    .isExpiryManaged(true)
+                    .outboundStrategy("FEFO")
+                    .shelfLifeDays(365)
+                    .reason("AI Semantic Engine: Nhận diện Thực Phẩm / Đồ Uống Khô (Kho Khô Zone A, FEFO)")
+                    .aiPowered(false)
+                    .build();
+        }
+
+        // 8. Mặc định Hàng Tiêu Dùng Tổng Hợp
         return AiSkuSuggestionDto.builder()
-                .sku("SKU-FOOD-" + foodTag + "-" + randomSuffix)
-                .category("FOOD_BEVERAGE")
-                .categoryLabel("Thực Phẩm & Đồ Uống (F&B)")
+                .sku("SKU-GEN-" + randomSuffix)
+                .category("GENERAL")
+                .categoryLabel("Hàng Tiêu Dùng Tổng Hợp")
                 .storageZone("ZONE_A")
                 .storageCondition("AMBIENT")
-                .unit(clean.contains("mam") ? "Chai" : "Thùng")
-                .isExpiryManaged(true)
-                .outboundStrategy("FEFO")
-                .shelfLifeDays(365)
-                .reason("AI Semantic Engine: Nhận diện Thực Phẩm / Đồ Uống Khô (Kho Khô Zone A, FEFO)")
+                .unit("Kiện")
+                .isExpiryManaged(false)
+                .outboundStrategy("FIFO")
+                .shelfLifeDays(0)
+                .reason("AI Semantic Engine: Nhận diện Hàng Hóa Tiêu Dùng Tổng Hợp (Kho Khô Zone A)")
                 .aiPowered(false)
                 .build();
     }
