@@ -358,6 +358,31 @@ public class InboundService {
         return saved;
     }
 
+    @Transactional
+    public InboundOrder closeInboundOrder(Long id, String reason) {
+        InboundOrder order = inboundOrderRepository.findForUpdate(id)
+                .orElseThrow(() -> new BusinessException(ErrorCode.NOT_FOUND, "Không tìm thấy đơn nhập: " + id));
+
+        if ("STOCKED".equalsIgnoreCase(order.getStatus()) || "CANCELLED".equalsIgnoreCase(order.getStatus())) {
+            throw new BusinessException(ErrorCode.BAD_REQUEST, "Đơn đã kết thúc trước đó");
+        }
+
+        boolean anyStocked = false;
+        if (order.getItems() != null) {
+            for (InboundOrderItem item : order.getItems()) {
+                if (item.getStockedQty() > 0) {
+                    anyStocked = true;
+                }
+                item.setStatus("COMPLETED");
+            }
+        }
+
+        order.setStatus(anyStocked ? "STOCKED" : "CANCELLED");
+        order.setNotes((order.getNotes() != null ? order.getNotes() + " | " : "") + "Đóng đơn tại cổng/khu đệm: " + reason);
+        order.setUpdatedAt(Instant.now());
+        return inboundOrderRepository.save(order);
+    }
+
     private void requireMatchingExpiry(ProductBatch batch, InboundOrderItem item) {
         if (!java.util.Objects.equals(batch.getExpiryDate(), item.getExpiryDate())) {
             throw new BusinessException(ErrorCode.BAD_REQUEST, "Hạn dùng kiểm nhận không khớp lô hiện có: " + batch.getBatchNumber());

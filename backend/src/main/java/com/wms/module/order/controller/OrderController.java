@@ -96,6 +96,14 @@ public class OrderController {
 
     }
 
+    @PutMapping("/inbound/{id}/close")
+    @Operation(summary = "Đóng đơn nhập kho và hủy phần thừa")
+    public ApiResponse<InboundOrder> closeInboundOrder(
+            @PathVariable Long id,
+            @RequestParam(required = false, defaultValue = "Vượt sức chứa kho") String reason) {
+        return ApiResponse.success("Đóng đơn nhập kho thành công!", inboundService.closeInboundOrder(id, reason));
+    }
+
 
 
     @PostMapping("/inbound/putaway")

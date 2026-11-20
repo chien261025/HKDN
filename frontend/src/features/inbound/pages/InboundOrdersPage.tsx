@@ -125,6 +125,22 @@ export const InboundOrdersPage: React.FC = () => {
     }
   };
 
+  const handleCloseOrder = async (order: InboundOrder) => {
+    const confirmed = window.confirm(
+      `Xác nhận đóng đơn ${order.poCode} và hủy/từ chối nhận phần hàng thừa chưa cất kệ do vượt sức chứa kho?`
+    );
+    if (!confirmed) return;
+    setBusyOrderId(order.id);
+    try {
+      await inboundService.closeOrder(order.id, 'Vượt quá sức chứa kho / Đặt nhầm');
+      await loadOrders();
+    } catch (err: any) {
+      setError(err.response?.data?.message || err.message || 'Lỗi khi đóng đơn');
+    } finally {
+      setBusyOrderId(null);
+    }
+  };
+
   return (
     <div className="space-y-5 max-w-7xl mx-auto pb-8">
       {error && (
@@ -152,6 +168,7 @@ export const InboundOrdersPage: React.FC = () => {
         onSelectOrder={(order) => setSelectedOrder(order)}
         onReceiveClick={(order) => setReceivingOrder(order)}
         onPutawayClick={(order) => setPutawayOrder(order)}
+        onCloseOrder={handleCloseOrder}
         onPrintVoucher={(order) => setVoucherOrder(order)}
       />
 

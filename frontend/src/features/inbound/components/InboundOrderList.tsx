@@ -16,7 +16,8 @@ import {
   AlertOctagon,
   Calendar,
   Building2,
-  X
+  X,
+  Ban
 } from 'lucide-react';
 import { InboundOrder } from '../types';
 import { Pagination } from '../../../components/common';
@@ -33,6 +34,7 @@ interface InboundOrderListProps {
   onSelectOrder: (order: InboundOrder) => void;
   onReceiveClick: (order: InboundOrder) => void;
   onPutawayClick: (order: InboundOrder) => void;
+  onCloseOrder?: (order: InboundOrder) => void;
   onPrintVoucher?: (order: InboundOrder) => void;
 }
 
@@ -65,6 +67,7 @@ export const InboundOrderList: React.FC<InboundOrderListProps> = ({
   onSelectOrder,
   onReceiveClick,
   onPutawayClick,
+  onCloseOrder,
   onPrintVoucher,
 }) => {
   const [currentPage, setCurrentPage] = useState(1);
@@ -705,14 +708,28 @@ export const InboundOrderList: React.FC<InboundOrderListProps> = ({
                             </button>
                           )}
                           {isReceived && (
-                            <button
-                              onClick={() => onPutawayClick(order)}
-                              disabled={busyOrderId === order.id}
-                              className="px-2.5 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-semibold transition-colors cursor-pointer flex items-center gap-1 shadow-xs whitespace-nowrap shrink-0"
-                            >
-                              <Layers className="w-3.5 h-3.5 shrink-0" />
-                              <span>Cất Lên Kệ</span>
-                            </button>
+                            <>
+                              <button
+                                onClick={() => onPutawayClick(order)}
+                                disabled={busyOrderId === order.id}
+                                className="px-2.5 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-semibold transition-colors cursor-pointer flex items-center gap-1 shadow-xs whitespace-nowrap shrink-0"
+                              >
+                                <Layers className="w-3.5 h-3.5 shrink-0" />
+                                <span>Cất Lên Kệ</span>
+                              </button>
+
+                              {onCloseOrder && (
+                                <button
+                                  onClick={() => onCloseOrder(order)}
+                                  disabled={busyOrderId === order.id}
+                                  className="px-2 py-1.5 bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-300 rounded-lg text-xs font-semibold transition-colors cursor-pointer flex items-center gap-1 shadow-2xs whitespace-nowrap shrink-0"
+                                  title="Đóng đơn và hủy/từ chối nhận phần chưa cất do quá tải kho"
+                                >
+                                  <Ban className="w-3.5 h-3.5 shrink-0 text-rose-600" />
+                                  <span>Đóng Đơn Thừa</span>
+                                </button>
+                              )}
+                            </>
                           )}
 
                           {onPrintVoucher && (

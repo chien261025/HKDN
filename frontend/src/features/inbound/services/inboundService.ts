@@ -135,4 +135,8 @@ export const inboundService = {
   }): Promise<void> {
     await apiClient.post('/orders/inbound/putaway', payload);
   },
+
+  async closeOrder(orderId: string | number, reason: string = 'Vượt sức chứa kho / Đặt nhầm'): Promise<void> {
+    await apiClient.put(`/orders/inbound/${orderId}/close?reason=${encodeURIComponent(reason)}`);
+  },
 };
