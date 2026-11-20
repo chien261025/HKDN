@@ -73,7 +73,7 @@ export const CreatePoModal: React.FC<CreatePoModalProps> = ({ initialWarehouseId
 
   const totalPoWeightKg = Object.values(zoneRequirement).reduce((sum, w) => sum + w, 0);
 
-  const capacityError = React.useMemo(() => {
+  const capacityWarning = React.useMemo(() => {
     if (locations.length === 0) return null;
     for (const [zone, neededWeight] of Object.entries(zoneRequirement)) {
       const zoneCapacity = locations
@@ -81,7 +81,7 @@ export const CreatePoModal: React.FC<CreatePoModalProps> = ({ initialWarehouseId
         .reduce((sum, l) => sum + (l.maxWeightKg || 0), 0);
       if (zoneCapacity > 0 && neededWeight > zoneCapacity) {
         const zoneLabel = zone === 'ZONE_B' ? 'Kho Mát (Zone B)' : zone === 'ZONE_C' ? 'Kho Đông (Zone C)' : 'Kho Khô (Zone A)';
-        return `Chặn đặt quá tải trọng: Tổng tải trọng ${neededWeight.toLocaleString()} kg vượt quá tổng sức chứa của phân khu ${zoneLabel} (${zoneCapacity.toLocaleString()} kg)!`;
+        return `Lưu ý tải trọng: Đơn hàng dự kiến (${neededWeight.toLocaleString()} kg) vượt quá sức chứa kệ tức thời của ${zoneLabel} (${zoneCapacity.toLocaleString()} kg). Hệ thống vẫn cho phép phát hành PO phục vụ kế hoạch mua hàng; khuyến nghị điều phối chia đợt giao hoặc áp dụng Cross-Docking luân chuyển xuất ngay.`;
       }
     }
     return null;
@@ -403,10 +403,13 @@ export const CreatePoModal: React.FC<CreatePoModalProps> = ({ initialWarehouseId
               </div>
             </div>
 
-            {capacityError && (
-              <div className="p-2.5 rounded-xl bg-rose-50 border border-rose-200 text-rose-700 text-xs flex items-center gap-2">
-                <AlertTriangle className="w-4 h-4 shrink-0 text-rose-600" />
-                <span className="font-semibold">{capacityError}</span>
+            {capacityWarning && (
+              <div className="p-3 rounded-xl bg-amber-50 border border-amber-300 text-amber-900 text-xs flex items-start gap-2.5">
+                <AlertTriangle className="w-4 h-4 shrink-0 text-amber-600 mt-0.5" />
+                <div className="space-y-1">
+                  <div className="font-bold text-amber-800">Cảnh Báo Sức Chứa Phân Khu (Capacity Advisory)</div>
+                  <div className="text-[11px] leading-relaxed text-amber-700">{capacityWarning}</div>
+                </div>
               </div>
             )}
           </div>
@@ -433,10 +436,10 @@ export const CreatePoModal: React.FC<CreatePoModalProps> = ({ initialWarehouseId
             </button>
             <button
               type="submit"
-              disabled={submitting || items.length === 0 || !!capacityError}
+              disabled={submitting || items.length === 0}
               className="flex-1 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 disabled:bg-slate-300 disabled:cursor-not-allowed text-white font-bold text-xs shadow-sm shadow-blue-200 cursor-pointer transition-all"
             >
-              {submitting ? 'Đang tạo đơn...' : capacityError ? 'Đang bị khóa (Quá tải trọng kho)' : 'Tạo Đơn Nhập Kho (Phát Hành PO)'}
+              {submitting ? 'Đang tạo đơn...' : 'Tạo Đơn Nhập Kho (Phát Hành PO)'}
             </button>
           </div>
         </form>
