@@ -30,8 +30,8 @@ export const StockTransferModal: React.FC<StockTransferModalProps> = ({
     if (isOpen) {
       locationService.getLocations().then((locs) => {
         setLocations(locs);
-        // Chọn ô đích hợp lệ đầu tiên khác ô nguồn
-        const diff = locs.find((l) => l.barcode !== sourceItem?.locationBarcode && l.id !== sourceItem?.locationId);
+        // Chọn ô đích hợp lệ đầu tiên khác ô nguồn trong cùng chi nhánh kho
+        const diff = locs.find((l) => l.barcode !== sourceItem?.locationBarcode && l.id !== sourceItem?.locationId && l.warehouseId === (sourceItem?.warehouseId || 1));
         if (diff) setTargetLocationId(diff.id);
       });
       setTransferQty('1');
@@ -170,7 +170,7 @@ export const StockTransferModal: React.FC<StockTransferModalProps> = ({
               className="w-full p-2.5 rounded-xl border border-slate-300 font-mono text-xs font-semibold focus:outline-none focus:border-indigo-600 bg-white"
             >
               {locations
-                .filter((l) => l.barcode !== sourceItem.locationBarcode && l.id !== sourceItem.locationId)
+                .filter((l) => l.barcode !== sourceItem.locationBarcode && l.id !== sourceItem.locationId && l.warehouseId === (sourceItem.warehouseId || 1))
                 .map((loc) => {
                   const capDesc = loc.status === 'EMPTY' ? 'Ô trống' : loc.qty ? `Đang có ${loc.qty} SP` : 'Sẵn sàng';
                   return (

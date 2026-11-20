@@ -67,11 +67,38 @@ public class StockTransferService {
             throw new BusinessException(ErrorCode.BAD_REQUEST, "Ô kệ đích " + toLoc.getBinBarcode() + " đang bị khóa hoặc ngưng hoạt động!");
         }
 
+        if (!fromLoc.getWarehouseId().equals(toLoc.getWarehouseId())) {
+            throw new BusinessException(ErrorCode.BAD_REQUEST,
+                    String.format("Điều chuyển ô kệ nội bộ chỉ áp dụng trong cùng chi nhánh kho! Ô nguồn thuộc kho #%d, ô đích thuộc kho #%d. Đối với điều chuyển liên kho có thời gian vận chuyển, vui lòng sử dụng quy trình Chuyển Liên Kho (Inter-Warehouse Transfer)!",
+                            fromLoc.getWarehouseId(), toLoc.getWarehouseId()));
+        }
+
         Product product = productRepository.findById(request.getProductId())
                 .orElseThrow(() -> new BusinessException(ErrorCode.NOT_FOUND, "Không tìm thấy sản phẩm: " + request.getProductId()));
 
         ProductBatch batch = productBatchRepository.findById(request.getBatchId())
                 .orElseThrow(() -> new BusinessException(ErrorCode.NOT_FOUND, "Không tìm thấy lô hàng: " + request.getBatchId()));
+
+        // Kiểm tra sức chứa tối đa của ô kệ đích (Bin Capacity Validation - TR04)
+        if (toLoc.getMaxWeightKg() != null) {
+            java.math.BigDecimal prodWeight = product.getWeightKg() != null ? product.getWeightKg() : java.math.BigDecimal.ONE;
+            java.math.BigDecimal transferWeight = prodWeight.multiply(java.math.BigDecimal.valueOf(request.getQuantity()));
+
+            java.math.BigDecimal currentWeight = inventoryRepository.findAll().stream()
+                    .filter(i -> request.getToLocationId().equals(i.getLocationId()) && i.getOnHandQty() != null && i.getOnHandQty() > 0)
+                    .map(i -> {
+                        Product p = productRepository.findById(i.getProductId()).orElse(null);
+                        java.math.BigDecimal w = (p != null && p.getWeightKg() != null) ? p.getWeightKg() : java.math.BigDecimal.ONE;
+                        return w.multiply(java.math.BigDecimal.valueOf(i.getOnHandQty()));
+                    })
+                    .reduce(java.math.BigDecimal.ZERO, java.math.BigDecimal::add);
+
+            if (currentWeight.add(transferWeight).compareTo(toLoc.getMaxWeightKg()) > 0) {
+                throw new BusinessException(ErrorCode.BAD_REQUEST,
+                        String.format("Ô kệ đích %s vượt quá sức chứa tối đa (%s kg)! Hiện tại: %s kg, chuyển thêm: %s kg.",
+                                toLoc.getBinBarcode(), toLoc.getMaxWeightKg(), currentWeight, transferWeight));
+            }
+        }
 
         // 2. Khóa dòng dữ liệu tồn kho tại ô nguồn (Pessimistic Lock - SELECT FOR UPDATE)
         Inventory sourceInv = inventoryRepository.findByProductLocationAndBatchForUpdate(
