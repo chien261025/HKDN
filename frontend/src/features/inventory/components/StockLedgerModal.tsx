@@ -41,7 +41,7 @@ export const StockLedgerModal: React.FC<StockLedgerModalProps> = ({ entry, onClo
       case 'ADJUSTMENT':
         return 'BIÊN BẢN CÂN ĐỐI TỒN KHO';
       case 'INITIAL_BALANCE':
-        return 'BÚT TOÁN THẺ KHO (SỐ DƯ ĐẦU KỲ / SNAPSHOT)';
+        return 'PHIẾU XÁC NHẬN SỐ DƯ TỒN KHO (INVENTORY SNAPSHOT)';
       case 'TRANSFER':
         return 'PHIẾU ĐIỀU CHUYỂN Ô KỆ NỘI BỘ';
       default:
@@ -89,7 +89,7 @@ export const StockLedgerModal: React.FC<StockLedgerModalProps> = ({ entry, onClo
                     : entry.transactionType === 'TRANSFER'
                     ? 'ĐIỀU CHUYỂN'
                     : entry.transactionType === 'INITIAL_BALANCE'
-                    ? 'SỐ DƯ ĐẦU KỲ'
+                    ? 'BẢN CHỤP SỐ DƯ (SNAPSHOT)'
                     : 'CÂN ĐỐI TỒN'}
                 </span>
               </div>
@@ -135,6 +135,16 @@ export const StockLedgerModal: React.FC<StockLedgerModalProps> = ({ entry, onClo
               <ShieldCheck className="w-4 h-4 text-indigo-600 shrink-0 mt-0.5" />
               <div>
                 <span className="font-bold">Bút toán đối ứng kép (Double-Entry Transfer):</span> Lệnh điều chuyển ghi nhận đồng thời 2 bút toán: <strong>Ô nguồn (-{Math.abs(displayItems[0]?.qtyChange || entry.qtyChange)})</strong> và <strong>Ô đích (+{Math.abs(displayItems[1]?.qtyChange || entry.qtyChange)})</strong>. Tổng số lượng tồn toàn kho không đổi (Net change = 0).
+              </div>
+            </div>
+          )}
+
+          {/* Banner giải thích bản chụp số dư tức thời (Snapshot) */}
+          {isSnapshot && (
+            <div className="p-3 bg-blue-50 border border-blue-200 rounded-xl text-xs text-blue-950 flex items-start gap-2.5">
+              <ShieldCheck className="w-4 h-4 text-blue-600 shrink-0 mt-0.5" />
+              <div>
+                <span className="font-bold">Bản chụp số dư tồn kho (Inventory State Snapshot):</span> Đây là bản đối soát số dư vật lý tức thời tại ô kệ lưu trữ, <strong>không phải là phiếu nhập hàng mới</strong> và không làm phát sinh tăng tổng tồn kho của doanh nghiệp.
               </div>
             </div>
           )}
@@ -185,15 +195,21 @@ export const StockLedgerModal: React.FC<StockLedgerModalProps> = ({ entry, onClo
                           </span>
                         </td>
                         <td className="py-3 px-3 text-center whitespace-nowrap font-mono font-bold">
-                          <span
-                            className={`px-2 py-0.5 rounded-full text-xs ${
-                              isMinus
-                                ? 'bg-rose-50 text-rose-700 border border-rose-200'
-                                : 'bg-emerald-50 text-emerald-700 border border-emerald-200'
-                            }`}
-                          >
-                            {item.qtyChange > 0 ? `+${item.qtyChange}` : item.qtyChange} SP
-                          </span>
+                          {isSnapshot ? (
+                            <span className="px-2 py-0.5 rounded-full text-xs bg-blue-50 text-blue-700 border border-blue-200">
+                              0 (Xác nhận số dư)
+                            </span>
+                          ) : (
+                            <span
+                              className={`px-2 py-0.5 rounded-full text-xs ${
+                                isMinus
+                                  ? 'bg-rose-50 text-rose-700 border border-rose-200'
+                                  : 'bg-emerald-50 text-emerald-700 border border-emerald-200'
+                              }`}
+                            >
+                              {item.qtyChange > 0 ? `+${item.qtyChange}` : item.qtyChange} SP
+                            </span>
+                          )}
                         </td>
                         <td className="py-3 px-3 text-center font-mono text-slate-600 tabular-nums">
                           {item.balanceBefore.toLocaleString('vi-VN')}

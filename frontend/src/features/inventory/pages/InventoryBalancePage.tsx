@@ -211,13 +211,13 @@ export const InventoryBalancePage: React.FC = () => {
             productName: item.name,
             batchNumber: item.batchNumber,
             expiryDate: item.expiryDate,
-            qtyChange: item.onHandQty,
-            balanceBefore: 0,
+            qtyChange: 0,
+            balanceBefore: item.onHandQty,
             balanceAfter: item.onHandQty,
-            performedBy: 'Hệ thống WMS',
-            notes: 'Số dư hiện thời được xác thực và chụp tự động tại ô kệ lưu trữ',
+            performedBy: 'Hệ thống WMS (Audit Snapshot)',
+            notes: 'Bản chụp số dư tồn kho tức thời tại ô kệ lưu trữ. Xác nhận trạng thái lưu kho, không phải giao dịch nhập kho mới.',
             timestamp: new Date().toLocaleString('vi-VN'),
-            hashSignature: `SHA256:VERIFIED-${item.id}`,
+            hashSignature: `SHA256:SNAPSHOT-${item.id}`,
           });
           setShowLedgerModal(true);
         }
