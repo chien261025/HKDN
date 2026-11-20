@@ -29,10 +29,9 @@ public class ProductServiceImpl implements ProductService {
     @Transactional(readOnly = true)
     public List<Product> getAllProducts() {
         java.util.Map<Long, Integer> closing = warehouseStockService.getClosingBalances(true).stream()
-                .filter(stock -> Long.valueOf(1L).equals(stock.getWarehouseId()))
-                .collect(java.util.stream.Collectors.toMap(
+                .collect(java.util.stream.Collectors.groupingBy(
                         com.wms.module.order.dto.response.OutboundStockResponse::getProductId,
-                        com.wms.module.order.dto.response.OutboundStockResponse::getOnHandQty));
+                        java.util.stream.Collectors.summingInt(com.wms.module.order.dto.response.OutboundStockResponse::getOnHandQty)));
         List<Product> products = productRepository.findAllByDeletedAtIsNullOrderByCreatedAtDesc();
         products.forEach(product -> product.setCurrentStock(closing.getOrDefault(product.getId(), 0)));
         return products;

@@ -1,6 +1,7 @@
 import React from 'react';
 import { Printer, X, FileText, CheckCircle2, Building2, Truck, ShieldCheck, AlertOctagon } from 'lucide-react';
 import { InboundOrder } from '../types';
+import { getWarehouseDisplayName } from '../../masterdata/services/warehouseService';
 
 interface InboundVoucherModalProps {
   order: InboundOrder;
@@ -14,14 +15,7 @@ export const InboundVoucherModal: React.FC<InboundVoucherModalProps> = ({ order,
   const totalStocked = order.items.reduce((sum, it) => sum + (it.stockedQty || 0), 0);
   const totalVal = order.totalValue || order.items.reduce((sum, it) => sum + ((it.expectedQty || 0) * (it.unitPrice || 0)), 0);
 
-  const warehouseName =
-    order.warehouseId === 2
-      ? 'Kho Phân Phối VSIP Bắc Ninh'
-      : order.warehouseId === 3
-      ? 'Kho Vận Miền Trung - Đà Nẵng'
-      : order.warehouseId === 4
-      ? 'Kho Trung Chuyển Sóng Thần - Bình Dương'
-      : 'Kho Tổng Tân Bình - TP.HCM';
+  const warehouseName = getWarehouseDisplayName(order.warehouseId);
 
   return (
     <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4 z-50 animate-in fade-in duration-150 print:bg-white print:p-0 print:static">

@@ -83,7 +83,7 @@ export const inventoryService = {
       if (res.data?.data && Array.isArray(res.data.data)) {
         return res.data.data.map((inv: any) => {
           const whId = inv.warehouseId || (inv.locationBarcode?.startsWith('WH02') ? 2 : inv.locationBarcode?.startsWith('WH03') ? 3 : inv.locationBarcode?.startsWith('WH04') ? 4 : 1);
-          const whName = inv.warehouseName || (whId === 2 ? 'Kho Phân Phối VSIP Bắc Ninh' : whId === 3 ? 'Kho Vận Miền Trung - Đà Nẵng' : whId === 4 ? 'Kho Trung Chuyển Sóng Thần - Bình Dương' : 'Kho Tổng Tân Bình - TP.HCM');
+          const whName = inv.warehouseName || (whId ? `Kho #${whId}` : 'N/A');
           return {
             id: inv.id,
             productId: inv.productId,

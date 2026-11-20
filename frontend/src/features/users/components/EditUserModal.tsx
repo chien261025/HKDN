@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { X, UserCheck, Shield, AlertTriangle, Building2, Phone, Mail, User, Loader2, Clock } from 'lucide-react';
 import { UserAccount, UserRole, UpdateUserPayload } from '../types';
+import { warehouseService, DEFAULT_WAREHOUSES } from '../../masterdata/services/warehouseService';
 
 interface EditUserModalProps {
   isOpen: boolean;
@@ -8,13 +9,6 @@ interface EditUserModalProps {
   user: UserAccount | null;
   onUpdateUser: (userId: string, payload: UpdateUserPayload) => Promise<void>;
 }
-
-const WAREHOUSES_LIST = [
-  { id: 1, code: 'WH01', name: 'Kho Tổng Tân Bình - TP.HCM', desc: 'Trụ sở chính (Zone A, B, Cold)' },
-  { id: 2, code: 'WH02', name: 'Kho Phân Phối VSIP Bắc Ninh', desc: 'Hub miền Bắc' },
-  { id: 3, code: 'WH03', name: 'Kho Vận Miền Trung - Đà Nẵng', desc: 'Hub miền Trung' },
-  { id: 4, code: 'WH04', name: 'Kho Trung Chuyển Sóng Thần - Bình Dương', desc: 'Kho chuyển tiếp & Cross-dock' },
-];
 
 export const EditUserModal: React.FC<EditUserModalProps> = ({
   isOpen,
@@ -26,11 +20,39 @@ export const EditUserModal: React.FC<EditUserModalProps> = ({
   const [email, setEmail] = useState('');
   const [phone, setPhone] = useState('');
   const [role, setRole] = useState<UserRole>('ROLE_OPERATOR');
+  const [warehouseList, setWarehouseList] = useState<{ id: number; code: string; name: string; desc: string }[]>(
+    DEFAULT_WAREHOUSES.map((w) => ({
+      id: Number(w.id),
+      code: w.code,
+      name: w.name,
+      desc: w.address || w.shortName || 'Chi nhánh kho',
+    }))
+  );
   const [selectedWarehouseIds, setSelectedWarehouseIds] = useState<number[]>([1]);
   const [primaryWarehouseId, setPrimaryWarehouseId] = useState<number>(1);
   const [expiresAt, setExpiresAt] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (isOpen) {
+      warehouseService
+        .getWarehouses()
+        .then((whs) => {
+          if (whs && whs.length > 0) {
+            setWarehouseList(
+              whs.map((w) => ({
+                id: Number(w.id),
+                code: w.code,
+                name: w.name,
+                desc: w.address || w.shortName || 'Chi nhánh kho',
+              }))
+            );
+          }
+        })
+        .catch(() => {});
+    }
+  }, [isOpen]);
 
   useEffect(() => {
     if (user && isOpen) {
@@ -45,21 +67,22 @@ export const EditUserModal: React.FC<EditUserModalProps> = ({
       if (user.assignedWarehouses && user.assignedWarehouses.length > 0) {
         const ids: number[] = [];
         user.assignedWarehouses.forEach((whName) => {
-          const match = WAREHOUSES_LIST.find((w) => whName.includes(w.name) || whName.includes(w.code) || w.name.includes(whName));
+          const match = warehouseList.find((w) => whName.includes(w.name) || whName.includes(w.code) || w.name.includes(whName));
           if (match && !ids.includes(match.id)) ids.push(match.id);
         });
-        setSelectedWarehouseIds(ids.length > 0 ? ids : [1]);
+        setSelectedWarehouseIds(ids.length > 0 ? ids : (warehouseList[0] ? [warehouseList[0].id] : [1]));
 
-        const primaryMatch = WAREHOUSES_LIST.find((w) =>
+        const primaryMatch = warehouseList.find((w) =>
           user.primaryWarehouse ? user.primaryWarehouse.includes(w.name) : false
         );
-        setPrimaryWarehouseId(primaryMatch ? primaryMatch.id : (ids[0] || 1));
+        setPrimaryWarehouseId(primaryMatch ? primaryMatch.id : (ids[0] || (warehouseList[0] ? warehouseList[0].id : 1)));
       } else {
-        setSelectedWarehouseIds([1]);
-        setPrimaryWarehouseId(1);
+        const defaultId = warehouseList[0] ? warehouseList[0].id : 1;
+        setSelectedWarehouseIds([defaultId]);
+        setPrimaryWarehouseId(defaultId);
       }
     }
-  }, [user, isOpen]);
+  }, [user, isOpen, warehouseList]);
 
   if (!isOpen || !user) return null;
 
@@ -94,7 +117,7 @@ export const EditUserModal: React.FC<EditUserModalProps> = ({
     setSubmitting(true);
     setErrorMsg(null);
     try {
-      const primaryWh = WAREHOUSES_LIST.find((w) => w.id === primaryWarehouseId)?.name || 'Kho Tổng Tân Bình - TP.HCM';
+      const primaryWh = warehouseList.find((w) => w.id === primaryWarehouseId)?.name || (primaryWarehouseId ? `Kho #${primaryWarehouseId}` : 'Chưa gán kho');
 
       await onUpdateUser(user.id, {
         fullName: fullName.trim(),
@@ -227,7 +250,7 @@ export const EditUserModal: React.FC<EditUserModalProps> = ({
             </div>
 
             <div className="space-y-1.5">
-              {WAREHOUSES_LIST.map((wh) => {
+              {warehouseList.map((wh) => {
                 const isChecked = selectedWarehouseIds.includes(wh.id);
                 const isPrimary = primaryWarehouseId === wh.id;
 

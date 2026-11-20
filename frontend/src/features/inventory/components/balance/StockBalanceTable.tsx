@@ -87,7 +87,7 @@ export const StockBalanceTable: React.FC<StockBalanceTableProps> = ({
   const warehouseOptions = useMemo(() => {
     const map = new Map<string, string>();
     stocks.forEach((s) => {
-      const whName = s.warehouseName || (s.warehouseId === 2 ? 'Kho Phân Phối VSIP Bắc Ninh' : 'Kho Tổng Tân Bình - TP.HCM');
+      const whName = s.warehouseName || (s.warehouseId ? `Kho #${s.warehouseId}` : 'Kho chính');
       map.set(String(s.warehouseId || 1), whName);
     });
     return Array.from(map.entries()).map(([id, name]) => ({ id, name }));

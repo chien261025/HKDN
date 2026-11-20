@@ -26,6 +26,8 @@ export interface AuthTokenData {
   role: string;
   expiresIn: number;
   mustChangePassword?: boolean;
+  primaryWarehouse?: string;
+  assignedWarehouse?: string;
 }
 
 export interface ApiResponse<T> {
@@ -67,7 +69,7 @@ export const authService = {
       username: data.username,
       fullName: data.fullName,
       role: data.role as UserRole,
-      warehouse: warehouse || 'Kho Tổng Tân Bình (ZONE A & B)',
+      warehouse: warehouse || data.primaryWarehouse || data.assignedWarehouse || 'Chi nhánh kho mặc định',
       expiresAt: new Date(Date.now() + (data.expiresIn || 86400000)).toISOString(),
       mustChangePassword: data.mustChangePassword,
     };
@@ -109,7 +111,7 @@ export const authService = {
       username: data.username,
       fullName: data.fullName,
       role: data.role as UserRole,
-      warehouse: warehouse || 'Kho Tổng Tân Bình (ZONE A & B)',
+      warehouse: warehouse || data.primaryWarehouse || data.assignedWarehouse || 'Chi nhánh kho mặc định',
       expiresAt: new Date(Date.now() + (data.expiresIn || 86400000)).toISOString(),
       mustChangePassword: data.mustChangePassword,
     };

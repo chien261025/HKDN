@@ -450,7 +450,7 @@ export const CreateAuditSessionModal: React.FC<Props> = ({ onClose, onCreateSess
             </div>
 
             <div className="text-indigo-800 font-medium">
-              Kho: <strong>{selectedWarehouseObj?.name || 'Kho Tổng Tân Bình'}</strong> • Loại:{' '}
+              Kho: <strong>{selectedWarehouseObj?.name || (warehouseId ? `Kho #${warehouseId}` : 'Chưa chọn kho')}</strong> • Loại:{' '}
               <strong>{getTypeName()}</strong> • Phạm vi: <strong>{getScopeName()}</strong>
               {blindCount && ' • Đếm mù'}
               {requireRecount && ' • Có bước xác minh chênh lệch'}

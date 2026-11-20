@@ -34,15 +34,15 @@ public class UserMapper {
                 ? accesses.stream()
                         .map(a -> a.getWarehouse() != null ? a.getWarehouse().getName() : "Kho #" + a.getWarehouse().getId())
                         .collect(Collectors.toList())
-                : List.of("Kho Tổng Tân Bình - TP.HCM");
+                : Collections.emptyList();
 
         String primaryWh = (accesses != null && !accesses.isEmpty())
                 ? accesses.stream()
                         .filter(a -> Boolean.TRUE.equals(a.getIsPrimary()))
                         .findFirst()
                         .map(a -> a.getWarehouse() != null ? a.getWarehouse().getName() : "Kho #" + a.getWarehouse().getId())
-                        .orElse(warehouseNames.get(0))
-                : "Kho Tổng Tân Bình - TP.HCM";
+                        .orElse(warehouseNames.isEmpty() ? "Chưa gán kho" : warehouseNames.get(0))
+                : "Chưa gán kho";
 
         // Extract permissions
         List<String> permissionCodes = (user.getRoles() != null)
@@ -95,13 +95,7 @@ public class UserMapper {
                     Boolean.TRUE.equals(s.getIsActive()) ? "SUCCESS" : "REVOKED (" + (s.getRevokedReason() != null ? s.getRevokedReason() : "KICKED") + ")"
             )).toList();
         } else {
-            history = List.of(new UserSecurityLogResponse.LoginHistoryEntry(
-                    "Hôm nay, " + LocalTime.now().toString().substring(0, 5),
-                    "192.168.1.10" + (user.getId() % 10),
-                    "Kho Tân Bình, TP.HCM (LAN)",
-                    "Chrome 128 / Windows 11 Enterprise",
-                    "SUCCESS"
-            ));
+            history = Collections.emptyList();
         }
 
         long finalActiveCount = (activeCount == 0 && active) ? 1 : activeCount;
@@ -114,7 +108,7 @@ public class UserMapper {
                 .status(active ? "ACTIVE" : "LOCKED")
                 .isActive(active)
                 .lastLoginAt(user.getUpdatedAt())
-                .lastLoginIp(!dbSessions.isEmpty() ? dbSessions.get(0).getIpAddress() : "192.168.1.10" + (user.getId() % 10))
+                .lastLoginIp(!dbSessions.isEmpty() ? dbSessions.get(0).getIpAddress() : "Chưa có IP đăng nhập")
                 .failedLoginAttempts(0)
                 .riskLevel("SAFE")
                 .activeSessionsCount((int) finalActiveCount)

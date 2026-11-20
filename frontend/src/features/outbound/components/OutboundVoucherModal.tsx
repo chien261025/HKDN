@@ -2,6 +2,7 @@ import React from 'react';
 import { Printer, X, FileText, CheckCircle2, Building2, Truck, ShieldCheck, MapPin, Calendar, User, Package } from 'lucide-react';
 import { OutboundOrder } from '../types';
 import { printHtmlDocument } from '../../../services/printService';
+import { getWarehouseDisplayName, getWarehouseDisplayAddress } from '../../masterdata/services/warehouseService';
 
 interface OutboundVoucherModalProps {
   order: OutboundOrder;
@@ -33,19 +34,8 @@ export const OutboundVoucherModal: React.FC<OutboundVoucherModalProps> = ({ orde
   const totalAllocated = order.items.reduce((sum, it) => sum + (it.allocatedQty || 0), 0);
   const totalPicked = order.items.reduce((sum, it) => sum + (it.pickedQty || it.allocatedQty || 0), 0);
 
-  const warehouseName =
-    order.warehouseId === 2
-      ? 'Kho Phân Phối VSIP Bắc Ninh'
-      : order.warehouseId === 3
-      ? 'Kho Vận Miền Trung - Đà Nẵng'
-      : order.warehouseId === 4
-      ? 'Kho Trung Chuyển Sóng Thần - Bình Dương'
-      : 'Kho Tổng Tân Bình - TP.HCM';
-
-  const warehouseAddress =
-    order.warehouseId === 2
-      ? 'Đường Hữu Nghị, KCN VSIP Bắc Ninh, Tỉnh Bắc Ninh'
-      : 'Số 18 Đường Trường Sơn, Phường 2, Quận Tân Bình, TP. Hồ Chí Minh';
+  const warehouseName = getWarehouseDisplayName(order.warehouseId);
+  const warehouseAddress = getWarehouseDisplayAddress(order.warehouseId) || 'Khu công nghiệp logistics tập trung';
 
   // Tính tổng giá trị ước tính
   const totalValue = order.items.reduce((sum, it) => {

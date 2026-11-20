@@ -3,6 +3,7 @@ import { X, Navigation, CheckCircle2, ArrowRight, Printer, Smartphone, TrendingU
 import { OutboundOrder } from '../types';
 import { WarehouseFloorMapSvg, PickWaypoint } from './WarehouseFloorMapSvg';
 import { printHtmlDocument } from '../../../services/printService';
+import { getWarehouseDisplayName } from '../../masterdata/services/warehouseService';
 
 interface PickPathVisualizerModalProps {
   isOpen: boolean;
@@ -155,14 +156,7 @@ export const PickPathVisualizerModal: React.FC<PickPathVisualizerModalProps> = (
     ? `${((stopCount * 18 + 20) / 50).toFixed(1)} phút`
     : `${((stopCount * 42 + 30) / 50).toFixed(1)} phút`;
 
-  const warehouseName =
-    order.warehouseId === 2
-      ? 'Kho Phân Phối VSIP Bắc Ninh'
-      : order.warehouseId === 3
-      ? 'Kho Vận Miền Trung - Đà Nẵng'
-      : order.warehouseId === 4
-      ? 'Kho Trung Chuyển Sóng Thần - Bình Dương'
-      : 'Kho Tổng Tân Bình - TP.HCM';
+  const warehouseName = getWarehouseDisplayName(order.warehouseId);
 
   const handleSyncToPda = () => {
     setPdaSynced(true);

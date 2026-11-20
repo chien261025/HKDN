@@ -33,7 +33,7 @@ export const WarehouseClosingBalances: React.FC<WarehouseClosingBalancesProps> =
   const scopeLabel =
     !activeWhNum
       ? 'Toàn bộ chi nhánh kho'
-      : warehouseName || (activeWhNum === 2 ? 'Kho Phân Phối VSIP Bắc Ninh' : 'Kho Tổng Tân Bình - TP.HCM');
+      : warehouseName || (activeWhNum ? `Chi nhánh kho #${activeWhNum}` : 'Toàn bộ chi nhánh kho');
 
   const totalOnHand = products.reduce((sum, p) => sum + p.onHandQty, 0);
   const totalReserved = products.reduce((sum, p) => sum + (p.reservedQty || 0), 0);

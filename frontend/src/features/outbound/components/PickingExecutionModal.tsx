@@ -17,6 +17,7 @@ import {
 } from 'lucide-react';
 import { OutboundOrder } from '../types';
 import { printHtmlDocument } from '../../../services/printService';
+import { getWarehouseDisplayName } from '../../masterdata/services/warehouseService';
 
 interface PickingExecutionModalProps {
   order: OutboundOrder;
@@ -161,14 +162,7 @@ export const PickingExecutionModal: React.FC<PickingExecutionModalProps> = ({
     }
   };
 
-  const warehouseName =
-    order.warehouseId === 2
-      ? 'Kho Phân Phối VSIP Bắc Ninh'
-      : order.warehouseId === 3
-      ? 'Kho Vận Miền Trung - Đà Nẵng'
-      : order.warehouseId === 4
-      ? 'Kho Trung Chuyển Sóng Thần - Bình Dương'
-      : 'Kho Tổng Tân Bình - TP.HCM';
+  const warehouseName = getWarehouseDisplayName(order.warehouseId);
 
   const handlePrintPickSlip = () => {
     const rowsHtml = lines.map((l, idx) => `

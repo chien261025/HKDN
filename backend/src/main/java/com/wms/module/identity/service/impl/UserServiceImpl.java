@@ -104,7 +104,11 @@ public class UserServiceImpl implements UserService {
         Long primaryId = request.getPrimaryWarehouseId();
 
         if (whIds == null || whIds.isEmpty()) {
-            whIds = List.of(1L); // Default WH01
+            whIds = warehouseRepository.findAll().stream()
+                    .map(Warehouse::getId)
+                    .findFirst()
+                    .map(List::of)
+                    .orElse(Collections.emptyList());
         }
         if (primaryId == null) {
             primaryId = whIds.get(0);

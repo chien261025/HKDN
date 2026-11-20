@@ -31,9 +31,9 @@ export const mapBackendUserToAccount = (
   email: overrides?.email || u.email,
   phone: overrides?.phone || ('09' + String(u.id).padStart(8, '0')),
   role: (overrides?.role as UserRole) || (u.role as UserRole) || 'ROLE_OPERATOR',
-  assignedWarehouse: overrides?.assignedWarehouse || u.primaryWarehouse || u.assignedWarehouse || 'Kho Tổng Tân Bình - TP.HCM',
-  assignedWarehouses: u.assignedWarehouses || [u.assignedWarehouse || 'Kho Tổng Tân Bình - TP.HCM'],
-  primaryWarehouse: u.primaryWarehouse || u.assignedWarehouse || 'Kho Tổng Tân Bình - TP.HCM',
+  assignedWarehouse: overrides?.assignedWarehouse || u.primaryWarehouse || u.assignedWarehouse || 'Chưa gán kho',
+  assignedWarehouses: u.assignedWarehouses && u.assignedWarehouses.length > 0 ? u.assignedWarehouses : [u.assignedWarehouse || u.primaryWarehouse || 'Chưa gán kho'],
+  primaryWarehouse: u.primaryWarehouse || u.assignedWarehouse || 'Chưa gán kho',
   isTestAccount: u.isTestAccount !== undefined
     ? u.isTestAccount
     : (u.username.toLowerCase().startsWith('brute_') || u.username.toLowerCase().includes('victim')),

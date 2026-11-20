@@ -140,7 +140,7 @@ public class InventoryQueryServiceImpl implements InventoryQueryService {
 
             Long whId = loc != null && loc.getWarehouseId() != null ? loc.getWarehouseId() : 1L;
             Warehouse wh = warehouseMap.get(whId);
-            String whName = wh != null ? wh.getName() : "Kho Tổng Tân Bình";
+            String whName = wh != null ? wh.getName() : (whId != null ? "Kho #" + whId : "N/A");
 
             return InventoryBalanceResponse.builder()
                     .id(inv.getId())
@@ -452,7 +452,7 @@ public class InventoryQueryServiceImpl implements InventoryQueryService {
 
             alerts.add(ExpiringBatchAlertResponse.builder()
                     .warehouseId(whId)
-                    .warehouseName(wh != null ? wh.getName() : "Kho Tân Bình")
+                    .warehouseName(wh != null ? wh.getName() : (whId != null ? "Kho #" + whId : "N/A"))
                     .productId(prod.getId())
                     .sku(prod.getSku())
                     .productName(prod.getName())
@@ -577,7 +577,7 @@ public class InventoryQueryServiceImpl implements InventoryQueryService {
 
             alerts.add(SlowMovingStockAlertResponse.builder()
                     .warehouseId(whId)
-                    .warehouseName(wh != null ? wh.getName() : "Kho Tân Bình")
+                    .warehouseName(wh != null ? wh.getName() : (whId != null ? "Kho #" + whId : "N/A"))
                     .productId(prod.getId())
                     .sku(prod.getSku())
                     .productName(prod.getName())

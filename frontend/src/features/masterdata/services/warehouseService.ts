@@ -211,3 +211,33 @@ export const warehouseService = {
   },
 };
 
+export const getWarehouseDisplayName = (warehouseId?: number | string | null): string => {
+  if (!warehouseId) return 'Chưa xác định kho';
+  const idNum = Number(warehouseId);
+  const cached = localStorage.getItem(STORAGE_KEY);
+  if (cached) {
+    try {
+      const list = JSON.parse(cached);
+      const match = list.find((w: any) => Number(w.id) === idNum);
+      if (match && match.name) return match.name;
+    } catch {}
+  }
+  const defaultMatch = DEFAULT_WAREHOUSES.find((w) => Number(w.id) === idNum);
+  return defaultMatch ? defaultMatch.name : `Kho #${warehouseId}`;
+};
+
+export const getWarehouseDisplayAddress = (warehouseId?: number | string | null): string => {
+  if (!warehouseId) return '';
+  const idNum = Number(warehouseId);
+  const cached = localStorage.getItem(STORAGE_KEY);
+  if (cached) {
+    try {
+      const list = JSON.parse(cached);
+      const match = list.find((w: any) => Number(w.id) === idNum);
+      if (match && match.address) return match.address;
+    } catch {}
+  }
+  const defaultMatch = DEFAULT_WAREHOUSES.find((w) => Number(w.id) === idNum);
+  return defaultMatch && defaultMatch.address ? defaultMatch.address : '';
+};
+

@@ -1,7 +1,8 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { X, Plus, Shield, Loader2, AlertCircle, Clock, Building2, Check } from 'lucide-react';
 import { UserAccount, UserRole } from '../types';
 import { userService } from '../services/userService';
+import { warehouseService, DEFAULT_WAREHOUSES } from '../../masterdata/services/warehouseService';
 import { TempPasswordGenerator } from './TempPasswordGenerator';
 
 interface CreateUserModalProps {
@@ -9,13 +10,6 @@ interface CreateUserModalProps {
   onClose: () => void;
   onAddUser: (user: UserAccount) => void;
 }
-
-const WAREHOUSES_LIST = [
-  { id: 1, code: 'WH01', name: 'Kho Tổng Tân Bình - TP.HCM', desc: 'Trụ sở chính (Zone A, B, Cold)' },
-  { id: 2, code: 'WH02', name: 'Kho Phân Phối VSIP Bắc Ninh', desc: 'Hub miền Bắc' },
-  { id: 3, code: 'WH03', name: 'Kho Vận Miền Trung - Đà Nẵng', desc: 'Hub miền Trung' },
-  { id: 4, code: 'WH04', name: 'Kho Trung Chuyển Sóng Thần - Bình Dương', desc: 'Kho chuyển tiếp & Cross-dock' },
-];
 
 export const CreateUserModal: React.FC<CreateUserModalProps> = ({
   isOpen,
@@ -27,12 +21,39 @@ export const CreateUserModal: React.FC<CreateUserModalProps> = ({
   const [email, setEmail] = useState('');
   const [phone, setPhone] = useState('');
   const [role, setRole] = useState<UserRole>('ROLE_OPERATOR');
+  const [warehouseList, setWarehouseList] = useState<{ id: number; code: string; name: string; desc: string }[]>(
+    DEFAULT_WAREHOUSES.map((w) => ({
+      id: Number(w.id),
+      code: w.code,
+      name: w.name,
+      desc: w.address || w.shortName || 'Chi nhánh kho',
+    }))
+  );
   const [selectedWarehouseIds, setSelectedWarehouseIds] = useState<number[]>([1]);
   const [primaryWarehouseId, setPrimaryWarehouseId] = useState<number>(1);
   const [expiresAt, setExpiresAt] = useState('');
   const [tempPassword, setTempPassword] = useState('123456');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (isOpen) {
+      warehouseService
+        .getWarehouses()
+        .then((whs) => {
+          if (whs && whs.length > 0) {
+            const mapped = whs.map((w) => ({
+              id: Number(w.id),
+              code: w.code,
+              name: w.name,
+              desc: w.address || w.shortName || 'Chi nhánh kho',
+            }));
+            setWarehouseList(mapped);
+          }
+        })
+        .catch(() => {});
+    }
+  }, [isOpen]);
 
   if (!isOpen) return null;
 
@@ -223,7 +244,7 @@ export const CreateUserModal: React.FC<CreateUserModalProps> = ({
             </div>
 
             <div className="space-y-1.5">
-              {WAREHOUSES_LIST.map((wh) => {
+              {warehouseList.map((wh) => {
                 const isChecked = selectedWarehouseIds.includes(wh.id);
                 const isPrimary = primaryWarehouseId === wh.id;
 
