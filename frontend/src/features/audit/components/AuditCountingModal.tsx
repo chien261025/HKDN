@@ -146,15 +146,21 @@ export const AuditCountingModal: React.FC<AuditCountingModalProps> = ({
                     <label className="text-xs font-bold text-slate-700 uppercase tracking-wider">
                       Số Lượng Đếm Thực Tế
                     </label>
-                    <span className="text-xs font-mono text-slate-500">
-                      Tồn Hệ Thống: <strong>{currentItem.systemQty} {currentItem.unit}</strong>
-                    </span>
+                    {session.blindCount || currentItem.systemQty === null ? (
+                      <span className="text-xs font-mono text-amber-700 bg-amber-50 px-2 py-0.5 rounded border border-amber-200 font-semibold">
+                        Kiểm kê mù (Đã ẩn số dư gốc)
+                      </span>
+                    ) : (
+                      <span className="text-xs font-mono text-slate-500">
+                        Tồn Hệ Thống: <strong>{currentItem.systemQty} {currentItem.unit}</strong>
+                      </span>
+                    )}
                   </div>
 
                   <div className="flex items-center gap-3">
                     <button
                       onClick={() => setCountedQty((q) => Math.max(0, q - 1))}
-                      className="w-12 h-12 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-800 font-black text-xl flex items-center justify-center transition-colors"
+                      className="w-12 h-12 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-800 font-black text-xl flex items-center justify-center transition-colors cursor-pointer"
                     >
                       -
                     </button>
@@ -167,14 +173,19 @@ export const AuditCountingModal: React.FC<AuditCountingModalProps> = ({
                     />
                     <button
                       onClick={() => setCountedQty((q) => q + 1)}
-                      className="w-12 h-12 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-800 font-black text-xl flex items-center justify-center transition-colors"
+                      className="w-12 h-12 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-800 font-black text-xl flex items-center justify-center transition-colors cursor-pointer"
                     >
                       +
                     </button>
                   </div>
 
                   <div className="pt-2">
-                    {diff === 0 ? (
+                    {session.blindCount || currentItem.systemQty === null ? (
+                      <div className="p-3 rounded-lg bg-blue-50/70 border border-blue-200 text-blue-900 flex items-center gap-2 text-xs font-medium">
+                        <CheckCircle2 className="w-4 h-4 text-blue-600 flex-shrink-0" />
+                        <span>Chế độ kiểm kê mù: Nhập số lượng thực đếm tại hiện trường để đảm bảo tính khách quan tuyệt đối.</span>
+                      </div>
+                    ) : diff === 0 ? (
                       <div className="p-3 rounded-lg bg-emerald-50 border border-emerald-200 text-emerald-800 flex items-center gap-2 text-xs font-semibold">
                         <CheckCircle2 className="w-4 h-4 text-emerald-600 flex-shrink-0" />
                         <span>Số lượng kiểm đếm khớp 100% với số dư hệ thống (Chênh lệch: 0 {currentItem.unit})</span>

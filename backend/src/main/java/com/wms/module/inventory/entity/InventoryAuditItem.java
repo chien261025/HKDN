@@ -38,6 +38,19 @@ public class InventoryAuditItem {
     @Column(name = "counted_qty")
     private Integer countedQty;
 
+    @Column(name = "first_count_qty")
+    private Integer firstCountQty;
+
+    @Column(name = "second_count_qty")
+    private Integer secondCountQty;
+
+    @Column(name = "is_verified")
+    @Builder.Default
+    private Boolean isVerified = false;
+
+    @Column(name = "recounted_by")
+    private Long recountedBy;
+
     @Column(name = "difference_qty", insertable = false, updatable = false)
     private Integer differenceQty;
 

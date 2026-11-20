@@ -38,8 +38,15 @@ public class InventoryAuditItemResponse {
     private Integer systemQty;
     private Integer countedQty;
     private Integer differenceQty;
+    private Integer firstCountQty;
+    private Integer secondCountQty;
+    private Boolean isVerified;
+    private String recountedByName;
+
+    private Integer adjustmentQty;
+    private Integer balanceAfter;
+
     private String status; // PENDING, MATCHED, DISCREPANCY, ADJUSTED
     private String counterNotes;
     private Instant countedAt;
 }
-

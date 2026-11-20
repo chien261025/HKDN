@@ -114,11 +114,20 @@ public class InventoryController {
         return ApiResponse.success("Lấy thông tin đợt kiểm kê thành công!", audit);
     }
 
+    @PostMapping("/audit/preview")
+    @Operation(summary = "Xem trước phạm vi kiểm kê kho", description = "Tính toán số lượng vị trí, SKU và dòng tồn kho theo cấu hình phạm vi")
+    public ApiResponse<com.wms.module.inventory.dto.response.AuditScopePreviewResponse> previewScope(
+            @Valid @RequestBody com.wms.module.inventory.dto.request.AuditScopePreviewRequest request) {
+        com.wms.module.inventory.dto.response.AuditScopePreviewResponse preview = inventoryAuditService.previewScope(request);
+        return ApiResponse.success("Tính toán phạm vi kiểm kê thành công!", preview);
+    }
+
     @PostMapping("/audit")
     @org.springframework.security.access.prepost.PreAuthorize("hasAnyRole('ADMIN', 'WAREHOUSE_MANAGER')")
-    @Operation(summary = "Khởi tạo đợt kiểm kê mù mới", description = "Tạo phiên kiểm kê mới cho kho hàng")
-    public ApiResponse<com.wms.module.inventory.dto.response.InventoryAuditResponse> createAudit(@RequestBody com.wms.module.inventory.entity.InventoryAudit audit) {
-        com.wms.module.inventory.dto.response.InventoryAuditResponse saved = inventoryAuditService.createAudit(audit);
+    @Operation(summary = "Khởi tạo đợt kiểm kê mới", description = "Tạo phiên kiểm kê theo phạm vi kho, Zone, Bin hoặc SKU")
+    public ApiResponse<com.wms.module.inventory.dto.response.InventoryAuditResponse> createAudit(
+            @Valid @RequestBody com.wms.module.inventory.dto.request.CreateAuditRequest request) {
+        com.wms.module.inventory.dto.response.InventoryAuditResponse saved = inventoryAuditService.createAudit(request);
         return ApiResponse.success("Khởi tạo đợt kiểm kê thành công!", saved);
     }
 
@@ -133,6 +142,18 @@ public class InventoryController {
                 id, request.getItemId(), request.getLocationId(), request.getProductId(), request.getEffectiveCountedQty(), request.getNotes()
         );
         return ApiResponse.success("Ghi nhận số lượng đếm kiểm kê thành công!", saved);
+    }
+
+    @PostMapping("/audit/{id}/recount")
+    @Operation(summary = "Ghi nhận kết quả đếm lại dòng sai lệch", description = "Đếm lại vòng 2 và đối chiếu với số dư hệ thống")
+    public ApiResponse<com.wms.module.inventory.dto.response.InventoryAuditResponse> recountItem(
+            @PathVariable Long id,
+            @Valid @RequestBody com.wms.module.inventory.dto.request.RecordCountRequest request
+    ) {
+        com.wms.module.inventory.dto.response.InventoryAuditResponse saved = inventoryAuditService.recountItem(
+                id, request.getItemId(), request.getEffectiveCountedQty(), request.getNotes()
+        );
+        return ApiResponse.success("Ghi nhận kết quả đếm lại thành công!", saved);
     }
 
     @PutMapping("/audit/{id}/reconcile")

@@ -3,7 +3,7 @@ WORKDIR /build
 COPY pom.xml .
 RUN --mount=type=cache,target=/root/.m2 mvn -B -q dependency:go-offline
 COPY src ./src
-RUN --mount=type=cache,target=/root/.m2 mvn -B -q -DskipTests package
+RUN --mount=type=cache,target=/root/.m2 mvn -B -DskipTests clean package && ls -lh /build/target/*.jar
 
 FROM eclipse-temurin:25-jre-alpine
 WORKDIR /app

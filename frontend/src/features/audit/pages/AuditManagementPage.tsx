@@ -35,21 +35,38 @@ export const AuditManagementPage: React.FC = () => {
   };
 
   const handleApproveAdjustment = async (sessionId: string) => {
-    await auditService.reconcileAudit(sessionId);
-    await fetchSessions();
+    try {
+      const res = await auditService.reconcileAudit(sessionId);
+      await fetchSessions();
 
-    setSelectedSession((prev) =>
-      prev
-        ? {
-            ...prev,
-            status: 'RECONCILED',
-            completedDate: new Date().toLocaleDateString('vi-VN'),
-            reconciledBy: 'Trần Trưởng Kho',
-          }
-        : null
-    );
+      const updated = await auditService.getAuditById(sessionId);
+      if (updated) {
+        setSelectedSession(updated);
+      } else {
+        setSelectedSession((prev) =>
+          prev
+            ? {
+                ...prev,
+                status: 'RECONCILED',
+                completedDate: new Date().toLocaleDateString('vi-VN'),
+                reconciledBy: 'Trần Trưởng Kho',
+              }
+            : null
+        );
+      }
 
-    alert('Đã phê duyệt phiếu Cân Đối Kho thành công! Hệ thống đã tự động ghi nhận bút toán ADJUSTMENT vào Sổ Cái Bất Biến (stock_ledger).');
+      alert(res.message || 'Đã phê duyệt phiếu Cân Đối Kho thành công! Hệ thống đã tự động ghi nhận bút toán ADJUSTMENT vào Sổ Cái Bất Biến (stock_ledger).');
+    } catch (err: any) {
+      const msg = err.response?.data?.message || 'Không thể phê duyệt cân đối đợt kiểm kê.';
+      alert(msg);
+    }
+  };
+
+  const handleRefreshCurrentSession = async () => {
+    if (!selectedSession) return;
+    const updated = await auditService.getAuditById(selectedSession.id);
+    if (updated) setSelectedSession(updated);
+    fetchSessions();
   };
 
   return (
@@ -94,6 +111,7 @@ export const AuditManagementPage: React.FC = () => {
           session={selectedSession}
           onClose={() => setSelectedSession(null)}
           onApproveAdjustment={handleApproveAdjustment}
+          onRefreshSession={handleRefreshCurrentSession}
         />
       )}
     </div>
