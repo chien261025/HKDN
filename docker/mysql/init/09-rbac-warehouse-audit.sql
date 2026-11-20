@@ -110,12 +110,6 @@ INSERT IGNORE INTO wms_user_warehouse_access (user_id, warehouse_id, is_primary)
 (4, 1, TRUE),
 (4, 2, FALSE);
 
--- Test Accounts (Victim Test): Gán mặc định WH01
-INSERT IGNORE INTO wms_user_warehouse_access (user_id, warehouse_id, is_primary) VALUES
-(100, 1, TRUE),
-(101, 1, TRUE),
-(102, 1, TRUE);
-
 -- Seed nhật ký kiểm toán mẫu (Audit Logs)
 INSERT INTO wms_audit_log (action, actor_username, target_type, target_id, target_name, details, ip_address, created_at) VALUES
 ('SYSTEM_INIT', 'admin', 'SYSTEM', '1', 'System Security', 'Khởi tạo ma trận phân quyền RBAC và chính sách an ninh đa lớp', '127.0.0.1', DATE_SUB(NOW(), INTERVAL 3 DAY)),
