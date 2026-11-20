@@ -54,6 +54,7 @@ public class LegacyProductSupplierBackfill implements ApplicationRunner {
                                 default -> supplierCode;
                             })
                             .build()));
+            if (supplier.getPartnerRole() != com.wms.module.masterdata.entity.PartnerRole.SUPPLIER) continue;
             product.setSupplierId(supplier.getId());
             productRepository.save(product);
         }

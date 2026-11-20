@@ -18,6 +18,7 @@ public class OutboundOrderResponse {
     private String orderCode;
     private Long warehouseId;
     private String customerName;
+    private Long partnerId;
     private String status;
     private Long createdBy;
     private String createdByName;

@@ -3,10 +3,11 @@ import { Package, Building2, AlertTriangle, Plus, ShieldAlert, Tags } from 'luci
 import { ProductItem, SupplierItem } from '../types';
 
 interface ProductsHeaderProps {
-  activeTab: 'PRODUCTS' | 'SUPPLIERS' | 'CATEGORIES';
-  setActiveTab: (tab: 'PRODUCTS' | 'SUPPLIERS' | 'CATEGORIES') => void;
+  activeTab: 'PRODUCTS' | 'SUPPLIERS' | 'RECEIVERS' | 'CATEGORIES';
+  setActiveTab: (tab: 'PRODUCTS' | 'SUPPLIERS' | 'RECEIVERS' | 'CATEGORIES') => void;
   products: ProductItem[];
   suppliers: SupplierItem[];
+  receiversCount: number;
   onOpenCreateModal: () => void;
 }
 
@@ -15,6 +16,7 @@ export const ProductsHeader: React.FC<ProductsHeaderProps> = ({
   setActiveTab,
   products,
   suppliers,
+  receiversCount,
   onOpenCreateModal,
 }) => {
   const lowStockCount = products.filter((p) => p.currentStock <= p.safetyStock).length;
@@ -31,7 +33,7 @@ export const ProductsHeader: React.FC<ProductsHeaderProps> = ({
           <div>
             <div className="flex items-center gap-2.5 flex-wrap">
               <h1 className="text-xl md:text-2xl font-bold text-slate-900 tracking-tight">
-                Danh Mục Sản Phẩm & Nhà Cung Cấp
+                Danh Mục Sản Phẩm & Đối Tác
               </h1>
             </div>
             <p className="text-xs sm:text-sm text-slate-500 font-normal mt-0.5">
@@ -64,6 +66,9 @@ export const ProductsHeader: React.FC<ProductsHeaderProps> = ({
               <Building2 className="w-4 h-4 text-blue-600" />
               <span>Nhà Cung Cấp ({suppliers.length})</span>
             </button>
+            <button onClick={() => setActiveTab('RECEIVERS')} className={`px-3.5 py-2 rounded-lg text-xs font-semibold transition-colors flex items-center gap-2 cursor-pointer ${activeTab === 'RECEIVERS' ? 'bg-white text-blue-700 shadow-xs border border-slate-200' : 'text-slate-600 hover:text-slate-900 border border-transparent'}`}>
+              <Building2 className="w-4 h-4 text-blue-600" /><span>Bên Nhận Hàng ({receiversCount})</span>
+            </button>
           </div>
 
           {activeTab !== 'CATEGORIES' && <button
@@ -71,7 +76,7 @@ export const ProductsHeader: React.FC<ProductsHeaderProps> = ({
             className="flex items-center gap-2 px-4 py-2.5 bg-blue-600 hover:bg-blue-700 active:scale-[0.99] text-white rounded-xl text-xs sm:text-sm font-bold shadow-sm shadow-blue-200 transition-all shrink-0 cursor-pointer"
           >
             <Plus className="w-4 h-4" />
-            <span>{activeTab === 'PRODUCTS' ? 'Thêm Sản Phẩm Mới' : 'Thêm Nhà Cung Cấp'}</span>
+            <span>{activeTab === 'PRODUCTS' ? 'Thêm Sản Phẩm Mới' : activeTab === 'RECEIVERS' ? 'Thêm Bên Nhận Hàng' : 'Thêm Nhà Cung Cấp'}</span>
           </button>}
         </div>
       </div>

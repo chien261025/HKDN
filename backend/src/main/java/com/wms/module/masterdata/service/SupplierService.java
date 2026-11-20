@@ -6,6 +6,7 @@ import java.util.List;
 
 public interface SupplierService {
     List<Supplier> getAllSuppliers();
+    List<Supplier> getAllPartners();
     Supplier createSupplier(Supplier supplier);
     Supplier updateSupplier(Long id, Supplier supplierUpdate);
     Supplier updateStatus(Long id, Boolean active);

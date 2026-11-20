@@ -43,6 +43,9 @@ class OutboundStockUnitTest {
     @BeforeEach void useSharedClosingStock() {
         org.springframework.test.util.ReflectionTestUtils.setField(service, "warehouseStockService",
                 new com.wms.module.inventory.service.WarehouseStockService(products, inventory, locations, batches));
+        lenient().when(suppliers.findById(100L)).thenReturn(Optional.of(
+                com.wms.module.masterdata.entity.Supplier.builder().id(100L).name("Receiver")
+                        .partnerRole(com.wms.module.masterdata.entity.PartnerRole.RECEIVER).build()));
     }
 
     private Inventory stock(long location, long batch, int onHand, int reserved) {
@@ -53,7 +56,7 @@ class OutboundStockUnitTest {
         return ProductBatch.builder().id(id).productId(1L).expiryDate(LocalDate.now().plusDays(10)).build();
     }
     private OutboundOrder order(String status, int qty) {
-        OutboundOrder order = OutboundOrder.builder().id(7L).orderCode("SO-7").warehouseId(1L).status(status).build();
+        OutboundOrder order = OutboundOrder.builder().id(7L).orderCode("SO-7").warehouseId(1L).partnerId(100L).status(status).build();
         order.setItems(List.of(OutboundOrderItem.builder().id(8L).outboundOrder(order).productId(1L)
                 .requestedQty(qty).allocatedQty(qty).pickedQty(0).allocations(new ArrayList<>()).build()));
         when(orders.findForUpdate(7L)).thenReturn(Optional.of(order));
@@ -82,29 +85,23 @@ class OutboundStockUnitTest {
     }
 
     @Test void createRejectsProductWithoutWarehouseStock() {
-        var request = CreateOutboundOrderRequest.builder().warehouseId(1L).items(List.of(
+        var request = CreateOutboundOrderRequest.builder().warehouseId(1L).partnerId(100L).items(List.of(
                 CreateOutboundOrderRequest.ItemRequest.builder().productId(99L).requestedQty(1).build())).build();
         assertThrows(BusinessException.class, () -> service.createOutboundOrder(request));
         verify(orders, never()).save(any());
     }
 
-    @Test void partnersAreActiveSuppliersOfProductsInTheSelectedWarehouse() {
-        when(products.findAll()).thenReturn(List.of(
-                Product.builder().id(1L).supplierId(1L).build(),
-                Product.builder().id(2L).supplierId(2L).build(),
-                Product.builder().id(3L).supplierId(3L).build()));
-        when(locations.findAll()).thenReturn(List.of(Location.builder().id(1L).warehouseId(1L).build(),
-                Location.builder().id(2L).warehouseId(2L).build()));
-        Inventory otherWarehouse = Inventory.builder().productId(2L).locationId(2L).batchId(20L).onHandQty(50).reservedQty(0).build();
-        Inventory inactivePartnerStock = Inventory.builder().productId(3L).locationId(1L).batchId(30L).onHandQty(50).reservedQty(0).build();
-        when(inventory.findAll()).thenReturn(List.of(stock(1, 10, 5, 0), otherWarehouse, inactivePartnerStock));
+    @Test void outboundOptionsContainOnlyActiveReceiversWithoutRequiringSuppliedProducts() {
         when(suppliers.findAll()).thenReturn(List.of(
-                com.wms.module.masterdata.entity.Supplier.builder().id(1L).name("Local partner").build(),
-                com.wms.module.masterdata.entity.Supplier.builder().id(2L).name("Other warehouse partner").build(),
-                com.wms.module.masterdata.entity.Supplier.builder().id(3L).name("Inactive partner").isActive(false).build()));
+                com.wms.module.masterdata.entity.Supplier.builder().id(1L).name("Supplier").build(),
+                com.wms.module.masterdata.entity.Supplier.builder().id(2L).name("Receiver")
+                        .partnerRole(com.wms.module.masterdata.entity.PartnerRole.RECEIVER).build(),
+                com.wms.module.masterdata.entity.Supplier.builder().id(3L).name("Inactive receiver")
+                        .partnerRole(com.wms.module.masterdata.entity.PartnerRole.RECEIVER).isActive(false).build()));
         var partners = service.getWarehousePartners(1L);
         assertEquals(1, partners.size());
-        assertEquals(1L, partners.get(0).getId());
+        assertEquals(2L, partners.get(0).getId());
+        verifyNoInteractions(products, inventory);
     }
 
     @Test void createRejectsReceiverOutsideWarehousePartnerList() {
@@ -189,7 +186,7 @@ class OutboundStockUnitTest {
         when(locations.findAll()).thenReturn(List.of(Location.builder().id(1L).warehouseId(1L).build()));
         when(batches.findActiveBatchesOrderByExpiryAsc(eq(1L), any())).thenReturn(List.of(batch(10)));
         when(inventory.findAll()).thenReturn(List.of(stock(1, 10, 10, 5)));
-        var request = CreateOutboundOrderRequest.builder().warehouseId(1L).items(List.of(
+        var request = CreateOutboundOrderRequest.builder().warehouseId(1L).partnerId(100L).items(List.of(
                 CreateOutboundOrderRequest.ItemRequest.builder().productId(1L).requestedQty(6).build())).build();
         assertThrows(BusinessException.class, () -> service.createOutboundOrder(request));
         var item = CreateOutboundOrderRequest.ItemRequest.builder().productId(1L).requestedQty(3).build();
@@ -205,7 +202,7 @@ class OutboundStockUnitTest {
         Inventory inv = stock(1, 10, 10, 5);
         when(inventory.findAll()).thenReturn(List.of(inv));
         when(orders.save(any())).thenAnswer(call -> call.getArgument(0));
-        var response = service.createOutboundOrder(CreateOutboundOrderRequest.builder().warehouseId(1L).items(List.of(
+        var response = service.createOutboundOrder(CreateOutboundOrderRequest.builder().warehouseId(1L).partnerId(100L).items(List.of(
                 CreateOutboundOrderRequest.ItemRequest.builder().productId(1L).requestedQty(5).allocatedQty(999).build())).build());
         assertEquals("PENDING", response.getStatus());
         assertEquals(0, response.getItems().get(0).getAllocatedQty());

@@ -149,8 +149,9 @@ lệnh build/khởi động ở trên để container nhận các API mới.
   `/inventory/closing-balances`. Tồn cuối được cộng theo sản phẩm trong Kho Tổng
   Tân Bình (Khu A & B), không cộng lẫn kho khác. Danh mục chỉ hiện hàng còn tồn;
   sản phẩm mới đăng ký vẫn có thể chọn để nhập hàng trước khi xuất hiện ở danh mục này.
-- Form xuất chọn sẵn kho Tân Bình; đơn vị nhận phải chọn từ các đối tác đang hoạt động
-  có sản phẩm được quản lý tại kho. Backend kiểm tra đối tác và lấy tên từ danh mục.
+- Form xuất chọn sẵn kho Tân Bình; đơn vị nhận phải là đối tác đang hoạt động thuộc
+  loại **Bên nhận hàng**. Bên nhận hàng không cần cung ứng hay sở hữu sản phẩm.
+  Backend kiểm tra loại đối tác và lưu ID bên nhận cùng tên tại thời điểm lập đơn.
 - Sổ cái hiển thị bảng tồn cuối hiện tại cùng lịch sử biến động. Số dư của từng
   bút toán là số dư sau giao dịch tại thời điểm đó, không bị ghi đè bằng tồn hiện tại.
 
@@ -163,6 +164,19 @@ lệnh build/khởi động ở trên để container nhận các API mới.
   thao tác; đơn đã xuất không được xuất lần thứ hai.
 - Bảng **Tồn cuối trong kho** trên trang đơn xuất tự tải lại sau khi xuất thành công.
   Trang tồn kho cũng hiển thị **Tồn Cuối (Thực Tế)** theo từng lô và ô kệ.
+
+### Quản lý doanh nghiệp hợp tác
+
+- Khi thêm đối tác, chọn **Nhà cung cấp (SUPPLIER)** hoặc **Bên nhận hàng (RECEIVER)**.
+  Đây là loại quan hệ kinh doanh, không phải vai trò phân quyền người dùng.
+- Nhà cung cấp cũ giữ nguyên loại SUPPLIER. Tab Nhà cung cấp, chọn nhà cung cấp
+  cho sản phẩm và đơn nhập chỉ lấy loại này; quy tắc sản phẩm thuộc nhà cung cấp vẫn giữ nguyên.
+- Tab Bên nhận hàng cho phép thêm, sửa thông tin liên hệ và tạm ngưng hợp tác như
+  nhà cung cấp. Đơn xuất chỉ cho chọn bên nhận đang hoạt động.
+- Loại đối tác được chọn khi tạo; sửa thông tin không đổi loại của đối tác đã có.
+- Database đang dùng Hibernate `ddl-auto: update` sẽ thêm cột mới khi backend khởi động.
+  Script tương ứng: `backend/src/main/resources/db/migration/V7__add_business_partner_roles.sql`;
+  database Docker khởi tạo mới dùng `docker/mysql/init/08-add-business-partner-roles.sql`.
 
 ### 4.3. Lưu dữ liệu MySQL khi chạy Docker
 

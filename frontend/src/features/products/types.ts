@@ -28,7 +28,10 @@ export interface CategoryItem {
   status: 'ACTIVE' | 'INACTIVE' | 'DELETED';
 }
 
+export type PartnerRole = 'SUPPLIER' | 'RECEIVER';
+
 export interface SupplierItem {
+  partnerRole?: PartnerRole;
   id: string;
   code: string;
   name: string;

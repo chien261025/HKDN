@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { ProductsHeader } from '../components/ProductsHeader';
 import { ProductTable } from '../components/ProductTable';
 import { SupplierTable } from '../components/SupplierTable';
+import { ReceiverTable } from '../components/ReceiverTable';
 import { CreateProductModal } from '../components/CreateProductModal';
 import { CreateSupplierModal } from '../components/CreateSupplierModal';
 import { EditProductModal } from '../components/EditProductModal';
@@ -13,9 +14,10 @@ import { productService } from '../services/productService';
 import { PRIMARY_WAREHOUSE } from '../../../config/warehouse';
 
 export const ProductsPage: React.FC = () => {
-  const [activeTab, setActiveTab] = useState<'PRODUCTS' | 'SUPPLIERS' | 'CATEGORIES'>('PRODUCTS');
+  const [activeTab, setActiveTab] = useState<'PRODUCTS' | 'SUPPLIERS' | 'RECEIVERS' | 'CATEGORIES'>('PRODUCTS');
   const [products, setProducts] = useState<ProductItem[]>([]);
   const [suppliers, setSuppliers] = useState<SupplierItem[]>([]);
+  const [receivers, setReceivers] = useState<SupplierItem[]>([]);
   const [categories, setCategories] = useState<CategoryItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState('');
@@ -25,13 +27,15 @@ export const ProductsPage: React.FC = () => {
     const fetchData = async () => {
       setIsLoading(true);
       try {
-        const [prods, supps, cats] = await Promise.all([
+        const [prods, supps, cats, partners] = await Promise.all([
           productService.getProducts(true),
           productService.getSuppliers(),
           productService.getCategories(),
+          productService.getPartners(),
         ]);
         setProducts(prods);
         setSuppliers(supps);
+        setReceivers(partners.filter(p => p.partnerRole === 'RECEIVER'));
         setCategories(cats);
       } catch {
         setError('Không tải được danh mục và tồn cuối trong kho.');
@@ -64,7 +68,14 @@ export const ProductsPage: React.FC = () => {
 
   const handleAddSupplier = async (newSupplier: SupplierItem) => {
     await productService.createSupplier(newSupplier);
-    setSuppliers(await productService.getSuppliers());
+    await refreshPartners();
+    if (newSupplier.partnerRole === 'RECEIVER') setActiveTab('RECEIVERS');
+  };
+
+  const refreshPartners = async () => {
+    const [suppliers, partners] = await Promise.all([productService.getSuppliers(), productService.getPartners()]);
+    setSuppliers(suppliers);
+    setReceivers(partners.filter(p => p.partnerRole === 'RECEIVER'));
   };
 
   const handleEditProduct = (product: ProductItem) => {
@@ -101,7 +112,7 @@ export const ProductsPage: React.FC = () => {
 
   const handleSaveEditSupplier = async (updatedSupplier: SupplierItem) => {
     await productService.updateSupplier(updatedSupplier.id, updatedSupplier);
-    setSuppliers(await productService.getSuppliers());
+    await refreshPartners();
   };
 
   const handleViewSupplierProducts = (supplier: SupplierItem) => {
@@ -116,6 +127,7 @@ export const ProductsPage: React.FC = () => {
         setActiveTab={setActiveTab}
         products={products}
         suppliers={suppliers}
+        receiversCount={receivers.length}
         onOpenCreateModal={handleOpenCreateModal}
       />
 
@@ -136,7 +148,8 @@ export const ProductsPage: React.FC = () => {
           onEditSupplier={handleEditSupplier}
           onViewSupplierProducts={handleViewSupplierProducts}
         />
-      ) : <CategoryTable categories={categories} onStatusChange={handleCategoryStatus} />}
+      ) : activeTab === 'RECEIVERS' ? <ReceiverTable receivers={receivers} onEdit={handleEditSupplier} />
+        : <CategoryTable categories={categories} onStatusChange={handleCategoryStatus} />}
 
       {/* Create Product Modal */}
       <CreateProductModal
@@ -158,6 +171,7 @@ export const ProductsPage: React.FC = () => {
 
       {/* Create Supplier Modal */}
       <CreateSupplierModal
+        defaultRole={activeTab === 'RECEIVERS' ? 'RECEIVER' : 'SUPPLIER'}
         isOpen={isCreateSupplierOpen}
         onClose={() => setIsCreateSupplierOpen(false)}
         onAddSupplier={handleAddSupplier}

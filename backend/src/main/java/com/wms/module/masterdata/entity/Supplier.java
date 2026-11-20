@@ -22,6 +22,21 @@ import java.time.Instant;
 @AllArgsConstructor
 @Builder
 public class Supplier {
+    @jakarta.persistence.Enumerated(jakarta.persistence.EnumType.STRING)
+    @Column(name = "partner_role", nullable = false, columnDefinition = "VARCHAR(20) DEFAULT 'SUPPLIER'")
+    @Builder.Default
+    private PartnerRole partnerRole = PartnerRole.SUPPLIER;
+
+    @Column(name = "contact_person")
+    private String contactPerson;
+
+    private String email;
+
+    @Column(length = 1000)
+    private String address;
+
+    @Column(name = "supplied_categories", length = 1000)
+    private String suppliedCategories;
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)

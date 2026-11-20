@@ -19,6 +19,7 @@ export const outboundService = {
         return res.data.data.map((o: any) => ({
           id: String(o.id),
           warehouseId: o.warehouseId,
+          partnerId: o.partnerId,
           soCode: o.orderCode || `SO-${o.id}`,
           customerName: o.customerName || 'Khách Hàng Doanh Nghiệp',
           shippingAddress: 'Kho Phân Phối Trung Tâm',
@@ -80,6 +81,7 @@ export const outboundService = {
       return {
         id: String(saved.id),
         warehouseId: saved.warehouseId,
+        partnerId: saved.partnerId,
         soCode: saved.orderCode,
         customerName: saved.customerName,
         shippingAddress: order.shippingAddress || 'Kho Phân Phối',

@@ -142,5 +142,8 @@ public class ProductServiceImpl implements ProductService {
         if (!Boolean.TRUE.equals(supplier.getIsActive())) {
             throw new BusinessException(ErrorCode.BAD_REQUEST, "Không thể thêm sản phẩm từ nhà cung cấp đang ngưng hợp tác!");
         }
+        if (supplier.getPartnerRole() != com.wms.module.masterdata.entity.PartnerRole.SUPPLIER) {
+            throw new BusinessException(ErrorCode.BAD_REQUEST, "Sản phẩm chỉ được gắn với nhà cung cấp, không phải bên nhận hàng!");
+        }
     }
 }

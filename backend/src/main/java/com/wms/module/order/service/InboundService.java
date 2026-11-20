@@ -38,6 +38,15 @@ public class InboundService {
     private final InventoryRepository inventoryRepository;
     private final StockLedgerRepository stockLedgerRepository;
     private final com.wms.module.notification.service.NotificationService notificationService;
+    private final com.wms.module.masterdata.repository.SupplierRepository supplierRepository;
+
+    private void validateSupplier(Long supplierId) {
+        var supplier = supplierId == null ? null : supplierRepository.findById(supplierId).orElse(null);
+        if (supplier == null || !Boolean.TRUE.equals(supplier.getIsActive())
+                || supplier.getPartnerRole() != com.wms.module.masterdata.entity.PartnerRole.SUPPLIER) {
+            throw new BusinessException(ErrorCode.BAD_REQUEST, "Đơn nhập chỉ được nhận hàng từ nhà cung cấp đang hoạt động!");
+        }
+    }
 
     @Transactional(readOnly = true)
     public List<InboundOrder> getAllInboundOrders() {
@@ -46,6 +55,7 @@ public class InboundService {
 
     @Transactional
     public InboundOrder createInboundOrder(com.wms.module.order.dto.request.CreateInboundOrderRequest request) {
+        validateSupplier(request.getSupplierId());
         String code = request.getOrderCode() != null && !request.getOrderCode().isBlank()
                 ? request.getOrderCode()
                 : "PO-" + System.currentTimeMillis() % 1000000;
@@ -93,6 +103,7 @@ public class InboundService {
 
     @Transactional
     public InboundOrder createInboundOrder(InboundOrder order) {
+        validateSupplier(order.getSupplierId());
         if (order.getOrderCode() == null || order.getOrderCode().isBlank()) {
             order.setOrderCode("PO-" + System.currentTimeMillis() % 1000000);
         }

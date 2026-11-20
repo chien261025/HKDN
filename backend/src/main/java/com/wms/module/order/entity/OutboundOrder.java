@@ -27,8 +27,10 @@ public class OutboundOrder {
     @Builder.Default
     private Long warehouseId = 1L;
 
-    @Column(name = "customer_name", length = 100)
+    @Column(name = "customer_name", length = 255)
     private String customerName;
+    @Column(name = "partner_id")
+    private Long partnerId;
 
     @Column(nullable = false, length = 30)
     @Builder.Default

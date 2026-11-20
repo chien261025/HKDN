@@ -7,7 +7,7 @@ interface EditSupplierModalProps {
   isOpen: boolean;
   onClose: () => void;
   supplier: SupplierItem | null;
-  onUpdateSupplier: (supplier: SupplierItem) => void;
+  onUpdateSupplier: (supplier: SupplierItem) => Promise<void>;
 }
 
 export const EditSupplierModal: React.FC<EditSupplierModalProps> = ({
@@ -23,9 +23,13 @@ export const EditSupplierModal: React.FC<EditSupplierModalProps> = ({
   const [email, setEmail] = useState('');
   const [address, setAddress] = useState('');
   const [status, setStatus] = useState<'ACTIVE' | 'INACTIVE'>('ACTIVE');
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState('');
+  const receiver = supplier?.partnerRole === 'RECEIVER';
 
   useEffect(() => {
     if (supplier) {
+      setError('');
       setCode(supplier.code || '');
       setName(supplier.name || '');
       setContactPerson(supplier.contactPerson || '');
@@ -38,9 +42,9 @@ export const EditSupplierModal: React.FC<EditSupplierModalProps> = ({
 
   if (!isOpen || !supplier) return null;
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!name.trim()) return;
+    if (!name.trim() || saving) return;
 
     const updated: SupplierItem = {
       ...supplier,
@@ -53,27 +57,31 @@ export const EditSupplierModal: React.FC<EditSupplierModalProps> = ({
       status,
     };
 
-    onUpdateSupplier(updated);
-    onClose();
+    setSaving(true);
+    setError('');
+    try { await onUpdateSupplier(updated); onClose(); }
+    catch (err: any) { setError(err.response?.data?.message || 'Không thể cập nhật đối tác.'); }
+    finally { setSaving(false); }
   };
 
   return (
     <Modal
       isOpen={isOpen}
       onClose={onClose}
-      title="Cập Nhật Nhà Cung Cấp Đối Tác"
+      title={receiver ? 'Cập Nhật Bên Nhận Hàng' : 'Cập Nhật Nhà Cung Cấp Đối Tác'}
       description={
         <span>
-          Mã NCC: <strong className="font-mono text-indigo-600 font-bold">{code}</strong>
+          {receiver ? 'Mã bên nhận: ' : 'Mã NCC: '}<strong className="font-mono text-indigo-600 font-bold">{code}</strong>
         </span>
       }
       icon={<Building2 className="w-5 h-5" />}
       maxWidth="xl"
     >
       <form onSubmit={handleSubmit} className="space-y-4">
+        <p className="text-sm text-slate-600">Loại đối tác: <strong>{receiver ? 'Bên nhận hàng' : 'Nhà cung cấp'}</strong></p>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <InputField
-            label="Mã NCC (Code)"
+            label={receiver ? 'Mã bên nhận (Code)' : 'Mã NCC (Code)'}
             required
             value={code}
             onChange={(e) => setCode(e.target.value)}
@@ -104,7 +112,7 @@ export const EditSupplierModal: React.FC<EditSupplierModalProps> = ({
         </div>
 
         <InputField
-          label="Hòm Thư Điện Tử (Email NCC)"
+          label={receiver ? 'Email bên nhận hàng' : 'Hòm Thư Điện Tử (Email NCC)'}
           type="email"
           value={email}
           onChange={(e) => setEmail(e.target.value)}
@@ -115,19 +123,20 @@ export const EditSupplierModal: React.FC<EditSupplierModalProps> = ({
         <SelectField label="Trạng thái hợp tác" value={status} onChange={(e) => setStatus(e.target.value as 'ACTIVE' | 'INACTIVE')} options={[{ value: 'ACTIVE', label: 'Đang hợp tác' }, { value: 'INACTIVE', label: 'Ngưng hợp tác' }]} />
 
         <InputField
-          label="Địa Chỉ Nhà Máy / Kho Xuất"
+          label={receiver ? 'Địa chỉ nhận hàng' : 'Địa Chỉ Nhà Máy / Kho Xuất'}
           value={address}
           onChange={(e) => setAddress(e.target.value)}
           placeholder="KCN Sóng Thần, Dĩ An, Bình Dương"
           iconRight={<MapPin className="w-4 h-4 text-slate-400" />}
         />
 
+        {error && <p role="alert" className="text-sm text-rose-700">{error}</p>}
         <div className="pt-4 border-t border-slate-100 flex items-center justify-end gap-3">
           <Button variant="secondary" onClick={onClose}>
             Hủy bỏ
           </Button>
-          <Button variant="primary" type="submit" leftIcon={<Save className="w-4 h-4" />}>
-            Lưu Thay Đổi
+          <Button variant="primary" type="submit" disabled={saving} leftIcon={<Save className="w-4 h-4" />}>
+            {saving ? 'Đang lưu…' : 'Lưu Thay Đổi'}
           </Button>
         </div>
       </form>

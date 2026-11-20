@@ -4,6 +4,15 @@ import { inventoryService } from '../../inventory/services/inventoryService';
 import { PRIMARY_WAREHOUSE } from '../../../config/warehouse';
 
 export const productService = {
+  async getPartners(): Promise<SupplierItem[]> {
+    const res = await apiClient.get('/masterdata/partners');
+    return (res.data.data || []).map((s: any) => ({
+      id: String(s.id), code: s.code, name: s.name, partnerRole: s.partnerRole || 'SUPPLIER',
+      contactPerson: s.contactPerson || '', phone: s.contactPhone || '', email: s.email || '',
+      address: s.address || '', suppliedCategories: s.suppliedCategories ? s.suppliedCategories.split(',').filter(Boolean) : ['GENERAL'],
+      activeProductsCount: 0, status: s.isActive === false ? 'INACTIVE' : 'ACTIVE',
+    }));
+  },
   async getProducts(stockedOnly = false): Promise<ProductItem[]> {
     try {
       const [res, closingBalances, supplierResponse] = await Promise.all([
@@ -123,13 +132,14 @@ export const productService = {
       if (res.data?.data && Array.isArray(res.data.data)) {
         return res.data.data.map((s: any) => ({
           id: String(s.id),
+          partnerRole: s.partnerRole || 'SUPPLIER',
           code: s.code,
           name: s.name,
-          contactPerson: 'Bộ phận Tiếp nhận',
+          contactPerson: s.contactPerson || 'Bộ phận Tiếp nhận',
           phone: s.contactPhone || '028.1234.5678',
-          email: `${s.code.toLowerCase()}@partner.vn`,
-          address: 'Khu Công Nghiệp Tân Bình, TP.HCM',
-          suppliedCategories: ['GENERAL'],
+          email: s.email || `${s.code.toLowerCase()}@partner.vn`,
+          address: s.address || 'Khu Công Nghiệp Tân Bình, TP.HCM',
+          suppliedCategories: s.suppliedCategories ? s.suppliedCategories.split(',').filter(Boolean) : ['GENERAL'],
           activeProductsCount: 1,
           status: s.isActive === false ? 'INACTIVE' : 'ACTIVE' as const,
         }));
@@ -147,12 +157,18 @@ export const productService = {
         code: supplier.code,
         name: supplier.name,
         contactPhone: supplier.phone,
+        partnerRole: supplier.partnerRole || 'SUPPLIER',
+        contactPerson: supplier.contactPerson,
+        email: supplier.email,
+        address: supplier.address,
+        suppliedCategories: supplier.suppliedCategories?.join(','),
         isActive: supplier.status !== 'INACTIVE',
       };
-      const res = await apiClient.post('/masterdata/suppliers', payload);
+      const res = await apiClient.post('/masterdata/partners', payload);
       const saved = res.data?.data;
       return {
         id: String(saved?.id || Date.now()),
+        partnerRole: saved?.partnerRole || supplier.partnerRole || 'SUPPLIER',
         code: supplier.code || 'SUP-' + Date.now(),
         name: supplier.name!,
         contactPerson: supplier.contactPerson || 'Đại diện NCC',
@@ -216,9 +232,14 @@ export const productService = {
         name: supplier.name,
         code: supplier.code,
         contactPhone: supplier.phone,
+        partnerRole: supplier.partnerRole || 'SUPPLIER',
+        contactPerson: supplier.contactPerson,
+        email: supplier.email,
+        address: supplier.address,
+        suppliedCategories: supplier.suppliedCategories?.join(','),
         isActive: supplier.status !== 'INACTIVE',
       };
-      const res = await apiClient.put(`/masterdata/suppliers/${id}`, payload);
+      const res = await apiClient.put(`/masterdata/partners/${id}`, payload);
       const saved = res.data?.data;
       return {
         ...supplier,
