@@ -4,6 +4,15 @@ import { inventoryService } from '../../inventory/services/inventoryService';
 import { PRIMARY_WAREHOUSE } from '../../../config/warehouse';
 import { SmartProductAnalysis, analyzeProductAndGenerateSku } from '../utils/smartSkuGenerator';
 
+const mapCategoryToId = (cat?: ProductCategory, zone?: string): number => {
+  if (cat === 'ELECTRONICS') return 3;
+  if (cat === 'CHEMICAL') return 5;
+  if (cat === 'GENERAL') return 8;
+  if (cat === 'PHARMACEUTICAL' || (cat as any) === 'PHARMA') return 9;
+  if (cat === 'FASHION') return 10;
+  return zone === 'ZONE_B' ? 2 : 1;
+};
+
 export const productService = {
   async getProducts(stockedOnly = false): Promise<ProductItem[]> {
     try {
@@ -31,11 +40,13 @@ export const productService = {
             : (p.storageZone || 'ZONE_A');
 
           const catId = Number(p.categoryId);
-          const categoryType: ProductCategory = [3, 4].includes(catId)
-            ? 'ELECTRONICS'
-            : catId === 5
-            ? 'CHEMICAL'
-            : 'FOOD_BEVERAGE';
+          let categoryType: ProductCategory = 'FOOD_BEVERAGE';
+          if ([3, 4].includes(catId)) categoryType = 'ELECTRONICS';
+          else if (catId === 5) categoryType = 'CHEMICAL';
+          else if (catId === 8 || catId === 11) categoryType = 'GENERAL';
+          else if (catId === 9) categoryType = 'PHARMACEUTICAL';
+          else if (catId === 10) categoryType = 'FASHION';
+          else categoryType = 'FOOD_BEVERAGE';
 
           return {
             id: String(p.id),
@@ -126,7 +137,7 @@ export const productService = {
         purchasePrice: product.purchasePrice || 0,
         sellingPrice: product.sellingPrice || 0,
         businessStatus: product.businessStatus || 'ACTIVE',
-        categoryId: product.category === 'ELECTRONICS' ? 3 : product.category === 'CHEMICAL' ? 5 : (product.storageZone === 'ZONE_B' ? 2 : 1),
+        categoryId: mapCategoryToId(product.category, product.storageZone),
         isBatchManaged: product.isBatchManaged !== undefined ? product.isBatchManaged : true,
         isExpiryManaged: product.isExpiryManaged !== undefined ? product.isExpiryManaged : (product.category === 'FOOD_BEVERAGE'),
         shelfLifeDays: product.shelfLifeDays,
@@ -249,7 +260,7 @@ export const productService = {
         sellingPrice: product.sellingPrice,
         businessStatus: product.businessStatus,
         isActive: product.status !== 'INACTIVE',
-        categoryId: product.category === 'ELECTRONICS' ? 3 : product.category === 'CHEMICAL' ? 5 : (product.storageZone === 'ZONE_B' ? 2 : 1),
+        categoryId: mapCategoryToId(product.category, product.storageZone),
         isBatchManaged: product.isBatchManaged !== undefined ? product.isBatchManaged : true,
         isExpiryManaged: product.isExpiryManaged !== undefined ? product.isExpiryManaged : (product.category === 'FOOD_BEVERAGE'),
         shelfLifeDays: product.shelfLifeDays,

@@ -703,12 +703,40 @@ export const CreateProductModal: React.FC<CreateProductModalProps> = ({
             <Button variant="outline" size="md" onClick={onClose}>
               Hủy bỏ
             </Button>
+            {activeTab !== 'BASIC' && (
+              <Button
+                variant="outline"
+                size="md"
+                type="button"
+                onClick={() => setActiveTab(activeTab === 'FINANCE' ? 'LOGISTICS' : 'BASIC')}
+              >
+                &larr; Quay lại
+              </Button>
+            )}
             {activeTab !== 'FINANCE' ? (
               <Button
                 variant="primary"
                 size="md"
                 type="button"
-                onClick={() => setActiveTab(activeTab === 'BASIC' ? 'LOGISTICS' : 'FINANCE')}
+                onClick={() => {
+                  if (activeTab === 'BASIC') {
+                    if (!name.trim()) {
+                      alert('Vui lòng nhập tên hàng hóa / sản phẩm trước khi tiếp tục!');
+                      return;
+                    }
+                    if (!sku.trim()) {
+                      alert('Vui lòng nhập hoặc sinh mã SKU!');
+                      return;
+                    }
+                    if (isSkuDuplicate) {
+                      alert(`Mã SKU "${sku.trim().toUpperCase()}" đã tồn tại trong kho! Vui lòng chọn hoặc sinh mã khác.`);
+                      return;
+                    }
+                    setActiveTab('LOGISTICS');
+                  } else {
+                    setActiveTab('FINANCE');
+                  }
+                }}
               >
                 Bước Tiếp Theo &rarr;
               </Button>
