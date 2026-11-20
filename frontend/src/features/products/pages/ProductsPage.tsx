@@ -283,6 +283,7 @@ export const ProductsPage: React.FC = () => {
         onClose={() => setIsCreateProductOpen(false)}
         onAddProduct={handleAddProduct}
         suppliers={suppliers}
+        existingSkus={products.map((p) => p.sku)}
       />
 
       {/* Edit Product Modal */}

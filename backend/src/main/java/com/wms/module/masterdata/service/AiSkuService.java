@@ -3,6 +3,7 @@ package com.wms.module.masterdata.service;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.wms.module.masterdata.dto.AiSkuSuggestionDto;
+import com.wms.module.masterdata.repository.ProductRepository;
 import com.wms.module.smartquery.ai.AiLlmProperties;
 import com.wms.module.smartquery.ai.GeminiClient;
 import lombok.RequiredArgsConstructor;
@@ -11,6 +12,8 @@ import org.springframework.stereotype.Service;
 
 import java.text.Normalizer;
 import java.util.Random;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 @Slf4j
 @Service
@@ -20,6 +23,7 @@ public class AiSkuService {
     private final GeminiClient geminiClient;
     private final AiLlmProperties aiLlmProperties;
     private final ObjectMapper objectMapper;
+    private final ProductRepository productRepository;
     private final Random random = new Random();
 
     private static final String SYSTEM_PROMPT = """
@@ -49,19 +53,17 @@ public class AiSkuService {
             """;
 
     public AiSkuSuggestionDto suggestSku(String productName) {
+        AiSkuSuggestionDto result;
         if (productName == null || productName.isBlank()) {
-            return generateFallback("Sản phẩm mới");
-        }
-
-        // 1. Thử gọi Google Gemini AI nếu có API Key
-        if (aiLlmProperties.isEnabled() && aiLlmProperties.getApiKey() != null && !aiLlmProperties.getApiKey().isBlank()) {
+            result = generateFallback("Sản phẩm mới");
+        } else if (aiLlmProperties.isEnabled() && aiLlmProperties.getApiKey() != null && !aiLlmProperties.getApiKey().isBlank()) {
             try {
                 log.info("Goi Google Gemini 1.5 de phan tich SKU cho: {}", productName);
                 String responseText = geminiClient.generate(SYSTEM_PROMPT, "Tên sản phẩm: " + productName.trim(), true);
                 String cleanJson = stripCodeFence(responseText);
                 JsonNode node = objectMapper.readTree(cleanJson);
 
-                return AiSkuSuggestionDto.builder()
+                result = AiSkuSuggestionDto.builder()
                         .sku(node.path("sku").asText("SKU-GEN-" + (100 + random.nextInt(900))))
                         .category(node.path("category").asText("GENERAL"))
                         .categoryLabel(node.path("categoryLabel").asText("Hàng Tiêu Dùng Tổng Hợp"))
@@ -76,11 +78,54 @@ public class AiSkuService {
                         .build();
             } catch (Exception ex) {
                 log.warn("Gemini AI API khong kha dung hoac gap loi, tu dong chuyen sang Semantic Fallback: {}", ex.getMessage());
+                result = generateFallback(productName);
             }
+        } else {
+            result = generateFallback(productName);
         }
 
-        // 2. Fallback Heuristic Semantic Engine nếu Gemini chưa cấu hình key hoặc offline
-        return generateFallback(productName);
+        // Zero-Collision Guard: Đảm bảo 100% không bao giờ trùng với SKU đã có trong Database
+        String uniqueSku = ensureUniqueSku(result.getSku());
+        result.setSku(uniqueSku);
+        return result;
+    }
+
+    public String ensureUniqueSku(String baseSku) {
+        if (baseSku == null || baseSku.isBlank()) {
+            baseSku = "SKU-GEN-101";
+        }
+        String cleanSku = baseSku.trim().toUpperCase();
+
+        if (productRepository.findBySkuAndDeletedAtIsNull(cleanSku).isEmpty()) {
+            return cleanSku;
+        }
+
+        Matcher matcher = Pattern.compile("^(.*?)([-_])(\\d+)$").matcher(cleanSku);
+        String prefix;
+        String sep;
+        int nextNum;
+        if (matcher.find()) {
+            prefix = matcher.group(1);
+            sep = matcher.group(2);
+            try {
+                nextNum = Integer.parseInt(matcher.group(3)) + 1;
+            } catch (NumberFormatException e) {
+                nextNum = 101;
+            }
+        } else {
+            prefix = cleanSku;
+            sep = "-";
+            nextNum = 101;
+        }
+
+        String candidate = prefix + sep + nextNum;
+        while (productRepository.findBySkuAndDeletedAtIsNull(candidate).isPresent()) {
+            nextNum++;
+            candidate = prefix + sep + nextNum;
+        }
+
+        log.info("[ZERO-COLLISION-GUARD] Ma SKU {} da ton tai trong DB, tu dong tang thanh ma duy nhat: {}", cleanSku, candidate);
+        return candidate;
     }
 
     private AiSkuSuggestionDto generateFallback(String productName) {

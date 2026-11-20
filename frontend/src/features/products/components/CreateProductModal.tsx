@@ -26,7 +26,7 @@ import {
 import { Modal, Button, InputField, SelectField } from '../../../components/common';
 import { ProductImageUploader } from './ProductImageUploader';
 import { generateInternalEan13 } from '../utils/barcodeUtils';
-import { analyzeProductAndGenerateSku } from '../utils/smartSkuGenerator';
+import { analyzeProductAndGenerateSku, ensureUniqueSkuClient } from '../utils/smartSkuGenerator';
 import { productService } from '../services/productService';
 
 interface CreateProductModalProps {
@@ -34,6 +34,7 @@ interface CreateProductModalProps {
   onClose: () => void;
   onAddProduct: (product: ProductItem) => void;
   suppliers: SupplierItem[];
+  existingSkus?: string[];
 }
 
 export const CreateProductModal: React.FC<CreateProductModalProps> = ({
@@ -41,6 +42,7 @@ export const CreateProductModal: React.FC<CreateProductModalProps> = ({
   onClose,
   onAddProduct,
   suppliers,
+  existingSkus = [],
 }) => {
   const [activeTab, setActiveTab] = useState<'BASIC' | 'LOGISTICS' | 'FINANCE'>('BASIC');
   
@@ -127,13 +129,20 @@ export const CreateProductModal: React.FC<CreateProductModalProps> = ({
     return Math.round(((sellingPrice - purchasePrice) / sellingPrice) * 100);
   }, [purchasePrice, sellingPrice]);
 
+  const isSkuDuplicate = useMemo(() => {
+    if (!sku.trim()) return false;
+    const clean = sku.trim().toUpperCase();
+    return existingSkus.some((s) => s.trim().toUpperCase() === clean);
+  }, [sku, existingSkus]);
+
   if (!isOpen) return null;
 
   const handleAutoSku = async (nameToUse?: string) => {
     const targetName = typeof nameToUse === 'string' ? nameToUse : name;
     if (!targetName.trim()) {
       const random = Math.floor(100 + Math.random() * 900);
-      setSku(`SKU-GEN-${random}`);
+      const safeSku = ensureUniqueSkuClient(`SKU-GEN-${random}`, existingSkus);
+      setSku(safeSku);
       setAiSuggestion(null);
       setIsAiPowered(null);
       return;
@@ -141,7 +150,8 @@ export const CreateProductModal: React.FC<CreateProductModalProps> = ({
     setIsAiLoading(true);
     try {
       const analysis = await productService.suggestSkuByAi(targetName);
-      setSku(analysis.sku);
+      const safeSku = ensureUniqueSkuClient(analysis.sku, existingSkus);
+      setSku(safeSku);
       setCategory(analysis.category);
       setStorageZone(analysis.storageZone);
       setStorageCondition(analysis.storageCondition);
@@ -152,7 +162,7 @@ export const CreateProductModal: React.FC<CreateProductModalProps> = ({
       setAiSuggestion(analysis.reason);
       setIsAiPowered(analysis.aiPowered ?? false);
     } catch {
-      const analysis = analyzeProductAndGenerateSku(targetName);
+      const analysis = analyzeProductAndGenerateSku(targetName, existingSkus);
       setSku(analysis.sku);
       setCategory(analysis.category);
       setStorageZone(analysis.storageZone);
@@ -176,6 +186,11 @@ export const CreateProductModal: React.FC<CreateProductModalProps> = ({
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!sku.trim() || !name.trim()) return;
+
+    if (isSkuDuplicate) {
+      alert(`Mã SKU "${sku.trim().toUpperCase()}" đã tồn tại trong danh mục WMS! Vui lòng chọn hoặc bấm "Gợi ý mã SKU bằng AI" để tự sinh mã mới.`);
+      return;
+    }
 
     const selectedSupplier = suppliers.find((s) => s.id === supplierId) || suppliers[0];
     if (!selectedSupplier || selectedSupplier.status === 'INACTIVE') return;
@@ -281,6 +296,7 @@ export const CreateProductModal: React.FC<CreateProductModalProps> = ({
                 placeholder="VD: SKU-FURN-BAN-101"
                 value={sku}
                 onChange={(e) => setSku(e.target.value)}
+                error={isSkuDuplicate ? `Mã SKU "${sku.trim().toUpperCase()}" đã tồn tại trong kho! Vui lòng đổi hậu tố hoặc bấm "Gợi ý mã SKU bằng AI" để tự sinh mã mới.` : undefined}
                 action={
                   <button
                     type="button"
@@ -330,7 +346,7 @@ export const CreateProductModal: React.FC<CreateProductModalProps> = ({
                     const newName = e.target.value;
                     setName(newName);
                     if (newName.trim().length >= 2) {
-                      const analysis = analyzeProductAndGenerateSku(newName);
+                      const analysis = analyzeProductAndGenerateSku(newName, existingSkus);
                       setSku(analysis.sku);
                       setCategory(analysis.category);
                       setStorageZone(analysis.storageZone);

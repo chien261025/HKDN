@@ -32,12 +32,47 @@ function hasAnyKeyword(text: string, list: string[]): boolean {
 }
 
 /**
+ * Đảm bảo mã SKU không trùng với bất kỳ mã nào trong danh sách SKU hiện có
+ */
+export function ensureUniqueSkuClient(baseSku: string, existingSkus: string[] = []): string {
+  if (!existingSkus || existingSkus.length === 0 || !baseSku) return baseSku;
+  const upperExisting = new Set(existingSkus.map((s) => s.trim().toUpperCase()));
+  if (!upperExisting.has(baseSku.trim().toUpperCase())) {
+    return baseSku;
+  }
+
+  const match = baseSku.trim().toUpperCase().match(/^(.*?)([-_])(\d+)$/);
+  let prefix = baseSku.trim().toUpperCase();
+  let sep = '-';
+  let num = 101;
+  if (match) {
+    prefix = match[1];
+    sep = match[2];
+    num = parseInt(match[3], 10) + 1;
+  }
+  let candidate = `${prefix}${sep}${num}`;
+  while (upperExisting.has(candidate.toUpperCase())) {
+    num++;
+    candidate = `${prefix}${sep}${num}`;
+  }
+  return candidate;
+}
+
+function finalizeAnalysis(res: SmartProductAnalysis, existingSkus: string[]): SmartProductAnalysis {
+  return {
+    ...res,
+    sku: ensureUniqueSkuClient(res.sku, existingSkus),
+  };
+}
+
+/**
  * Bộ Engine AI / Semantic Rule-based phân tích tên sản phẩm để sinh mã SKU và thuộc tính kho tự động
  */
-export function analyzeProductAndGenerateSku(productName: string): SmartProductAnalysis {
+export function analyzeProductAndGenerateSku(productName: string, existingSkus: string[] = []): SmartProductAnalysis {
   const clean = removeVietnameseTones(productName);
   const words = clean.split(/\s+/).filter(Boolean);
   const randomSuffix = Math.floor(100 + Math.random() * 900);
+  const done = (res: SmartProductAnalysis) => finalizeAnalysis(res, existingSkus);
 
   // 1. Nhóm Dược phẩm & Y tế (Pharma)
   const pharmaKeywords = [
@@ -49,7 +84,7 @@ export function analyzeProductAndGenerateSku(productName: string): SmartProductA
     if (clean.includes('khau trang')) tag = 'MASK';
     else if (clean.includes('thuoc')) tag = 'DRUG';
 
-    return {
+    return done({
       sku: `SKU-MED-${tag}-${randomSuffix}`,
       category: 'PHARMACEUTICAL',
       categoryLabel: 'Dược Phẩm & Y Tế',
@@ -60,7 +95,7 @@ export function analyzeProductAndGenerateSku(productName: string): SmartProductA
       outboundStrategy: 'FEFO',
       shelfLifeDays: 730,
       reason: 'Nhận diện Nhóm Dược Phẩm & Vật Tư Y Tế (Quản lý chuẩn FEFO)',
-    };
+    });
   }
 
   // 2. Nhóm Hóa mỹ phẩm / Tẩy rửa (Chemicals & Cosmetics)
@@ -75,7 +110,7 @@ export function analyzeProductAndGenerateSku(productName: string): SmartProductA
     else if (clean.includes('goi') || clean.includes('tam')) tag = 'BATH';
     else if (clean.includes('son')) tag = 'PAINT';
 
-    return {
+    return done({
       sku: `SKU-CHEM-${tag}-${randomSuffix}`,
       category: 'CHEMICAL',
       categoryLabel: 'Hóa Mỹ Phẩm & Tẩy Rửa',
@@ -86,7 +121,7 @@ export function analyzeProductAndGenerateSku(productName: string): SmartProductA
       outboundStrategy: 'FEFO',
       shelfLifeDays: 730,
       reason: 'Nhận diện Nhóm Hóa Mỹ Phẩm / Tẩy Rửa (Quản lý HSD 2 năm, FEFO)',
-    };
+    });
   }
 
   // 3. Nhóm Thực phẩm Mát (Cool Food - Kho Mát Zone B)
@@ -95,7 +130,7 @@ export function analyzeProductAndGenerateSku(productName: string): SmartProductA
   ];
   if (hasAnyKeyword(clean, coolFoodKeywords)) {
     let tag = clean.includes('sua chua') ? 'YOGURT' : clean.includes('thit') ? 'MEAT' : 'COOL';
-    return {
+    return done({
       sku: `SKU-FOOD-${tag}-${randomSuffix}`,
       category: 'FOOD_BEVERAGE',
       categoryLabel: 'Thực Phẩm & Đồ Uống (F&B)',
@@ -106,7 +141,7 @@ export function analyzeProductAndGenerateSku(productName: string): SmartProductA
       outboundStrategy: 'FEFO',
       shelfLifeDays: 45,
       reason: 'Nhận diện Thực Phẩm Mát (Bắt buộc kho mát Zone B 2-8°C, FEFO)',
-    };
+    });
   }
 
   // 4. Nhóm Thực phẩm & Đồ uống Khô (Food & Beverage - Kho Khô Zone A)
@@ -125,7 +160,7 @@ export function analyzeProductAndGenerateSku(productName: string): SmartProductA
     else if (clean.includes('banh') || clean.includes('keo')) tag = 'SNACK';
     else if (clean.includes('gao')) tag = 'RICE';
 
-    return {
+    return done({
       sku: `SKU-FOOD-${tag}-${randomSuffix}`,
       category: 'FOOD_BEVERAGE',
       categoryLabel: 'Thực Phẩm & Đồ Uống (F&B)',
@@ -136,7 +171,7 @@ export function analyzeProductAndGenerateSku(productName: string): SmartProductA
       outboundStrategy: 'FEFO',
       shelfLifeDays: 365,
       reason: 'Nhận diện Thực Phẩm / Đồ Uống Khô (Kho Khô Zone A, quản lý hạn dùng FEFO)',
-    };
+    });
   }
 
   // 5. Nhóm Điện tử & Công nghệ (Electronics)
@@ -156,7 +191,7 @@ export function analyzeProductAndGenerateSku(productName: string): SmartProductA
 
     const isHighValue = hasAnyKeyword(clean, ['iphone', 'macbook', 'laptop', 'ipad', 'camera']);
 
-    return {
+    return done({
       sku: `SKU-ELEC-${tag}-${randomSuffix}`,
       category: 'ELECTRONICS',
       categoryLabel: 'Thiết Bị & Linh Kiện Điện Tử',
@@ -169,7 +204,7 @@ export function analyzeProductAndGenerateSku(productName: string): SmartProductA
       reason: isHighValue
         ? 'Nhận diện Thiết bị Điện Tử Giá Trị Cao (Kho An Ninh Cao Zone D)'
         : 'Nhận diện Thiết Bị / Phụ Kiện Điện Tử (Kho Khô Zone A)',
-    };
+    });
   }
 
   // 6. Nhóm Nội thất / Bàn ghế (Furniture & Decor)
@@ -186,7 +221,7 @@ export function analyzeProductAndGenerateSku(productName: string): SmartProductA
     else if (clean.includes('giuong')) tag = 'GIUONG';
     else if (clean.includes('sofa')) tag = 'SOFA';
 
-    return {
+    return done({
       sku: `SKU-FURN-${tag}-${randomSuffix}`,
       category: 'GENERAL',
       categoryLabel: 'Nội Thất & Gia Dụng (Furniture)',
@@ -197,7 +232,7 @@ export function analyzeProductAndGenerateSku(productName: string): SmartProductA
       outboundStrategy: 'FIFO',
       shelfLifeDays: 0,
       reason: 'Nhận diện nhóm Nội Thất / Bàn Ghế (Kho Khô Zone A, không quản lý date)',
-    };
+    });
   }
 
   // 7. Nhóm Thời trang / Dệt may (Fashion)
@@ -213,7 +248,7 @@ export function analyzeProductAndGenerateSku(productName: string): SmartProductA
     else if (clean.includes('giay') || clean.includes('dep')) tag = 'SHOES';
     else if (clean.includes('balo') || clean.includes('tui xach')) tag = 'BAG';
 
-    return {
+    return done({
       sku: `SKU-FASH-${tag}-${randomSuffix}`,
       category: 'FASHION',
       categoryLabel: 'Thời Trang & Dệt May',
@@ -224,12 +259,12 @@ export function analyzeProductAndGenerateSku(productName: string): SmartProductA
       outboundStrategy: 'FIFO',
       shelfLifeDays: 0,
       reason: 'Nhận diện Nhóm Thời Trang & May Mặc (Kho Khô Zone A)',
-    };
+    });
   }
 
   // 8. Nhóm mặc định nếu không khớp từ khóa đặc biệt (General Merchandise)
   const initialWord = words[0] ? words[0].toUpperCase().slice(0, 4) : 'GEN';
-  return {
+  return done({
     sku: `SKU-GEN-${initialWord}-${randomSuffix}`,
     category: 'GENERAL',
     categoryLabel: 'Hàng Tiêu Dùng Tổng Hợp',
@@ -240,6 +275,6 @@ export function analyzeProductAndGenerateSku(productName: string): SmartProductA
     outboundStrategy: 'FIFO',
     shelfLifeDays: 0,
     reason: 'Nhận diện Hàng Hóa Tiêu Dùng (Kho Khô Zone A)',
-  };
+  });
 }
 
