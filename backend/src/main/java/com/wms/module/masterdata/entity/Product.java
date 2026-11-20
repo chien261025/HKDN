@@ -9,13 +9,13 @@ import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
-import jakarta.persistence.UniqueConstraint;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 
+import java.math.BigDecimal;
 import java.time.Instant;
 
 @Entity
@@ -43,6 +43,9 @@ public class Product {
     @Column(nullable = false)
     private String name;
 
+    @Column(name = "description", length = 500)
+    private String description;
+
     @Column(name = "category_id")
     private Long categoryId;
 
@@ -63,6 +66,35 @@ public class Product {
     @Builder.Default
     private String unit = "Cái";
 
+    @Column(name = "brand", length = 100)
+    private String brand;
+
+    @Column(name = "origin", length = 100)
+    private String origin;
+
+    @Column(name = "image_url", length = 500)
+    private String imageUrl;
+
+    @Column(name = "storage_condition", length = 50)
+    @Builder.Default
+    private String storageCondition = "AMBIENT"; // AMBIENT, COOL, COLD, SECURE
+
+    @Column(name = "weight_kg", precision = 10, scale = 2)
+    @Builder.Default
+    private BigDecimal weightKg = new BigDecimal("1.00");
+
+    @Column(name = "length_cm", precision = 10, scale = 2)
+    @Builder.Default
+    private BigDecimal lengthCm = new BigDecimal("20.00");
+
+    @Column(name = "width_cm", precision = 10, scale = 2)
+    @Builder.Default
+    private BigDecimal widthCm = new BigDecimal("15.00");
+
+    @Column(name = "height_cm", precision = 10, scale = 2)
+    @Builder.Default
+    private BigDecimal heightCm = new BigDecimal("10.00");
+
     @Column(name = "safety_stock")
     @Builder.Default
     private Integer safetyStock = 10;
@@ -70,6 +102,22 @@ public class Product {
     @Column(name = "reorder_point")
     @Builder.Default
     private Integer reorderPoint = 20;
+
+    @Column(name = "max_stock")
+    @Builder.Default
+    private Integer maxStock = 500;
+
+    @Column(name = "purchase_price", precision = 15, scale = 2)
+    @Builder.Default
+    private BigDecimal purchasePrice = BigDecimal.ZERO;
+
+    @Column(name = "selling_price", precision = 15, scale = 2)
+    @Builder.Default
+    private BigDecimal sellingPrice = BigDecimal.ZERO;
+
+    @Column(name = "business_status", length = 30)
+    @Builder.Default
+    private String businessStatus = "ACTIVE"; // ACTIVE, SUSPENDED, DISCONTINUED
 
     @Column(name = "created_at")
     @Builder.Default

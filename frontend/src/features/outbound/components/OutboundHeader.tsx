@@ -39,7 +39,7 @@ export const OutboundHeader: React.FC<OutboundHeaderProps> = ({
           className="flex items-center gap-2 px-4 py-2.5 bg-blue-600 hover:bg-blue-700 active:scale-[0.99] text-white rounded-xl text-xs sm:text-sm font-bold shadow-sm shadow-blue-200 transition-all shrink-0 cursor-pointer"
         >
           <Plus className="w-4 h-4" />
-          <span>+ Tạo Đơn Xuất Kho</span>
+          <span>Tạo Đơn Xuất Kho</span>
         </button>
       </div>
 

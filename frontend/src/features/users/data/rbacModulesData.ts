@@ -138,6 +138,17 @@ export const INITIAL_RBAC_MODULES: RbacModuleItem[] = [
     device: 'Mobile',
     description: 'Thao tác thực địa Mobile/PDA: Nhận hàng Staging, Cất kho, Nhặt hàng, Kiểm kê',
   },
+  {
+    id: 13,
+    moduleId: 'WAREHOUSE_BRANCHES',
+    moduleName: 'Hệ Thống Chi Nhánh Kho Hàng',
+    desktopRoute: '/warehouses',
+    adminAllowed: true,
+    managerAllowed: true,
+    operatorAllowed: false,
+    device: 'Desktop',
+    description: 'Khai báo chi nhánh kho, thông tin liên hệ, sức chứa pallet và phân khu',
+  },
 ];
 
 const RBAC_STORAGE_KEY = 'smart_wms_rbac_matrix';

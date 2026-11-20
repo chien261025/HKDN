@@ -16,6 +16,7 @@ import {
   ClipboardCheck,
   Printer,
   Boxes,
+  Building2,
   X,
 } from 'lucide-react';
 import { AuthSession } from '../../features/auth/types';
@@ -78,7 +79,16 @@ export const AppSidebar: React.FC<AppSidebarProps> = ({
       items: [{ name: 'Tổng Quan Kho', path: '/', icon: LayoutDashboard }],
     },
     {
-      sectionTitle: 'Vận Hành Kho',
+      sectionTitle: 'Khai Báo & Mặt Bằng',
+      items: [
+        { name: 'Hàng Hóa & Danh Mục', path: '/products', icon: Boxes },
+        { name: 'Chi Nhánh Kho Hàng', path: '/warehouses', icon: Building2 },
+        { name: 'Sơ Đồ Mặt Bằng Ô Kệ', path: '/layout', icon: Layers },
+        { name: 'In Tem Mã Vạch & QR', path: '/labels', icon: Printer },
+      ],
+    },
+    {
+      sectionTitle: 'Nghiệp Vụ Kho',
       items: [
         { name: 'Đơn Nhập Kho (PO)', path: '/inbound', icon: Truck },
         { name: 'Đơn Xuất Kho (SO)', path: '/outbound', icon: PackageCheck },
@@ -87,11 +97,9 @@ export const AppSidebar: React.FC<AppSidebarProps> = ({
       ],
     },
     {
-      sectionTitle: 'Mặt Bằng & Nhãn',
+      sectionTitle: 'Hiện Trường Thực Địa',
       items: [
-        { name: 'Sơ Đồ Kệ Digital Twin', path: '/layout', icon: Layers },
-        { name: 'Danh Mục Sản Phẩm', path: '/products', icon: Boxes },
-        { name: 'In Tem Mã Vạch & QR', path: '/labels', icon: Printer },
+        { name: 'Cổng Quét Mã PDA', path: '/operator', icon: Smartphone },
       ],
     },
     {
@@ -100,12 +108,6 @@ export const AppSidebar: React.FC<AppSidebarProps> = ({
         { name: 'Báo Cáo & Thống Kê', path: '/reports', icon: FileSpreadsheet },
         { name: 'Truy Vấn Dữ Liệu', path: '/smartquery', icon: Search },
         { name: 'Phân Quyền & Tài Khoản', path: '/users', icon: ShieldCheck, requiredRole: 'ROLE_ADMIN' },
-      ],
-    },
-    {
-      sectionTitle: 'Hiện Trường',
-      items: [
-        { name: 'Cổng Quét Mã PDA', path: '/operator', icon: Smartphone },
       ],
     },
   ];

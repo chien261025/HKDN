@@ -15,12 +15,14 @@ import java.time.LocalDate;
 public class InventoryBalanceResponse {
     private Long id;
     private Long productId;
-    private Long warehouseId;
     private String sku;
     private String barcode;
     private String productName;
     private String categoryName;
     private String unit;
+
+    private Long warehouseId;
+    private String warehouseName;
 
     private Long locationId;
     private String locationBarcode;
