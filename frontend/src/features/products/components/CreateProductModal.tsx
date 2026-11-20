@@ -25,6 +25,7 @@ import {
 import { Modal, Button, InputField, SelectField } from '../../../components/common';
 import { ProductImageUploader } from './ProductImageUploader';
 import { generateInternalEan13 } from '../utils/barcodeUtils';
+import { analyzeProductAndGenerateSku } from '../utils/smartSkuGenerator';
 
 interface CreateProductModalProps {
   isOpen: boolean;
@@ -47,6 +48,7 @@ export const CreateProductModal: React.FC<CreateProductModalProps> = ({
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
   const [category, setCategory] = useState<ProductCategory>('FOOD_BEVERAGE');
+  const [aiSuggestion, setAiSuggestion] = useState<string | null>(null);
   const [brand, setBrand] = useState('');
   const [origin, setOrigin] = useState('Việt Nam');
   const [imageUrl, setImageUrl] = useState('');
@@ -123,10 +125,24 @@ export const CreateProductModal: React.FC<CreateProductModalProps> = ({
 
   if (!isOpen) return null;
 
-  const handleAutoSku = () => {
-    const prefix = category === 'ELECTRONICS' ? 'SKU-ELEC-' : category === 'CHEMICAL' ? 'SKU-CHEM-' : 'SKU-FOOD-';
-    const random = Math.floor(100 + Math.random() * 900);
-    setSku(prefix + random);
+  const handleAutoSku = (nameToUse?: string) => {
+    const targetName = typeof nameToUse === 'string' ? nameToUse : name;
+    if (!targetName.trim()) {
+      const random = Math.floor(100 + Math.random() * 900);
+      setSku(`SKU-GEN-${random}`);
+      setAiSuggestion(null);
+      return;
+    }
+    const analysis = analyzeProductAndGenerateSku(targetName);
+    setSku(analysis.sku);
+    setCategory(analysis.category);
+    setStorageZone(analysis.storageZone);
+    setStorageCondition(analysis.storageCondition);
+    setUnit(analysis.unit);
+    setIsExpiryManaged(analysis.isExpiryManaged);
+    setOutboundStrategy(analysis.outboundStrategy);
+    if (analysis.shelfLifeDays > 0) setShelfLifeDays(analysis.shelfLifeDays);
+    setAiSuggestion(analysis.reason);
   };
 
   const handleAutoBarcode = () => {
@@ -239,17 +255,18 @@ export const CreateProductModal: React.FC<CreateProductModalProps> = ({
               <InputField
                 label="Mã SKU (Stock Keeping Unit)"
                 required
-                placeholder="VD: SKU-BEER-330"
+                placeholder="VD: SKU-FURN-BAN-101"
                 value={sku}
                 onChange={(e) => setSku(e.target.value)}
                 action={
                   <button
                     type="button"
-                    onClick={handleAutoSku}
-                    className="text-xs text-blue-600 hover:text-blue-800 font-semibold flex items-center gap-1 cursor-pointer"
+                    onClick={() => handleAutoSku()}
+                    className="text-xs text-indigo-600 hover:text-indigo-800 font-semibold flex items-center gap-1 cursor-pointer"
+                    title="AI tự động phân tích tên sản phẩm để sinh mã SKU và thiết lập phân khu chuẩn"
                   >
-                    <Sparkles className="w-3 h-3" />
-                    <span>Gợi ý mã SKU</span>
+                    <Sparkles className="w-3 h-3 text-indigo-600" />
+                    <span>Gợi ý mã SKU bằng AI</span>
                   </button>
                 }
               />
@@ -275,14 +292,38 @@ export const CreateProductModal: React.FC<CreateProductModalProps> = ({
               />
 
               {/* Tên sản phẩm */}
-              <div className="md:col-span-2">
+              <div className="md:col-span-2 space-y-2">
                 <InputField
                   label="Tên Hàng Hóa / Sản Phẩm"
                   required
-                  placeholder="VD: Bia Heineken Sleek lon 330ml thùng 24 lon"
+                  placeholder="VD: Nước mắm Nam Ngư, Bàn làm việc chữ L, Ghế công thái học..."
                   value={name}
-                  onChange={(e) => setName(e.target.value)}
+                  onChange={(e) => {
+                    const newName = e.target.value;
+                    setName(newName);
+                    if (newName.trim().length >= 2) {
+                      const analysis = analyzeProductAndGenerateSku(newName);
+                      setSku(analysis.sku);
+                      setCategory(analysis.category);
+                      setStorageZone(analysis.storageZone);
+                      setStorageCondition(analysis.storageCondition);
+                      setUnit(analysis.unit);
+                      setIsExpiryManaged(analysis.isExpiryManaged);
+                      setOutboundStrategy(analysis.outboundStrategy);
+                      if (analysis.shelfLifeDays > 0) setShelfLifeDays(analysis.shelfLifeDays);
+                      setAiSuggestion(analysis.reason);
+                    } else if (!newName.trim()) {
+                      setAiSuggestion(null);
+                    }
+                  }}
                 />
+
+                {aiSuggestion && (
+                  <div className="flex items-center gap-2 text-xs text-indigo-700 bg-indigo-50/90 border border-indigo-200 px-3 py-2 rounded-xl transition-all">
+                    <Sparkles className="w-4 h-4 text-indigo-600 shrink-0 animate-pulse" />
+                    <span><strong>AI Phân Tích Thông Minh:</strong> {aiSuggestion}</span>
+                  </div>
+                )}
               </div>
 
               {/* Ngành hàng */}
