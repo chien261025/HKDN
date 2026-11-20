@@ -17,7 +17,7 @@ public interface ProductBatchRepository extends JpaRepository<ProductBatch, Long
      * Chỉ chọn các lô đang ở trạng thái ACTIVE (loại trừ QUARANTINE, RECALLED, EXPIRED)
      * Đối với các lô không có HSD (expiryDate IS NULL), đẩy về cuối danh sách (NULLS LAST)
      */
-    @Query("SELECT b FROM ProductBatch b WHERE b.productId = :productId AND b.status = 'ACTIVE' AND (b.expiryDate IS NULL OR b.expiryDate > :currentDate) ORDER BY b.expiryDate ASC NULLS LAST")
+    @Query("SELECT b FROM ProductBatch b WHERE b.productId = :productId AND b.status = 'ACTIVE' AND (b.expiryDate IS NULL OR b.expiryDate >= :currentDate) ORDER BY b.expiryDate ASC NULLS LAST")
     List<ProductBatch> findActiveBatchesOrderByExpiryAsc(
             @Param("productId") Long productId,
             @Param("currentDate") LocalDate currentDate

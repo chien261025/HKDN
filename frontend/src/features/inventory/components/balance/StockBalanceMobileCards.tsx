@@ -1,5 +1,5 @@
 import React from 'react';
-import { Lock, FileText, AlertTriangle, ArrowRightLeft, MapPin } from 'lucide-react';
+import { Lock, FileText, AlertTriangle, ArrowRightLeft, MapPin, Ban } from 'lucide-react';
 import { StockItem } from '../../types';
 
 interface StockBalanceMobileCardsProps {
@@ -55,11 +55,15 @@ export const StockBalanceMobileCards: React.FC<StockBalanceMobileCardsProps> = (
             </div>
             <div className="flex items-center gap-1.5">
               <span className="text-slate-500">HSD: <strong className="text-slate-700 font-mono">{item.expiryDate}</strong></span>
-              {item.isExpiringSoon && (
-                <span className="text-[10px] font-semibold bg-rose-50 text-rose-700 border border-rose-200 px-1.5 py-0.5 rounded inline-flex items-center gap-0.5">
-                  <AlertTriangle className="w-3 h-3 text-rose-500" /> Cận Hạn
+              {item.isExpired ? (
+                <span className="text-[10px] font-bold bg-rose-100 text-rose-800 border border-rose-300 px-1.5 py-0.5 rounded inline-flex items-center gap-0.5">
+                  <Ban className="w-2.5 h-2.5 text-rose-600" /> Đã Hết Hạn
                 </span>
-              )}
+              ) : item.isExpiringSoon ? (
+                <span className="text-[10px] font-semibold bg-amber-50 text-amber-800 border border-amber-300 px-1.5 py-0.5 rounded inline-flex items-center gap-0.5">
+                  <AlertTriangle className="w-2.5 h-2.5 text-amber-600" /> Cận Hạn {item.daysRemaining != null && item.daysRemaining >= 0 ? `(${item.daysRemaining}d)` : ''}
+                </span>
+              ) : null}
             </div>
           </div>
 
@@ -107,7 +111,9 @@ export const StockBalanceMobileCards: React.FC<StockBalanceMobileCardsProps> = (
             )}
             <button
               onClick={() => onReserveClick(item)}
-              className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-medium cursor-pointer shadow-2xs"
+              disabled={item.isExpired || item.availableQty <= 0}
+              className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-medium cursor-pointer shadow-2xs disabled:opacity-40 disabled:cursor-not-allowed"
+              title={item.isExpired ? 'Lô hàng đã hết hạn sử dụng' : 'Giữ hàng'}
             >
               <Lock className="w-3 h-3" />
               <span>Giữ Hàng</span>

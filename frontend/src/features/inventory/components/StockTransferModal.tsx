@@ -36,12 +36,19 @@ export const StockTransferModal: React.FC<StockTransferModalProps> = ({
       });
       setTransferQty('1');
       setErrorMsg(null);
+      if (sourceItem?.isExpired) {
+        setNotes('Chuyển vào khu cách ly / chờ tiêu hủy (Quarantine / Disposal)');
+      } else {
+        setNotes('Tái sắp xếp không gian kho (Consolidation)');
+      }
     }
   }, [isOpen, sourceItem]);
 
   if (!isOpen || !sourceItem) return null;
 
-  const maxQty = sourceItem.availableQty;
+  const maxQty = sourceItem.isExpired ? sourceItem.onHandQty : sourceItem.availableQty;
+  const unitName = sourceItem.unit || 'Cái';
+  const selectedTargetLoc = locations.find((l) => l.id === Number(targetLocationId));
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -121,6 +128,15 @@ export const StockTransferModal: React.FC<StockTransferModalProps> = ({
             </div>
           )}
 
+          {sourceItem.isExpired && (
+            <div className="p-3 rounded-xl bg-amber-50 border border-amber-200 text-amber-900 text-xs flex items-start gap-2">
+              <AlertCircle className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
+              <div>
+                <span className="font-bold">Lô hàng đã quá hạn sử dụng:</span> Cho phép điều chuyển toàn bộ số lượng vật lý (<strong>{sourceItem.onHandQty} {unitName}</strong>) từ ô lưu trữ sang ô kệ cách ly để chờ kiểm định hoặc tiêu hủy.
+              </div>
+            </div>
+          )}
+
           {/* Chi tiết mặt hàng nguồn */}
           <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-200 space-y-2">
             <div className="flex items-center justify-between">
@@ -131,12 +147,12 @@ export const StockTransferModal: React.FC<StockTransferModalProps> = ({
             </div>
             <div className="grid grid-cols-2 gap-2 text-slate-600 font-mono text-2xs pt-1.5 border-t border-slate-200/80">
               <div>Số Lô: <strong className="text-slate-800 font-semibold">{sourceItem.batchNumber}</strong></div>
-              <div>Hạn dùng: <strong className="text-rose-600 font-semibold">{sourceItem.expiryDate}</strong></div>
+              <div>Hạn dùng: <strong className={sourceItem.isExpired ? "text-rose-600 font-bold" : "text-slate-700 font-semibold"}>{sourceItem.expiryDate} {sourceItem.isExpired ? '(Đã hết hạn)' : ''}</strong></div>
               <div className="flex items-center gap-1.5 col-span-2 whitespace-nowrap">
                 <MapPin className="w-3.5 h-3.5 text-slate-400" />
                 <span className="text-slate-500">Ô nguồn hiện tại: </span>
                 <strong className="text-slate-800 font-semibold">{sourceItem.locationBarcode}</strong>
-                <span className="text-slate-400">(Khả dụng: {maxQty} SP)</span>
+                <span className="text-slate-400">({sourceItem.isExpired ? `Tồn vật lý: ${maxQty} ${unitName}` : `Khả dụng: ${maxQty} ${unitName}`})</span>
               </div>
             </div>
           </div>
@@ -155,24 +171,46 @@ export const StockTransferModal: React.FC<StockTransferModalProps> = ({
             >
               {locations
                 .filter((l) => l.barcode !== sourceItem.locationBarcode && l.id !== sourceItem.locationId)
-                .map((loc) => (
-                  <option key={loc.id} value={loc.id}>
-                    {loc.barcode} • {loc.zoneName} (Tầng {loc.shelf})
-                  </option>
-                ))}
+                .map((loc) => {
+                  const capDesc = loc.status === 'EMPTY' ? 'Ô trống' : loc.qty ? `Đang có ${loc.qty} SP` : 'Sẵn sàng';
+                  return (
+                    <option key={loc.id} value={loc.id}>
+                      {loc.barcode} • {loc.zoneName} (Tầng {loc.shelf}) [{capDesc}]
+                    </option>
+                  );
+                })}
             </select>
+
+            {selectedTargetLoc && (
+              <div className="p-2.5 bg-slate-50 rounded-xl border border-slate-200 text-2xs flex items-center justify-between text-slate-600">
+                <div className="flex items-center gap-1.5 font-mono">
+                  <span className="font-semibold text-slate-700">Tải trọng thiết kế:</span>
+                  <span className="font-bold text-indigo-700">{selectedTargetLoc.maxWeight || 500} kg</span>
+                </div>
+                <div className="flex items-center gap-1.5">
+                  <span className="text-slate-500">Tình trạng:</span>
+                  <span className={`font-bold px-1.5 py-0.2 rounded border ${
+                    selectedTargetLoc.status === 'EMPTY'
+                      ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                      : 'bg-blue-50 text-blue-700 border-blue-200'
+                  }`}>
+                    {selectedTargetLoc.status === 'EMPTY' ? 'Ô Trống Khả Dụng' : 'Đang Chứa Hàng'}
+                  </span>
+                </div>
+              </div>
+            )}
           </div>
 
           {/* Số lượng điều chuyển */}
           <div className="space-y-1.5">
             <div className="flex items-center justify-between">
-              <label className="font-bold text-slate-800">Số Lượng Chuyển (Cái):</label>
+              <label className="font-bold text-slate-800">Số Lượng Chuyển ({unitName}):</label>
               <button
                 type="button"
                 onClick={() => setTransferQty(String(maxQty))}
                 className="text-2xs text-indigo-600 hover:text-indigo-800 font-bold cursor-pointer"
               >
-                Chuyển Hết ({maxQty})
+                Chuyển Hết ({maxQty} {unitName})
               </button>
             </div>
             <input
@@ -198,6 +236,7 @@ export const StockTransferModal: React.FC<StockTransferModalProps> = ({
               <option value="Hạ tải xuống tầng đáy S01 an toàn">Hạ tải xuống tầng đáy S01 an toàn</option>
               <option value="Chuyển vào kho mát Zone B bảo quản">Chuyển vào kho mát Zone B bảo quản</option>
               <option value="Gom hàng cận HSD gần cửa xuất (Picking)">Gom hàng cận HSD gần cửa xuất (Picking)</option>
+              <option value="Chuyển vào khu cách ly / chờ tiêu hủy (Quarantine / Disposal)">Chuyển vào khu cách ly / chờ tiêu hủy (Quarantine / Disposal)</option>
               <option value="Khác">Khác...</option>
             </select>
             {notes === 'Khác' && (

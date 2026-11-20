@@ -32,6 +32,12 @@ public class UpdateUserRequest {
     @Schema(description = "Kho hàng phụ trách", example = "Kho Tổng Tân Bình (ZONE A & B)")
     private String assignedWarehouse;
 
+    @Schema(description = "Danh sách ID các kho được phép truy cập")
+    private java.util.List<Long> assignedWarehouseIds;
+
+    @Schema(description = "ID kho chính")
+    private Long primaryWarehouseId;
+
     @Schema(description = "Số điện thoại liên hệ", example = "0900000002")
     private String phone;
 

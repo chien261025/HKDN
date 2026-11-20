@@ -2,6 +2,9 @@ import React, { useState, useEffect } from 'react';
 import { Package, Truck, CheckCircle2, ScanLine, ArrowRight, RefreshCw, Clock, Layers } from 'lucide-react';
 import { operatorService, InboundOrderDto, ProductDto } from '../../services/operatorService';
 import { soundEffects } from '../../utils/soundEffects';
+import { ReceiveQcModal } from '../../../inbound/components/ReceiveQcModal';
+import { inboundService } from '../../../inbound/services/inboundService';
+import { ReceiptLine } from '../../../inbound/types';
 
 interface InboundStagingTabProps {
   onOpenScanner: () => void;
@@ -18,6 +21,7 @@ export const InboundStagingTab: React.FC<InboundStagingTabProps> = ({
   const [products, setProducts] = useState<ProductDto[]>([]);
   const [loading, setLoading] = useState(false);
   const [receivingId, setReceivingId] = useState<number | null>(null);
+  const [qcOrder, setQcOrder] = useState<InboundOrderDto | null>(null);
   const [notice, setNotice] = useState<{ msg: string; type: 'success' | 'error' } | null>(null);
 
   const loadData = async () => {
@@ -61,22 +65,21 @@ export const InboundStagingTab: React.FC<InboundStagingTabProps> = ({
     }
   }, [scannedCode, products, onClearScannedCode]);
 
-  const handleConfirmReceive = async (order: InboundOrderDto) => {
-    setReceivingId(order.id);
+  const handleConfirmReceive = async (id: string, lines: ReceiptLine[]) => {
+    setReceivingId(Number(id));
     setNotice(null);
     try {
-      await operatorService.confirmReceiveInboundOrder(order.id);
+      await inboundService.receiveOrder(id, lines);
       soundEffects.playCompleteChime();
-      setOrders((prev) =>
-        prev.map((o) => (o.id === order.id ? { ...o, status: 'RECEIVED' } : o))
-      );
+      await loadData();
       setNotice({
-        msg: `Thành công: Đã tiếp nhận toàn bộ kiện hàng của đơn ${order.orderCode} vào Khu Đệm (STAGING)!`,
+        msg: `Đã ghi số thực nhận và kết quả QC cho đơn ${qcOrder?.orderCode}.`,
         type: 'success',
       });
     } catch (err: any) {
       soundEffects.playErrorBuzz();
       setNotice({ msg: 'Lỗi tiếp nhận đơn: ' + err.message, type: 'error' });
+      throw err;
     } finally {
       setReceivingId(null);
       setTimeout(() => setNotice(null), 4000);
@@ -94,6 +97,13 @@ export const InboundStagingTab: React.FC<InboundStagingTabProps> = ({
 
   return (
     <div className="space-y-4 pb-20">
+      {qcOrder && <ReceiveQcModal onClose={() => setQcOrder(null)} onConfirmReceive={handleConfirmReceive}
+        order={{ id: String(qcOrder.id), poCode: qcOrder.orderCode, supplierName: qcOrder.supplier?.name ?? `NCC #${qcOrder.supplierId}`,
+          items: (qcOrder.items ?? []).map(i => {
+            const p = products.find(p => p.id === i.productId);
+            return { ...i, id: String(i.id), sku: p?.sku ?? String(i.productId), productName: p?.name ?? `#${i.productId}`,
+              unit: p?.unit ?? '', status: 'PENDING' };
+          }) }} />}
       {/* Header Banner */}
       <div className="p-4 rounded-2xl bg-white border border-slate-200 flex items-center justify-between shadow-xs">
         <div className="flex items-center gap-3">
@@ -213,7 +223,7 @@ export const InboundStagingTab: React.FC<InboundStagingTabProps> = ({
                 <button
                   type="button"
                   disabled={receivingId === order.id}
-                  onClick={() => handleConfirmReceive(order)}
+                  onClick={() => setQcOrder(order)}
                   className="flex items-center gap-2 px-4 py-2 bg-cyan-600 hover:bg-cyan-700 active:bg-cyan-800 disabled:opacity-50 text-white rounded-xl text-xs font-bold shadow-md shadow-cyan-200 transition-all cursor-pointer"
                 >
                   {receivingId === order.id ? (
@@ -221,7 +231,7 @@ export const InboundStagingTab: React.FC<InboundStagingTabProps> = ({
                   ) : (
                     <CheckCircle2 className="w-4 h-4" />
                   )}
-                  <span>Xác Nhận Nhập Kho Staging</span>
+                  <span>Kiểm đếm và nhận hàng</span>
                 </button>
               </div>
             </div>

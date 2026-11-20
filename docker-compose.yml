@@ -11,7 +11,7 @@ services:
     ports:
       - "3307:3306"
     healthcheck:
-      test: ["CMD-SHELL", "mysqladmin ping -h localhost -uroot -ppassword123 --silent"]
+      test: ["CMD-SHELL", "mysqladmin ping --protocol=tcp -h 127.0.0.1 -uroot -ppassword123 --silent"]
       interval: 10s
       timeout: 5s
       retries: 10
@@ -19,6 +19,20 @@ services:
     volumes:
       - wms_mysqldata:/var/lib/mysql
       - ./docker/mysql/init:/docker-entrypoint-initdb.d
+    networks:
+      - wms-net
+
+  # Apply the same upgrade to existing named volumes before Hibernate starts.
+  wms-schema:
+    image: mysql:8.0
+    depends_on:
+      wms-mysql:
+        condition: service_healthy
+    environment:
+      MYSQL_PWD: password123
+    entrypoint: ["sh", "-ec", "mysql --default-character-set=utf8mb4 -hwms-mysql -uroot wms_db < /upgrade.sql"]
+    volumes:
+      - ./docker/mysql/init/08-inbound-qc-ledger.sql:/upgrade.sql:ro
     networks:
       - wms-net
 
@@ -96,6 +110,8 @@ services:
         condition: service_healthy
       wms-minio:
         condition: service_started
+      wms-schema:
+        condition: service_completed_successfully
       wms-redis:
         condition: service_healthy
     environment:

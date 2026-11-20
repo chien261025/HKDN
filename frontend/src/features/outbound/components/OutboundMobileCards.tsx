@@ -16,7 +16,10 @@ interface OutboundMobileCardsProps {
   onSelectOrder: (order: OutboundOrder) => void;
   onAllocateAndLock: (orderId: string) => void;
   onDispatchOrder: (orderId: string) => void;
+  onCancelOrder: (orderId: string) => void;
   onOpenPickPath?: (order: OutboundOrder) => void;
+  onStartPicking?: (order: OutboundOrder) => void;
+  onOpenVoucher?: (order: OutboundOrder) => void;
 }
 
 export const OutboundMobileCards: React.FC<OutboundMobileCardsProps> = ({
@@ -24,7 +27,10 @@ export const OutboundMobileCards: React.FC<OutboundMobileCardsProps> = ({
   onSelectOrder,
   onAllocateAndLock,
   onDispatchOrder,
+  onCancelOrder,
   onOpenPickPath,
+  onStartPicking,
+  onOpenVoucher,
 }) => {
   if (orders.length === 0) {
     return <div className="text-center py-8 text-xs text-slate-400">Không có đơn xuất kho nào.</div>;
@@ -124,7 +130,16 @@ export const OutboundMobileCards: React.FC<OutboundMobileCardsProps> = ({
                   <span>Phân Bổ Lô</span>
                 </button>
               )}
-              {(isAllocated || isPicking) && (
+              {isAllocated && onStartPicking && (
+                <button
+                  onClick={() => onStartPicking(order)}
+                  className="flex-1 py-2 px-2.5 bg-amber-600 hover:bg-amber-700 text-white rounded-lg text-xs font-semibold shadow-xs transition-colors flex items-center justify-center gap-1 cursor-pointer"
+                >
+                  <ShieldCheck className="w-3.5 h-3.5" />
+                  <span>Lấy Hàng</span>
+                </button>
+              )}
+              {isPicking && (
                 <button
                   onClick={() => onDispatchOrder(order.id)}
                   className="flex-1 py-2 px-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-semibold shadow-xs transition-colors flex items-center justify-center gap-1 cursor-pointer"
@@ -133,7 +148,16 @@ export const OutboundMobileCards: React.FC<OutboundMobileCardsProps> = ({
                   <span>Xuất Kho</span>
                 </button>
               )}
-              {onOpenPickPath && (
+              {isDispatched && onOpenVoucher && (
+                <button
+                  onClick={() => onOpenVoucher(order)}
+                  className="flex-1 py-2 px-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-xs font-semibold shadow-xs transition-colors flex items-center justify-center gap-1 cursor-pointer"
+                >
+                  <CheckCircle2 className="w-3.5 h-3.5" />
+                  <span>Phiếu GIN</span>
+                </button>
+              )}
+              {onOpenPickPath && (isAllocated || isPicking) && (
                 <button
                   onClick={() => onOpenPickPath(order)}
                   className="py-2 px-2.5 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200 rounded-lg text-xs font-semibold shadow-2xs transition-colors flex items-center justify-center gap-1 cursor-pointer"
@@ -149,6 +173,18 @@ export const OutboundMobileCards: React.FC<OutboundMobileCardsProps> = ({
                 <Eye className="w-3.5 h-3.5 text-slate-500" />
                 <span>Chi Tiết</span>
               </button>
+              {(isPending || isAllocated) && (
+                <button
+                  onClick={() => {
+                    if (confirm(`Bạn có chắc chắn muốn hủy đơn xuất ${order.soCode}? Hệ thống sẽ giải phóng toàn bộ số lượng hàng đã giữ trước (Reserved Stock).`)) {
+                      onCancelOrder(order.id);
+                    }
+                  }}
+                  className="py-2 px-2.5 bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 rounded-lg text-xs font-semibold shadow-2xs transition-colors flex items-center justify-center gap-1 cursor-pointer"
+                >
+                  <span>Hủy</span>
+                </button>
+              )}
             </div>
           </div>
         );

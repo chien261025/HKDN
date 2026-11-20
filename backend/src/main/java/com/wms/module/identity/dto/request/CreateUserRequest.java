@@ -36,6 +36,18 @@ public class CreateUserRequest {
     @Schema(description = "Vai trò RBAC (ROLE_ADMIN, ROLE_WAREHOUSE_MANAGER, ROLE_OPERATOR)", example = "ROLE_OPERATOR")
     private String role;
 
+    @Schema(description = "Kho hàng phụ trách", example = "Kho Tổng Tân Bình - TP.HCM")
+    private String assignedWarehouse;
+
+    @Schema(description = "Danh sách ID các kho được phép truy cập")
+    private java.util.List<Long> assignedWarehouseIds;
+
+    @Schema(description = "ID kho chính")
+    private Long primaryWarehouseId;
+
+    @Schema(description = "Số điện thoại liên hệ")
+    private String phone;
+
     @Schema(description = "Thời gian hết hạn hợp đồng tài khoản thời vụ (Tùy chọn, ISO 8601)", example = "2026-12-31T23:59:59Z")
     private java.time.Instant expiresAt;
 }

@@ -2,13 +2,19 @@ import React from 'react';
 import { PackageCheck, Clock, ShieldCheck, Plus, CheckCircle2 } from 'lucide-react';
 import { OutboundOrder } from '../types';
 
+export type OutboundFilterStatus = 'ALL' | 'PENDING' | 'PICKING' | 'DISPATCHED';
+
 interface OutboundHeaderProps {
   orders: OutboundOrder[];
+  activeStatus?: OutboundFilterStatus;
+  onStatusChange?: (status: OutboundFilterStatus) => void;
   onOpenCreateModal: () => void;
 }
 
 export const OutboundHeader: React.FC<OutboundHeaderProps> = ({
   orders,
+  activeStatus = 'ALL',
+  onStatusChange,
   onOpenCreateModal,
 }) => {
   const totalCount = orders.length;
@@ -21,7 +27,7 @@ export const OutboundHeader: React.FC<OutboundHeaderProps> = ({
       {/* Top Banner Row */}
       <div className="bg-white rounded-2xl p-5 sm:p-6 border border-slate-200/90 shadow-sm flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
         <div className="flex items-center gap-4">
-          <div className="w-12 h-12 rounded-xl bg-blue-600 flex items-center justify-center text-white shadow-md shadow-blue-200 shrink-0 ring-4 ring-blue-50">
+          <div className="w-12 h-12 rounded-2xl bg-blue-600 flex items-center justify-center text-white shadow-md shadow-blue-200 shrink-0 ring-4 ring-blue-50">
             <PackageCheck className="w-6 h-6 text-white" />
           </div>
           <div>
@@ -36,17 +42,23 @@ export const OutboundHeader: React.FC<OutboundHeaderProps> = ({
 
         <button
           onClick={onOpenCreateModal}
-          className="flex items-center gap-2 px-4 py-2.5 bg-blue-600 hover:bg-blue-700 active:scale-[0.99] text-white rounded-xl text-xs sm:text-sm font-bold shadow-sm shadow-blue-200 transition-all shrink-0 cursor-pointer"
+          className="flex items-center gap-2 px-4 py-2.5 bg-blue-600 hover:bg-blue-700 active:scale-[0.99] text-white rounded-xl text-xs sm:text-sm font-bold shadow-md shadow-blue-200 transition-all shrink-0 cursor-pointer"
         >
           <Plus className="w-4 h-4" />
           <span>+ Tạo Đơn Xuất Kho</span>
         </button>
       </div>
 
-      {/* 4 Pipeline Stage KPI Cards */}
+      {/* 4 Pipeline Stage KPI Cards - Interactive Filter */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3.5">
         {/* Total SO */}
-        <div className="bg-white rounded-2xl p-4 sm:p-5 border border-slate-200/90 border-l-4 border-l-slate-700 shadow-sm hover:shadow-md transition-all">
+        <div
+          onClick={() => onStatusChange?.('ALL')}
+          className={`bg-white rounded-2xl p-4 sm:p-5 border border-slate-200/90 border-l-4 border-l-slate-700 shadow-sm hover:shadow-md transition-all cursor-pointer select-none ${
+            activeStatus === 'ALL' ? 'ring-2 ring-slate-400' : ''
+          }`}
+          title="Nhấn để xem toàn bộ danh sách đơn SO"
+        >
           <div className="flex items-start justify-between">
             <div>
               <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider block">Tổng Nhu Cầu SO</span>
@@ -60,7 +72,13 @@ export const OutboundHeader: React.FC<OutboundHeaderProps> = ({
         </div>
 
         {/* Stage 1: Pending */}
-        <div className="bg-white rounded-2xl p-4 sm:p-5 border border-slate-200/90 border-l-4 border-l-amber-500 shadow-sm hover:shadow-md transition-all">
+        <div
+          onClick={() => onStatusChange?.('PENDING')}
+          className={`bg-white rounded-2xl p-4 sm:p-5 border border-slate-200/90 border-l-4 border-l-amber-500 shadow-sm hover:shadow-md transition-all cursor-pointer select-none ${
+            activeStatus === 'PENDING' ? 'ring-2 ring-amber-400' : ''
+          }`}
+          title="Nhấn để lọc các đơn chờ phân bổ lô FEFO"
+        >
           <div className="flex items-start justify-between">
             <div>
               <span className="text-[11px] font-bold text-amber-700 uppercase tracking-wider block">1. Chờ Phân Bổ</span>
@@ -77,7 +95,13 @@ export const OutboundHeader: React.FC<OutboundHeaderProps> = ({
         </div>
 
         {/* Stage 2: Picking */}
-        <div className="bg-white rounded-2xl p-4 sm:p-5 border border-slate-200/90 border-l-4 border-l-blue-600 shadow-sm hover:shadow-md transition-all">
+        <div
+          onClick={() => onStatusChange?.('PICKING')}
+          className={`bg-white rounded-2xl p-4 sm:p-5 border border-slate-200/90 border-l-4 border-l-blue-600 shadow-sm hover:shadow-md transition-all cursor-pointer select-none ${
+            activeStatus === 'PICKING' ? 'ring-2 ring-blue-400' : ''
+          }`}
+          title="Nhấn để lọc các đơn đang lấy hàng / đã giữ hàng"
+        >
           <div className="flex items-start justify-between">
             <div>
               <span className="text-[11px] font-bold text-blue-700 uppercase tracking-wider block">2. Đang Lấy Hàng</span>
@@ -94,10 +118,16 @@ export const OutboundHeader: React.FC<OutboundHeaderProps> = ({
         </div>
 
         {/* Stage 3: Dispatched */}
-        <div className="bg-white rounded-2xl p-4 sm:p-5 border border-slate-200/90 border-l-4 border-l-emerald-600 shadow-sm hover:shadow-md transition-all">
+        <div
+          onClick={() => onStatusChange?.('DISPATCHED')}
+          className={`bg-white rounded-2xl p-4 sm:p-5 border border-slate-200/90 border-l-4 border-l-emerald-600 shadow-sm hover:shadow-md transition-all cursor-pointer select-none ${
+            activeStatus === 'DISPATCHED' ? 'ring-2 ring-emerald-400' : ''
+          }`}
+          title="Nhấn để lọc các đơn đã hoàn tất xuất kho"
+        >
           <div className="flex items-start justify-between">
             <div>
-              <span className="text-[11px] font-bold text-emerald-700 uppercase tracking-wider block">3. Đã Xuất Xưởng</span>
+              <span className="text-[11px] font-bold text-emerald-700 uppercase tracking-wider block">3. Đã Xuất Kho</span>
               <div className="text-2xl sm:text-3xl font-black text-emerald-600 font-mono mt-1.5 tabular-nums">{dispatchedCount}</div>
             </div>
             <div className="p-2.5 rounded-xl bg-emerald-50 text-emerald-700 border border-emerald-200">
@@ -113,4 +143,3 @@ export const OutboundHeader: React.FC<OutboundHeaderProps> = ({
     </div>
   );
 };
-

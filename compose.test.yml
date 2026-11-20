@@ -1,0 +1,31 @@
+name: smart-wms-tests
+services:
+  mysql:
+    image: mysql:8.0
+    environment:
+      MYSQL_DATABASE: wms_db
+      MYSQL_ROOT_PASSWORD: test-only
+    tmpfs:
+      - /var/lib/mysql
+    volumes:
+      - ./docker/mysql/init:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "--protocol=tcp", "-h127.0.0.1", "-uroot", "-ptest-only"]
+      interval: 2s
+      timeout: 5s
+      retries: 60
+  tests:
+    image: ${WMS_TEST_MAVEN_IMAGE:-maven:3.9-eclipse-temurin-25}
+    depends_on:
+      mysql:
+        condition: service_healthy
+    environment:
+      DB_HOST: mysql
+      DB_PASSWORD: test-only
+    volumes:
+      - ./backend:/source:ro
+      - maven-cache:/root/.m2
+    working_dir: /build
+    entrypoint: ["sh", "-ec", "cp -r /source/pom.xml /source/src . && mvn -B test"]
+volumes:
+  maven-cache:

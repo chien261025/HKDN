@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { ArrowRight, CheckCircle2, Clock, ArrowRightLeft } from 'lucide-react';
+import { ArrowRight, CheckCircle2, Clock, ArrowRightLeft, FileText } from 'lucide-react';
 import { StockTransferDto } from '../../types';
 import { Pagination } from '../../../../components/common';
 
@@ -14,6 +14,7 @@ interface StockTransferHistoryTableProps {
 export const StockTransferHistoryTable: React.FC<StockTransferHistoryTableProps> = ({
   transfers,
   loading,
+  onViewLedger,
 }) => {
   const [currentPage, setCurrentPage] = useState(1);
   const totalPages = Math.max(1, Math.ceil(transfers.length / PAGE_SIZE));
@@ -115,6 +116,7 @@ export const StockTransferHistoryTable: React.FC<StockTransferHistoryTableProps>
               <th className="py-3 px-4 text-right min-w-[100px] whitespace-nowrap">Số Lượng</th>
               <th className="py-3 px-4 min-w-[220px]">Thời Gian & Ghi Chú</th>
               <th className="py-3 px-4 text-center min-w-[110px] whitespace-nowrap">Trạng Thái</th>
+              <th className="py-3 px-4 text-right min-w-[100px] whitespace-nowrap">Thao Tác</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-100 text-slate-800">
@@ -164,6 +166,19 @@ export const StockTransferHistoryTable: React.FC<StockTransferHistoryTableProps>
                     <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
                     <span>Hoàn Tất</span>
                   </span>
+                </td>
+
+                <td className="py-3 px-4 text-right whitespace-nowrap">
+                  {onViewLedger && (
+                    <button
+                      onClick={() => onViewLedger(t)}
+                      className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-semibold bg-slate-50 hover:bg-slate-100 text-slate-700 border border-slate-200 transition-colors cursor-pointer"
+                      title="Xem bút toán đối ứng trên Sổ cái"
+                    >
+                      <FileText className="w-3 h-3 text-slate-500" />
+                      <span>Thẻ Kho</span>
+                    </button>
+                  )}
                 </td>
               </tr>
             ))}

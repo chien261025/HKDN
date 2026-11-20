@@ -14,9 +14,9 @@ ON DUPLICATE KEY UPDATE name=VALUES(name), description=VALUES(description);
 
 -- Nạp Tài khoản mặc định (Mật khẩu demo: 123456)
 INSERT INTO wms_user (id, username, password_hash, full_name, email, is_active, must_change_password) VALUES
-(1, 'admin', '$2a$10$w8T0MhD17kP25y2oW7p1xe4V0zP5Nq8T9aV7X6Z1G4H2J3K5L6M7O', 'Nguyễn Quản Trị', 'admin@smartwms.vn', TRUE, FALSE),
-(2, 'manager01', '$2a$10$w8T0MhD17kP25y2oW7p1xe4V0zP5Nq8T9aV7X6Z1G4H2J3K5L6M7O', 'Trần Trưởng Kho', 'manager@smartwms.vn', TRUE, FALSE),
-(3, 'operator01', '$2a$10$w8T0MhD17kP25y2oW7p1xe4V0zP5Nq8T9aV7X6Z1G4H2J3K5L6M7O', 'Lê Thủ Kho', 'operator@smartwms.vn', TRUE, FALSE)
+(1, 'admin', '$2a$10$j.sA7hkbGlKNm8HhzTdRNuUgXzf0LRTN1Tyx5sbzo.6m/uIu9oHkm', 'Nguyễn Quản Trị', 'admin@smartwms.vn', TRUE, FALSE),
+(2, 'manager01', '$2a$10$j.sA7hkbGlKNm8HhzTdRNuUgXzf0LRTN1Tyx5sbzo.6m/uIu9oHkm', 'Trần Trưởng Kho', 'manager@smartwms.vn', TRUE, FALSE),
+(3, 'operator01', '$2a$10$j.sA7hkbGlKNm8HhzTdRNuUgXzf0LRTN1Tyx5sbzo.6m/uIu9oHkm', 'Lê Thủ Kho', 'operator@smartwms.vn', TRUE, FALSE)
 ON DUPLICATE KEY UPDATE username=VALUES(username), password_hash=VALUES(password_hash), full_name=VALUES(full_name), email=VALUES(email);
 
 INSERT INTO wms_user_role (user_id, role_id) VALUES
@@ -50,12 +50,18 @@ INSERT INTO wms_category (id, code, name, parent_id, is_active) VALUES
 (5, 'CAT-CHEM',  'Hóa mỹ phẩm & Tẩy rửa', NULL, TRUE)
 ON DUPLICATE KEY UPDATE code=VALUES(code), name=VALUES(name), parent_id=VALUES(parent_id);
 
--- 5. Nạp Nhà cung cấp
+-- 5. Nạp Nhà cung cấp & Đối tác Khách hàng
 INSERT INTO wms_supplier (id, code, name, contact_phone) VALUES
 (1, 'SUP-VINAMILK', 'Công ty Cổ phần Sữa Việt Nam', '02854155555'),
 (2, 'SUP-SAMSUNG',  'Công ty TNHH Điện tử Samsung Vina', '02839157310'),
-(3, 'SUP-UNILEVER', 'Công ty TNHH Quốc tế Unilever Việt Nam', '02854135686')
-ON DUPLICATE KEY UPDATE code=VALUES(code), name=VALUES(contact_phone);
+(3, 'SUP-UNILEVER', 'Công ty TNHH Quốc tế Unilever Việt Nam', '02854135686'),
+(103, 'CUST-WINMART', 'Hệ thống Siêu thị WinMart Thảo Điền', '02871081368'),
+(104, 'CUST-COOPMART', 'Siêu thị Co.opmart Cống Quỳnh', '02838325238'),
+(105, 'CUST-FPTSHOP', 'Chuỗi bán lẻ FPT Shop TP.HCM', '18006601'),
+(106, 'CUST-LOTTEMART', 'Đại siêu thị Lotte Mart Quận 7', '02837753232'),
+(107, 'CUST-BACHHOAXANH', 'Hệ thống Siêu thị Bách Hóa Xanh', '19001908'),
+(108, 'CUST-DIENMAYXANH', 'Chuỗi Điện Máy Xanh Miền Đông', '18001061')
+ON DUPLICATE KEY UPDATE code=VALUES(code), name=VALUES(name), contact_phone=VALUES(contact_phone);
 
 -- 6. Nạp Danh mục Sản phẩm
 INSERT INTO wms_product (id, sku, barcode, name, category_id, unit, safety_stock, reorder_point) VALUES

@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { Navigation, Compass, Layers } from 'lucide-react';
 
 export interface PickWaypoint {
@@ -8,6 +8,9 @@ export interface PickWaypoint {
   sku: string;
   locationBarcode: string;
   qty: number;
+  unit?: string;
+  batchNumber?: string;
+  expiryDate?: string;
   x: number;
   y: number;
   zone: string;
@@ -43,30 +46,40 @@ export const WarehouseFloorMapSvg: React.FC<WarehouseFloorMapSvgProps> = ({
   onSelectWaypoint,
 }) => {
   // Start: Dock 01, Finish: Bàn Đóng Gói QC
-  const startPoint = { x: 80, y: 450, label: 'DOCK 01' };
-  const endPoint = { x: 900, y: 450, label: 'BÀN QC' };
+  const startPoint = useMemo(() => ({ x: 80, y: 450, label: 'DOCK 01' }), []);
+  const endPoint = useMemo(() => ({ x: 900, y: 450, label: 'BÀN QC' }), []);
 
-  // Thứ tự lộ trình: Tối ưu (S-Shape) vs Ngẫu nhiên (Random)
-  const orderedPoints = isOptimal
-    ? [...waypoints].sort((a, b) => a.stepNumber - b.stepNumber)
-    : [waypoints[2] || waypoints[0], waypoints[0], waypoints[3] || waypoints[1], waypoints[1]].filter(Boolean);
+  // Thứ tự lộ trình: Tối ưu (S-Shape) vs Tự do (Ngẫu nhiên)
+  const orderedPoints = useMemo(() => {
+    if (waypoints.length <= 1) return waypoints;
+    if (isOptimal) {
+      return [...waypoints].sort((a, b) => a.stepNumber - b.stepNumber);
+    }
+    // Lối đi tự do không tối ưu (đảo thứ tự để đi đường dài hơn)
+    return [...waypoints].reverse();
+  }, [waypoints, isOptimal]);
 
-  const pathCoordinates = [
+  const pathCoordinates = useMemo(() => [
     startPoint,
     ...orderedPoints.map((p) => ({ x: p.x, y: p.y })),
     endPoint,
-  ];
+  ], [startPoint, orderedPoints, endPoint]);
 
-  const pathD = pathCoordinates.reduce((acc, pt, idx) => {
-    return idx === 0 ? `M ${pt.x} ${pt.y}` : `${acc} L ${pt.x} ${pt.y}`;
-  }, '');
+  const pathD = useMemo(() => {
+    return pathCoordinates.reduce((acc, pt, idx) => {
+      return idx === 0 ? `M ${pt.x} ${pt.y}` : `${acc} L ${pt.x} ${pt.y}`;
+    }, '');
+  }, [pathCoordinates]);
 
-  // Vị trí avatar người nhặt hàng theo activeStep
-  const currentAvatarPos = activeStep === 0
-    ? startPoint
-    : activeStep > waypoints.length
-      ? endPoint
-      : orderedPoints[activeStep - 1] || startPoint;
+  // Vị trí avatar người nhặt hàng theo activeStep:
+  // 0: Dock 01
+  // 1..orderedPoints.length: Điểm lấy hàng tương ứng
+  // > orderedPoints.length: Bàn đóng gói QC
+  const currentAvatarPos = useMemo(() => {
+    if (activeStep === 0) return startPoint;
+    if (activeStep > orderedPoints.length) return endPoint;
+    return orderedPoints[activeStep - 1] || startPoint;
+  }, [activeStep, orderedPoints, startPoint, endPoint]);
 
   return (
     <div className="relative w-full aspect-[16/10] bg-[#070d19] rounded-2xl overflow-hidden border-2 border-slate-700/80 shadow-2xl select-none">
@@ -203,17 +216,45 @@ export const WarehouseFloorMapSvg: React.FC<WarehouseFloorMapSvgProps> = ({
         </path>
 
         {/* ================= ĐIỂM XUẤT PHÁT: DOCK 01 ================= */}
-        <g transform={`translate(${startPoint.x}, ${startPoint.y})`}>
-          <rect x="-45" y="-35" width="90" height="55" fill="#1e3a8a" stroke="#60a5fa" strokeWidth="2" rx="8" />
-          <circle cx="0" cy="-10" r="15" fill="#3b82f6" />
+        <g
+          transform={`translate(${startPoint.x}, ${startPoint.y})`}
+          className="cursor-pointer"
+          onClick={() => onSelectWaypoint(0)}
+        >
+          <rect
+            x="-45"
+            y="-35"
+            width="90"
+            height="55"
+            fill="#1e3a8a"
+            stroke={activeStep === 0 ? '#fbbf24' : '#60a5fa'}
+            strokeWidth={activeStep === 0 ? 3 : 2}
+            rx="8"
+            className={activeStep === 0 ? 'animate-pulse' : ''}
+          />
+          <circle cx="0" cy="-10" r="15" fill={activeStep === 0 ? '#2563eb' : '#1d4ed8'} />
           <text x="0" y="-5" fill="#ffffff" fontSize="11" fontWeight="bold" textAnchor="middle">START</text>
           <text x="0" y="12" fill="#bfdbfe" fontSize="10" fontWeight="bold" textAnchor="middle">CỬA DOCK 01</text>
         </g>
 
         {/* ================= ĐIỂM KẾT THÚC: BÀN ĐÓNG GÓI QC ================= */}
-        <g transform={`translate(${endPoint.x}, ${endPoint.y})`}>
-          <rect x="-55" y="-35" width="110" height="55" fill="#064e3b" stroke="#34d399" strokeWidth="2" rx="8" />
-          <circle cx="0" cy="-10" r="15" fill="#10b981" />
+        <g
+          transform={`translate(${endPoint.x}, ${endPoint.y})`}
+          className="cursor-pointer"
+          onClick={() => onSelectWaypoint(orderedPoints.length + 1)}
+        >
+          <rect
+            x="-55"
+            y="-35"
+            width="110"
+            height="55"
+            fill="#064e3b"
+            stroke={activeStep > orderedPoints.length ? '#fbbf24' : '#34d399'}
+            strokeWidth={activeStep > orderedPoints.length ? 3 : 2}
+            rx="8"
+            className={activeStep > orderedPoints.length ? 'animate-pulse' : ''}
+          />
+          <circle cx="0" cy="-10" r="15" fill={activeStep > orderedPoints.length ? '#059669' : '#047857'} />
           <text x="0" y="-5" fill="#ffffff" fontSize="11" fontWeight="bold" textAnchor="middle">FINISH</text>
           <text x="0" y="12" fill="#a7f3d0" fontSize="10" fontWeight="bold" textAnchor="middle">BÀN ĐÓNG GÓI QC</text>
         </g>
@@ -267,12 +308,35 @@ export const WarehouseFloorMapSvg: React.FC<WarehouseFloorMapSvgProps> = ({
           );
         })}
 
-        {/* ================= THỦ KHO AVATAR (DI CHUYỂN THỜI GIAN THỰC) ================= */}
-        <g transform={`translate(${currentAvatarPos.x}, ${currentAvatarPos.y + 24})`}>
-          <rect x="-42" y="-10" width="84" height="20" fill="#f59e0b" rx="10" />
-          <text x="0" y="4" fill="#000000" fontSize="10" fontWeight="bold" textAnchor="middle">
-            🚶 Thủ kho đang ở đây
-          </text>
+        {/* ================= THỦ KHO AVATAR (DI CHUYỂN MƯỢT MÀ THỜI GIAN THỰC) ================= */}
+        <g
+          transform={`translate(${currentAvatarPos.x}, ${currentAvatarPos.y + 16})`}
+          style={{ transition: 'transform 0.75s cubic-bezier(0.4, 0, 0.2, 1)' }}
+        >
+          {/* Radar ping phát sáng khi di chuyển */}
+          <circle r="18" fill="#f59e0b" fillOpacity="0.35" className="animate-ping" />
+          <circle r="12" fill="#fbbf24" stroke="#ffffff" strokeWidth="2.5" filter="drop-shadow(0 2px 8px rgba(0,0,0,0.8))" />
+
+          <g transform="translate(0, 18)">
+            <rect
+              x="-65"
+              y="-11"
+              width="130"
+              height="22"
+              fill="#020617"
+              stroke="#fbbf24"
+              strokeWidth="1.5"
+              rx="11"
+              filter="drop-shadow(0 4px 8px rgba(0,0,0,0.8))"
+            />
+            <text x="0" y="4" fill="#fef08a" fontSize="10.5" fontWeight="bold" textAnchor="middle">
+              {activeStep === 0
+                ? '🚶 Xuất phát: Cửa Dock 01'
+                : activeStep > orderedPoints.length
+                  ? '📦 Đích: Bàn QC & Đóng Gói'
+                  : `🚶 Điểm #${activeStep}: ${orderedPoints[activeStep - 1]?.rack || 'Ô Kệ'}`}
+            </text>
+          </g>
         </g>
       </svg>
     </div>

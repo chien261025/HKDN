@@ -2,11 +2,13 @@ package com.wms.module.inventory.entity;
 
 import jakarta.persistence.*;
 import lombok.*;
+import org.hibernate.annotations.Immutable;
 
 import java.time.Instant;
 
 @Entity
 @Table(name = "wms_stock_ledger")
+@Immutable
 @Getter
 @Setter
 @NoArgsConstructor
@@ -47,4 +49,14 @@ public class StockLedger {
     @Column(name = "created_at")
     @Builder.Default
     private Instant createdAt = Instant.now();
+
+    @PreUpdate
+    public void preUpdate() {
+        throw new UnsupportedOperationException("StockLedger là nhật ký bất biến (append-only). Nghiêm cấm cập nhật bản ghi đã ghi sổ.");
+    }
+
+    @PreRemove
+    public void preRemove() {
+        throw new UnsupportedOperationException("StockLedger là nhật ký bất biến (append-only). Nghiêm cấm xóa bản ghi đã ghi sổ.");
+    }
 }

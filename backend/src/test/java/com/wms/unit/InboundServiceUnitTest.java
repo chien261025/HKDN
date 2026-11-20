@@ -53,10 +53,10 @@ public class InboundServiceUnitTest {
                 .isActive(true)
                 .build();
 
-        when(locationRepository.findByZoneCode("ZONE_A")).thenReturn(List.of(locShelf2, locShelf1));
+        when(locationRepository.findByWarehouseIdAndZoneCode(1L, "ZONE_A")).thenReturn(List.of(locShelf2, locShelf1));
 
         // Hang nang 150kg (> 100kg)
-        Location result = inboundService.suggestOptimalPutAwayLocation("ZONE_A", BigDecimal.valueOf(150.0));
+        Location result = inboundService.suggestOptimalPutAwayLocation(1L, "ZONE_A", BigDecimal.valueOf(150.0));
 
         assertNotNull(result);
         assertEquals("S01", result.getShelf(), "Hang nang phai duoc uu tien dat tai tang tret S01");
@@ -88,10 +88,10 @@ public class InboundServiceUnitTest {
                 .isActive(true)
                 .build();
 
-        when(locationRepository.findByZoneCode("ZONE_A")).thenReturn(List.of(locLight, locHeavy));
+        when(locationRepository.findByWarehouseIdAndZoneCode(1L, "ZONE_A")).thenReturn(List.of(locLight, locHeavy));
 
         // Kien hang 80kg (<= 100kg nen khong bat buoc S01, nhung can du tai)
-        Location result = inboundService.suggestOptimalPutAwayLocation("ZONE_A", BigDecimal.valueOf(80.0));
+        Location result = inboundService.suggestOptimalPutAwayLocation(1L, "ZONE_A", BigDecimal.valueOf(80.0));
 
         assertNotNull(result);
         assertEquals(2L, result.getId());
@@ -101,10 +101,10 @@ public class InboundServiceUnitTest {
     @Test
     @DisplayName("Nem loi NOT_FOUND khi phan khu khong co o ke nao")
     void testSuggestLocation_ZoneNotFound() {
-        when(locationRepository.findByZoneCode("ZONE_Z")).thenReturn(Collections.emptyList());
+        when(locationRepository.findByWarehouseIdAndZoneCode(1L, "ZONE_Z")).thenReturn(Collections.emptyList());
 
         BusinessException ex = assertThrows(BusinessException.class, () ->
-                inboundService.suggestOptimalPutAwayLocation("ZONE_Z", BigDecimal.valueOf(20.0)));
+                inboundService.suggestOptimalPutAwayLocation(1L, "ZONE_Z", BigDecimal.valueOf(20.0)));
 
         assertEquals(ErrorCode.NOT_FOUND, ex.getErrorCode());
     }
@@ -122,11 +122,11 @@ public class InboundServiceUnitTest {
                 .isActive(true)
                 .build();
 
-        when(locationRepository.findByZoneCode("ZONE_A")).thenReturn(List.of(loc));
+        when(locationRepository.findByWarehouseIdAndZoneCode(1L, "ZONE_A")).thenReturn(List.of(loc));
 
         // Kien hang 500kg vuot qua tai trong 100kg
         BusinessException ex = assertThrows(BusinessException.class, () ->
-                inboundService.suggestOptimalPutAwayLocation("ZONE_A", BigDecimal.valueOf(500.0)));
+                inboundService.suggestOptimalPutAwayLocation(1L, "ZONE_A", BigDecimal.valueOf(500.0)));
 
         assertEquals(ErrorCode.LOCATION_FULL, ex.getErrorCode());
     }

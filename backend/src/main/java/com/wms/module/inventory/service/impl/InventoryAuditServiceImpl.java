@@ -83,7 +83,7 @@ public class InventoryAuditServiceImpl implements InventoryAuditService {
 
         // Snapshot danh mục tồn kho thực tế nếu danh sách kiểm đếm rỗng
         if (audit.getItems() == null || audit.getItems().isEmpty()) {
-            List<Inventory> allInventories = inventoryRepository.findAll();
+            List<Inventory> allInventories = inventoryRepository.findAuditStock(audit.getWarehouseId());
             for (Inventory inv : allInventories) {
                 if (inv.getOnHandQty() != null && inv.getOnHandQty() > 0) {
                     InventoryAuditItem item = InventoryAuditItem.builder()
@@ -99,6 +99,11 @@ public class InventoryAuditServiceImpl implements InventoryAuditService {
             }
         } else {
             for (InventoryAuditItem item : audit.getItems()) {
+                requireAuditLocation(audit, item.getLocationId());
+                var inv = inventoryRepository.findByProductIdAndLocationIdAndBatchId(
+                        item.getProductId(), item.getLocationId(), item.getBatchId())
+                        .orElseThrow(() -> new BusinessException(ErrorCode.BAD_REQUEST, "Dòng kiểm kê không có trong kho"));
+                item.setSystemQty(inv.getOnHandQty());
                 item.setAudit(audit);
                 if (item.getStatus() == null) {
                     item.setStatus("PENDING");
@@ -116,14 +121,18 @@ public class InventoryAuditServiceImpl implements InventoryAuditService {
 
     @Override
     public InventoryAuditResponse recordCount(Long auditId, Long itemId, Long locationId, Long productId, Integer countedQty, String notes) {
-        if (countedQty != null && countedQty < 0) {
-            throw new BusinessException(ErrorCode.BAD_REQUEST, "Số lượng kiểm đếm thực tế không được là số âm!");
+        if (countedQty == null || countedQty < 0) {
+            throw new BusinessException(ErrorCode.BAD_REQUEST, "Cần nhập số lượng kiểm đếm lớn hơn hoặc bằng 0");
         }
 
         InventoryAudit audit = inventoryAuditRepository.findById(auditId)
                 .orElseThrow(() -> new BusinessException(ErrorCode.NOT_FOUND, "Không tìm thấy đợt kiểm kê: " + auditId));
 
         InventoryAuditItem targetItem = null;
+        if (!"IN_PROGRESS".equals(audit.getStatus())) {
+            throw new BusinessException(ErrorCode.BAD_REQUEST, "Phiên kiểm kê đã đóng");
+        }
+        if (locationId != null) requireAuditLocation(audit, locationId);
         if (itemId != null) {
             targetItem = audit.getItems().stream()
                     .filter(i -> i.getId().equals(itemId))
@@ -131,33 +140,19 @@ public class InventoryAuditServiceImpl implements InventoryAuditService {
                     .orElse(null);
         }
 
-        if (targetItem == null && locationId != null) {
-            targetItem = audit.getItems().stream()
+        if (itemId == null && locationId != null) {
+            var matches = audit.getItems().stream()
                     .filter(i -> i.getLocationId().equals(locationId) && (productId == null || i.getProductId().equals(productId)))
-                    .findFirst()
-                    .orElse(null);
-        }
-
-        if (targetItem == null && locationId != null) {
-            targetItem = audit.getItems().stream()
-                    .filter(i -> i.getLocationId().equals(locationId))
-                    .findFirst()
-                    .orElse(null);
+                    .toList();
+            if (matches.size() == 1) targetItem = matches.get(0);
         }
 
         if (targetItem == null) {
-            targetItem = InventoryAuditItem.builder()
-                    .audit(audit)
-                    .locationId(locationId != null ? locationId : 1L)
-                    .productId(productId != null ? productId : 1L)
-                    .batchId(1L)
-                    .systemQty(0)
-                    .status("PENDING")
-                    .build();
-            audit.getItems().add(targetItem);
+            throw new BusinessException(ErrorCode.BAD_REQUEST, "Cần chọn đúng dòng sản phẩm và lô trong phiên kiểm kê");
         }
+        requireAuditLocation(audit, targetItem.getLocationId());
 
-        int safeCounted = countedQty != null ? countedQty : 0;
+        int safeCounted = countedQty;
         targetItem.setCountedQty(safeCounted);
         targetItem.setCountedAt(Instant.now());
         if (notes != null && !notes.isBlank()) {
@@ -211,7 +206,7 @@ public class InventoryAuditServiceImpl implements InventoryAuditService {
         }
 
         boolean hasUncounted = audit.getItems() != null && audit.getItems().stream().anyMatch(i -> i.getCountedQty() == null);
-        if (hasUncounted && !"COMPLETED".equals(audit.getStatus())) {
+        if (hasUncounted || !"COMPLETED".equals(audit.getStatus())) {
             throw new BusinessException(ErrorCode.BAD_REQUEST, "Đợt kiểm kê vẫn còn ô kệ chưa được đếm xong, không thể duyệt đối soát!");
         }
 
@@ -232,44 +227,44 @@ public class InventoryAuditServiceImpl implements InventoryAuditService {
         stockAdjustmentRepository.save(adjustment);
 
         for (InventoryAuditItem item : audit.getItems()) {
+            requireAuditLocation(audit, item.getLocationId());
             if (item.getCountedQty() != null && !item.getCountedQty().equals(item.getSystemQty())) {
                 int diff = item.getCountedQty() - item.getSystemQty();
 
-                Inventory inv = inventoryRepository.findByProductIdAndLocationIdAndBatchId(
+                Inventory inv = inventoryRepository.findByProductLocationAndBatchForUpdate(
                         item.getProductId(), item.getLocationId(), item.getBatchId()
-                ).orElse(null);
-
-                if (inv != null) {
-                    inv.setOnHandQty(Math.max(0, inv.getOnHandQty() + diff));
-                    inv.setLastUpdatedAt(Instant.now());
-                    inventoryRepository.saveAndFlush(inv);
-
-                    // Ghi sổ cái bất biến (Stock Ledger)
-                    StockLedger ledger = StockLedger.builder()
-                            .transactionType("ADJUSTMENT")
-                            .referenceCode(adjCode)
-                            .locationId(item.getLocationId())
-                            .productId(item.getProductId())
-                            .batchId(item.getBatchId())
-                            .qtyChange(diff)
-                            .balanceAfter(inv.getOnHandQty())
-                            .performedBy(currentUserId)
-                            .notes("Điều chỉnh cân đối kiểm kê " + audit.getAuditCode() + " (" + (diff > 0 ? "+" : "") + diff + ")")
-                            .createdAt(Instant.now())
-                            .build();
-                    stockLedgerRepository.save(ledger);
-
-                    // Thêm item vào phiếu điều chỉnh
-                    StockAdjustmentItem adjItem = StockAdjustmentItem.builder()
-                            .adjustment(adjustment)
-                            .locationId(item.getLocationId())
-                            .productId(item.getProductId())
-                            .batchId(item.getBatchId())
-                            .systemQty(item.getSystemQty())
-                            .actualQty(item.getCountedQty())
-                            .build();
-                    adjustment.getItems().add(adjItem);
+                ).orElseThrow(() -> new BusinessException(ErrorCode.BAD_REQUEST, "Dòng tồn kiểm kê không còn tồn tại"));
+                int after = Math.addExact(inv.getOnHandQty(), diff);
+                if (after < inv.getReservedQty()) {
+                    throw new BusinessException(ErrorCode.BAD_REQUEST, "Điều chỉnh khiến tồn thực tế thấp hơn số đang giữ");
                 }
+                inv.setOnHandQty(after);
+                inv.setLastUpdatedAt(Instant.now());
+                inventoryRepository.saveAndFlush(inv);
+
+                StockLedger ledger = StockLedger.builder()
+                        .transactionType("ADJUSTMENT")
+                        .referenceCode(adjCode)
+                        .locationId(item.getLocationId())
+                        .productId(item.getProductId())
+                        .batchId(item.getBatchId())
+                        .qtyChange(diff)
+                        .balanceAfter(after)
+                        .performedBy(currentUserId)
+                        .notes("Điều chỉnh cân đối kiểm kê " + audit.getAuditCode() + " (" + (diff > 0 ? "+" : "") + diff + ")")
+                        .createdAt(Instant.now())
+                        .build();
+                stockLedgerRepository.save(ledger);
+
+                StockAdjustmentItem adjItem = StockAdjustmentItem.builder()
+                        .adjustment(adjustment)
+                        .locationId(item.getLocationId())
+                        .productId(item.getProductId())
+                        .batchId(item.getBatchId())
+                        .systemQty(item.getSystemQty())
+                        .actualQty(item.getCountedQty())
+                        .build();
+                adjustment.getItems().add(adjItem);
                 item.setStatus("ADJUSTED");
             } else {
                 item.setStatus("MATCHED");
@@ -297,6 +292,13 @@ public class InventoryAuditServiceImpl implements InventoryAuditService {
 
     private InventoryAuditResponse toResponse(InventoryAudit audit) {
         return toResponses(Collections.singletonList(audit)).get(0);
+    }
+
+    private void requireAuditLocation(InventoryAudit audit, Long locationId) {
+        if (locationId == null || !locationRepository.findById(locationId)
+                .map(loc -> audit.getWarehouseId().equals(loc.getWarehouseId())).orElse(false)) {
+            throw new BusinessException(ErrorCode.BAD_REQUEST, "Ô kệ không thuộc kho kiểm kê");
+        }
     }
 
     private List<InventoryAuditResponse> toResponses(List<InventoryAudit> audits) {

@@ -10,6 +10,10 @@ export interface UserAccount {
   phone: string;
   role: UserRole;
   assignedWarehouse: string;
+  assignedWarehouses?: string[];
+  primaryWarehouse?: string;
+  isTestAccount?: boolean;
+  permissions?: string[];
   status: UserStatus;
   expiresAt?: string | null;
   rawExpiresAt?: string | null;
@@ -29,6 +33,10 @@ export interface BackendUserResponse {
   isActive: boolean;
   status: 'ACTIVE' | 'LOCKED';
   assignedWarehouse: string;
+  assignedWarehouses?: string[];
+  primaryWarehouse?: string;
+  isTestAccount?: boolean;
+  permissions?: string[];
   expiresAt?: string | null;
   isExpired?: boolean;
   createdAt: string;
@@ -45,11 +53,37 @@ export interface RbacModulePermission {
   description: string;
 }
 
+export interface RbacMatrixItem {
+  permissionId: number;
+  code: string;
+  name: string;
+  module: string;
+  description: string;
+  adminAllowed: boolean;
+  managerAllowed: boolean;
+  operatorAllowed: boolean;
+}
+
+export interface AuditLogEntry {
+  id: number;
+  action: string;
+  actorUsername: string;
+  targetType: string;
+  targetId: string;
+  targetName: string;
+  details: string;
+  ipAddress: string;
+  userAgent?: string;
+  createdAt: string;
+}
+
 export interface UpdateUserPayload {
   fullName: string;
   email: string;
   role?: string;
   assignedWarehouse?: string;
+  assignedWarehouseIds?: number[];
+  primaryWarehouseId?: number;
   phone?: string;
   expiresAt?: string | null;
 }
@@ -94,5 +128,3 @@ export interface UserDeviceSession {
   warehouseName?: string;
   networkLabel?: string;
 }
-
-

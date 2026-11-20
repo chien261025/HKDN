@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Search, Filter, Shield, Lock, Unlock, KeyRound, Pencil, ShieldCheck, Download, Clock, MapPin, CheckSquare, Square, Check } from 'lucide-react';
+import { Search, Filter, Shield, Lock, Unlock, KeyRound, Pencil, ShieldCheck, Download, Clock, MapPin, CheckSquare, Square, Check, Beaker } from 'lucide-react';
 import { UserAccount } from '../types';
 import { UserMobileCards } from './UserMobileCards';
 import { Pagination } from '../../../components/common';
@@ -14,6 +14,7 @@ interface UserListTableProps {
   onEditUser: (user: UserAccount) => void;
   onViewSecurityLog: (user: UserAccount) => void;
   onBulkStatus?: (selectedIds: string[], isActive: boolean) => Promise<void>;
+  onOpenRbacMatrix?: () => void;
 }
 
 export const UserListTable: React.FC<UserListTableProps> = ({
@@ -23,22 +24,31 @@ export const UserListTable: React.FC<UserListTableProps> = ({
   onEditUser,
   onViewSecurityLog,
   onBulkStatus,
+  onOpenRbacMatrix,
 }) => {
   const [searchTerm, setSearchTerm] = useState('');
   const [roleFilter, setRoleFilter] = useState<string>('ALL');
   const [statusFilter, setStatusFilter] = useState<string>('ALL');
+  const [hideTestAccounts, setHideTestAccounts] = useState<boolean>(true);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [isBulkLoading, setIsBulkLoading] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
 
+  const testAccountCount = users.filter((u) => u.isTestAccount).length;
+
   const filteredUsers = users.filter((u) => {
+    if (hideTestAccounts && u.isTestAccount) {
+      return false;
+    }
+
     const term = searchTerm.toLowerCase();
     const matchSearch =
       u.username.toLowerCase().includes(term) ||
       u.fullName.toLowerCase().includes(term) ||
       u.email.toLowerCase().includes(term) ||
       (u.phone ? u.phone.includes(term) : false) ||
-      (u.assignedWarehouse ? u.assignedWarehouse.toLowerCase().includes(term) : false);
+      (u.assignedWarehouse ? u.assignedWarehouse.toLowerCase().includes(term) : false) ||
+      (u.primaryWarehouse ? u.primaryWarehouse.toLowerCase().includes(term) : false);
 
     const matchRole = roleFilter === 'ALL' || u.role === roleFilter;
     const matchStatus =
@@ -53,7 +63,7 @@ export const UserListTable: React.FC<UserListTableProps> = ({
   const totalPages = Math.max(1, Math.ceil(filteredUsers.length / PAGE_SIZE));
   const visibleUsers = filteredUsers.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE);
 
-  useEffect(() => setCurrentPage(1), [searchTerm, roleFilter, statusFilter]);
+  useEffect(() => setCurrentPage(1), [searchTerm, roleFilter, statusFilter, hideTestAccounts]);
   useEffect(() => setCurrentPage((page) => Math.min(page, totalPages)), [totalPages]);
 
   // Tài khoản có thể chọn (loại trừ root admin)
@@ -106,7 +116,7 @@ export const UserListTable: React.FC<UserListTableProps> = ({
       u.email,
       u.phone || '',
       u.role,
-      `"${(u.assignedWarehouse || '').replace(/"/g, '""')}"`,
+      `"${(u.primaryWarehouse || u.assignedWarehouse || '').replace(/"/g, '""')}"`,
       u.expiresAt || 'Vô thời hạn',
       u.isExpired ? 'HẾT HẠN' : u.status,
       `"${u.lastLoginAt}"`,
@@ -139,6 +149,22 @@ export const UserListTable: React.FC<UserListTableProps> = ({
         </div>
 
         <div className="flex flex-wrap items-center gap-2">
+          {/* Toggle Hide Test Accounts */}
+          {testAccountCount > 0 && (
+            <label className="flex items-center gap-1.5 text-xs font-semibold text-slate-600 bg-white border border-slate-200 rounded-xl px-2.5 py-1.5 cursor-pointer shadow-2xs hover:bg-slate-50 transition-colors">
+              <input
+                type="checkbox"
+                checked={hideTestAccounts}
+                onChange={(e) => setHideTestAccounts(e.target.checked)}
+                className="rounded border-slate-300 text-indigo-600 focus:ring-indigo-500 cursor-pointer"
+              />
+              <span className="flex items-center gap-1">
+                <Beaker className="w-3.5 h-3.5 text-amber-500" />
+                <span>Ẩn Test Lab ({testAccountCount})</span>
+              </span>
+            </label>
+          )}
+
           {/* Role Filter */}
           <div className="flex items-center gap-1.5 bg-white border border-slate-200 rounded-xl px-2.5 py-1.5 shadow-2xs">
             <Filter className="w-3.5 h-3.5 text-slate-400 shrink-0" />
@@ -167,6 +193,18 @@ export const UserListTable: React.FC<UserListTableProps> = ({
               <option value="EXPIRED">Đã hết hạn hợp đồng</option>
             </select>
           </div>
+
+          {/* RBAC Matrix Button */}
+          {onOpenRbacMatrix && (
+            <button
+              onClick={onOpenRbacMatrix}
+              title="Mở bảng ma trận phân quyền chi tiết Role-Permission Matrix"
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-indigo-50 hover:bg-indigo-100 border border-indigo-200 rounded-xl text-xs font-bold text-indigo-700 transition-colors shadow-2xs cursor-pointer"
+            >
+              <ShieldCheck className="w-3.5 h-3.5 text-indigo-600" />
+              <span>Ma Trận Quyền (RBAC)</span>
+            </button>
+          )}
 
           {/* Export CSV Button */}
           <button
@@ -298,6 +336,12 @@ export const UserListTable: React.FC<UserListTableProps> = ({
                         <div>
                           <div className="font-semibold text-slate-900 text-sm flex items-center gap-2">
                             <span>{u.fullName}</span>
+                            {/* Test account tag */}
+                            {u.isTestAccount && (
+                              <span className="inline-flex items-center gap-1 text-[10px] font-bold text-amber-800 bg-amber-50 border border-amber-300 px-2 py-0.5 rounded-full" title="Tài khoản phục vụ kiểm thử an ninh Brute-force">
+                                🧪 Test Lab
+                              </span>
+                            )}
                             {/* Expiry Badge */}
                             {u.isExpired ? (
                               <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-rose-700 bg-rose-50 border border-rose-200 px-2 py-0.5 rounded-full">
@@ -319,11 +363,28 @@ export const UserListTable: React.FC<UserListTableProps> = ({
 
                     <td className="py-3.5 px-4">{getRoleBadge(u.role)}</td>
 
+                    {/* Warehouse Access Scoping */}
                     <td className="py-3.5 px-4">
                       <div className="flex items-center gap-1.5 font-medium text-slate-800 text-xs">
-                        <MapPin className="w-3.5 h-3.5 text-indigo-600" />
-                        <span>{u.assignedWarehouse}</span>
+                        <MapPin className="w-3.5 h-3.5 text-indigo-600 shrink-0" />
+                        <span>{u.primaryWarehouse || u.assignedWarehouse}</span>
                       </div>
+                      {u.assignedWarehouses && u.assignedWarehouses.length > 1 && (
+                        <div className="mt-1 flex items-center gap-1">
+                          {u.assignedWarehouses.length >= 4 ? (
+                            <span className="px-2 py-0.5 text-[10px] font-bold text-purple-700 bg-purple-50 border border-purple-200 rounded-md">
+                              Toàn quốc (4 kho)
+                            </span>
+                          ) : (
+                            <span
+                              className="px-2 py-0.5 text-[10px] font-semibold text-indigo-700 bg-indigo-50 border border-indigo-200 rounded-md"
+                              title={u.assignedWarehouses.join('\n')}
+                            >
+                              +{u.assignedWarehouses.length - 1} kho phụ
+                            </span>
+                          )}
+                        </div>
+                      )}
                       <div className="text-[11px] text-slate-400 mt-0.5 font-mono">
                         Tạo: {u.createdAt}
                       </div>
@@ -343,7 +404,7 @@ export const UserListTable: React.FC<UserListTableProps> = ({
                       <div className="flex items-center justify-end gap-1.5">
                         <button
                           onClick={() => onEditUser(u)}
-                          title="Chỉnh sửa thông tin nhân viên, vai trò & thời hạn"
+                          title="Chỉnh sửa thông tin nhân viên, vai trò & phân quyền kho"
                           className="p-1.5 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 rounded-lg transition-colors border border-indigo-200 cursor-pointer"
                         >
                           <Pencil className="w-3.5 h-3.5" />
@@ -358,7 +419,7 @@ export const UserListTable: React.FC<UserListTableProps> = ({
                         ) : (
                           <button
                             onClick={() => onResetPassword(u)}
-                            title="Cấp lại mật khẩu mặc định"
+                            title="Cấp lại mật khẩu mặc định (123456)"
                             className="p-1.5 bg-amber-50 hover:bg-amber-100 text-amber-700 rounded-lg transition-colors border border-amber-200 cursor-pointer"
                           >
                             <KeyRound className="w-3.5 h-3.5" />
@@ -366,14 +427,14 @@ export const UserListTable: React.FC<UserListTableProps> = ({
                         )}
                         <button
                           onClick={() => onViewSecurityLog(u)}
-                          title="Xem phiên làm việc & đăng xuất thiết bị"
+                          title="Xem phiên thiết bị & nhật ký kiểm toán an ninh"
                           className="p-1.5 bg-sky-50 hover:bg-sky-100 text-sky-700 rounded-lg transition-colors border border-sky-200 cursor-pointer"
                         >
                           <ShieldCheck className="w-3.5 h-3.5" />
                         </button>
                         {isRootAdmin ? (
                           <span
-                            title="Tài khoản Quản trị viên tối cao"
+                            title="Tài khoản Quản trị viên tối cao (Bảo vệ không thể khóa)"
                             className="p-1.5 bg-slate-100 text-slate-400 rounded-lg border border-slate-200 cursor-not-allowed inline-flex"
                           >
                             <Lock className="w-3.5 h-3.5" />
@@ -381,7 +442,7 @@ export const UserListTable: React.FC<UserListTableProps> = ({
                         ) : (
                           <button
                             onClick={() => onToggleStatus(u)}
-                            title={u.status === 'ACTIVE' ? 'Khóa tài khoản' : 'Mở khóa tài khoản'}
+                            title={u.status === 'ACTIVE' ? 'Khóa tài khoản nhân sự' : 'Mở khóa hoạt động'}
                             className={`p-1.5 rounded-lg transition-colors border cursor-pointer ${
                               u.status === 'ACTIVE'
                                 ? 'bg-rose-50 hover:bg-rose-100 text-rose-700 border-rose-200'
@@ -407,6 +468,9 @@ export const UserListTable: React.FC<UserListTableProps> = ({
       <div className="p-3 sm:p-4 bg-slate-50 border-t border-slate-200 text-xs text-slate-600 flex items-center justify-between font-mono">
         <div>
           Hiển thị <span className="text-slate-900 font-bold">{filteredUsers.length}</span> / {users.length} tài khoản
+          {hideTestAccounts && testAccountCount > 0 && (
+            <span className="text-slate-400 ml-2">(đã ẩn {testAccountCount} tài khoản test lab)</span>
+          )}
         </div>
         {selectedIds.size > 0 && (
           <div className="text-indigo-600 font-bold">

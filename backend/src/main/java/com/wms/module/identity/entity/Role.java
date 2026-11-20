@@ -20,4 +20,13 @@ public class Role {
     private String name;
 
     private String description;
+
+    @ManyToMany(fetch = FetchType.EAGER)
+    @JoinTable(
+        name = "wms_role_permission",
+        joinColumns = @JoinColumn(name = "role_id"),
+        inverseJoinColumns = @JoinColumn(name = "permission_id")
+    )
+    @Builder.Default
+    private java.util.Set<Permission> permissions = new java.util.HashSet<>();
 }

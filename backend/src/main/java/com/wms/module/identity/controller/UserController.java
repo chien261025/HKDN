@@ -154,6 +154,42 @@ public class UserController {
         var logResponse = userService.getUserSecurityLog(id);
         return ApiResponse.success("Lấy nhật ký an ninh thành công!", logResponse);
     }
+
+    @GetMapping("/audit-logs")
+    @org.springframework.security.access.prepost.PreAuthorize("hasAnyRole('ADMIN', 'WAREHOUSE_MANAGER')")
+    @Operation(summary = "Lấy nhật ký kiểm toán an ninh toàn hệ thống", description = "Truy vết các thao tác nhạy cảm: đổi mật khẩu, phân quyền, khóa tài khoản, đăng xuất")
+    public ApiResponse<List<com.wms.module.identity.dto.response.AuditLogResponse>> getSystemAuditLogs() {
+        log.info("API lay danh sach nhat ky kiem toan he thong");
+        List<com.wms.module.identity.dto.response.AuditLogResponse> logs = userService.getAuditLogs();
+        return ApiResponse.success("Lấy nhật ký kiểm toán thành công!", logs);
+    }
+
+    @GetMapping("/{id}/audit-logs")
+    @org.springframework.security.access.prepost.PreAuthorize("hasAnyRole('ADMIN', 'WAREHOUSE_MANAGER')")
+    @Operation(summary = "Lấy nhật ký kiểm toán của một người dùng cụ thể", description = "Truy vết các thay đổi liên quan đến tài khoản chỉ định")
+    public ApiResponse<List<com.wms.module.identity.dto.response.AuditLogResponse>> getUserAuditLogs(@PathVariable Long id) {
+        log.info("API lay nhat ky kiem toan cho user id: {}", id);
+        List<com.wms.module.identity.dto.response.AuditLogResponse> logs = userService.getUserAuditLogs(id);
+        return ApiResponse.success("Lấy nhật ký kiểm toán tài khoản thành công!", logs);
+    }
+
+    @GetMapping("/rbac/matrix")
+    @org.springframework.security.access.prepost.PreAuthorize("hasAnyRole('ADMIN', 'WAREHOUSE_MANAGER')")
+    @Operation(summary = "Lấy ma trận phân quyền chi tiết Role-Permission Matrix", description = "Trả về toàn bộ quyền hạn theo từng phân hệ và vai trò")
+    public ApiResponse<List<com.wms.module.identity.dto.response.RbacMatrixResponse>> getRbacMatrix() {
+        log.info("API lay ma tran phan quyen RBAC chi tiet");
+        List<com.wms.module.identity.dto.response.RbacMatrixResponse> matrix = userService.getRbacMatrix();
+        return ApiResponse.success("Lấy ma trận phân quyền thành công!", matrix);
+    }
+
+    @PostMapping("/rbac/matrix")
+    @org.springframework.security.access.prepost.PreAuthorize("hasRole('ADMIN')")
+    @Operation(summary = "Cập nhật ma trận phân quyền cho vai trò", description = "Admin cấu hình danh sách quyền hạn chi tiết cho từng vai trò")
+    public ApiResponse<String> updateRbacMatrix(@Valid @RequestBody com.wms.module.identity.dto.request.UpdateRbacMatrixRequest request) {
+        log.info("API cap nhat ma tran quyen cho vai tro: {}", request.getRoleName());
+        userService.updateRbacMatrix(request);
+        return ApiResponse.success("Cập nhật ma trận phân quyền thành công!", "SUCCESS");
+    }
 }
 
 

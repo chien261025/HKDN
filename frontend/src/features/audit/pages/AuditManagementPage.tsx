@@ -4,7 +4,7 @@ import { AuditSessionsList } from '../components/AuditSessionsList';
 import { CreateAuditSessionModal } from '../components/CreateAuditSessionModal';
 import { AuditDiscrepancyModal } from '../components/AuditDiscrepancyModal';
 import { AuditCountingModal } from '../components/AuditCountingModal';
-import { AuditSession } from '../types';
+import { AuditSession, CreateAuditPayload } from '../types';
 import { auditService } from '../services/auditService';
 
 export const AuditManagementPage: React.FC = () => {
@@ -22,8 +22,8 @@ export const AuditManagementPage: React.FC = () => {
     fetchSessions();
   }, []);
 
-  const handleCreateSession = async (newSession: AuditSession) => {
-    const saved = await auditService.createAuditSession(newSession);
+  const handleCreateSession = async (payload: CreateAuditPayload) => {
+    const saved = await auditService.createAuditSession(payload);
     setSessions((prev) => [saved, ...prev]);
   };
 

@@ -6,6 +6,8 @@ export interface ActivePutawayTask {
   id: string;
   orderId?: number;
   orderCode?: string;
+  warehouseId: number;
+  stockedQty: number;
   orderItemId?: number;
   productId?: number;
   sku: string;

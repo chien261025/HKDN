@@ -25,7 +25,7 @@ ps:
 	docker compose ps
 
 test:
-	docker run --rm --network smart-wms_wms-net -e DB_HOST=wms-postgres -v "smart-wms_wms-m2-cache:/root/.m2" -v "$$(pwd)/backend:/app" -w /app maven:3.9-eclipse-temurin-17-alpine mvn test
+	docker compose -f compose.test.yml up --force-recreate --abort-on-container-exit --exit-code-from tests
 
 clean:
 	docker compose down -v

@@ -37,9 +37,13 @@ public class InventoryBalanceResponse {
     private LocalDate manufactureDate;
     private LocalDate expiryDate;
     private Boolean isExpiringSoon;
+    private Boolean isExpired;
+    private String expiryStatus; // "EXPIRED", "EXPIRING_SOON", "VALID", "NO_EXPIRY"
+    private Long daysRemaining;
 
     private Integer onHandQty;
     private Integer reservedQty;
+    private Integer unavailableQty;
     private Integer availableQty;
     private Instant lastUpdatedAt;
 }

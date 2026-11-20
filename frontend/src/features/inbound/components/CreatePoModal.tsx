@@ -1,11 +1,13 @@
 import React, { useState, useEffect } from 'react';
-import { X, Plus, Trash2, Building2, DollarSign, Calendar, Tag } from 'lucide-react';
+import { X, Plus, Trash2, Building2 } from 'lucide-react';
 import { InboundOrder } from '../types';
 import { productService } from '../../products/services/productService';
 import { ProductItem, SupplierItem } from '../../products/types';
-import { PRIMARY_WAREHOUSE } from '../../../config/warehouse';
+import { WarehouseItem } from '../../masterdata/types';
+import { warehouseService, DEFAULT_WAREHOUSES } from '../../masterdata/services/warehouseService';
 
 interface CreatePoModalProps {
+  initialWarehouseId?: string | number;
   onClose: () => void;
   onCreateOrder: (order: InboundOrder) => Promise<void>;
 }
@@ -17,11 +19,18 @@ interface PoItemRow {
   expectedQty: number;
   unit: string;
   unitPrice: number;
-  batchNumber?: string;
-  expiryDate?: string;
 }
 
-export const CreatePoModal: React.FC<CreatePoModalProps> = ({ onClose, onCreateOrder }) => {
+export const CreatePoModal: React.FC<CreatePoModalProps> = ({ initialWarehouseId, onClose, onCreateOrder }) => {
+  const [warehouses, setWarehouses] = useState<WarehouseItem[]>(DEFAULT_WAREHOUSES);
+  const [warehouseId, setWarehouseId] = useState<number>(() => {
+    if (initialWarehouseId && initialWarehouseId !== 'ALL') {
+      const m = String(initialWarehouseId).match(/\d+/);
+      if (m) return parseInt(m[0], 10);
+    }
+    return 1;
+  });
+
   const [suppliers, setSuppliers] = useState<SupplierItem[]>([]);
   const [availableProducts, setAvailableProducts] = useState<ProductItem[]>([]);
   const [supplierCode, setSupplierCode] = useState('');
@@ -41,6 +50,12 @@ export const CreatePoModal: React.FC<CreatePoModalProps> = ({ onClose, onCreateO
   );
 
   useEffect(() => {
+    warehouseService.getWarehouses().then((whs) => {
+      if (whs && whs.length > 0) {
+        setWarehouses(whs);
+      }
+    });
+
     productService.getSuppliers().then((supps) => {
       if (supps && supps.length > 0) {
         setSuppliers(supps);
@@ -63,8 +78,6 @@ export const CreatePoModal: React.FC<CreatePoModalProps> = ({ onClose, onCreateO
       if (valid.length) return valid;
       const first = supplierProducts[0];
       if (first) {
-        const nextYear = new Date();
-        nextYear.setFullYear(nextYear.getFullYear() + 1);
         return [
           {
             productId: Number(first.id),
@@ -73,8 +86,6 @@ export const CreatePoModal: React.FC<CreatePoModalProps> = ({ onClose, onCreateO
             expectedQty: 50,
             unit: first.unit,
             unitPrice: first.purchasePrice || 0,
-            batchNumber: `BATCH-${first.sku.replace('SKU-', '')}-${Date.now().toString().slice(-4)}`,
-            expiryDate: nextYear.toISOString().split('T')[0],
           },
         ];
       }
@@ -85,8 +96,6 @@ export const CreatePoModal: React.FC<CreatePoModalProps> = ({ onClose, onCreateO
   const handleAddItem = () => {
     if (supplierProducts.length > 0) {
       const p = supplierProducts[items.length % supplierProducts.length];
-      const nextYear = new Date();
-      nextYear.setFullYear(nextYear.getFullYear() + 1);
       setItems((prev) => [
         ...prev,
         {
@@ -96,8 +105,6 @@ export const CreatePoModal: React.FC<CreatePoModalProps> = ({ onClose, onCreateO
           expectedQty: 50,
           unit: p.unit,
           unitPrice: p.purchasePrice || 0,
-          batchNumber: `BATCH-${p.sku.replace('SKU-', '')}-${Date.now().toString().slice(-4)}`,
-          expiryDate: nextYear.toISOString().split('T')[0],
         },
       ]);
     }
@@ -115,11 +122,13 @@ export const CreatePoModal: React.FC<CreatePoModalProps> = ({ onClose, onCreateO
       setError('Vui lòng chọn nhà cung cấp có sản phẩm hợp lệ.');
       return;
     }
-    const poNumber = `PO-2026-${Math.floor(100 + Math.random() * 900)}`;
+    const poPrefix = warehouseId === 2 ? 'PO-BN-2026' : 'PO-2026';
+    const poNumber = `${poPrefix}-${Math.floor(100 + Math.random() * 900)}`;
 
     const newOrder: InboundOrder & { supplierId?: number } = {
       id: `po-${Date.now()}`,
       poCode: poNumber,
+      warehouseId: warehouseId,
       supplierId: selectedSupplier ? Number(selectedSupplier.id) : 1,
       supplierName: selectedSupplier ? selectedSupplier.name : 'Nhà Cung Cấp Tổng Hợp',
       supplierCode: selectedSupplier ? selectedSupplier.code : supplierCode,
@@ -138,8 +147,6 @@ export const CreatePoModal: React.FC<CreatePoModalProps> = ({ onClose, onCreateO
         stockedQty: 0,
         unit: it.unit,
         unitPrice: it.unitPrice || 0,
-        batchNumber: it.batchNumber,
-        expiryDate: it.expiryDate,
       })),
       approvedBy: 'Trần Trưởng Kho',
     };
@@ -206,12 +213,17 @@ export const CreatePoModal: React.FC<CreatePoModalProps> = ({ onClose, onCreateO
 
             <div>
               <label className="text-slate-700 font-bold block mb-1 text-xs">Kho Đích Tiếp Nhận:</label>
-              <input
-                type="text"
-                disabled
-                value={PRIMARY_WAREHOUSE.name}
-                className="w-full p-2 rounded-xl bg-slate-100 border border-slate-300 text-slate-600 font-medium text-xs"
-              />
+              <select
+                value={warehouseId}
+                onChange={(e) => setWarehouseId(Number(e.target.value))}
+                className="w-full p-2 rounded-xl bg-white border border-slate-300 text-slate-900 font-semibold text-xs focus:outline-none focus:border-blue-600 focus:ring-2 focus:ring-blue-100"
+              >
+                {warehouses.map((w) => (
+                  <option key={w.id} value={w.id}>
+                    {w.name} ({w.code})
+                  </option>
+                ))}
+              </select>
             </div>
           </div>
 
@@ -236,7 +248,7 @@ export const CreatePoModal: React.FC<CreatePoModalProps> = ({ onClose, onCreateO
               </button>
             </div>
 
-            <div className="space-y-2.5 max-h-52 overflow-y-auto pr-1">
+            <div className="space-y-2.5 max-h-56 overflow-y-auto pr-1">
               {items.map((it, idx) => (
                 <div
                   key={idx}
@@ -279,16 +291,17 @@ export const CreatePoModal: React.FC<CreatePoModalProps> = ({ onClose, onCreateO
                         type="button"
                         onClick={() => handleRemoveItem(idx)}
                         className="p-1.5 text-slate-400 hover:text-rose-600 cursor-pointer"
+                        title="Xóa dòng mặt hàng này"
                       >
                         <Trash2 className="w-4 h-4" />
                       </button>
                     )}
                   </div>
 
-                  <div className="grid grid-cols-4 gap-2 text-xs">
-                    <div>
+                  <div className="grid grid-cols-12 gap-2 text-xs items-center">
+                    <div className="col-span-4">
                       <span className="text-[11px] text-slate-500 block mb-0.5">Số lượng đặt:</span>
-                      <div className="flex items-center gap-1">
+                      <div className="flex items-center gap-1.5">
                         <input
                           type="number"
                           value={it.expectedQty}
@@ -301,15 +314,16 @@ export const CreatePoModal: React.FC<CreatePoModalProps> = ({ onClose, onCreateO
                           }}
                           className="w-full p-1.5 rounded-lg bg-white border border-slate-300 text-slate-900 font-mono font-bold text-center focus:outline-none focus:border-blue-600"
                         />
-                        <span className="text-slate-600 font-bold">{it.unit}</span>
+                        <span className="text-slate-700 font-bold whitespace-nowrap">{it.unit}</span>
                       </div>
                     </div>
 
-                    <div>
-                      <span className="text-[11px] text-slate-500 block mb-0.5">Giá mua (VNĐ):</span>
+                    <div className="col-span-4">
+                      <span className="text-[11px] text-slate-500 block mb-0.5">Đơn giá mua:</span>
                       <input
                         type="number"
-                        step="1000"
+                        step="500"
+                        min="0"
                         value={it.unitPrice}
                         onChange={(e) => {
                           const val = parseFloat(e.target.value) || 0;
@@ -319,27 +333,15 @@ export const CreatePoModal: React.FC<CreatePoModalProps> = ({ onClose, onCreateO
                         }}
                         className="w-full p-1.5 rounded-lg bg-white border border-slate-300 text-slate-900 font-mono font-bold text-right focus:outline-none focus:border-blue-600"
                       />
+                      <span className="text-[10px] text-slate-500 block text-right mt-0.5 font-mono">
+                        {(it.unitPrice || 0).toLocaleString('vi-VN')} ₫
+                      </span>
                     </div>
 
-                    <div>
-                      <span className="text-[11px] text-slate-500 block mb-0.5">Số Lô (Batch):</span>
-                      <input
-                        type="text"
-                        value={it.batchNumber || ''}
-                        onChange={(e) => {
-                          const val = e.target.value;
-                          setItems((prev) =>
-                            prev.map((item, i) => (i === idx ? { ...item, batchNumber: val } : item))
-                          );
-                        }}
-                        className="w-full p-1.5 rounded-lg bg-white border border-slate-300 text-slate-900 font-mono text-[11px] focus:outline-none focus:border-blue-600"
-                      />
-                    </div>
-
-                    <div>
+                    <div className="col-span-4">
                       <span className="text-[11px] text-slate-500 block mb-0.5">Thành tiền:</span>
                       <div className="p-1.5 font-mono font-bold text-emerald-700 text-right bg-emerald-50 rounded-lg border border-emerald-200">
-                        {(it.expectedQty * (it.unitPrice || 0)).toLocaleString()} ₫
+                        {(it.expectedQty * (it.unitPrice || 0)).toLocaleString('vi-VN')} ₫
                       </div>
                     </div>
                   </div>
@@ -347,11 +349,19 @@ export const CreatePoModal: React.FC<CreatePoModalProps> = ({ onClose, onCreateO
               ))}
             </div>
 
+            {/* WMS Guidance Note */}
+            <div className="p-2.5 rounded-xl bg-amber-50 border border-amber-200 text-amber-900 text-xs flex items-center gap-2">
+              <span className="font-bold shrink-0">💡 Lưu ý WMS:</span>
+              <span>
+                Mã Lô (Batch) & Hạn Dùng (HSD/FEFO) sẽ được kiểm định và cấp phát tại bước <strong>Tiếp Nhận & QC</strong> khi xe tải chở hàng tới cổng kho.
+              </span>
+            </div>
+
             {/* Total Order Amount Banner */}
             <div className="p-3 bg-blue-50/80 rounded-2xl border border-blue-200 flex items-center justify-between text-xs font-mono">
               <span className="text-blue-900 font-semibold">TỔNG GIÁ TRỊ ĐƠN HÀNG PO:</span>
               <span className="font-extrabold text-blue-700 text-base">
-                {totalPoValue.toLocaleString()} VNĐ
+                {totalPoValue.toLocaleString('vi-VN')} VNĐ
               </span>
             </div>
           </div>

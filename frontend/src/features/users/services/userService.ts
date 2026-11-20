@@ -1,5 +1,5 @@
 import { apiClient } from '../../../services/api';
-import { UserAccount, UserRole, UserStatus, BackendUserResponse } from '../types';
+import { UserAccount, UserRole, UserStatus, BackendUserResponse, AuditLogEntry, RbacMatrixItem } from '../types';
 
 export interface CreateUserPayload {
   username: string;
@@ -7,6 +7,9 @@ export interface CreateUserPayload {
   fullName: string;
   email: string;
   role: string;
+  assignedWarehouse?: string;
+  assignedWarehouseIds?: number[];
+  primaryWarehouseId?: number;
   expiresAt?: string | null;
 }
 
@@ -28,7 +31,13 @@ export const mapBackendUserToAccount = (
   email: overrides?.email || u.email,
   phone: overrides?.phone || ('09' + String(u.id).padStart(8, '0')),
   role: (overrides?.role as UserRole) || (u.role as UserRole) || 'ROLE_OPERATOR',
-  assignedWarehouse: overrides?.assignedWarehouse || u.assignedWarehouse || 'Kho Tổng Tân Bình (ZONE A & B)',
+  assignedWarehouse: overrides?.assignedWarehouse || u.primaryWarehouse || u.assignedWarehouse || 'Kho Tổng Tân Bình - TP.HCM',
+  assignedWarehouses: u.assignedWarehouses || [u.assignedWarehouse || 'Kho Tổng Tân Bình - TP.HCM'],
+  primaryWarehouse: u.primaryWarehouse || u.assignedWarehouse || 'Kho Tổng Tân Bình - TP.HCM',
+  isTestAccount: u.isTestAccount !== undefined
+    ? u.isTestAccount
+    : (u.username.toLowerCase().startsWith('brute_') || u.username.toLowerCase().includes('victim')),
+  permissions: u.permissions || [],
   status: (overrides?.status as UserStatus) || (u.status as UserStatus) || (u.isExpired ? 'EXPIRED' : (u.isActive ? 'ACTIVE' : 'LOCKED')),
   expiresAt: u.expiresAt ? new Date(u.expiresAt).toLocaleDateString('vi-VN') : null,
   rawExpiresAt: u.expiresAt || null,
@@ -68,9 +77,6 @@ export const userService = {
   },
 
   /**
-   * Khóa hoặc Mở khóa tài khoản
-   */
-  /**
    * Khóa hoặc Mở khóa hàng loạt tài khoản (Bulk Inactivation / Activation)
    */
   async bulkUpdateStatus(userIds: string[], isActive: boolean): Promise<string> {
@@ -84,6 +90,9 @@ export const userService = {
     return res.data.message;
   },
 
+  /**
+   * Khóa hoặc Mở khóa tài khoản cá nhân
+   */
   async updateUserStatus(id: string, isActive: boolean): Promise<UserAccount> {
     const res = await apiClient.put<ApiResponse<BackendUserResponse>>(`/users/${id}/status`, { isActive });
     if (!res.data.success || !res.data.data) {
@@ -175,6 +184,53 @@ export const userService = {
   },
 
   /**
+   * Lấy toàn bộ nhật ký kiểm toán an ninh hệ thống
+   */
+  async getAuditLogs(): Promise<AuditLogEntry[]> {
+    const res = await apiClient.get<ApiResponse<AuditLogEntry[]>>('/users/audit-logs');
+    if (!res.data.success || !res.data.data) {
+      return [];
+    }
+    return res.data.data;
+  },
+
+  /**
+   * Lấy nhật ký kiểm toán của một tài khoản cụ thể
+   */
+  async getUserAuditLogs(userId: string | number): Promise<AuditLogEntry[]> {
+    const res = await apiClient.get<ApiResponse<AuditLogEntry[]>>(`/users/${userId}/audit-logs`);
+    if (!res.data.success || !res.data.data) {
+      return [];
+    }
+    return res.data.data;
+  },
+
+  /**
+   * Lấy Ma trận phân quyền chi tiết Role-Permission Matrix
+   */
+  async getRbacMatrix(): Promise<RbacMatrixItem[]> {
+    const res = await apiClient.get<ApiResponse<RbacMatrixItem[]>>('/users/rbac/matrix');
+    if (!res.data.success || !res.data.data) {
+      return [];
+    }
+    return res.data.data;
+  },
+
+  /**
+   * Cập nhật danh sách quyền cho vai trò
+   */
+  async updateRbacMatrix(roleName: string, permissionCodes: string[]): Promise<string> {
+    const res = await apiClient.post<ApiResponse<string>>('/users/rbac/matrix', {
+      roleName,
+      permissionCodes,
+    });
+    if (!res.data.success) {
+      throw new Error(res.data.message || 'Không thể cập nhật ma trận quyền');
+    }
+    return res.data.message;
+  },
+
+  /**
    * Lấy danh sách thiết bị đang đăng nhập của tài khoản
    */
   async getUserSessions(userId: string): Promise<import('../types').UserDeviceSession[]> {
@@ -243,5 +299,3 @@ export const userService = {
     await apiClient.put('/users/me/sessions/current-location', payload);
   },
 };
-
-

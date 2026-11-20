@@ -113,6 +113,10 @@ INSERT INTO wms_inbound_order (id, order_code, warehouse_id, supplier_id, status
 (4, 'PO-202610-089', 1, 1, 'PENDING',  2, 'Đơn đặt hàng bù tồn an toàn Sữa chua Vinamilk')
 ON DUPLICATE KEY UPDATE status = VALUES(status);
 
+INSERT INTO wms_inbound_order_item (inbound_order_id, product_id, expected_qty, received_qty, unit_price, status, batch_number, expiry_date) VALUES
+(3, 5, 500, 500, 385000.00, 'RECEIVED', 'BATCH-BEER-202611', '2027-11-17'),
+(4, 4, 200, 0, 22000.00, 'PENDING', 'BATCH-YOGURT-202611', '2027-05-17');
+
 ALTER TABLE wms_supplier AUTO_INCREMENT = 100;
 ALTER TABLE wms_category AUTO_INCREMENT = 100;
 ALTER TABLE wms_product AUTO_INCREMENT = 100;

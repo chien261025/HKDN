@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { X, ShieldCheck, Laptop, Smartphone, MapPin, LogOut, CheckCircle2, AlertCircle, Loader2, Trash2 } from 'lucide-react';
-import { UserAccount, UserSecurityLog, UserDeviceSession } from '../types';
+import { X, ShieldCheck, Laptop, Smartphone, MapPin, LogOut, CheckCircle2, AlertCircle, Loader2, Trash2, FileText, User, Calendar, Shield } from 'lucide-react';
+import { UserAccount, UserSecurityLog, UserDeviceSession, AuditLogEntry } from '../types';
 import { userService } from '../services/userService';
 
 interface UserSecurityAuditModalProps {
@@ -18,7 +18,8 @@ export const UserSecurityAuditModal: React.FC<UserSecurityAuditModalProps> = ({
 }) => {
   const [securityLog, setSecurityLog] = useState<UserSecurityLog | null>(null);
   const [sessions, setSessions] = useState<UserDeviceSession[]>([]);
-  const [tab, setTab] = useState<'ACTIVE' | 'HISTORY'>('ACTIVE');
+  const [auditLogs, setAuditLogs] = useState<AuditLogEntry[]>([]);
+  const [tab, setTab] = useState<'ACTIVE' | 'HISTORY' | 'AUDIT'>('ACTIVE');
   const [loading, setLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
@@ -31,10 +32,12 @@ export const UserSecurityAuditModal: React.FC<UserSecurityAuditModalProps> = ({
     Promise.all([
       userService.getUserSecurityLog(user.id),
       userService.getUserSessions(user.id),
+      userService.getUserAuditLogs(user.id),
     ])
-      .then(([logData, sessionData]) => {
+      .then(([logData, sessionData, auditData]) => {
         setSecurityLog(logData);
         setSessions(sessionData);
+        setAuditLogs(auditData);
       })
       .catch((err) => {
         console.warn('Lỗi tải dữ liệu an ninh:', err);
@@ -90,7 +93,6 @@ export const UserSecurityAuditModal: React.FC<UserSecurityAuditModalProps> = ({
 
   const activeSessions = sessions.filter((s) => s.isActive);
   const inactiveSessions = sessions.filter((s) => !s.isActive);
-  const displayedSessions = tab === 'ACTIVE' ? activeSessions : inactiveSessions;
 
   const formatReason = (reason?: string) => {
     if (!reason) return 'Đã kết thúc';
@@ -100,27 +102,50 @@ export const UserSecurityAuditModal: React.FC<UserSecurityAuditModalProps> = ({
     return 'Đã đăng xuất';
   };
 
+  const getActionBadge = (action: string) => {
+    switch (action) {
+      case 'USER_CREATE':
+        return <span className="px-2 py-0.5 rounded-full text-2xs font-bold bg-blue-50 text-blue-700 border border-blue-200">Khởi Tạo</span>;
+      case 'ROLE_CHANGE':
+        return <span className="px-2 py-0.5 rounded-full text-2xs font-bold bg-purple-50 text-purple-700 border border-purple-200">Đổi Vai Trò</span>;
+      case 'USER_LOCK':
+        return <span className="px-2 py-0.5 rounded-full text-2xs font-bold bg-rose-50 text-rose-700 border border-rose-200">Tạm Khóa</span>;
+      case 'USER_UNLOCK':
+        return <span className="px-2 py-0.5 rounded-full text-2xs font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">Mở Khóa</span>;
+      case 'PASSWORD_RESET':
+        return <span className="px-2 py-0.5 rounded-full text-2xs font-bold bg-amber-50 text-amber-700 border border-amber-200">Cấp Lại Mật Khẩu</span>;
+      case 'FORCE_LOGOUT':
+        return <span className="px-2 py-0.5 rounded-full text-2xs font-bold bg-red-50 text-red-700 border border-red-200">Cưỡng Chế Đăng Xuất</span>;
+      case 'WAREHOUSE_GRANT':
+        return <span className="px-2 py-0.5 rounded-full text-2xs font-bold bg-sky-50 text-sky-700 border border-sky-200">Gán Kho</span>;
+      case 'SECURITY_LOCKOUT':
+        return <span className="px-2 py-0.5 rounded-full text-2xs font-bold bg-red-50 text-red-700 border border-red-200">Khóa Do Brute-force</span>;
+      default:
+        return <span className="px-2 py-0.5 rounded-full text-2xs font-medium bg-slate-100 text-slate-700">{action}</span>;
+    }
+  };
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-xs p-4 animate-in fade-in">
-      <div className="bg-white border border-slate-200 rounded-3xl w-full max-w-2xl shadow-2xl overflow-hidden my-8">
+      <div className="bg-white border border-slate-200 rounded-3xl w-full max-w-2xl shadow-2xl overflow-hidden my-8 flex flex-col max-h-[85vh]">
         {/* Header */}
-        <div className="px-6 py-4 bg-slate-50 border-b border-slate-200 flex items-center justify-between">
+        <div className="px-6 py-4 bg-slate-50 border-b border-slate-200 flex items-center justify-between shrink-0">
           <div className="flex items-center gap-2.5">
             <div className="w-10 h-10 rounded-xl bg-sky-100 text-sky-700 flex items-center justify-center font-bold">
               <ShieldCheck className="w-5 h-5" />
             </div>
             <div>
-              <h3 className="font-bold text-slate-900 text-base">Quản Lý Thiết Bị & Phiên Đăng Nhập</h3>
+              <h3 className="font-bold text-slate-900 text-base">Quản Lý Thiết Bị & Kiểm Toán An Ninh</h3>
               <p className="text-xs text-slate-500 font-mono">Tài khoản: @{user.username} • {user.fullName}</p>
             </div>
           </div>
-          <button onClick={onClose} className="text-slate-400 hover:text-slate-700 p-1.5 rounded-lg hover:bg-slate-100 transition-colors">
+          <button onClick={onClose} className="text-slate-400 hover:text-slate-700 p-1.5 rounded-lg hover:bg-slate-100 transition-colors cursor-pointer">
             <X className="w-5 h-5" />
           </button>
         </div>
 
         {/* Content */}
-        <div className="p-6 space-y-4 text-sm max-h-[75vh] overflow-y-auto">
+        <div className="p-6 space-y-4 text-sm flex-1 overflow-y-auto">
           {errorMsg && (
             <div className="p-3 bg-rose-50 border border-rose-200 rounded-xl text-xs text-rose-700 flex items-center gap-2">
               <AlertCircle className="w-4 h-4 shrink-0" />
@@ -139,7 +164,7 @@ export const UserSecurityAuditModal: React.FC<UserSecurityAuditModalProps> = ({
             <div className="flex items-center gap-2 bg-slate-100 p-1 rounded-xl">
               <button
                 onClick={() => setTab('ACTIVE')}
-                className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
+                className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
                   tab === 'ACTIVE'
                     ? 'bg-white text-slate-900 shadow-xs'
                     : 'text-slate-600 hover:text-slate-900'
@@ -149,7 +174,7 @@ export const UserSecurityAuditModal: React.FC<UserSecurityAuditModalProps> = ({
               </button>
               <button
                 onClick={() => setTab('HISTORY')}
-                className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
+                className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
                   tab === 'HISTORY'
                     ? 'bg-white text-slate-900 shadow-xs'
                     : 'text-slate-600 hover:text-slate-900'
@@ -157,44 +182,94 @@ export const UserSecurityAuditModal: React.FC<UserSecurityAuditModalProps> = ({
               >
                 Lịch Sử Phiên ({inactiveSessions.length})
               </button>
-            </div>
-
-            <div className="flex items-center gap-3">
-              {activeSessions.length > 1 && (
-                <button
-                  onClick={handleRevokeOthers}
-                  disabled={actionLoading}
-                  className="text-xs text-indigo-600 hover:text-indigo-800 font-bold hover:underline cursor-pointer"
-                >
-                  Đăng xuất thiết bị khác
-                </button>
-              )}
               <button
-                onClick={handleTriggerForceLogout}
-                disabled={actionLoading}
-                className="text-xs text-rose-600 hover:text-rose-800 font-bold flex items-center gap-1 cursor-pointer"
+                onClick={() => setTab('AUDIT')}
+                className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                  tab === 'AUDIT'
+                    ? 'bg-white text-indigo-700 shadow-xs'
+                    : 'text-slate-600 hover:text-slate-900'
+                }`}
               >
-                <LogOut className="w-3.5 h-3.5" />
-                <span>Đăng xuất tất cả</span>
+                Nhật Ký Kiểm Toán ({auditLogs.length})
               </button>
             </div>
+
+            {tab !== 'AUDIT' && (
+              <div className="flex items-center gap-3">
+                {activeSessions.length > 1 && (
+                  <button
+                    onClick={handleRevokeOthers}
+                    disabled={actionLoading}
+                    className="text-xs text-indigo-600 hover:text-indigo-800 font-bold hover:underline cursor-pointer"
+                  >
+                    Đăng xuất thiết bị khác
+                  </button>
+                )}
+                <button
+                  onClick={handleTriggerForceLogout}
+                  disabled={actionLoading}
+                  className="text-xs text-rose-600 hover:text-rose-800 font-bold flex items-center gap-1 cursor-pointer"
+                >
+                  <LogOut className="w-3.5 h-3.5" />
+                  <span>Đăng xuất tất cả</span>
+                </button>
+              </div>
+            )}
           </div>
 
-          {/* Devices List */}
-          <div className="space-y-2">
-            {loading ? (
-              <div className="p-6 text-center text-slate-400 text-xs flex justify-center items-center gap-2">
-                <Loader2 className="w-4 h-4 animate-spin text-indigo-600" /> Đang tải dữ liệu...
-              </div>
-            ) : displayedSessions.length === 0 ? (
-              <div className="p-8 bg-slate-50 border border-slate-200 rounded-2xl text-center text-xs text-slate-500">
-                {tab === 'ACTIVE'
-                  ? 'Hiện không có thiết bị nào đang kết nối.'
-                  : 'Không có phiên nào trong lịch sử.'}
-              </div>
-            ) : (
-              <div className="space-y-2">
-                {displayedSessions.map((s) => (
+          {/* Tab Content */}
+          {loading ? (
+            <div className="p-8 text-center text-slate-400 text-xs flex justify-center items-center gap-2">
+              <Loader2 className="w-4 h-4 animate-spin text-indigo-600" /> Đang tải dữ liệu...
+            </div>
+          ) : tab === 'AUDIT' ? (
+            /* Audit Trail Tab */
+            <div className="space-y-3">
+              {auditLogs.length === 0 ? (
+                <div className="p-8 bg-slate-50 border border-slate-200 rounded-2xl text-center text-xs text-slate-500">
+                  Chưa có sự kiện kiểm toán an ninh nào được ghi nhận cho tài khoản này.
+                </div>
+              ) : (
+                auditLogs.map((log) => (
+                  <div
+                    key={log.id}
+                    className="p-3.5 rounded-2xl bg-white border border-slate-200 shadow-2xs space-y-2 hover:border-slate-300 transition-colors"
+                  >
+                    <div className="flex items-center justify-between gap-2">
+                      <div className="flex items-center gap-2">
+                        {getActionBadge(log.action)}
+                        <span className="font-semibold text-slate-900 text-xs">{log.details}</span>
+                      </div>
+                      <span className="text-2xs font-mono text-slate-400">
+                        {new Date(log.createdAt).toLocaleString('vi-VN')}
+                      </span>
+                    </div>
+
+                    <div className="flex items-center gap-4 text-2xs text-slate-500 font-mono pt-1 border-t border-slate-100">
+                      <div className="flex items-center gap-1">
+                        <User className="w-3 h-3 text-slate-400" />
+                        <span>Thực hiện: @{log.actorUsername}</span>
+                      </div>
+                      <div className="flex items-center gap-1">
+                        <MapPin className="w-3 h-3 text-slate-400" />
+                        <span>IP: {log.ipAddress || '127.0.0.1'}</span>
+                      </div>
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
+          ) : (
+            /* Device Sessions Tabs (ACTIVE / HISTORY) */
+            <div className="space-y-2">
+              {(tab === 'ACTIVE' ? activeSessions : inactiveSessions).length === 0 ? (
+                <div className="p-8 bg-slate-50 border border-slate-200 rounded-2xl text-center text-xs text-slate-500">
+                  {tab === 'ACTIVE'
+                    ? 'Hiện không có thiết bị nào đang kết nối.'
+                    : 'Không có phiên nào trong lịch sử.'}
+                </div>
+              ) : (
+                (tab === 'ACTIVE' ? activeSessions : inactiveSessions).map((s) => (
                   <div
                     key={s.id}
                     className={`p-3.5 rounded-2xl border transition-all flex items-center justify-between gap-3 ${
@@ -254,14 +329,14 @@ export const UserSecurityAuditModal: React.FC<UserSecurityAuditModalProps> = ({
                       </button>
                     )}
                   </div>
-                ))}
-              </div>
-            )}
-          </div>
+                ))
+              )}
+            </div>
+          )}
         </div>
 
         {/* Footer */}
-        <div className="px-6 py-3.5 bg-slate-50 border-t border-slate-200 flex justify-end">
+        <div className="px-6 py-3.5 bg-slate-50 border-t border-slate-200 flex justify-end shrink-0">
           <button
             onClick={onClose}
             className="px-5 py-2 rounded-xl bg-slate-200 hover:bg-slate-300 text-slate-800 font-bold text-xs transition-colors cursor-pointer"

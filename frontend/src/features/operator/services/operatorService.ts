@@ -5,6 +5,8 @@ export interface InboundOrderItemDto {
   productId: number;
   expectedQty: number;
   receivedQty: number;
+  stockedQty: number;
+  remainingQty: number;
   batchNumber?: string;
   expiryDate?: string;
   status: string;
@@ -13,7 +15,8 @@ export interface InboundOrderItemDto {
 export interface InboundOrderDto {
   id: number;
   orderCode: string;
-  warehouseId?: number;
+  warehouseId: number;
+  supplier?: { name: string };
   supplierId?: number;
   status: string;
   notes?: string;
@@ -115,6 +118,8 @@ export interface ProductDto {
   unit: string;
   category?: string;
   storageZone?: string;
+  storageCondition?: string;
+  weightKg?: number;
 }
 
 export const operatorService = {
@@ -127,19 +132,12 @@ export const operatorService = {
   },
 
   /**
-   * Xác nhận thực nhận đơn PO vào kho Staging (chuyển trạng thái sang RECEIVED)
-   */
-  async confirmReceiveInboundOrder(orderId: number): Promise<InboundOrderDto> {
-    const res = await apiClient.put<{ success: boolean; data: InboundOrderDto }>(`/orders/inbound/${orderId}/receive`);
-    return res.data.data;
-  },
-
-  /**
    * Gọi thuật toán gợi ý ô kệ cất hàng Put-away từ Backend
    */
-  async suggestPutawayLocation(preferredZone: string, totalWeightKg: number): Promise<LocationDto> {
+  async suggestPutawayLocation(warehouseId: number, preferredZone: string, totalWeightKg: number): Promise<LocationDto> {
     const res = await apiClient.post<{ success: boolean; data: LocationDto }>('/orders/inbound/suggest-location', {
       preferredZone,
+      warehouseId,
       totalWeightKg,
     });
     return res.data.data;
@@ -154,6 +152,7 @@ export const operatorService = {
     productId: number;
     locationId: number;
     quantity: number;
+    expectedStockedQty: number;
     batchNumber?: string;
     expiryDate?: string;
   }): Promise<InboundOrderDto> {

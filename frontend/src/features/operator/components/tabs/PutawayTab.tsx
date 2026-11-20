@@ -38,34 +38,16 @@ export const PutawayTab: React.FC<PutawayTabProps> = ({
             const name = prod?.name || `Sản phẩm #${item.productId}`;
             const unit = prod?.unit || 'kiện';
 
-            // Phân loại phân khu phù hợp:
-            // ZONE_B: Thực phẩm mát, sữa, đồ uống
-            // ZONE_A: Hàng khô, hóa mỹ phẩm, điện tử
-            const isCoolOrBeverage =
-              sku.includes('MILK') ||
-              sku.includes('YOG') ||
-              sku.includes('BEER') ||
-              sku.includes('COCA') ||
-              sku.includes('WATER') ||
-              sku.includes('TEA');
-            const zone = isCoolOrBeverage ? 'ZONE_B' : 'ZONE_A';
-
-            // Tính toán trọng lượng thực tế của lô hàng (kg)
-            const unitWeightKg = sku.includes('OMO')
-              ? 3.6
-              : sku.includes('MILK')
-              ? 1.0
-              : sku.includes('WATER')
-              ? 0.5
-              : sku.includes('BEER') || sku.includes('COCA')
-              ? 0.35
-              : 0.8;
-            const itemQty = item.receivedQty || item.expectedQty || 1;
-            const totalWeight = Math.round(itemQty * unitWeightKg);
+            const zone = ({ COOL: 'ZONE_B', COLD: 'ZONE_C', SECURE: 'ZONE_D', AMBIENT: 'ZONE_A' } as Record<string,string>)[prod?.storageCondition ?? ''] ?? '';
+            const itemQty = item.remainingQty;
+            if (itemQty <= 0) continue;
+            const totalWeight = itemQty * (prod?.weightKg ?? 0);
 
             dynamicTasks.push({
               id: `po-${o.id}-it-${item.id}`,
               orderId: o.id,
+              warehouseId: o.warehouseId,
+              stockedQty: item.stockedQty,
               orderCode: o.orderCode,
               orderItemId: item.id,
               productId: item.productId,
@@ -109,7 +91,8 @@ export const PutawayTab: React.FC<PutawayTabProps> = ({
     setLoading(true);
     setFeedback(null);
     try {
-      const loc = await operatorService.suggestPutawayLocation(task.preferredZone, task.weightKg);
+      if (!task.preferredZone || !task.weightKg) throw new Error('Thiếu phân khu hoặc trọng lượng trong danh mục sản phẩm.');
+      const loc = await operatorService.suggestPutawayLocation(task.warehouseId, task.preferredZone, task.weightKg);
       soundEffects.playSuccessBeep();
       setActiveTask({
         ...task,
@@ -162,13 +145,17 @@ export const PutawayTab: React.FC<PutawayTabProps> = ({
           productId: activeTask.productId,
           locationId: activeTask.suggestedLocation.id,
           quantity: activeTask.qty,
+          expectedStockedQty: activeTask.stockedQty,
           batchNumber: activeTask.batchNumber,
           expiryDate: activeTask.expiryDate,
         });
       } catch (err: any) {
-        console.warn('Backend putaway sync notice:', err);
+        setFeedback({ msg: err.response?.data?.message || 'Chưa ghi nhận cất kệ.', type: 'error' });
+        setActiveTask(null);
+        await fetchReceivedOrders();
+        return;
       }
-    }
+    } else return;
 
     setStagingQueue((prev) =>
       prev.map((t) => (t.id === activeTask.id ? { ...t, status: 'COMPLETED' } : t))

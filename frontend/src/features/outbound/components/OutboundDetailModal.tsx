@@ -1,33 +1,53 @@
 import React from 'react';
-import { X, Lock, MapPin, Calendar, CheckCircle2, Printer, ShieldCheck, ArrowRight, Package, Navigation } from 'lucide-react';
+import { X, Lock, MapPin, Calendar, CheckCircle2, Printer, ShieldCheck, ArrowRight, Package, Navigation, Clock, Truck, Box, XCircle } from 'lucide-react';
 import { OutboundOrder } from '../types';
 
 interface OutboundDetailModalProps {
   order: OutboundOrder | null;
   onClose: () => void;
   onOpenPickPath?: (order: OutboundOrder) => void;
+  onCancelOrder?: (orderId: string) => void;
 }
 
-export const OutboundDetailModal: React.FC<OutboundDetailModalProps> = ({ order, onClose, onOpenPickPath }) => {
+export const OutboundDetailModal: React.FC<OutboundDetailModalProps> = ({ order, onClose, onOpenPickPath, onCancelOrder }) => {
   if (!order) return null;
+
+  const isPending = order.status === 'PENDING';
+  const isAllocated = order.status === 'ALLOCATED';
+  const isPicking = order.status === 'PICKING';
+  const isDispatched = order.status === 'DISPATCHED';
+  const isCancelled = order.status === 'CANCELLED';
+
+  const totalQuantity = order.items.reduce((sum, item) => sum + (item.requestedQty || 0), 0);
 
   return (
     <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4 z-50 animate-in fade-in duration-200">
-      <div className="bg-white rounded-2xl max-w-3xl w-full border border-slate-200 shadow-2xl overflow-hidden text-slate-900 flex flex-col max-h-[90vh]">
+      <div className="bg-white rounded-2xl max-w-4xl w-full border border-slate-200 shadow-2xl overflow-hidden text-slate-900 flex flex-col max-h-[90vh]">
         {/* Header */}
         <div className="p-5 border-b border-slate-200 flex items-center justify-between bg-slate-50">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-amber-50 text-amber-700 border border-amber-200 flex items-center justify-center">
+            <div className="w-10 h-10 rounded-xl bg-amber-500 text-white flex items-center justify-center shadow-sm shadow-amber-200">
               <Package className="w-5 h-5" />
             </div>
             <div>
               <div className="flex items-center gap-2.5">
-                <h3 className="font-bold text-base text-slate-900">Chi Tiết Đơn Xuất & Phiếu Lấy Hàng</h3>
-                <span className="text-xs font-mono font-bold px-2.5 py-0.5 rounded bg-amber-50 text-amber-800 border border-amber-300">
+                <h3 className="font-bold text-base text-slate-900">Chi Tiết Đơn Xuất Kho & Phiếu Lấy Hàng</h3>
+                <span className="text-xs font-bold px-2.5 py-0.5 rounded bg-amber-50 text-amber-800 border border-amber-300">
                   {order.soCode}
                 </span>
+                <span className={`text-xs font-bold px-2.5 py-0.5 rounded border ${
+                  isDispatched ? 'bg-emerald-50 text-emerald-700 border-emerald-200' :
+                  isAllocated ? 'bg-indigo-50 text-indigo-700 border-indigo-200' :
+                  isPicking ? 'bg-blue-50 text-blue-700 border-blue-200' :
+                  isCancelled ? 'bg-slate-100 text-slate-600 border-slate-200' :
+                  'bg-amber-50 text-amber-700 border-amber-200'
+                }`}>
+                  {isPending ? 'CHỜ PHÂN BỔ' : isAllocated ? 'ĐÃ GIỮ HÀNG' : isPicking ? 'ĐANG LẤY HÀNG' : isDispatched ? 'ĐÃ XUẤT XƯỞNG' : 'ĐÃ HỦY'}
+                </span>
               </div>
-              <p className="text-xs text-slate-600 font-medium mt-0.5">{order.customerName} • Giao: {order.requiredDate}</p>
+              <p className="text-xs text-slate-600 font-medium mt-0.5">
+                Khách hàng: <strong className="text-slate-800">{order.customerName}</strong> • Hạn giao: <strong>{order.requiredDate}</strong>
+              </p>
             </div>
           </div>
 
@@ -37,78 +57,87 @@ export const OutboundDetailModal: React.FC<OutboundDetailModalProps> = ({ order,
         </div>
 
         {/* Modal Body */}
-        <div className="p-6 space-y-4 overflow-y-auto text-sm">
-          {/* Lock & FEFO Certification Card */}
-          {/* <div className="p-4 rounded-xl bg-indigo-50 border border-indigo-200 space-y-2">
+        <div className="p-6 space-y-5 overflow-y-auto text-sm">
+          {/* Danh sách mặt hàng & Phân bổ Vị Trí / Lô Hàng */}
+          <div className="space-y-3">
             <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2 text-indigo-900 font-bold text-sm">
-                <Lock className="w-4.5 h-4.5 text-indigo-600" />
-                <span>Cơ Chế Khóa Giữ Tồn Kho (Pessimistic Locking Active)</span>
-              </div>
-              <span className="text-xs font-mono text-indigo-800 font-bold bg-white px-2.5 py-0.5 rounded border border-indigo-300 shadow-2xs">
-                {order.lockId || 'LOCK-TX-99824'}
+              <span className="font-bold text-slate-800 text-sm">
+                Danh Sách Mặt Hàng & Phân Bổ Vị Trí/Lô Hàng (FEFO):
               </span>
-            </div>
-            <p className="text-xs sm:text-sm text-slate-700 leading-relaxed font-medium">
-              Hệ thống đã thực hiện câu lệnh <code className="text-indigo-800 font-mono font-bold bg-white px-1 py-0.5 rounded border border-indigo-200">SELECT ... FOR UPDATE</code> trên cơ sở dữ liệu PostgreSQL. Số lượng tồn kho đã được khóa cứng (Reserved), ngăn chặn hoàn toàn tranh chấp từ các đơn hàng xuất đồng thời.
-            </p>
-          </div> */}
-
-          {/* Danh sách nhặt hàng FEFO */}
-          <div className="space-y-2.5">
-            <div className="flex items-center justify-between">
-              <span className="font-bold text-slate-800 uppercase tracking-wider text-xs sm:text-sm">
-                Lộ Trình Lấy Hàng Ưu Tiên Hạn Ngắn Trước (FEFO):
+              <span className="text-xs font-bold text-amber-800 bg-amber-50 px-2 py-0.5 rounded border border-amber-200">
+                {order.items.length} Mặt hàng • Tổng {totalQuantity} đơn vị
               </span>
-              <span className="text-xs text-amber-800 font-mono font-bold">Lô cận hạn xuất trước</span>
             </div>
 
             <div className="space-y-3">
               {order.items.map((item, idx) => {
-                const allocation = item.allocations[0] || {
-                  locationBarcode: 'ZB-B01-R01-S01-B05',
-                  batchNumber: 'BATCH-MILK-26A',
-                  expiryDate: '2026-09-25',
-                  qtyAllocated: item.requestedQty,
-                  isNearestExpiry: true,
-                };
-
+                const hasAllocations = item.allocations && item.allocations.length > 0;
                 return (
                   <div
                     key={item.id}
-                    className="p-4 rounded-xl bg-slate-50 border border-slate-200 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 shadow-2xs"
+                    className="p-4 rounded-xl bg-white border border-slate-200 shadow-xs space-y-3"
                   >
-                    <div className="space-y-1.5">
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-100 pb-2">
                       <div className="flex items-center gap-2.5">
-                        <span className="w-6 h-6 rounded-full bg-amber-100 text-amber-900 font-mono font-bold text-xs flex items-center justify-center border border-amber-300">
+                        <span className="w-6 h-6 rounded-full bg-amber-100 text-amber-900 font-bold text-xs flex items-center justify-center border border-amber-300 shrink-0">
                           {idx + 1}
                         </span>
-                        <span className="font-bold text-slate-900 text-sm sm:text-base">{item.productName}</span>
-                        <span className="text-xs font-mono font-semibold text-slate-600">{item.sku}</span>
+                        <div>
+                          <span className="font-bold text-slate-900 text-sm">{item.productName}</span>
+                          <span className="text-xs font-mono text-slate-500 font-semibold ml-2">{item.sku}</span>
+                        </div>
                       </div>
 
-                      <div className="text-xs font-mono text-slate-700 pl-8 flex items-center gap-3 flex-wrap font-medium">
-                        <span className="flex items-center gap-1 text-indigo-700 font-bold">
-                          <MapPin className="w-3.5 h-3.5 text-indigo-600" />
-                          Ô: {allocation.locationBarcode}
-                        </span>
-                        <span>•</span>
-                        <span>Lô: <strong className="text-slate-900 font-bold">{allocation.batchNumber}</strong></span>
-                        <span>•</span>
-                        <span className="text-rose-700 font-bold flex items-center gap-1">
-                          <Calendar className="w-3.5 h-3.5" />
-                          HSD: {allocation.expiryDate} (FEFO)
-                        </span>
+                      <div className="text-right">
+                        <span className="text-xs text-slate-500">Yêu cầu xuất:</span>
+                        <span className="font-bold text-slate-900 ml-1.5 text-sm">{item.requestedQty} {item.unit}</span>
                       </div>
                     </div>
 
-                    <div className="text-right pl-8 sm:pl-0 font-mono">
-                      <div className="text-emerald-700 font-black text-base">
-                        {item.requestedQty} {item.unit}
-                      </div>
-                      <span className="text-xs px-2 py-0.5 rounded bg-emerald-50 text-emerald-800 border border-emerald-300 font-bold">
-                        ĐÃ PHÂN BỔ
+                    {/* Danh sách các vị trí & lô được phân bổ (Hỗ trợ 1 sản phẩm nhiều vị trí / nhiều lô) */}
+                    <div className="space-y-2">
+                      <span className="text-[11px] font-bold text-slate-600 uppercase tracking-wider block">
+                        Các Vị Trí Ô Kệ & Lô Hàng Cần Nhặt (Picking Points):
                       </span>
+
+                      {hasAllocations ? (
+                        <div className="grid grid-cols-1 gap-2">
+                          {item.allocations.map((alloc, aIdx) => (
+                            <div
+                              key={aIdx}
+                              className="p-2.5 rounded-lg bg-slate-50 border border-slate-200 flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-xs"
+                            >
+                              <div className="flex items-center gap-3 flex-wrap">
+                                <span className="flex items-center gap-1 text-indigo-700 font-bold bg-white px-2 py-0.5 rounded border border-indigo-200">
+                                  <MapPin className="w-3.5 h-3.5 text-indigo-600" />
+                                  Ô Kệ: {alloc.locationBarcode}
+                                </span>
+                                <span className="text-slate-800">
+                                  Lô: <strong className="text-slate-900">{alloc.batchNumber}</strong>
+                                </span>
+                                <span className="text-rose-700 font-semibold flex items-center gap-1 bg-white px-2 py-0.5 rounded border border-rose-200">
+                                  <Calendar className="w-3.5 h-3.5" />
+                                  HSD: {alloc.expiryDate} {alloc.isNearestExpiry && '(Cận Date Nhất)'}
+                                </span>
+                              </div>
+
+                              <div className="text-right">
+                                <span className="font-black text-emerald-700 text-sm">
+                                  {alloc.qtyAllocated} {item.unit}
+                                </span>
+                                <span className="ml-2 text-[10px] font-bold text-emerald-800 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-300">
+                                  ĐÃ KHÓA GIỮ
+                                </span>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      ) : (
+                        <div className="p-3 bg-amber-50/60 rounded-lg border border-amber-200 text-xs text-amber-800 flex items-center justify-between">
+                          <span>Chưa phân bổ lô. Nhấn "Phân Bổ Lô" để hệ thống tự động tìm vị trí và lô cận date.</span>
+                          <span className="font-bold text-amber-700 text-xs">Chờ Phân Bổ</span>
+                        </div>
+                      )}
                     </div>
                   </div>
                 );
@@ -118,40 +147,56 @@ export const OutboundDetailModal: React.FC<OutboundDetailModalProps> = ({ order,
 
           {/* Ghi chú */}
           {order.notes && (
-            <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-200 text-xs text-slate-700 leading-relaxed font-medium">
-              <strong className="text-slate-900 font-bold">Ghi chú đơn:</strong> {order.notes}
+            <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-200 text-xs text-slate-700 font-medium">
+              <strong className="text-slate-900 font-bold">Ghi chú đơn SO:</strong> {order.notes}
             </div>
           )}
         </div>
 
-        {/* Footer */}
+        {/* Modal Footer */}
         <div className="p-4 sm:p-5 border-t border-slate-200 flex items-center justify-between bg-slate-50 flex-wrap gap-2">
           <div className="flex items-center gap-2">
             <button
-              onClick={() => alert(`Bắt đầu in phiếu nhặt hàng Pick List cho đơn: ${order.soCode}`)}
-              className="flex items-center gap-2 px-3.5 py-2 bg-white hover:bg-slate-100 text-slate-800 border border-slate-300 rounded-xl text-xs sm:text-sm font-semibold transition-colors cursor-pointer shadow-xs"
+              onClick={() => alert(`In phiếu nhặt hàng & xuất kho cho đơn: ${order.soCode}`)}
+              className="flex items-center gap-2 px-3.5 py-2 bg-white hover:bg-slate-100 text-slate-800 border border-slate-300 rounded-xl text-xs font-bold transition-colors cursor-pointer shadow-xs"
             >
               <Printer className="w-4 h-4 text-slate-600" />
-              <span>In Lệnh Nhặt Hàng</span>
+              <span>In Phiếu Nhặt Hàng</span>
             </button>
 
-            {onOpenPickPath && (
+            {onOpenPickPath && (isAllocated || isPicking) && (
               <button
                 onClick={() => onOpenPickPath(order)}
-                className="flex items-center gap-2 px-3.5 py-2 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200 rounded-xl text-xs sm:text-sm font-bold transition-all shadow-xs cursor-pointer"
+                className="flex items-center gap-2 px-3.5 py-2 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200 rounded-xl text-xs font-bold transition-colors cursor-pointer shadow-xs"
               >
                 <Navigation className="w-4 h-4 text-indigo-600" />
-                <span>Sơ Đồ Lộ Trình 2D</span>
+                <span>Xem Bản Đồ Lộ Trình</span>
               </button>
             )}
           </div>
 
-          <button
-            onClick={onClose}
-            className="px-5 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-xl text-sm transition-all shadow-md shadow-indigo-200 cursor-pointer"
-          >
-            Đóng Cửa Sổ
-          </button>
+          <div className="flex items-center gap-2">
+            {onCancelOrder && (isPending || isAllocated || isPicking) && (
+              <button
+                onClick={() => {
+                  if (confirm(`Bạn có chắc chắn muốn hủy đơn xuất ${order.soCode}? Toàn bộ số lượng hàng đã giữ trước sẽ được giải phóng lập tức.`)) {
+                    onCancelOrder(order.id);
+                    onClose();
+                  }
+                }}
+                className="px-4 py-2 bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 rounded-xl text-xs font-bold transition-colors cursor-pointer"
+              >
+                Hủy Đơn & Giải Phóng Tồn
+              </button>
+            )}
+
+            <button
+              onClick={onClose}
+              className="px-5 py-2 bg-slate-800 hover:bg-slate-900 text-white rounded-xl text-xs font-bold transition-all cursor-pointer"
+            >
+              Đóng Cửa Sổ
+            </button>
+          </div>
         </div>
       </div>
     </div>

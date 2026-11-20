@@ -40,6 +40,12 @@ public class UserResponse {
     @Schema(description = "Kho hàng mặc định phụ trách", example = "Kho Tổng Tân Bình (ZONE A & B)")
     private String assignedWarehouse;
 
+    @Schema(description = "Danh sách tất cả các kho được phân quyền truy cập")
+    private java.util.List<String> assignedWarehouses;
+
+    @Schema(description = "Kho chính mặc định khi đăng nhập")
+    private String primaryWarehouse;
+
     @Schema(description = "Số điện thoại liên hệ", example = "0900000002")
     private String phone;
 
@@ -48,6 +54,12 @@ public class UserResponse {
 
     @Schema(description = "Tài khoản đã hết hạn hay chưa", example = "false")
     private Boolean isExpired;
+
+    @Schema(description = "Tài khoản thử nghiệm an ninh / brute-force (Victim Test)")
+    private Boolean isTestAccount;
+
+    @Schema(description = "Danh sách mã quyền chi tiết của người dùng")
+    private java.util.List<String> permissions;
 
     @Schema(description = "Thời gian khởi tạo tài khoản")
     private Instant createdAt;

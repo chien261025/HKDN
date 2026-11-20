@@ -10,6 +10,9 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor
 @AllArgsConstructor
 public class SafetyStockAlertResponse {
+    private Long warehouseId;
+    private String warehouseName;
+
     private Long productId;
     private String sku;
     private String barcode;

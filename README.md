@@ -1,219 +1,77 @@
-# SMART WMS - Hệ Thống Quản Lý Kho Thông Minh Chuẩn Doanh Nghiệp
+# Smart WMS · Quản lý kho theo lô và ô kệ
 
-> **Đồ án Tốt nghiệp / Graduation Thesis:** Hệ Thống Quản Lý Kho Hàng Tích Hợp AI & Xử Lý Sự Kiện Bất Đồng Bộ  
-> **Kiến trúc chủ đạo:** Event-Driven Modular Monolith (Spring Boot 3.5.0 + React 18 TypeScript + MySQL 8 + RabbitMQ + MinIO)  
-> **Mã nguồn GitHub:** [https://github.com/chien261025/HKDN](https://github.com/chien261025/HKDN)
+Đồ án quản lý nhập, kiểm nhận, cất kệ, cấp phát FEFO (lô gần hết hạn xuất trước), xuất kho và kiểm kê. Backend là Spring Boot 3.5 / Java 25, frontend là React 18 / TypeScript, CSDL chạy bằng Docker Compose là MySQL 8.0.
 
----
+## Chạy từ mã nguồn
 
-## 1. CHU TRÌNH NGHIỆP VỤ LOGISTICS KHÉP KÍN (END-TO-END FULFILLMENT LIFECYCLE)
+Cần Docker và Docker Compose v2. Tại thư mục chứa `docker-compose.yml`, chạy:
 
-Khác biệt với các hệ thống đồ án chỉ tập trung vào CRUD cơ bản, **Smart WMS** hiện thực hóa trọn vẹn **Chu trình Quản lý Kho & Chuỗi cung ứng 9 bước khép kín** theo chuẩn quốc tế (từ lúc đặt mua hàng từ nhà cung ứng cho đến khi hàng giao tận tay khách hàng cuối):
-
-```
-┌────────────────────────────────────────────────────────────────────────────────────────┐
-│                                 CHẶNG 1: ĐẦU VÀO (INBOUND STREAM)                      │
-│   [1. Purchase Order]  ──►  [2. Receiving & QC]  ──►  [3. Putaway Task]  ──►  [4. Inventory]   │
-└───────────────────────────────────────────┬────────────────────────────────────────────┘
-                                            │
-┌───────────────────────────────────────────▼────────────────────────────────────────────┐
-│                             CHẶNG 2: ĐẦU RA TRONG KHO (OUTBOUND STREAM)                │
-│      [4. Inventory]    ──►  [5. Stock Allocation] ──► [6. FEFO Picking]                │
-│                                                            │                           │
-│      [8. Shipping]     ◄──  [7. Packing & QC]     ◄────────┘                           │
-└───────────────────────────────────────────┬────────────────────────────────────────────┘
-                                            │
-┌───────────────────────────────────────────▼────────────────────────────────────────────┐
-│                             CHẶNG 3: GIAO VẬN NGOÀI KHO (LAST-MILE LOGISTICS)          │
-│                                   [9. Delivery]                                        │
-└────────────────────────────────────────────────────────────────────────────────────────┘
-```
-
-### Bảng Ánh Xạ 9 Bước Nghiệp Vụ Với Cơ Sở Dữ Liệu & Mã Nguồn
-
-| Bước | Tên Nghiệp Vụ | Ý Nghĩa Thực Tế Ngoài Kho | Bảng CSDL (PostgreSQL) | Thành Phần Mã Nguồn (Java / Spring Boot) |
-| :--- | :--- | :--- | :--- | :--- |
-| **1** | **Purchase Order (PO)** | Đơn đặt mua hàng gửi Nhà cung cấp. Xác định số lượng dự kiến (`expected_qty`) và dung sai vượt giao cho phép. | `wms_inbound_order`<br>`wms_inbound_order_item` | `InboundOrder.java`<br>`InboundOrderItem.java` |
-| **2** | **Receiving & QC** | Hàng về cửa nhận (Dock). Nhân viên quét mã kiểm đếm, ghi nhận số lượng đạt chuẩn (`accepted_qty`), số lỗi (`rejected_qty`), và sinh Lô hàng (Batch/HSD). | `wms_receipt`<br>`wms_receipt_item`<br>`wms_product_batch` | `Receipt.java`<br>`ReceiptItem.java`<br>`ProductBatch.java` |
-| **3** | **Putaway Task** | Điều phối cất hàng: Putaway Engine phân tích Zone nhiệt độ và tải trọng kệ (`max_weight_kg`), ưu tiên hàng nặng (>100kg) vào tầng trệt `S01`. | `wms_putaway_task` | `PutawayTask.java`<br>`InboundService.suggestOptimalPutAwayLocation` |
-| **4** | **Inventory Storage** | Hàng được lưu trữ an toàn trên ô kệ. Quản lý bất biến: `on_hand_qty >= reserved_qty`, cột tự sinh `available_qty = on_hand_qty - reserved_qty`. | `wms_inventory`<br>`wms_stock_ledger` | `Inventory.java`<br>`StockLedger.java` |
-| **5** | **Stock Allocation** | Khách đặt đơn (Sales Order). Kích hoạt **Khóa bi quan (`SELECT FOR UPDATE`)** để "đặt gạch" giữ chỗ, chống 100% việc bán trùng (Overselling). | `wms_stock_reservation` | `StockReservation.java`<br>`InventoryLockService.reserveStock` |
-| **6** | **FEFO Picking** | Lấy hàng: Thuật toán quét Lô cận date nhất xuất trước (FEFO) và tối ưu hóa lộ trình di chuyển (Aisle $\rightarrow$ Rack $\rightarrow$ Shelf) giúp thủ kho không đi vòng vèo. | `wms_pick_allocation` | `PickAllocation.java`<br>`OutboundService.generateFefoPickList` |
-| **7** | **Packing & QC** | Hàng về bàn đóng gói: Quét barcode kiểm tra từng món, đóng thùng carton, dán băng dính niêm phong và in tem vận chuyển (`tracking_number`, `weight_kg`). | `wms_package`<br>`wms_package_item` | `OrderPackage.java`<br>`PackageItem.java` |
-| **8** | **Shipping** | Hàng rời khỏi ranh giới kho: Bàn giao xe tải (GHTK, Viettel Post...). **Hành động dữ liệu:** Trừ tồn thực tế (`on_hand -= qty`), giải phóng giữ chỗ, chốt Sổ cái Thẻ kho. | `wms_shipment`<br>`wms_stock_ledger` | `Shipment.java`<br>`StockLedger.java` (`OUTBOUND`) |
-| **9** | **Delivery** | Giao hàng chặng cuối (Last-mile): Shipper giao tận tay người nhận, khách hàng kiểm tra và ký nhận thành công (`status = 'DELIVERED'`). | `wms_shipment.status` | `ShipmentRepository.java` |
-
-> 💡 **Điểm mấu chốt khi bảo vệ đồ án:**
-> - **WMS kết thúc tại SHIPPING:** Khi hàng hóa đã đóng gói và rời cửa kho, WMS thực hiện trừ tồn kho vật lý và ghi nhận bút toán bất biến vào Sổ cái.
-> - **DELIVERY thuộc về Last-Mile / TMS (Transportation Management):** WMS kết nối trạng thái với đơn vị vận chuyển để cập nhật ngày giờ khách nhận hàng hoàn tất.
-
----
-
-## 2. CÁC PHÂN HỆ VỆ TINH & NỀN TẢNG KIẾN TRÚC
-
-Bên cạnh luồng chính, hệ thống sở hữu các phân hệ song song giải quyết trọn vẹn bài toán vận hành kho:
-
-```
-                          ┌────────────────────────┐
-                          │   CORE WMS PLATFORM    │
-                          └───────────┬────────────┘
-                                      │
-     ┌──────────────────┬─────────────┼─────────────┬──────────────────┐
-     ▼                  ▼             ▼             ▼                  ▼
-[Sổ Cái Thẻ Kho]   [Điều Chuyển]  [Kiểm Kê Kho]  [Phân Quyền RBAC]  [Outbox Pattern]
-- Bất biến 100%    - Chuyển ô/kệ  - Đếm mù       - User-Role-Perm   - Gửi RabbitMQ
-- Append-Only      - Check ranh   - Phiếu Cân    - 100% đa vai trò  - Xử lý bất đồng
-- Đối soát balance   giới kho       chỉnh (ADJ)    chuẩn Enterprise   bộ Excel nặng
-```
-
-1. **Sổ Cái Thẻ Kho Bất Biến (`wms_stock_ledger`):**
-   - Trigger CSDL chặn tuyệt đối `UPDATE` và `DELETE`. Mọi điều chỉnh đều phải ghi bút toán mới.
-   - Bắt buộc thứ tự giao dịch: `UPDATE wms_inventory` trước $\rightarrow$ `INSERT wms_stock_ledger` sau.
-2. **Điều Chuyển Vị Trí Kho (`wms_stock_transfer`):**
-   - Hỗ trợ di dời hàng hóa giữa các ô kệ để cân bằng tải trọng hoặc dọn kho.
-   - Trigger `trg_wms_stock_transfer_warehouse_check` tự động ngăn chặn điều chuyển nhầm kho.
-3. **Kiểm Kê Định Kỳ & Cân Chỉnh Tồn (`wms_inventory_audit` & `wms_stock_adjustment`):**
-   - Kỹ thuật kiểm kê mù (Blind Count): Giấu số dư hệ thống khi đếm thực tế.
-   - Tự động tính chênh lệch `difference_qty = counted_qty - system_qty`.
-   - Lập phiếu điều chỉnh `wms_stock_adjustment` trình Trưởng kho phê duyệt để cập nhật lại tồn thực tế.
-4. **Bảo Mật & Phân Quyền Đa Vai Trò (RBAC):**
-   - Chuẩn hóa 100% mô hình: `wms_user` $\leftrightarrow$ `wms_user_role` $\leftrightarrow$ `wms_role` $\leftrightarrow$ `wms_role_permission` $\leftrightarrow$ `wms_permission`.
-5. **Transactional Outbox & RabbitMQ Worker:**
-   - Đảm bảo tính nhất quán dữ liệu (Reliable Event Delivery) khi tích hợp Message Queue.
-   - Background Worker kết xuất báo cáo Excel streaming (SXSSFWorkbook) và lưu trữ MinIO S3 mà không làm treo Web API.
-
----
-
-## 3. CẤU TRÚC THƯ MỤC DỰ ÁN
-
-```text
-smart-wms/
-├── .github/workflows/               # CI/CD pipeline tự động build và test
-├── docker/
-│   ├── postgres/init/
-│   │   ├── 01-init-schema.sql       # DDL 34 bảng & Trigger toàn vẹn dữ liệu
-│   │   ├── 02-create-views.sql      # Views tổng hợp tồn kho & cảnh báo date
-│   │   ├── 03-create-readonly-ai.sql# User cấp quyền an toàn cho trợ lý AI
-│   │   └── 04-seed-demo-data.sql    # Dữ liệu thực nghiệm phong phú
-│   └── rabbitmq/definitions.json    # Khởi tạo Queues & Exchanges
-├── backend/                         # Spring Boot 3.3.3 (Java 17 Modular Monolith)
-│   ├── src/main/java/com/wms/
-│   │   ├── common/                  # Outbox entity, Security, Exceptions, ApiResponse
-│   │   ├── module/identity/         # Phân hệ Xác thực & Phân quyền RBAC
-│   │   ├── module/masterdata/       # Phân hệ Kho, Vị trí kệ, Đối tác & Hàng hóa
-│   │   ├── module/inventory/        # Lõi Tồn kho, Khóa bi quan, FEFO, Sổ cái, Kiểm kê
-│   │   ├── module/order/            # Quản lý PO, SO, Receipt, Putaway, Packing, Shipment
-│   │   ├── module/reporting/        # RabbitMQ Producer/Consumer, Excel Streaming Worker
-│   │   └── module/smartquery/       # Trợ lý AI Safe Text-to-SQL với bộ lọc AST
-│   └── src/main/resources/db/migration/ # Flyway migrations (V1, V2)
-├── frontend/                        # React 18 + TypeScript + Vite + Tailwind CSS
-├── docker-compose.yml               # Cụm 5 services: Postgres, RabbitMQ, MinIO, App, Web
-├── LUONG_DU_LIEU_VA_QUY_TAC_NGHIEP_VU.md # Cẩm nang luồng dữ liệu & bất biến nghiệp vụ
-├── SMART_WMS_ARCHITECTURE.md        # Tài liệu đặc tả kiến trúc chi tiết (Sequence Flows)
-└── HUONG_DAN_CHI_TIET_TUNG_GIAI_DOAN.md # Hướng dẫn phân chia công việc nhóm 2 người
-```
-
----
-
-## 4. HƯỚNG DẪN KHỞI CHẠY (QUICK START)
-
-### 4.1. Khởi động toàn bộ hệ thống bằng Docker
-Từ thư mục gốc dự án:
-```bash
-docker compose down
+```sh
 docker compose up -d --build
 ```
 
-Backend được Maven biên dịch trực tiếp từ mã nguồn trong lúc build Docker image;
-không dùng lại file JAR cũ trong `backend/target`. Sau khi sửa backend, chạy lại
-lệnh build/khởi động ở trên để container nhận các API mới.
+Maven build JAR từ mã nguồn; Node chạy `npm ci` và build frontend trước khi Nginx phục vụ web. Không cần cài Java/Node trên máy hoặc chuẩn bị `frontend/dist`. Các biến tùy chọn cho Gemini và email nằm trong `.env.example`.
 
-> **MinIO image:** Docker Hub no longer serves `minio/minio`, and the Quay
-> copy rejects anonymous pulls. The `wms-minio` service now uses
-> `docker.io/pgsty/silo:RELEASE.2026-11-12T00-00-00Z`, a community-maintained
-> MinIO-compatible fork ([SILO compatibility](https://silo.pgsty.com/compatibility/server/)).
-> It retains the S3 endpoint, credentials, ports, and named data volume.
-> If you encounter `pull access denied for minio/minio`, use the updated
-> Compose configuration and rerun the startup command above.
+- Web: **http://localhost:3000**
+- Backend: `http://localhost:8080/api/v1`
+- MySQL: `localhost:3307`, database `wms_db`
+- RabbitMQ Management: `http://localhost:15672`; giao diện lưu trữ tương thích MinIO: `http://localhost:9001`.
 
-### 4.2. Các địa chỉ dịch vụ
-- **Giao diện Web Kho (Frontend):** [http://localhost:3000](http://localhost:3000)
-- **Tài liệu REST API (Swagger UI):** [http://localhost:8080/api/v1/swagger-ui/index.html](http://localhost:8080/api/v1/swagger-ui/index.html)
-- **RabbitMQ Management Dashboard:** [http://localhost:15672](http://localhost:15672) (`guest` / `guest`)
-- **MinIO Object Storage Console:** [http://localhost:9001](http://localhost:9001) (`minioadmin` / `minioadmin`)
-- **MySQL Database:** `localhost:3307` (`wms_db` / `root` / `password123`)
+Tài khoản seed cho demo: `admin`, `manager01`, `operator01`; mật khẩu ban đầu `123456`. Dùng tài khoản quản lý để tạo PO/SO và đợt kiểm kê. Nhân viên có thể kiểm nhận và cất hàng ở cổng vận hành PDA.
 
-### Luồng tạo đơn và xuất kho
+### Khi đã có database demo
 
-- Danh mục hàng trong kho, tồn kho, tổng hợp sổ cái và form xuất dùng chung API
-  `/inventory/closing-balances`. Tồn cuối được cộng theo sản phẩm trong Kho Tổng
-  Tân Bình (Khu A & B), không cộng lẫn kho khác. Danh mục chỉ hiện hàng còn tồn;
-  sản phẩm mới đăng ký vẫn có thể chọn để nhập hàng trước khi xuất hiện ở danh mục này.
-- Form xuất chọn sẵn kho Tân Bình; đơn vị nhận phải chọn từ các đối tác đang hoạt động
-  có sản phẩm được quản lý tại kho. Backend kiểm tra đối tác và lấy tên từ danh mục.
-- Sổ cái hiển thị bảng tồn cuối hiện tại cùng lịch sử biến động. Số dư của từng
-  bút toán là số dư sau giao dịch tại thời điểm đó, không bị ghi đè bằng tồn hiện tại.
+Volume `hkdn_wms_mysqldata` giữ dữ liệu qua các lần build. `wms-schema` chạy script [08-inbound-qc-ledger.sql](docker/mysql/init/08-inbound-qc-ledger.sql) cho cả volume cũ và mới trước khi backend khởi động; container này kết thúc với mã 0 là bình thường. Có thể xem `docker compose logs wms-schema wms-backend`.
 
-- Kho xuất được chọn sẵn; chọn đối tác nhận và thêm sản phẩm. Danh sách chỉ gồm sản phẩm
-  còn tồn khả dụng trong kho đó, thuộc lô đang hoạt động và chưa hết hạn.
-- Form hiển thị tồn hiện tại, khả dụng và tồn cuối dự kiến = tồn hiện tại − số lượng xuất.
-  Tạo đơn chưa trừ tồn thực tế; cấp phát FEFO chỉ giữ hàng cho đơn.
-- Khi xác nhận xuất kho, hệ thống trừ đúng số lượng theo lô và vị trí trong kho
-  của đơn, giải phóng phần hàng đã giữ và ghi sổ cái. Thiếu hàng sẽ hủy toàn bộ
-  thao tác; đơn đã xuất không được xuất lần thứ hai.
-- Bảng **Tồn cuối trong kho** trên trang đơn xuất tự tải lại sau khi xuất thành công.
-  Trang tồn kho cũng hiển thị **Tồn Cuối (Thực Tế)** theo từng lô và ô kệ.
+Bản nâng cấp thêm số lượng lỗi, số đã cất và trigger chặn sửa/xóa bút toán. Với dòng `COMPLETED` từ bản cũ chưa có bộ đếm cất kệ, migration lấy lượng thực nhận làm số đã cất ban đầu. Đây là giả định chuyển đổi, không phải kết quả đo lại hàng; nếu trước đây đã cất thiếu thì đối chiếu chứng từ và sổ kho. Script không viết lại tồn vật lý hay lịch sử giao dịch.
 
-### 4.3. Lưu dữ liệu MySQL khi chạy Docker
+Để sao lưu volume đang dùng (chạy khi MySQL đang hoạt động):
 
-MySQL sử dụng Docker named volume `hkdn_wms_mysqldata`, được mount vào
-`/var/lib/mysql`. Dữ liệu vẫn còn sau khi build lại image, `docker compose stop`
-hoặc `docker compose down` rồi `docker compose up -d`.
-
-Không dùng `docker compose down -v` hoặc xóa volume Docker nếu chưa sao lưu,
-vì thao tác đó sẽ xóa toàn bộ database. Các file trong `docker/mysql/init` chỉ
-được chạy khi volume MySQL được khởi tạo lần đầu; sửa các file này không làm
-reset dữ liệu đang có.
-
-Sao lưu database:
-
-```bash
-docker exec wms-mysql mysqldump -uroot -ppassword123 wms_db > wms_db_backup.sql
+```sh
+docker compose exec -T wms-mysql sh -c 'mysqldump --single-transaction -uroot -p"$MYSQL_ROOT_PASSWORD" --result-file=/tmp/wms_db_backup.sql wms_db'
+docker compose cp wms-mysql:/tmp/wms_db_backup.sql ./wms_db_backup.sql
 ```
 
-Khôi phục database:
+Dùng `docker compose down` để dừng. Không dùng `down -v` trên stack demo nếu cần giữ dữ liệu.
 
-```bash
-Get-Content .\wms_db_backup.sql | docker exec -i wms-mysql mysql -uroot -ppassword123 wms_db
+## Kịch bản bảo vệ: từ đơn đặt 100 đến tồn cuối 55
+
+Chọn một **SKU mới chưa có tồn**, gắn nhà cung cấp, trong Kho Tổng Tân Bình. Chọn hạn dùng tương lai để lô đủ điều kiện FEFO. Có thể tải lại trang sau mỗi bước.
+
+| Bước | Thao tác | Chờ cất | Tồn vật lý | Đang giữ | Khả dụng |
+|---|---|---:|---:|---:|---:|
+| 1 | Tạo PO đặt 100 | 0 | 0 | 0 | 0 |
+| 2 | Nhận vào đệm: nhập thực nhận 80, lỗi 5, mã lô và hạn dùng | 75 | 0 | 0 | 0 |
+| 3 | Cất 50 vào ô đang hoạt động của kho | 25 | 50 | 0 | 50 |
+| 4 | Mở lại đơn, cất tiếp 25 vào cùng ô | 0 | 75 | 0 | 75 |
+| 5 | Tạo SO cho đối tác của kho, cấp phát FEFO 20 | 0 | 75 | 20 | 55 |
+| 6 | Xác nhận xuất 20 | 0 | **55** | **0** | **55** |
+
+Kiểm tra chi tiết PO thấy **80 thực nhận, 5 lỗi, 75 đã cất**. Sổ cái của SKU có ba bút toán `+50`, `+25`, `−20`; số dư sau từng giao dịch tại ô/lô là `50`, `75`, `55`. Cấp phát chỉ giữ chỗ nên không có bút toán xuất ở bước 5.
+
+- Mỗi PO được kiểm nhận một lần, đủ các dòng. Chỉ lượng đạt QC mới được cất. Đơn không có hàng đạt được đóng với trạng thái `CLOSED_NO_STOCK`.
+- Mỗi lần cất áp dụng cho một dòng PO và một ô kệ. Backend kiểm tra kho, trạng thái ô, lượng còn chờ và số đã cất lần cuối mà người dùng nhìn thấy. Một yêu cầu cũ gửi lại không làm tăng tồn lần hai.
+- Kiểm kê lấy số dư theo đúng kho được chọn, theo từng ô/sản phẩm/lô. Điều chỉnh tồn có chứng từ và bút toán riêng.
+
+## Chạy kiểm thử
+
+```sh
+docker compose -f compose.test.yml up --force-recreate --abort-on-container-exit --exit-code-from tests
+docker compose -f compose.test.yml down
 ```
 
-### 4.4. Tài khoản demo có sẵn
-| Tài khoản | Mật khẩu | Vai trò (Role) | Chức năng chính |
-| :--- | :--- | :--- | :--- |
-| `admin` | `123456` | `ROLE_ADMIN` | Quản trị toàn quyền hệ thống |
-| `manager01` | `123456` | `ROLE_WAREHOUSE_MANAGER` | Duyệt đơn PO/SO, duyệt phiếu Kiểm kê/Điều chỉnh |
-| `operator01` | `123456` | `ROLE_OPERATOR` | Tiếp nhận hàng, cất kệ, nhặt hàng FEFO, đóng gói |
+Hoặc `make test` cho lệnh đầu. Stack `smart-wms-tests` có MySQL riêng trong RAM, không mở cổng và không gắn volume kho demo. Mỗi lần tạo lại container là một database mới.
 
----
+- [WarehouseLifecycleTest.java](backend/src/test/java/com/wms/integration/WarehouseLifecycleTest.java): gửi payload qua Spring MVC, đối chiếu số dư/bút toán trong MySQL; bao gồm QC, cất từng phần, yêu cầu lặp, sai kho, xuất FEFO và chặn sửa/xóa sổ cái.
+- [InventoryLockingTest.java](backend/src/test/java/com/wms/concurrency/InventoryLockingTest.java): 20 yêu cầu tranh giữ 10 đơn vị trên MySQL.
+- Các unit test trong `backend/src/test/java/com/wms/unit` kiểm tra cấp phát, lô hết hạn, tồn theo kho, gợi ý kệ và bộ lọc truy vấn.
 
-## 5. CHẠY KIỂM THỬ TỰ ĐỘNG (AUTOMATED TEST SUITE)
+## Phạm vi và tài liệu
 
-Chạy kiểm thử toàn diện trên môi trường Docker chuẩn:
-```bash
-docker run --rm --network smart-wms_wms-net \
-  -v "wms-m2-cache:/root/.m2" \
-  -v "d:/Project-Tot-Nghiep/smart-wms/backend:/app" \
-  -w /app maven:3.9-eclipse-temurin-17-alpine mvn test
-```
+`backend/` chứa các phân hệ Spring, `frontend/src/features/` chứa màn hình theo nghiệp vụ, `docker/mysql/init/` là bộ SQL khởi tạo đang sử dụng. Bản demo xác nhận xuất tại cửa kho (`DISPATCHED`); không theo dõi giao hàng chặng cuối. Các endpoint Excel đồng bộ lấy dữ liệu nghiệp vụ; nhánh worker RabbitMQ xuất dữ liệu mẫu và chưa lưu file báo cáo vào MinIO.
 
-- **Kiểm thử Concurrency 20 luồng đồng thời:** Chứng minh Khóa bi quan (`SELECT FOR UPDATE`) ngăn chặn 100% âm kho trên MySQL thật.
-- **Kiểm thử thuật toán Put-away:** Tự động ưu tiên tầng trệt `S01` cho hàng nặng > 100kg.
-- **Kiểm thử giải thuật FEFO:** Sắp xếp danh sách nhặt hàng theo ngày hết hạn gần nhất.
-- **Kiểm thử an toàn AI Smart Query:** JSqlParser chặn đứng SQL Injection và câu lệnh độc hại (DROP, DELETE, UPDATE).
+Các tài liệu thiết kế dưới đây còn mô tả cả kiến trúc mục tiêu (PostgreSQL, outbox, packing, delivery); đối chiếu với luồng đã triển khai ở trên:
 
----
-
-## 6. TÀI LIỆU BỔ TRỢ HỮU ÍCH
-- [LUONG_DU_LIEU_VA_QUY_TAC_NGHIEP_VU.md](./LUONG_DU_LIEU_VA_QUY_TAC_NGHIEP_VU.md): Cẩm nang chi tiết luồng dữ liệu, máy trạng thái State Machine và 6 bất biến kỹ thuật.
-- [SMART_WMS_ARCHITECTURE.md](./SMART_WMS_ARCHITECTURE.md): Sơ đồ tuần tự (Sequence Diagrams) cho từng Use Case.
-- [HUONG_DAN_CHI_TIET_TUNG_GIAI_DOAN.md](./HUONG_DAN_CHI_TIET_TUNG_GIAI_DOAN.md): Lộ trình 5 giai đoạn và phân công vai trò cho nhóm 2 người.
+- [Luồng dữ liệu và quy tắc nghiệp vụ](LUONG_DU_LIEU_VA_QUY_TAC_NGHIEP_VU.md)
+- [Thiết kế kiến trúc](SMART_WMS_ARCHITECTURE.md)
+- [Lộ trình thực hiện đồ án](HUONG_DAN_CHI_TIET_TUNG_GIAI_DOAN.md)

@@ -51,6 +51,11 @@ export const UserMobileCards: React.FC<UserMobileCardsProps> = ({
                 <div>
                   <div className="font-bold text-slate-900 text-sm flex items-center gap-1.5 flex-wrap">
                     <span>{u.fullName}</span>
+                    {u.isTestAccount && (
+                      <span className="inline-flex items-center gap-1 text-[10px] font-bold text-amber-800 bg-amber-50 border border-amber-300 px-1.5 py-0.2 rounded-full">
+                        🧪 Test Lab
+                      </span>
+                    )}
                     {u.isExpired ? (
                       <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-rose-700 bg-rose-50 border border-rose-200 px-1.5 py-0.2 rounded-full">
                         Đã hết hạn

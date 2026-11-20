@@ -18,6 +18,7 @@ public class ExecutePutawayRequest {
     @NotNull(message = "Mã đơn nhập kho không được để trống")
     private Long orderId;
 
+    @NotNull
     private Long orderItemId;
 
     @NotNull(message = "Mã sản phẩm không được để trống")
@@ -29,6 +30,10 @@ public class ExecutePutawayRequest {
     @NotNull(message = "Số lượng cất hàng không được để trống")
     @Positive(message = "Số lượng phải lớn hơn 0")
     private Integer quantity;
+
+    @NotNull
+    @jakarta.validation.constraints.PositiveOrZero
+    private Integer expectedStockedQty;
 
     private String batchNumber;
 

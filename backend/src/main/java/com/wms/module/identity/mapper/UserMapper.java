@@ -4,10 +4,13 @@ import com.wms.module.identity.dto.response.UserResponse;
 import com.wms.module.identity.dto.response.UserSecurityLogResponse;
 import com.wms.module.identity.entity.User;
 import com.wms.module.identity.entity.UserSession;
+import com.wms.module.identity.entity.UserWarehouseAccess;
 import org.springframework.stereotype.Component;
 
 import java.time.LocalTime;
+import java.util.Collections;
 import java.util.List;
+import java.util.stream.Collectors;
 
 /**
  * Mapper chuyển đổi thực thể User sang các DTO phản hồi.
@@ -17,10 +20,43 @@ import java.util.List;
 public class UserMapper {
 
     public UserResponse toResponse(User user) {
+        return toResponse(user, Collections.emptyList());
+    }
+
+    public UserResponse toResponse(User user, List<UserWarehouseAccess> accesses) {
         String roleName = (user.getRoles() != null && !user.getRoles().isEmpty())
                 ? user.getRoles().iterator().next().getName() : "ROLE_OPERATOR";
         boolean isExpired = user.getExpiresAt() != null && user.getExpiresAt().isBefore(java.time.Instant.now());
         boolean active = Boolean.TRUE.equals(user.getIsActive());
+
+        // Extract warehouse info
+        List<String> warehouseNames = (accesses != null && !accesses.isEmpty())
+                ? accesses.stream()
+                        .map(a -> a.getWarehouse() != null ? a.getWarehouse().getName() : "Kho #" + a.getWarehouse().getId())
+                        .collect(Collectors.toList())
+                : List.of("Kho Tổng Tân Bình - TP.HCM");
+
+        String primaryWh = (accesses != null && !accesses.isEmpty())
+                ? accesses.stream()
+                        .filter(a -> Boolean.TRUE.equals(a.getIsPrimary()))
+                        .findFirst()
+                        .map(a -> a.getWarehouse() != null ? a.getWarehouse().getName() : "Kho #" + a.getWarehouse().getId())
+                        .orElse(warehouseNames.get(0))
+                : "Kho Tổng Tân Bình - TP.HCM";
+
+        // Extract permissions
+        List<String> permissionCodes = (user.getRoles() != null)
+                ? user.getRoles().stream()
+                        .filter(r -> r.getPermissions() != null)
+                        .flatMap(r -> r.getPermissions().stream())
+                        .map(p -> p.getCode())
+                        .distinct()
+                        .sorted()
+                        .collect(Collectors.toList())
+                : Collections.emptyList();
+
+        boolean isTestAccount = user.getUsername().toLowerCase().startsWith("brute_")
+                || user.getUsername().toLowerCase().contains("victim");
 
         return UserResponse.builder()
                 .id(user.getId())
@@ -31,10 +67,14 @@ public class UserMapper {
                 .roleDescription(getRoleDescription(roleName))
                 .isActive(active)
                 .status(isExpired ? "EXPIRED" : (active ? "ACTIVE" : "LOCKED"))
-                .assignedWarehouse("Kho Tổng Tân Bình (ZONE A & B)")
+                .assignedWarehouse(primaryWh)
+                .assignedWarehouses(warehouseNames)
+                .primaryWarehouse(primaryWh)
                 .phone("090000000" + user.getId())
                 .expiresAt(user.getExpiresAt())
                 .isExpired(isExpired)
+                .isTestAccount(isTestAccount)
+                .permissions(permissionCodes)
                 .createdAt(user.getCreatedAt())
                 .updatedAt(user.getUpdatedAt())
                 .build();

@@ -9,6 +9,13 @@ interface EditUserModalProps {
   onUpdateUser: (userId: string, payload: UpdateUserPayload) => Promise<void>;
 }
 
+const WAREHOUSES_LIST = [
+  { id: 1, code: 'WH01', name: 'Kho Tổng Tân Bình - TP.HCM', desc: 'Trụ sở chính (Zone A, B, Cold)' },
+  { id: 2, code: 'WH02', name: 'Kho Phân Phối VSIP Bắc Ninh', desc: 'Hub miền Bắc' },
+  { id: 3, code: 'WH03', name: 'Kho Vận Miền Trung - Đà Nẵng', desc: 'Hub miền Trung' },
+  { id: 4, code: 'WH04', name: 'Kho Trung Chuyển Sóng Thần - Bình Dương', desc: 'Kho chuyển tiếp & Cross-dock' },
+];
+
 export const EditUserModal: React.FC<EditUserModalProps> = ({
   isOpen,
   onClose,
@@ -19,7 +26,8 @@ export const EditUserModal: React.FC<EditUserModalProps> = ({
   const [email, setEmail] = useState('');
   const [phone, setPhone] = useState('');
   const [role, setRole] = useState<UserRole>('ROLE_OPERATOR');
-  const [assignedWarehouse, setAssignedWarehouse] = useState('Kho Tổng Tân Bình (ZONE A & B)');
+  const [selectedWarehouseIds, setSelectedWarehouseIds] = useState<number[]>([1]);
+  const [primaryWarehouseId, setPrimaryWarehouseId] = useState<number>(1);
   const [expiresAt, setExpiresAt] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
@@ -30,15 +38,46 @@ export const EditUserModal: React.FC<EditUserModalProps> = ({
       setEmail(user.email);
       setPhone(user.phone || '');
       setRole(user.role);
-      setAssignedWarehouse(user.assignedWarehouse || 'Kho Tổng Tân Bình (ZONE A & B)');
       setExpiresAt(user.rawExpiresAt ? user.rawExpiresAt.slice(0, 10) : '');
       setErrorMsg(null);
+
+      // Map assigned warehouses to IDs
+      if (user.assignedWarehouses && user.assignedWarehouses.length > 0) {
+        const ids: number[] = [];
+        user.assignedWarehouses.forEach((whName) => {
+          const match = WAREHOUSES_LIST.find((w) => whName.includes(w.name) || whName.includes(w.code) || w.name.includes(whName));
+          if (match && !ids.includes(match.id)) ids.push(match.id);
+        });
+        setSelectedWarehouseIds(ids.length > 0 ? ids : [1]);
+
+        const primaryMatch = WAREHOUSES_LIST.find((w) =>
+          user.primaryWarehouse ? user.primaryWarehouse.includes(w.name) : false
+        );
+        setPrimaryWarehouseId(primaryMatch ? primaryMatch.id : (ids[0] || 1));
+      } else {
+        setSelectedWarehouseIds([1]);
+        setPrimaryWarehouseId(1);
+      }
     }
   }, [user, isOpen]);
 
   if (!isOpen || !user) return null;
 
   const isRootAdmin = user.username.toLowerCase() === 'admin';
+
+  const toggleWarehouse = (id: number) => {
+    let next: number[];
+    if (selectedWarehouseIds.includes(id)) {
+      if (selectedWarehouseIds.length === 1) return; // Luôn giữ ít nhất 1 kho
+      next = selectedWarehouseIds.filter((wId) => wId !== id);
+      if (primaryWarehouseId === id) {
+        setPrimaryWarehouseId(next[0]);
+      }
+    } else {
+      next = [...selectedWarehouseIds, id];
+    }
+    setSelectedWarehouseIds(next);
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -47,15 +86,24 @@ export const EditUserModal: React.FC<EditUserModalProps> = ({
       return;
     }
 
+    if (selectedWarehouseIds.length === 0) {
+      setErrorMsg('Vui lòng chọn ít nhất một kho hàng phân quyền truy cập!');
+      return;
+    }
+
     setSubmitting(true);
     setErrorMsg(null);
     try {
+      const primaryWh = WAREHOUSES_LIST.find((w) => w.id === primaryWarehouseId)?.name || 'Kho Tổng Tân Bình - TP.HCM';
+
       await onUpdateUser(user.id, {
         fullName: fullName.trim(),
         email: email.trim().toLowerCase(),
         phone: phone.trim(),
         role: isRootAdmin ? 'ROLE_ADMIN' : role,
-        assignedWarehouse: assignedWarehouse,
+        assignedWarehouse: primaryWh,
+        assignedWarehouseIds: selectedWarehouseIds,
+        primaryWarehouseId: primaryWarehouseId,
         expiresAt: isRootAdmin ? null : (expiresAt ? new Date(expiresAt + 'T23:59:59Z').toISOString() : null),
       });
       onClose();
@@ -68,12 +116,12 @@ export const EditUserModal: React.FC<EditUserModalProps> = ({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-xs p-4 overflow-y-auto animate-in fade-in">
-      <div className="bg-white border border-slate-200 rounded-3xl w-full max-w-lg shadow-2xl overflow-hidden my-8">
+      <div className="bg-white border border-slate-200 rounded-3xl w-full max-w-lg shadow-2xl overflow-hidden my-8 flex flex-col max-h-[90vh]">
         {/* Header */}
-        <div className="px-6 py-4 bg-slate-50 border-b border-slate-200 flex items-center justify-between">
+        <div className="px-6 py-4 bg-slate-50 border-b border-slate-200 flex items-center justify-between shrink-0">
           <div>
             <h3 className="text-base font-bold text-slate-800">
-              Chỉnh Sửa Thông Tin & Vai Trò
+              Chỉnh Sửa Thông Tin, Vai Trò & Phân Quyền Kho
             </h3>
             <p className="text-xs text-slate-500 font-mono mt-0.5">
               Tài khoản: @{user.username} (ID #{user.id})
@@ -88,7 +136,7 @@ export const EditUserModal: React.FC<EditUserModalProps> = ({
         </div>
 
         {/* Form */}
-        <form onSubmit={handleSubmit} className="p-6 space-y-4 text-xs">
+        <form onSubmit={handleSubmit} className="p-6 space-y-4 text-xs overflow-y-auto flex-1">
           {errorMsg && (
             <div className="p-3 rounded-xl bg-rose-50 border border-rose-200 text-rose-700 flex items-center gap-2">
               <AlertTriangle className="w-4 h-4 shrink-0 text-rose-600" />
@@ -160,26 +208,69 @@ export const EditUserModal: React.FC<EditUserModalProps> = ({
               onChange={(e) => setRole(e.target.value as UserRole)}
               className="w-full px-3.5 py-2.5 bg-white border border-slate-300 rounded-xl focus:outline-none focus:border-indigo-600 focus:ring-2 focus:ring-indigo-100 font-medium disabled:bg-slate-100 cursor-pointer"
             >
-              <option value="ROLE_OPERATOR">Thủ kho (Vận hành thực địa)</option>
-              <option value="ROLE_WAREHOUSE_MANAGER">Quản lý trưởng kho</option>
-              <option value="ROLE_ADMIN">Quản trị viên (Admin)</option>
+              <option value="ROLE_OPERATOR">Thủ kho (Vận hành thực địa PDA)</option>
+              <option value="ROLE_WAREHOUSE_MANAGER">Quản lý trưởng kho (Điều hành chi nhánh)</option>
+              <option value="ROLE_ADMIN">Quản trị viên (Toàn quyền hệ thống)</option>
             </select>
           </div>
 
-          {/* Warehouse */}
-          <div className="space-y-1.5">
-            <label className="font-bold text-slate-700 flex items-center gap-1.5">
-              <Building2 className="w-4 h-4 text-slate-400" />
-              <span>Kho Phụ Trách:</span>
-            </label>
-            <select
-              value={assignedWarehouse}
-              onChange={(e) => setAssignedWarehouse(e.target.value)}
-              className="w-full px-3.5 py-2.5 bg-white border border-slate-300 rounded-xl focus:outline-none focus:border-indigo-600 focus:ring-2 focus:ring-indigo-100 font-medium cursor-pointer"
-            >
-              <option value="Kho Tổng Tân Bình (ZONE A & B)">Kho Tổng Tân Bình (ZONE A & B - TP.HCM)</option>
-              <option value="Kho Phân Phối VSIP Bắc Ninh">Kho Phân Phối VSIP Bắc Ninh (Miền Bắc)</option>
-            </select>
+          {/* Multi-Warehouse Access Selector */}
+          <div className="space-y-2 p-3 bg-slate-50 border border-slate-200 rounded-xl">
+            <div className="flex items-center justify-between">
+              <label className="text-slate-800 font-bold flex items-center gap-1.5">
+                <Building2 className="w-4 h-4 text-indigo-600" />
+                <span>Phân Quyền Chi Nhánh Kho Hàng:</span>
+              </label>
+              <span className="text-2xs text-slate-500 font-medium">
+                Đã chọn <span className="font-bold text-indigo-600">{selectedWarehouseIds.length}</span> kho
+              </span>
+            </div>
+
+            <div className="space-y-1.5">
+              {WAREHOUSES_LIST.map((wh) => {
+                const isChecked = selectedWarehouseIds.includes(wh.id);
+                const isPrimary = primaryWarehouseId === wh.id;
+
+                return (
+                  <div
+                    key={wh.id}
+                    className={`p-2.5 rounded-xl border flex items-center justify-between transition-colors ${
+                      isChecked ? 'bg-white border-indigo-200 shadow-2xs' : 'bg-slate-100/60 border-slate-200 opacity-60'
+                    }`}
+                  >
+                    <label className="flex items-center gap-2.5 cursor-pointer flex-1">
+                      <input
+                        type="checkbox"
+                        checked={isChecked}
+                        onChange={() => toggleWarehouse(wh.id)}
+                        className="rounded border-slate-300 text-indigo-600 focus:ring-indigo-500 cursor-pointer"
+                      />
+                      <div>
+                        <div className="font-semibold text-slate-900 text-xs flex items-center gap-2">
+                          <span>{wh.name}</span>
+                          <span className="font-mono text-2xs text-slate-400">({wh.code})</span>
+                        </div>
+                        <div className="text-2xs text-slate-500">{wh.desc}</div>
+                      </div>
+                    </label>
+
+                    {isChecked && (
+                      <button
+                        type="button"
+                        onClick={() => setPrimaryWarehouseId(wh.id)}
+                        className={`px-2 py-0.5 rounded-lg text-2xs font-semibold border transition-all cursor-pointer ${
+                          isPrimary
+                            ? 'bg-indigo-600 text-white border-indigo-600'
+                            : 'bg-slate-100 hover:bg-slate-200 text-slate-600 border-slate-300'
+                        }`}
+                      >
+                        {isPrimary ? 'Kho Mặc Định' : 'Đặt Mặc Định'}
+                      </button>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
           </div>
 
           {/* Expiry Date */}

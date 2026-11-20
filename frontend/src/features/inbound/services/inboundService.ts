@@ -1,10 +1,12 @@
 import { apiClient } from '../../../services/api';
-import { InboundOrder, InboundStatus } from '../types';
+import { InboundOrder, InboundStatus, ReceiptLine } from '../types';
 
 export const inboundService = {
-  async getInboundOrders(): Promise<InboundOrder[]> {
+  async getInboundOrders(warehouseId?: number): Promise<InboundOrder[]> {
     try {
-      const res = await apiClient.get('/orders/inbound');
+      const res = await apiClient.get('/orders/inbound', {
+        params: warehouseId ? { warehouseId } : undefined,
+      });
       if (res.data?.data && Array.isArray(res.data.data)) {
         return res.data.data.map((o: any) => {
           const items = (o.items && o.items.length > 0)
@@ -16,9 +18,12 @@ export const inboundService = {
                 productName: i.product?.name || i.productName || `Sản phẩm #${i.productId}`,
                 expectedQty: i.expectedQty || 0,
                 receivedQty: i.receivedQty || 0,
-                stockedQty: o.status === 'STOCKED' ? (i.expectedQty || 0) : 0,
+                rejectedQty: i.rejectedQty,
+                stockedQty: i.stockedQty,
+                weightKg: i.product?.weightKg,
+                storageCondition: i.product?.storageCondition,
                 status: i.status,
-                batchNumber: i.batchNumber || 'BATCH-NEW',
+                batchNumber: i.batchNumber || '',
                 expiryDate: i.expiryDate || '',
                 unitPrice: Number(i.unitPrice || i.product?.purchasePrice || 0),
                 unit: i.product?.unit || i.unit || 'Cái',
@@ -29,6 +34,7 @@ export const inboundService = {
 
           return {
             id: String(o.id),
+            warehouseId: o.warehouseId,
             poCode: o.orderCode || `PO-${o.id}`,
             supplierCode: o.supplier?.code || `SUP-${o.supplierId}`,
             supplierName: o.supplier?.name || `Nhà cung cấp #${o.supplierId}`,
@@ -52,15 +58,15 @@ export const inboundService = {
   async createInboundOrder(order: Partial<InboundOrder> & { supplierId?: number }): Promise<InboundOrder> {
     const payload = {
       orderCode: order.poCode || 'PO-' + Date.now(),
-      warehouseId: 1,
+      warehouseId: order.warehouseId || 1,
       supplierId: order.supplierId,
       status: 'PENDING',
       notes: order.notes,
       items: (order.items || []).map((it: any) => ({
         productId: it.productId,
         expectedQty: it.expectedQty,
-        batchNumber: it.batchNumber || 'BATCH-' + Date.now().toString().slice(-4),
-        expiryDate: it.expiryDate || '2026-12-31',
+        batchNumber: it.batchNumber || null,
+        expiryDate: it.expiryDate || null,
         unitPrice: it.unitPrice || 0,
       })),
     };
@@ -97,13 +103,16 @@ export const inboundService = {
     };
   },
 
-  async receiveOrder(id: string): Promise<void> {
-    await apiClient.put(`/orders/inbound/${id}/receive`);
+  async receiveOrder(id: string, lines: ReceiptLine[]): Promise<void> {
+    await apiClient.put(`/orders/inbound/${id}/receive`, {
+      items: lines.map(line => ({ ...line, id: Number(line.id), expiryDate: line.expiryDate || null })),
+    });
   },
 
-  async suggestLocation(preferredZone: string, totalWeightKg: number) {
+  async suggestLocation(warehouseId: number, preferredZone: string, totalWeightKg: number) {
     try {
       const res = await apiClient.post('/orders/inbound/suggest-location', {
+        warehouseId,
         preferredZone,
         totalWeightKg,
       });
@@ -120,6 +129,7 @@ export const inboundService = {
     productId: number;
     locationId: number;
     quantity: number;
+    expectedStockedQty: number;
     batchNumber?: string;
     expiryDate?: string;
   }): Promise<void> {

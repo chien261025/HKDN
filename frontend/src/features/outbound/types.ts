@@ -51,5 +51,7 @@ export interface OutboundStock {
   name: string;
   unit: string;
   onHandQty: number;
+  reservedQty: number;
+  unavailableQty: number;
   availableQty: number;
 }

@@ -22,6 +22,7 @@ class WarehouseStockConsistencyUnitTest {
     @Mock StockLedgerRepository ledgers;
     @Mock ProductRepository products;
     @Mock LocationRepository locations;
+    @Mock WarehouseRepository warehouses;
     @Mock ProductBatchRepository batches;
     @Mock CategoryRepository categories;
     @Mock UserRepository users;

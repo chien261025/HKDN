@@ -51,6 +51,16 @@ public class InboundOrderItem {
     @Builder.Default
     private Integer receivedQty = 0;
 
+    @Column(name = "rejected_qty", nullable = false)
+    private int rejectedQty;
+
+    @Column(name = "stocked_qty", nullable = false)
+    private int stockedQty;
+
+    public int getRemainingQty() {
+        return receivedQty - rejectedQty - stockedQty;
+    }
+
     @Column(name = "over_delivery_tolerance_pct", precision = 5, scale = 2)
     @Builder.Default
     private BigDecimal overDeliveryTolerancePct = new BigDecimal("10.00");

@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { X, Building2, Calendar, CheckCircle2, Clock, Truck, Layers, Printer, MapPin, DollarSign, ShieldCheck } from 'lucide-react';
-import { InboundOrder } from '../types';
+import { InboundOrder, remainingToStock } from '../types';
 import { Pagination } from '../../../components/common';
 
 const PAGE_SIZE = 10;
@@ -27,6 +27,11 @@ export const InboundDetailModal: React.FC<InboundDetailModalProps> = ({ order, o
   const totalQuantity = order.items.reduce((sum, item) => sum + (item.expectedQty || 0), 0);
   const totalReceived = order.items.reduce((sum, item) => sum + (item.receivedQty || 0), 0);
   const totalOrderValue = order.totalValue || order.items.reduce((sum, item) => sum + (item.expectedQty * (item.unitPrice || 0)), 0);
+  const unitLabel = (() => {
+    if (!order.items || order.items.length === 0) return 'kiện';
+    const units = Array.from(new Set(order.items.map((it) => it.unit).filter(Boolean)));
+    return units.length === 1 ? units[0] : 'kiện';
+  })();
 
   return (
     <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4 z-50 animate-in fade-in duration-200">
@@ -43,7 +48,7 @@ export const InboundDetailModal: React.FC<InboundDetailModalProps> = ({ order, o
                 <span className={`text-xs font-bold px-2.5 py-0.5 rounded border ${
                   isStocked ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : isReceived ? 'bg-blue-50 text-blue-700 border-blue-200' : 'bg-amber-50 text-amber-700 border-amber-200'
                 }`}>
-                  {isPending ? 'CHỜ TIẾP NHẬN' : isReceived ? 'TẠI KHU ĐỆM' : 'ĐÃ CẤT KỆ'}
+                  {isPending ? 'CHỜ TIẾP NHẬN' : isReceived ? 'TẠI KHU ĐỆM' : isStocked ? 'ĐÃ CẤT KỆ' : order.status === 'CLOSED_NO_STOCK' ? 'KHÔNG CÓ HÀNG ĐẠT QC' : 'ĐÃ HỦY'}
                 </span>
               </div>
               <p className="text-xs text-slate-600 font-medium mt-0.5">{order.supplierName}</p>
@@ -68,13 +73,13 @@ export const InboundDetailModal: React.FC<InboundDetailModalProps> = ({ order, o
             <div className="p-3 bg-slate-50 border border-slate-200 rounded-xl">
               <span className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider block">Quy Mô Hàng</span>
               <div className="font-black text-slate-800 text-base mt-0.5 font-mono">
-                {order.items.length} SKU ({totalQuantity} sp)
+                {order.items.length} SKU ({totalQuantity} {unitLabel})
               </div>
             </div>
             <div className="p-3 bg-slate-50 border border-slate-200 rounded-xl">
               <span className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider block">Thực Nhận / Cất Kệ</span>
               <div className="font-black text-emerald-700 text-base mt-0.5 font-mono">
-                {totalReceived} / {totalQuantity} sp
+                {totalReceived} / {order.items.reduce((n, item) => n + item.stockedQty, 0)} {unitLabel}
               </div>
             </div>
             <div className="p-3 bg-slate-50 border border-slate-200 rounded-xl">
@@ -151,15 +156,15 @@ export const InboundDetailModal: React.FC<InboundDetailModalProps> = ({ order, o
             </div>
 
             <div className="rounded-xl border border-slate-300 overflow-hidden bg-white shadow-xs">
-              <table className="w-full text-left text-sm font-mono">
+              <table className="w-full text-left text-xs">
                 <thead className="bg-slate-100 text-slate-800 text-xs font-bold uppercase border-b border-slate-300">
                   <tr>
-                    <th className="py-3 px-4">Mặt Hàng (SKU)</th>
-                    <th className="py-3 px-4">Lô & HSD</th>
-                    <th className="py-3 px-4 text-right">Đơn Giá Mua</th>
-                    <th className="py-3 px-4 text-center">Đặt / Nhận</th>
-                    <th className="py-3 px-4 text-right">Thành Tiền</th>
-                    <th className="py-3 px-4">Vị Trí Cất Kệ</th>
+                    <th className="py-3 px-4 min-w-[180px]">Mặt Hàng (SKU)</th>
+                    <th className="py-3 px-4 min-w-[160px] whitespace-nowrap">Lô & HSD</th>
+                    <th className="py-3 px-4 text-right whitespace-nowrap">Đơn Giá Mua</th>
+                    <th className="py-3 px-4 text-center whitespace-nowrap">Thực nhận / Đặt</th>
+                    <th className="py-3 px-4 text-right whitespace-nowrap">Thành Tiền</th>
+                    <th className="py-3 px-4 min-w-[140px] whitespace-nowrap">QC và cất kệ</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-200 text-slate-800">
@@ -169,38 +174,38 @@ export const InboundDetailModal: React.FC<InboundDetailModalProps> = ({ order, o
                     return (
                       <tr key={item.id} className="hover:bg-slate-50">
                         <td className="py-3 px-4">
-                          <div className="font-sans font-bold text-slate-900 text-sm">{item.productName}</div>
-                          <div className="text-xs text-slate-600 font-mono font-medium mt-0.5">{item.sku}</div>
+                          <div className="font-sans font-bold text-slate-900 text-xs">{item.productName}</div>
+                          <div className="text-[11px] text-slate-500 font-mono font-medium mt-0.5">{item.sku}</div>
                         </td>
 
-                        <td className="py-3 px-4 text-xs font-mono">
-                          <div className="text-slate-900">Lô: <strong className="text-indigo-700 font-bold">{item.batchNumber || 'Tự động gán'}</strong></div>
-                          <div className="text-amber-800 font-semibold mt-0.5">HSD: {item.expiryDate || 'Theo bao bì'}</div>
+                        <td className="py-3 px-4 text-xs whitespace-nowrap">
+                          <div className="text-slate-900">Lô: <strong className="text-indigo-700 font-bold font-mono">{item.batchNumber || 'Tự động gán'}</strong></div>
+                          <div className="text-amber-800 font-semibold mt-0.5 tabular-nums">HSD: {item.expiryDate || 'Theo bao bì'}</div>
                         </td>
 
-                        <td className="py-3 px-4 text-right text-xs font-mono font-bold text-slate-700">
+                        <td className="py-3 px-4 text-right text-xs font-bold text-slate-700 whitespace-nowrap tabular-nums">
                           {price > 0 ? `${price.toLocaleString('vi-VN')} đ` : '-'}
                         </td>
 
-                        <td className="py-3 px-4 text-center font-mono">
-                          <div className="text-sm font-black text-slate-900">
+                        <td className="py-3 px-4 text-center whitespace-nowrap">
+                          <div className="text-xs font-black text-slate-900 tabular-nums">
                             <span className="text-indigo-700">{item.receivedQty}</span> / {item.expectedQty} {item.unit}
                           </div>
                         </td>
 
-                        <td className="py-3 px-4 text-right text-xs font-mono font-bold text-indigo-700">
+                        <td className="py-3 px-4 text-right text-xs font-bold text-indigo-700 whitespace-nowrap tabular-nums">
                           {subtotal > 0 ? `${subtotal.toLocaleString('vi-VN')} đ` : '-'}
                         </td>
 
-                        <td className="py-3 px-4 text-xs font-mono">
+                        <td className="py-3 px-4 text-xs whitespace-nowrap">
                           {item.putawayLocation ? (
-                            <span className="flex items-center gap-1 text-emerald-800 font-bold bg-emerald-50 px-2 py-0.5 rounded border border-emerald-300">
-                              <MapPin className="w-3.5 h-3.5 text-emerald-600" />
+                            <span className="inline-flex items-center gap-1 text-emerald-800 font-bold bg-emerald-50 px-2 py-0.5 rounded border border-emerald-300 font-mono text-[11px]">
+                              <MapPin className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
                               {item.putawayLocation}
                             </span>
                           ) : (
                             <span className="text-slate-500 italic font-sans text-xs">
-                              {isStocked ? 'ZA-A01-R01-S01-B01' : 'Chờ cất hàng...'}
+                              Lỗi: {item.rejectedQty ?? 0} · Đã cất: {item.stockedQty} · Chờ cất: {remainingToStock(item)}
                             </span>
                           )}
                         </td>

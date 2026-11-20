@@ -12,7 +12,7 @@ export interface AuditItemDiscrepancy {
   batchNumber: string;
   systemQty: number;
   countedQty: number | null;
-  differenceQty: number;
+  differenceQty: number | null;
   unit: string;
   countedBy: string;
   itemStatus?: string;
@@ -27,6 +27,9 @@ export interface AuditSession {
   startDate: string;
   completedDate?: string;
   status: AuditStatus;
+  auditType?: 'CYCLE_COUNT' | 'FULL_AUDIT' | 'SPOT_CHECK';
+  blindCount?: boolean;
+  requireRecount?: boolean;
   totalBins: number;
   countedBins: number;
   discrepanciesCount: number;
@@ -34,4 +37,15 @@ export interface AuditSession {
   items: AuditItemDiscrepancy[];
   reconciledBy?: string;
   notes?: string;
+}
+
+export interface CreateAuditPayload {
+  warehouseId: number;
+  title: string;
+  auditType: 'CYCLE_COUNT' | 'FULL_AUDIT' | 'SPOT_CHECK';
+  scopeType: 'ALL' | 'ZONE' | 'BIN' | 'SKU';
+  scopeValue?: string;
+  notes?: string;
+  blindCount?: boolean;
+  requireRecount?: boolean;
 }

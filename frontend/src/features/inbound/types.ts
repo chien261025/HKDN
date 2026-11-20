@@ -1,4 +1,4 @@
-export type InboundStatus = 'PENDING' | 'RECEIVED' | 'STOCKED' | 'CANCELLED';
+export type InboundStatus = 'PENDING' | 'RECEIVED' | 'STOCKED' | 'CLOSED_NO_STOCK' | 'CANCELLED';
 
 export interface InboundOrderItem {
   id: string;
@@ -9,8 +9,11 @@ export interface InboundOrderItem {
   productName: string;
   expectedQty: number;
   receivedQty: number;
+  rejectedQty?: number;
+  weightKg?: number;
+  storageCondition?: string;
   stockedQty: number;
-  status?: 'PENDING' | 'RECEIVED' | 'COMPLETED';
+  status?: 'PENDING' | 'RECEIVED' | 'PARTIAL' | 'COMPLETED';
   batchNumber?: string;
   expiryDate?: string;
   unitPrice?: number;
@@ -20,6 +23,7 @@ export interface InboundOrderItem {
 
 export interface InboundOrder {
   id: string;
+  warehouseId?: number;
   poCode: string;
   supplierName: string;
   supplierCode: string;
@@ -31,6 +35,17 @@ export interface InboundOrder {
   notes?: string;
   approvedBy?: string;
 }
+
+export interface ReceiptLine {
+  id: string;
+  receivedQty: number;
+  rejectedQty: number;
+  batchNumber?: string;
+  expiryDate?: string;
+}
+
+export const remainingToStock = (item: InboundOrderItem) =>
+  item.receivedQty - (item.rejectedQty ?? 0) - item.stockedQty;
 
 export interface SupplierOption {
   code: string;

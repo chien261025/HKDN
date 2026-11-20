@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { X, Scale, CheckCircle2, AlertTriangle, MapPin, ShieldCheck, Printer, ArrowRight } from 'lucide-react';
+import { X, Scale, CheckCircle2, AlertTriangle, MapPin, ShieldCheck, Printer, ArrowRight, Clock, HelpCircle, FileCheck2 } from 'lucide-react';
 import { AuditSession } from '../types';
 
 interface AuditDiscrepancyModalProps {
@@ -17,8 +17,12 @@ export const AuditDiscrepancyModal: React.FC<AuditDiscrepancyModalProps> = ({
 
   const [isApproving, setIsApproving] = useState(false);
   const isReconciled = session.status === 'RECONCILED';
+  const isAllCounted = session.items && session.items.length > 0 && session.items.every((i) => i.countedQty !== null && i.countedQty !== undefined);
+  const canApprove = (session.status === 'PENDING_REVIEW' || isAllCounted) && !isReconciled;
+  const progressPercent = Math.round((session.countedBins / (session.totalBins || 1)) * 100);
 
   const handleApprove = async () => {
+    if (!canApprove) return;
     setIsApproving(true);
     try {
       await onApproveAdjustment(session.id);
@@ -27,27 +31,37 @@ export const AuditDiscrepancyModal: React.FC<AuditDiscrepancyModalProps> = ({
     }
   };
 
+  const handlePrint = () => {
+    window.print();
+  };
+
   return (
-    <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm flex items-center justify-center p-4 z-50 animate-in fade-in duration-200">
-      <div className="bg-white rounded-2xl max-w-4xl w-full border border-slate-200 shadow-2xl overflow-hidden text-slate-800 flex flex-col max-h-[90vh]">
+    <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4 z-50 animate-in fade-in duration-200 print:p-0 print:bg-white print:static">
+      <div className="bg-white rounded-2xl max-w-4xl w-full border border-slate-200 shadow-2xl overflow-hidden text-slate-800 flex flex-col max-h-[92vh] print:max-h-none print:shadow-none print:border-none print:w-full">
         {/* Header */}
-        <div className="p-4 md:p-5 border-b border-slate-200 flex items-center justify-between bg-slate-50">
+        <div className="p-4 md:p-5 border-b border-slate-200 flex items-center justify-between bg-slate-50 print:bg-white">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-emerald-50 text-emerald-600 border border-emerald-200 flex items-center justify-center shadow-xs">
+            <div className="w-10 h-10 rounded-xl bg-emerald-50 text-emerald-600 border border-emerald-200 flex items-center justify-center shadow-xs print:hidden">
               <Scale className="w-5 h-5" />
             </div>
             <div>
               <div className="flex items-center gap-2.5">
                 <h3 className="font-bold text-base text-slate-900">Đối Soát Kiểm Kê & Bút Toán Cân Đối: {session.auditCode}</h3>
-                <span className="text-xs font-bold px-2.5 py-0.5 rounded bg-emerald-50 text-emerald-700 border border-emerald-200">
-                  {session.status === 'RECONCILED' ? 'ĐÃ CÂN ĐỐI' : session.status === 'PENDING_REVIEW' ? 'CHỜ DUYỆT' : 'ĐANG ĐẾM'}
+                <span className={`text-xs font-bold px-2.5 py-0.5 rounded border ${
+                  session.status === 'RECONCILED'
+                    ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                    : session.status === 'PENDING_REVIEW' || isAllCounted
+                    ? 'bg-amber-50 text-amber-700 border-amber-200'
+                    : 'bg-blue-50 text-blue-700 border-blue-200'
+                }`}>
+                  {session.status === 'RECONCILED' ? 'ĐÃ CÂN ĐỐI' : session.status === 'PENDING_REVIEW' || isAllCounted ? 'CHỜ DUYỆT ĐỐI SOÁT' : 'ĐANG KIỂM ĐẾM'}
                 </span>
               </div>
               <p className="text-xs text-slate-500 mt-0.5">{session.title} • Phạm vi: {session.scope}</p>
             </div>
           </div>
 
-          <button onClick={onClose} className="p-1.5 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-200 transition-colors">
+          <button onClick={onClose} className="p-1.5 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-200 transition-colors print:hidden cursor-pointer">
             <X className="w-5 h-5" />
           </button>
         </div>
@@ -57,21 +71,37 @@ export const AuditDiscrepancyModal: React.FC<AuditDiscrepancyModalProps> = ({
           {/* Summary Banner */}
           <div className="p-4 rounded-xl bg-slate-50 border border-slate-200 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 text-sm">
             <div className="space-y-1">
-              {/* <span className="text-xs text-slate-500">Kết quả kiểm đếm mù (Blind Count từ PDA):</span> */}
               <div className="font-semibold text-slate-900">
-                Thủ kho thực hiện: <strong className="text-indigo-600">{session.assignedOperator}</strong>
+                Thủ kho phụ trách kiểm đếm: <strong className="text-indigo-600">{session.assignedOperator}</strong>
               </div>
+              {session.reconciledBy && (
+                <div className="text-xs text-slate-500">
+                  Người phê duyệt cân đối: <strong className="text-emerald-700">{session.reconciledBy}</strong>
+                </div>
+              )}
             </div>
 
             <div className="flex items-center gap-3 font-mono text-xs">
               <span className="px-3 py-1.5 rounded-lg bg-white border border-slate-200 text-slate-700 font-semibold shadow-xs">
-                Đã đếm: <strong className="text-slate-900">{session.countedBins}/{session.totalBins} ô</strong>
+                Tiến độ: <strong className="text-slate-900">{session.countedBins}/{session.totalBins} ô ({progressPercent}%)</strong>
               </span>
-              <span className="px-3 py-1.5 rounded-lg bg-rose-50 border border-rose-200 text-rose-700 font-semibold">
-                Lệch: <strong className="text-rose-700">{session.discrepanciesCount} ô</strong>
+              <span className={`px-3 py-1.5 rounded-lg border font-semibold ${
+                session.discrepanciesCount > 0 ? 'bg-rose-50 border-rose-200 text-rose-700' : 'bg-emerald-50 border-emerald-200 text-emerald-700'
+              }`}>
+                Sai lệch: <strong className={session.discrepanciesCount > 0 ? 'text-rose-700' : 'text-emerald-700'}>{session.discrepanciesCount} ô</strong>
               </span>
             </div>
           </div>
+
+          {/* Cảnh báo P0 nếu chưa đếm xong */}
+          {!isAllCounted && !isReconciled && (
+            <div className="p-3.5 rounded-xl bg-amber-50/90 border border-amber-200 text-amber-900 text-xs flex items-start gap-2.5">
+              <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
+              <div>
+                <span className="font-bold">Đợt kiểm kê chưa hoàn tất kiểm đếm:</span> Mới ghi nhận kết quả tại <strong>{session.countedBins}/{session.totalBins} vị trí</strong>. Theo quy chuẩn an toàn kho Enterprise WMS, chức năng <em>"Duyệt Cân Đối Kho & Ghi Sổ Cái"</em> tạm thời được khóa để ngăn ngừa việc ghi nhận điều chỉnh thiếu sót hoặc nhầm lẫn số lượng chưa đếm thành khớp số dư.
+              </div>
+            </div>
+          )}
 
           {/* Bảng so khớp đối soát */}
           <div className="space-y-2">
@@ -79,9 +109,9 @@ export const AuditDiscrepancyModal: React.FC<AuditDiscrepancyModalProps> = ({
               <span className="font-bold text-slate-900 uppercase tracking-wider text-xs">
                 Chi Tiết Từng Vị Trí Ô Kệ So Khớp:
               </span>
-              {/* <span className="text-xs text-slate-500 font-mono">
-                difference_qty = counted_qty - system_qty
-              </span> */}
+              <span className="text-2xs text-slate-500 font-mono">
+                Công thức: Sai Lệch (Variance) = Thực Đếm (PDA) - Tồn Hệ Thống
+              </span>
             </div>
 
             <div className="rounded-xl border border-slate-200 overflow-hidden bg-white shadow-xs">
@@ -98,16 +128,17 @@ export const AuditDiscrepancyModal: React.FC<AuditDiscrepancyModalProps> = ({
                 </thead>
                 <tbody className="divide-y divide-slate-200 text-slate-700">
                   {session.items.map((item) => {
-                    const isMatched = item.differenceQty === 0;
-                    const isShortage = item.differenceQty < 0;
-                    const isSurplus = item.differenceQty > 0;
+                    const isUncounted = item.countedQty === null || item.countedQty === undefined;
+                    const isMatched = !isUncounted && item.differenceQty === 0;
+                    const isShortage = !isUncounted && item.differenceQty !== null && item.differenceQty < 0;
+                    const isSurplus = !isUncounted && item.differenceQty !== null && item.differenceQty > 0;
 
                     return (
-                      <tr key={item.id} className="hover:bg-slate-50/80">
+                      <tr key={item.id} className={`hover:bg-slate-50/80 transition-colors ${isUncounted ? 'bg-slate-50/40 opacity-80' : ''}`}>
                         {/* Vị trí */}
-                        <td className="py-3 px-3">
+                        <td className="py-3 px-3 whitespace-nowrap">
                           <span className="flex items-center gap-1.5 text-indigo-700 font-bold">
-                            <MapPin className="w-3.5 h-3.5 text-indigo-600" />
+                            <MapPin className="w-3.5 h-3.5 text-indigo-600 shrink-0" />
                             {item.locationBarcode}
                           </span>
                         </td>
@@ -121,37 +152,47 @@ export const AuditDiscrepancyModal: React.FC<AuditDiscrepancyModalProps> = ({
                         </td>
 
                         {/* Tồn hệ thống */}
-                        <td className="py-3 px-3 text-center font-bold text-slate-800">
+                        <td className="py-3 px-3 text-center font-bold text-slate-800 tabular-nums">
                           {item.systemQty} {item.unit}
                         </td>
 
                         {/* Thực tế đếm */}
-                        <td className="py-3 px-3 text-center font-bold text-indigo-700">
-                          {item.countedQty} {item.unit}
+                        <td className="py-3 px-3 text-center tabular-nums">
+                          {isUncounted ? (
+                            <span className="text-slate-400 font-sans italic text-xs font-medium">Chưa đếm</span>
+                          ) : (
+                            <span className="font-bold text-indigo-700">{item.countedQty} {item.unit}</span>
+                          )}
                         </td>
 
                         {/* Chênh lệch */}
-                        <td className="py-3 px-3 text-center">
-                          {isMatched && (
+                        <td className="py-3 px-3 text-center whitespace-nowrap">
+                          {isUncounted ? (
+                            <span className="inline-flex items-center gap-1 text-slate-500 font-semibold bg-slate-100 px-2 py-0.5 rounded text-xs border border-slate-200">
+                              <Clock className="w-3 h-3 text-slate-400" /> Chưa Đếm
+                            </span>
+                          ) : isMatched ? (
                             <span className="inline-flex items-center gap-1 text-emerald-700 font-bold bg-emerald-50 px-2.5 py-1 rounded-md border border-emerald-200 text-xs">
-                              <CheckCircle2 className="w-3.5 h-3.5" /> 0 (Khớp)
+                              <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" /> 0 (Khớp)
                             </span>
-                          )}
-                          {isShortage && (
-                            <span className="inline-flex items-center gap-1 text-rose-700 font-bold bg-rose-50 px-2.5 py-1 rounded-md border border-rose-200 text-xs">
-                              <AlertTriangle className="w-3.5 h-3.5" /> {item.differenceQty} {item.unit}
+                          ) : isShortage ? (
+                            <span className="inline-flex items-center gap-1 text-rose-700 font-bold bg-rose-50 px-2.5 py-1 rounded-md border border-rose-200 text-xs" title="Phát hiện thiếu hàng so với hệ thống">
+                              <AlertTriangle className="w-3.5 h-3.5 text-rose-600" /> {item.differenceQty} {item.unit} (Thiếu)
                             </span>
-                          )}
-                          {isSurplus && (
-                            <span className="inline-flex items-center gap-1 text-amber-700 font-bold bg-amber-50 px-2.5 py-1 rounded-md border border-amber-200 text-xs">
-                              +{item.differenceQty} {item.unit}
+                          ) : (
+                            <span className="inline-flex items-center gap-1 text-amber-700 font-bold bg-amber-50 px-2.5 py-1 rounded-md border border-amber-200 text-xs" title="Phát hiện thừa hàng so với hệ thống">
+                              +{item.differenceQty} {item.unit} (Thừa)
                             </span>
                           )}
                         </td>
 
                         {/* Ghi chú */}
-                        <td className="py-3 px-3 font-sans text-xs text-slate-500">
-                          {item.notes || 'Số liệu khớp hoàn toàn'}
+                        <td className="py-3 px-3 font-sans text-xs">
+                          {isUncounted ? (
+                            <span className="text-slate-400 italic">Chờ nhân viên quét mã PDA tại ô kệ</span>
+                          ) : (
+                            <span className="text-slate-600">{item.notes || 'Số liệu khớp hoàn toàn'}</span>
+                          )}
                         </td>
                       </tr>
                     );
@@ -160,25 +201,13 @@ export const AuditDiscrepancyModal: React.FC<AuditDiscrepancyModalProps> = ({
               </table>
             </div>
           </div>
-
-          {/* Explanation about auto ledger adjustment */}
-          {/* <div className="p-4 rounded-xl bg-indigo-50 border border-indigo-200 text-xs text-slate-700 space-y-1.5">
-            <div className="flex items-center gap-2 font-bold text-indigo-900">
-              <ShieldCheck className="w-4 h-4 text-indigo-600" />
-              <span>Cơ Chế Bút Toán Điều Chỉnh Sổ Cái (Audit Reconciliation):</span>
-            </div>
-            <p className="text-slate-600 leading-relaxed text-xs">
-              Khi Quản lý bấm <strong>"Duyệt Cân Đối Kho (Approve Adjustment)"</strong>, hệ thống sẽ tự động sinh bút toán loại <code className="text-amber-700 bg-amber-50 px-1 py-0.5 rounded font-mono font-bold">ADJUSTMENT</code> vào Sổ Cái Bất Biến (stock_ledger) với số lượng chênh lệch để cân bằng số dư tồn kho thực tế, bảo đảm tính minh bạch trước kiểm toán.
-            </p>
-          </div> */}
         </div>
 
         {/* Footer */}
-        {/* cần in biên bản */}
-        <div className="p-4 md:p-5 border-t border-slate-200 flex items-center justify-between bg-slate-50">
+        <div className="p-4 md:p-5 border-t border-slate-200 flex items-center justify-between bg-slate-50 print:hidden">
           <button
-            onClick={() => alert(`In biên bản kiểm kê cho đợt: ${session.auditCode}`)}
-            className="flex items-center gap-2 px-4 py-2 bg-white hover:bg-slate-100 text-slate-700 rounded-xl text-sm font-semibold border border-slate-300 transition-colors shadow-xs"
+            onClick={handlePrint}
+            className="flex items-center gap-2 px-4 py-2 bg-white hover:bg-slate-100 text-slate-700 rounded-xl text-sm font-semibold border border-slate-300 transition-colors shadow-xs cursor-pointer"
           >
             <Printer className="w-4 h-4" />
             <span>In Biên Bản Kiểm Kê</span>
@@ -188,8 +217,9 @@ export const AuditDiscrepancyModal: React.FC<AuditDiscrepancyModalProps> = ({
             {!isReconciled ? (
               <button
                 onClick={handleApprove}
-                disabled={isApproving}
-                className="flex items-center gap-2 px-5 py-2.5 bg-emerald-600 hover:bg-emerald-700 disabled:opacity-60 text-white font-bold rounded-xl text-sm shadow-md shadow-emerald-600/20 transition-all active:scale-95"
+                disabled={!canApprove || isApproving}
+                className="flex items-center gap-2 px-5 py-2.5 bg-emerald-600 hover:bg-emerald-700 disabled:opacity-40 disabled:cursor-not-allowed text-white font-bold rounded-xl text-sm shadow-md shadow-emerald-600/20 transition-all cursor-pointer"
+                title={!canApprove ? `Còn ${session.totalBins - session.countedBins} vị trí ô kệ chưa hoàn thành kiểm đếm` : 'Phê duyệt và tự động ghi sổ cái'}
               >
                 <CheckCircle2 className="w-4 h-4" />
                 <span>{isApproving ? 'Đang Ghi Sổ Cái...' : 'Duyệt Cân Đối Kho & Ghi Sổ Cái'}</span>
@@ -203,7 +233,7 @@ export const AuditDiscrepancyModal: React.FC<AuditDiscrepancyModalProps> = ({
 
             <button
               onClick={onClose}
-              className="px-4 py-2 bg-slate-200 hover:bg-slate-300 text-slate-800 rounded-xl text-sm font-semibold transition-colors"
+              className="px-4 py-2 bg-slate-200 hover:bg-slate-300 text-slate-800 rounded-xl text-sm font-semibold transition-colors cursor-pointer"
             >
               Đóng
             </button>

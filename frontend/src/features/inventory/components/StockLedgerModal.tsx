@@ -1,23 +1,9 @@
-import React from 'react';
-import { Printer, X, FileText, CheckCircle2 } from 'lucide-react';
+import React, { useEffect, useState } from 'react';
+import { Printer, X, FileText, CheckCircle2, ArrowRightLeft, ShieldCheck, RefreshCw } from 'lucide-react';
+import { inventoryService } from '../services/inventoryService';
+import { LedgerEntryData } from '../../labels/types';
 
-export interface LedgerEntryData {
-  id: string;
-  transactionType: 'OUTBOUND' | 'INBOUND' | 'ADJUSTMENT' | 'TRANSFER';
-  referenceCode: string;
-  locationBarcode: string;
-  productSku: string;
-  productName: string;
-  batchNumber: string;
-  expiryDate: string;
-  qtyChange: number;
-  balanceBefore: number;
-  balanceAfter: number;
-  performedBy: string;
-  notes: string;
-  timestamp: string;
-  hashSignature: string;
-}
+export type { LedgerEntryData };
 
 interface StockLedgerModalProps {
   entry: LedgerEntryData;
@@ -25,29 +11,58 @@ interface StockLedgerModalProps {
 }
 
 export const StockLedgerModal: React.FC<StockLedgerModalProps> = ({ entry, onClose }) => {
+  const [transferLegs, setTransferLegs] = useState<LedgerEntryData[]>([]);
+  const [loadingLegs, setLoadingLegs] = useState(false);
+
+  useEffect(() => {
+    if (entry.transactionType === 'TRANSFER' && entry.referenceCode) {
+      setLoadingLegs(true);
+      inventoryService.getLedgerByReference(entry.referenceCode)
+        .then((legs) => {
+          if (legs && legs.length > 0) {
+            setTransferLegs(legs);
+          } else {
+            setTransferLegs([entry]);
+          }
+        })
+        .catch(() => setTransferLegs([entry]))
+        .finally(() => setLoadingLegs(false));
+    } else {
+      setTransferLegs([entry]);
+    }
+  }, [entry]);
+
   const getVoucherTitle = () => {
     switch (entry.transactionType) {
       case 'OUTBOUND':
         return 'PHIẾU XUẤT KHO';
       case 'INBOUND':
-        return 'PHIẾU NHẬP KHO';
+        return 'PHIẾU NHẬP KHO (NHẬP HÀNG)';
       case 'ADJUSTMENT':
         return 'BIÊN BẢN CÂN ĐỐI TỒN KHO';
+      case 'INITIAL_BALANCE':
+        return 'BÚT TOÁN THẺ KHO (SỐ DƯ ĐẦU KỲ / SNAPSHOT)';
+      case 'TRANSFER':
+        return 'PHIẾU ĐIỀU CHUYỂN Ô KỆ NỘI BỘ';
       default:
-        return 'PHIẾU ĐIỀU CHUYỂN KHO';
+        return 'CHỨNG TỪ THẺ KHO BIẾN ĐỘNG';
     }
   };
 
-  const isOutbound = entry.transactionType === 'OUTBOUND';
+  const isTransfer = entry.transactionType === 'TRANSFER';
+  const isSnapshot = entry.transactionType === 'INITIAL_BALANCE';
+  const displayItems = isTransfer && transferLegs.length > 0 ? transferLegs : [entry];
 
   return (
-    <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4 z-50 animate-in fade-in duration-200 print:bg-white print:p-0 print:static">
+    <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4 z-50 animate-in fade-in duration-200 print:bg-white print:p-0 print:static">
       <div className="printable-voucher bg-white rounded-2xl max-w-3xl w-full border border-slate-200 shadow-2xl overflow-hidden text-slate-900 relative">
         {/* Modal Header */}
         <div className="p-5 border-b border-slate-200 flex items-start justify-between bg-slate-50/90">
           <div className="flex items-center gap-3.5">
-            <div className="w-12 h-12 rounded-xl bg-indigo-600 text-white flex items-center justify-center shadow-md shadow-indigo-200 print:border print:border-slate-400">
-              <FileText className="w-6 h-6" />
+            <div className={`w-12 h-12 rounded-xl text-white flex items-center justify-center shadow-md print:border print:border-slate-400 ${
+              isSnapshot ? 'bg-blue-600 shadow-blue-200' : isTransfer ? 'bg-indigo-600 shadow-indigo-200' : 'bg-slate-700 shadow-slate-200'
+            }`}>
+              {isTransfer ? <ArrowRightLeft className="w-6 h-6" /> : <FileText className="w-6 h-6" />}
             </div>
             <div>
               <div className="flex items-center gap-2.5">
@@ -56,23 +71,37 @@ export const StockLedgerModal: React.FC<StockLedgerModalProps> = ({ entry, onClo
                 </h3>
                 <span
                   className={`text-xs font-bold px-2.5 py-0.5 rounded-full border shadow-xs ${
-                    isOutbound
+                    entry.transactionType === 'OUTBOUND'
                       ? 'bg-rose-50 text-rose-700 border-rose-200'
-                      : 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                      : entry.transactionType === 'INBOUND'
+                      ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                      : entry.transactionType === 'TRANSFER'
+                      ? 'bg-indigo-50 text-indigo-700 border-indigo-200'
+                      : entry.transactionType === 'INITIAL_BALANCE'
+                      ? 'bg-blue-50 text-blue-700 border-blue-200'
+                      : 'bg-amber-50 text-amber-700 border-amber-200'
                   }`}
                 >
-                  {isOutbound ? 'XUẤT HÀNG' : 'NHẬP HÀNG'}
+                  {entry.transactionType === 'OUTBOUND'
+                    ? 'XUẤT HÀNG'
+                    : entry.transactionType === 'INBOUND'
+                    ? 'NHẬP HÀNG'
+                    : entry.transactionType === 'TRANSFER'
+                    ? 'ĐIỀU CHUYỂN'
+                    : entry.transactionType === 'INITIAL_BALANCE'
+                    ? 'SỐ DƯ ĐẦU KỲ'
+                    : 'CÂN ĐỐI TỒN'}
                 </span>
               </div>
               <p className="text-xs sm:text-sm text-slate-600 font-medium mt-1">
-                Mã chứng từ: <strong className="text-indigo-700 font-mono font-bold">{entry.id}</strong> • Thời gian: {entry.timestamp}
+                Mã chứng từ: <strong className="text-indigo-700 font-mono font-bold">#{entry.id}</strong> • Mã phiếu: <strong className="font-mono text-slate-900">{entry.referenceCode}</strong> • Thời gian: {entry.timestamp}
               </p>
             </div>
           </div>
 
           <button
             onClick={onClose}
-            className="p-2 rounded-xl text-slate-400 hover:text-slate-700 hover:bg-slate-200/60 transition-colors border border-slate-200 print:hidden"
+            className="p-2 rounded-xl text-slate-400 hover:text-slate-700 hover:bg-slate-200/60 transition-colors border border-slate-200 print:hidden cursor-pointer"
           >
             <X className="w-5 h-5" />
           </button>
@@ -83,98 +112,110 @@ export const StockLedgerModal: React.FC<StockLedgerModalProps> = ({ entry, onClo
           {/* Thông tin chung */}
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3.5 bg-slate-50 p-4 rounded-xl border border-slate-200 text-xs sm:text-sm shadow-xs">
             <div>
-              <span className="text-slate-500 block text-xs font-medium">Mã Chứng Từ:</span>
-              <span className="font-mono font-bold text-slate-900 text-sm mt-0.5 block">{entry.id}</span>
+              <span className="text-slate-500 block text-xs font-medium">Bút toán gốc:</span>
+              <span className="font-mono font-bold text-slate-900 text-sm mt-0.5 block">#{entry.id}</span>
             </div>
             <div>
-              <span className="text-slate-500 block text-xs font-medium">Mã Đơn Hàng:</span>
+              <span className="text-slate-500 block text-xs font-medium">Mã Tham Chiếu:</span>
               <span className="font-mono font-bold text-indigo-700 text-sm mt-0.5 block">{entry.referenceCode}</span>
             </div>
             <div>
-              <span className="text-slate-500 block text-xs font-medium">Người Lập Phiếu:</span>
+              <span className="text-slate-500 block text-xs font-medium">Người Thực Hiện:</span>
               <span className="font-semibold text-slate-900 mt-0.5 block">{entry.performedBy}</span>
             </div>
             <div>
-              <span className="text-slate-500 block text-xs font-medium">Thời Gian Ký:</span>
+              <span className="text-slate-500 block text-xs font-medium">Thời Gian Ghi Sổ:</span>
               <span className="font-mono font-medium text-slate-700 mt-0.5 block">{entry.timestamp}</span>
             </div>
           </div>
 
-          {/* Bảng Chi Tiết Mặt Hàng */}
+          {/* Banner giải thích điều chuyển 2 vế */}
+          {isTransfer && displayItems.length > 1 && (
+            <div className="p-3 bg-indigo-50 border border-indigo-200 rounded-xl text-xs text-indigo-950 flex items-start gap-2.5">
+              <ShieldCheck className="w-4 h-4 text-indigo-600 shrink-0 mt-0.5" />
+              <div>
+                <span className="font-bold">Bút toán đối ứng kép (Double-Entry Transfer):</span> Lệnh điều chuyển ghi nhận đồng thời 2 bút toán: <strong>Ô nguồn (-{Math.abs(displayItems[0]?.qtyChange || entry.qtyChange)})</strong> và <strong>Ô đích (+{Math.abs(displayItems[1]?.qtyChange || entry.qtyChange)})</strong>. Tổng số lượng tồn toàn kho không đổi (Net change = 0).
+              </div>
+            </div>
+          )}
+
+          {/* Bảng Chi Tiết Mặt Hàng & Các Vế Giao Dịch */}
           <div className="space-y-2.5">
-            <h4 className="text-xs font-bold text-slate-900 uppercase tracking-wider flex items-center gap-2">
-              <span className="w-2 h-2 rounded-full bg-indigo-600"></span>
-              <span>Chi Tiết Hàng Hóa Lưu Kho</span>
+            <h4 className="text-xs font-bold text-slate-900 uppercase tracking-wider flex items-center justify-between">
+              <span className="flex items-center gap-2">
+                <span className="w-2 h-2 rounded-full bg-indigo-600"></span>
+                <span>Chi Tiết Bút Toán Sổ Cái ({displayItems.length} vế)</span>
+              </span>
+              {loadingLegs && (
+                <span className="text-xs text-slate-500 flex items-center gap-1">
+                  <RefreshCw className="w-3 h-3 animate-spin" /> Đang tải vế đối ứng...
+                </span>
+              )}
             </h4>
             <div className="rounded-xl border border-slate-200 overflow-hidden shadow-xs">
               <table className="w-full text-left text-xs sm:text-sm">
                 <thead className="bg-slate-50/80 text-xs text-slate-500 font-semibold border-b border-slate-200 uppercase tracking-wider">
                   <tr>
                     <th className="py-2.5 px-3 w-10 text-center">STT</th>
-                    <th className="py-2.5 px-3 min-w-[200px]">Tên Sản Phẩm</th>
-                    <th className="py-2.5 px-3 min-w-[120px] whitespace-nowrap">Mã SKU</th>
-                    <th className="py-2.5 px-3 min-w-[130px] whitespace-nowrap">Số Lô (Batch)</th>
-                    <th className="py-2.5 px-3 min-w-[120px] whitespace-nowrap">Hạn Sử Dụng</th>
-                    <th className="py-2.5 px-3 min-w-[150px] whitespace-nowrap">Vị Trí Ô Kệ</th>
-                    <th className="py-2.5 px-3 text-right min-w-[100px] whitespace-nowrap">Số Lượng</th>
+                    <th className="py-2.5 px-3 min-w-[180px]">Sản Phẩm & SKU</th>
+                    <th className="py-2.5 px-3 whitespace-nowrap">Lô & HSD</th>
+                    <th className="py-2.5 px-3 whitespace-nowrap">Vị Trí Ô Kệ</th>
+                    <th className="py-2.5 px-3 text-center whitespace-nowrap">Biến Động (SL)</th>
+                    <th className="py-2.5 px-3 text-center whitespace-nowrap">Tồn Trước</th>
+                    <th className="py-2.5 px-3 text-center whitespace-nowrap">Tồn Sau</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100 bg-white font-sans text-slate-800">
-                  <tr>
-                    <td className="py-3 px-3 text-center text-slate-500 font-mono text-xs">1</td>
-                    <td className="py-3 px-3">
-                      <div className="font-semibold text-slate-900 text-sm">{entry.productName}</div>
-                    </td>
-                    <td className="py-3 px-3 font-mono text-xs text-slate-500 whitespace-nowrap">{entry.productSku}</td>
-                    <td className="py-3 px-3 font-mono text-xs text-slate-700 whitespace-nowrap font-medium">{entry.batchNumber}</td>
-                    <td className="py-3 px-3 font-mono text-xs text-slate-700 whitespace-nowrap tabular-nums">{entry.expiryDate}</td>
-                    <td className="py-3 px-3 font-mono text-xs whitespace-nowrap">
-                      <span className="bg-slate-100/90 px-2 py-0.5 rounded-md border border-slate-200/80 text-slate-700 font-medium">
-                        {entry.locationBarcode}
-                      </span>
-                    </td>
-                    <td className="py-3 px-3 text-right font-semibold text-slate-900 tabular-nums text-sm whitespace-nowrap">
-                      {Math.abs(entry.qtyChange).toLocaleString('vi-VN')} SP
-                    </td>
-                  </tr>
+                  {displayItems.map((item, idx) => {
+                    const isMinus = item.qtyChange < 0;
+                    return (
+                      <tr key={item.id} className="hover:bg-slate-50/80 transition-colors">
+                        <td className="py-3 px-3 text-center text-slate-500 font-mono text-xs">{idx + 1}</td>
+                        <td className="py-3 px-3">
+                          <div className="font-semibold text-slate-900 text-xs sm:text-sm">{item.productName}</div>
+                          <div className="text-slate-500 font-mono text-xs">{item.productSku}</div>
+                        </td>
+                        <td className="py-3 px-3 font-mono text-xs whitespace-nowrap">
+                          <div className="font-bold text-slate-800">{item.batchNumber}</div>
+                          <div className="text-slate-500 text-[11px]">HSD: {item.expiryDate}</div>
+                        </td>
+                        <td className="py-3 px-3 font-mono text-xs whitespace-nowrap">
+                          <span className="bg-slate-100 px-2 py-0.5 rounded-md border border-slate-200 text-slate-800 font-bold">
+                            {item.locationBarcode}
+                          </span>
+                        </td>
+                        <td className="py-3 px-3 text-center whitespace-nowrap font-mono font-bold">
+                          <span
+                            className={`px-2 py-0.5 rounded-full text-xs ${
+                              isMinus
+                                ? 'bg-rose-50 text-rose-700 border border-rose-200'
+                                : 'bg-emerald-50 text-emerald-700 border border-emerald-200'
+                            }`}
+                          >
+                            {item.qtyChange > 0 ? `+${item.qtyChange}` : item.qtyChange} SP
+                          </span>
+                        </td>
+                        <td className="py-3 px-3 text-center font-mono text-slate-600 tabular-nums">
+                          {item.balanceBefore.toLocaleString('vi-VN')}
+                        </td>
+                        <td className="py-3 px-3 text-center font-mono font-bold text-slate-900 tabular-nums">
+                          {item.balanceAfter.toLocaleString('vi-VN')}
+                        </td>
+                      </tr>
+                    );
+                  })}
                 </tbody>
               </table>
             </div>
           </div>
 
-          {/* Biến Động Số Dư & Ghi Chú */}
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-            <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-200 text-center shadow-xs">
-              <span className="text-xs text-slate-500 font-medium block mb-0.5">Tồn Trước Biến Động</span>
-              <span className="text-lg font-bold text-slate-800 tabular-nums">{entry.balanceBefore.toLocaleString('vi-VN')}</span>
-            </div>
-
-            <div className={`p-3.5 rounded-xl border text-center shadow-xs ${
-              isOutbound
-                ? 'bg-rose-50/70 border-rose-200 text-rose-700'
-                : 'bg-emerald-50/70 border-emerald-200 text-emerald-700'
-            }`}>
-              <span className="text-xs block mb-0.5 font-semibold uppercase tracking-wider">
-                {isOutbound ? 'Số Lượng Xuất' : 'Số Lượng Nhập'}
-              </span>
-              <span className="text-lg font-bold tabular-nums">
-                {entry.qtyChange > 0 ? `+${entry.qtyChange.toLocaleString('vi-VN')}` : entry.qtyChange.toLocaleString('vi-VN')} SP
-              </span>
-            </div>
-
-            <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-200 text-center shadow-xs">
-              <span className="text-xs text-slate-500 font-medium block mb-0.5">Tồn Sau Biến Động</span>
-              <span className="text-lg font-bold text-slate-900 tabular-nums">{entry.balanceAfter.toLocaleString('vi-VN')}</span>
-            </div>
-          </div>
-
           {/* Ghi chú */}
           <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-200 text-xs sm:text-sm">
-            <span className="text-slate-700 font-bold block">Ghi chú phiếu xuất:</span>
-            <p className="text-slate-800 mt-1 font-medium leading-relaxed">{entry.notes || 'Không có ghi chú bổ sung.'}</p>
+            <span className="text-slate-700 font-bold block">Ghi chú nghiệp vụ:</span>
+            <p className="text-slate-800 mt-1 font-medium leading-relaxed">{entry.notes || 'Bút toán tự động ghi nhận vào sổ cái theo nguyên tắc Append-Only.'}</p>
           </div>
 
-          {/* Phần Chữ Ký 3 Bên Chuẩn Kho Vận Doanh Nghiệp */}
+          {/* Chữ Ký 3 Bên */}
           <div className="pt-4 border-t border-slate-200">
             <div className="grid grid-cols-3 gap-4 text-center">
               <div className="space-y-1">
@@ -188,17 +229,17 @@ export const StockLedgerModal: React.FC<StockLedgerModalProps> = ({ entry, onClo
               </div>
 
               <div className="space-y-1">
-                <span className="text-xs sm:text-sm font-bold text-slate-900 block">Thủ Kho</span>
+                <span className="text-xs sm:text-sm font-bold text-slate-900 block">Thủ Kho / Giám Sát</span>
                 <span className="text-xs text-slate-500 block italic">(Ký, ghi rõ họ tên)</span>
                 <div className="h-16 flex items-end justify-center">
                   <span className="text-xs sm:text-sm font-bold text-indigo-700 border-t border-dashed border-slate-300 pt-1 w-36">
-                    Trần Trưởng Kho
+                    Quản Lý Kho WMS
                   </span>
                 </div>
               </div>
 
               <div className="space-y-1">
-                <span className="text-xs sm:text-sm font-bold text-slate-900 block">Người Nhận Hàng</span>
+                <span className="text-xs sm:text-sm font-bold text-slate-900 block">Người Nhận / Vận Chuyển</span>
                 <span className="text-xs text-slate-500 block italic">(Ký, ghi rõ họ tên)</span>
                 <div className="h-16 flex items-end justify-center">
                   <span className="text-xs sm:text-sm font-medium text-slate-400 border-t border-dashed border-slate-300 pt-1 w-36">

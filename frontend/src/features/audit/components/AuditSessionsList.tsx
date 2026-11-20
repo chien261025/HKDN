@@ -108,16 +108,38 @@ export const AuditSessionsList: React.FC<AuditSessionsListProps> = ({
                     </div>
                   </td>
 
-                  {/* Sai lệch phát hiện */}
+                  {/* Sai lệch phát hiện (Phân biệt: Đang đếm - Chờ duyệt - Đã cân đối) */}
                   <td className="py-3.5 px-4 font-mono text-xs">
-                    {session.discrepanciesCount > 0 ? (
-                      <span className="inline-flex items-center gap-1.5 text-rose-700 bg-rose-50 px-2.5 py-1 rounded-md border border-rose-200 font-bold">
-                        <AlertTriangle className="w-3.5 h-3.5" /> {session.discrepanciesCount} ô chênh lệch
-                      </span>
+                    {isReconciled ? (
+                      session.discrepanciesCount > 0 ? (
+                        <span className="inline-flex items-center gap-1.5 text-slate-700 bg-slate-100 px-2.5 py-1 rounded-md border border-slate-200 font-bold" title="Lệch lịch sử đã được điều chỉnh cân đối vào Sổ cái">
+                          <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" /> Đã xử lý ({session.discrepanciesCount} lệch)
+                        </span>
+                      ) : (
+                        <span className="inline-flex items-center gap-1.5 text-emerald-700 bg-emerald-50 px-2.5 py-1 rounded-md border border-emerald-200 font-bold">
+                          <CheckCircle2 className="w-3.5 h-3.5" /> Khớp 100%
+                        </span>
+                      )
+                    ) : isPendingReview ? (
+                      session.discrepanciesCount > 0 ? (
+                        <span className="inline-flex items-center gap-1.5 text-rose-700 bg-rose-50 px-2.5 py-1 rounded-md border border-rose-200 font-bold" title="Sai lệch đã xác nhận đếm xong, đang chờ Trưởng kho duyệt cân đối">
+                          <AlertTriangle className="w-3.5 h-3.5 text-rose-600" /> {session.discrepanciesCount} ô chờ duyệt
+                        </span>
+                      ) : (
+                        <span className="inline-flex items-center gap-1.5 text-emerald-700 bg-emerald-50 px-2.5 py-1 rounded-md border border-emerald-200 font-bold">
+                          <CheckCircle2 className="w-3.5 h-3.5" /> Khớp 100%
+                        </span>
+                      )
                     ) : (
-                      <span className="inline-flex items-center gap-1.5 text-emerald-700 bg-emerald-50 px-2.5 py-1 rounded-md border border-emerald-200 font-bold">
-                        <CheckCircle2 className="w-3.5 h-3.5" /> Khớp 100%
-                      </span>
+                      session.discrepanciesCount > 0 ? (
+                        <span className="inline-flex items-center gap-1.5 text-amber-700 bg-amber-50 px-2.5 py-1 rounded-md border border-amber-200 font-bold" title="Sai lệch tạm thời phát hiện trong quá trình quét đếm">
+                          <Clock className="w-3.5 h-3.5 text-amber-600" /> Tạm tính: {session.discrepanciesCount} lệch
+                        </span>
+                      ) : (
+                        <span className="inline-flex items-center gap-1.5 text-slate-500 bg-slate-50 px-2.5 py-1 rounded-md border border-slate-200 font-medium">
+                          Chưa ghi nhận lệch
+                        </span>
+                      )
                     )}
                   </td>
 

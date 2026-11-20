@@ -11,5 +11,6 @@ import java.util.Optional;
 public interface LocationRepository extends JpaRepository<Location, Long> {
     Optional<Location> findByBinBarcode(String binBarcode);
     List<Location> findByZoneCode(String zoneCode);
+    List<Location> findByWarehouseIdAndZoneCode(Long warehouseId, String zoneCode);
     List<Location> findByIsActiveTrue();
 }

@@ -7,6 +7,7 @@ import { EditUserModal } from '../components/EditUserModal';
 import { ResetPasswordModal } from '../components/ResetPasswordModal';
 import { LockUserModal } from '../components/LockUserModal';
 import { UserSecurityAuditModal } from '../components/UserSecurityAuditModal';
+import { RbacMatrixModal } from '../components/RbacMatrixModal';
 import { UserAccount, UpdateUserPayload } from '../types';
 import { userService } from '../services/userService';
 
@@ -27,6 +28,7 @@ export const UsersManagementPage: React.FC = () => {
   const [resettingUser, setResettingUser] = useState<UserAccount | null>(null);
   const [lockingUser, setLockingUser] = useState<UserAccount | null>(null);
   const [auditUser, setAuditUser] = useState<UserAccount | null>(null);
+  const [isRbacMatrixOpen, setIsRbacMatrixOpen] = useState(false);
 
   useEffect(() => {
     if (toast) {
@@ -190,6 +192,7 @@ export const UsersManagementPage: React.FC = () => {
           onEditUser={(u) => setEditingUser(u)}
           onViewSecurityLog={(u) => setAuditUser(u)}
           onBulkStatus={handleBulkStatus}
+          onOpenRbacMatrix={() => setIsRbacMatrixOpen(true)}
         />
       )}
 
@@ -226,6 +229,11 @@ export const UsersManagementPage: React.FC = () => {
         onClose={() => setAuditUser(null)}
         user={auditUser}
         onForceLogout={handleForceLogoutFromAudit}
+      />
+
+      <RbacMatrixModal
+        isOpen={isRbacMatrixOpen}
+        onClose={() => setIsRbacMatrixOpen(false)}
       />
     </div>
   );

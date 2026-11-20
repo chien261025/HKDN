@@ -3,6 +3,8 @@ import { StockItem, LedgerEntryData } from '../../labels/types';
 import { OutboundStock } from '../../outbound/types';
 
 export interface SafetyStockAlert {
+  warehouseId?: number;
+  warehouseName?: string;
   productId: number;
   sku: string;
   barcode: string;
@@ -19,14 +21,65 @@ export interface SafetyStockAlert {
   message: string;
 }
 
+export interface ExpiringBatchAlert {
+  warehouseId?: number;
+  warehouseName?: string;
+  productId: number;
+  sku: string;
+  productName: string;
+  categoryName: string;
+  unit: string;
+  batchId: number;
+  batchNumber: string;
+  batchStatus?: string;
+  manufactureDate?: string;
+  expiryDate: string;
+  daysRemaining: number;
+  locationId: number;
+  locationBarcode: string;
+  onHandQty: number;
+  reservedQty: number;
+  availableQty: number;
+  alertLevel: 'EXPIRED' | 'CRITICAL' | 'WARNING';
+  message: string;
+}
+
+export interface SlowMovingStockAlert {
+  warehouseId?: number;
+  warehouseName?: string;
+  productId: number;
+  sku: string;
+  productName: string;
+  categoryName: string;
+  unit: string;
+  batchId: number;
+  batchNumber: string;
+  locationId: number;
+  locationBarcode: string;
+  onHandQty: number;
+  availableQty: number;
+  purchasePrice?: number;
+  holdingValue?: number;
+  daysInStock: number;
+  lastMovementDate?: string;
+  alertLevel: 'DEAD_STOCK' | 'SLOW_MOVING';
+  message: string;
+  suggestedAction: string;
+}
+
 export const inventoryService = {
-  async getClosingBalances(): Promise<OutboundStock[]> {
-    const res = await apiClient.get('/inventory/closing-balances');
-    return res.data.data;
+  async getClosingBalances(warehouseId?: number): Promise<OutboundStock[]> {
+    const res = await apiClient.get('/inventory/closing-balances', {
+      params: warehouseId ? { warehouseId } : undefined,
+    });
+    return res.data?.data || [];
   },
-  async getInventoryBalances(): Promise<StockItem[]> {
+
+  async getInventoryBalances(warehouseId?: number): Promise<StockItem[]> {
     try {
-      const res = await apiClient.get('/inventory');
+      const res = await apiClient.get('/inventory', {
+        params: warehouseId ? { warehouseId } : undefined,
+      });
       if (res.data?.data && Array.isArray(res.data.data)) {
         return res.data.data.map((inv: any) => {
           const whId = inv.warehouseId || (inv.locationBarcode?.startsWith('WH02') ? 2 : inv.locationBarcode?.startsWith('WH03') ? 3 : inv.locationBarcode?.startsWith('WH04') ? 4 : 1);
@@ -40,13 +93,18 @@ export const inventoryService = {
             batchId: inv.batchId,
             sku: inv.sku || `SKU-${inv.productId}`,
             name: inv.productName || `Sản phẩm #${inv.productId}`,
+            unit: inv.unit || 'Cái',
             locationBarcode: inv.locationBarcode || `LOC-${inv.locationId}`,
             batchNumber: inv.batchNumber || `BATCH-${inv.batchId}`,
             expiryDate: inv.expiryDate || 'N/A',
             onHandQty: inv.onHandQty ?? 0,
             reservedQty: inv.reservedQty ?? 0,
-            availableQty: inv.availableQty != null ? inv.availableQty : ((inv.onHandQty ?? 0) - (inv.reservedQty ?? 0)),
+            unavailableQty: inv.unavailableQty ?? 0,
+            availableQty: inv.isExpired ? 0 : (inv.availableQty != null ? inv.availableQty : Math.max(0, (inv.onHandQty ?? 0) - (inv.reservedQty ?? 0) - (inv.unavailableQty ?? 0))),
             isExpiringSoon: Boolean(inv.isExpiringSoon),
+            isExpired: Boolean(inv.isExpired),
+            expiryStatus: inv.expiryStatus || (inv.isExpired ? 'EXPIRED' : inv.isExpiringSoon ? 'EXPIRING_SOON' : 'VALID'),
+            daysRemaining: inv.daysRemaining,
           };
         });
       }
@@ -57,13 +115,36 @@ export const inventoryService = {
     }
   },
 
-  async getSafetyStockAlerts(): Promise<SafetyStockAlert[]> {
+  async getSafetyStockAlerts(warehouseId?: number): Promise<SafetyStockAlert[]> {
+    const res = await apiClient.get('/inventory/alerts/safety-stock', {
+      params: warehouseId ? { warehouseId } : undefined,
+    });
+    return res.data?.data || [];
+  },
+
+  async getExpiringBatchAlerts(warehouseId?: number): Promise<ExpiringBatchAlert[]> {
+    const res = await apiClient.get('/inventory/alerts/expiring', {
+      params: warehouseId ? { warehouseId } : undefined,
+    });
+    return res.data?.data || [];
+  },
+
+  async getSlowMovingStockAlerts(warehouseId?: number): Promise<SlowMovingStockAlert[]> {
+    const res = await apiClient.get('/inventory/alerts/slow-moving', {
+      params: warehouseId ? { warehouseId } : undefined,
+    });
+    return res.data?.data || [];
+  },
+
+  async quarantineBatch(batchId: number, reason?: string): Promise<boolean> {
     try {
-      const res = await apiClient.get('/inventory/alerts/safety-stock');
-      return res.data?.data || [];
+      const res = await apiClient.put(`/inventory/batches/${batchId}/quarantine`, null, {
+        params: reason ? { reason } : undefined,
+      });
+      return res.data?.success ?? true;
     } catch (err) {
-      console.warn('Backend safety stock alerts error:', err);
-      return [];
+      console.error('Error quarantining batch:', err);
+      throw err;
     }
   },
 
@@ -82,9 +163,16 @@ export const inventoryService = {
     }
   },
 
-  async getRecentLedger(): Promise<LedgerEntryData[]> {
+  async getRecentLedger(params?: {
+    warehouseId?: number;
+    productId?: number;
+    locationId?: number;
+    batchId?: number;
+    transactionType?: string;
+    limit?: number;
+  }): Promise<LedgerEntryData[]> {
     try {
-      const res = await apiClient.get('/inventory/ledger');
+      const res = await apiClient.get('/inventory/ledger', { params });
       if (res.data?.data && Array.isArray(res.data.data) && res.data.data.length > 0) {
         return res.data.data.map((l: any) => ({
           id: String(l.id),
@@ -109,6 +197,36 @@ export const inventoryService = {
     } catch (err) {
       console.warn('Backend stock ledger not reachable:', err);
       throw err;
+    }
+  },
+
+  async getLedgerByReference(referenceCode: string): Promise<LedgerEntryData[]> {
+    try {
+      const res = await apiClient.get(`/inventory/ledger/reference/${encodeURIComponent(referenceCode)}`);
+      if (res.data?.data && Array.isArray(res.data.data)) {
+        return res.data.data.map((l: any) => ({
+          id: String(l.id),
+          warehouseId: l.warehouseId,
+          transactionType: (l.transactionType || 'TRANSFER') as any,
+          referenceCode: l.referenceCode,
+          locationBarcode: l.locationBarcode || `LOC-${l.locationId}`,
+          productSku: l.productSku || `SKU-${l.productId}`,
+          productName: l.productName || `Sản phẩm #${l.productId}`,
+          batchNumber: l.batchNumber || `BATCH-${l.batchId}`,
+          expiryDate: l.expiryDate || 'N/A',
+          qtyChange: l.qtyChange ?? 0,
+          balanceBefore: l.balanceBefore != null ? l.balanceBefore : ((l.balanceAfter || 0) - (l.qtyChange || 0)),
+          balanceAfter: l.balanceAfter ?? 0,
+          performedBy: l.performedByName || 'Hệ thống WMS',
+          notes: l.notes || '',
+          timestamp: l.createdAt ? new Date(l.createdAt).toLocaleString('vi-VN') : new Date().toLocaleString('vi-VN'),
+          hashSignature: `SHA256:REF-${l.id}`,
+        }));
+      }
+      return [];
+    } catch (err) {
+      console.warn('Backend getLedgerByReference error:', err);
+      return [];
     }
   },
 

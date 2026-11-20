@@ -14,6 +14,8 @@ import java.math.BigDecimal;
 @Builder
 @Schema(description = "Yêu cầu thuật toán gợi ý vị trí cất hàng (Put-away)")
 public class SuggestLocationRequest {
+    @NotNull
+    private Long warehouseId;
 
     @NotBlank(message = "Phân khu ưu tiên không được để trống")
     @Schema(description = "Phân khu lưu trữ (ZONE_A: Hàng khô, ZONE_B: Hàng mát)", example = "ZONE_A")

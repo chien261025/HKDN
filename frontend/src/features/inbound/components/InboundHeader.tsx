@@ -1,14 +1,32 @@
 import React from 'react';
-import { PackagePlus, Clock, Truck, CheckCircle2, Plus } from 'lucide-react';
+import { PackagePlus, Clock, Truck, CheckCircle2, Plus, Building2 } from 'lucide-react';
 import { InboundOrder } from '../types';
+
+export type InboundFilterStatus = 'ALL' | 'PENDING' | 'RECEIVED' | 'STOCKED' | 'QC_ISSUE';
 
 interface InboundHeaderProps {
   orders: InboundOrder[];
+  selectedWarehouse?: string;
+  activeStatus?: InboundFilterStatus;
+  onStatusChange?: (status: InboundFilterStatus) => void;
+  onWarehouseChange?: (whId: string) => void;
   onOpenCreateModal: () => void;
 }
 
+const WAREHOUSE_OPTIONS = [
+  { id: 'ALL', name: 'Toàn bộ chi nhánh kho (Hệ Thống)' },
+  { id: 'WH01', altId: '1', name: 'Kho Tổng Tân Bình - TP.HCM' },
+  { id: 'WH02', altId: '2', name: 'Kho Phân Phối VSIP Bắc Ninh' },
+  { id: 'WH03', altId: '3', name: 'Kho Vận Miền Trung - Đà Nẵng' },
+  { id: 'WH04', altId: '4', name: 'Kho Trung Chuyển Sóng Thần - Bình Dương' },
+];
+
 export const InboundHeader: React.FC<InboundHeaderProps> = ({
   orders,
+  selectedWarehouse = 'ALL',
+  activeStatus = 'ALL',
+  onStatusChange,
+  onWarehouseChange,
   onOpenCreateModal,
 }) => {
   const totalCount = orders.length;
@@ -16,10 +34,25 @@ export const InboundHeader: React.FC<InboundHeaderProps> = ({
   const receivedCount = orders.filter((o) => o.status === 'RECEIVED').length;
   const stockedCount = orders.filter((o) => o.status === 'STOCKED').length;
 
+  // Chuẩn hóa ID kho cho <select>
+  const normalizedWh = (() => {
+    if (!selectedWarehouse || selectedWarehouse === 'ALL') return 'ALL';
+    const match = selectedWarehouse.match(/\d+/);
+    if (!match) return 'ALL';
+    const num = match[0];
+    return num.length === 1 ? `WH0${num}` : `WH${num}`;
+  })();
+
+  const handleCardClick = (status: InboundFilterStatus) => {
+    if (onStatusChange) {
+      onStatusChange(status);
+    }
+  };
+
   return (
     <div className="space-y-4">
       {/* Top Banner Row */}
-      <div className="bg-white rounded-2xl p-5 sm:p-6 border border-slate-200/90 shadow-sm flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+      <div className="bg-white rounded-2xl p-5 sm:p-6 border border-slate-200/90 shadow-xs flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
         <div className="flex items-center gap-4">
           <div className="w-12 h-12 rounded-xl bg-blue-600 flex items-center justify-center text-white shadow-md shadow-blue-200 shrink-0 ring-4 ring-blue-50">
             <PackagePlus className="w-6 h-6" />
@@ -34,37 +67,87 @@ export const InboundHeader: React.FC<InboundHeaderProps> = ({
           </div>
         </div>
 
-        <button
-          onClick={onOpenCreateModal}
-          className="flex items-center gap-2 px-4 py-2.5 bg-blue-600 hover:bg-blue-700 active:scale-[0.99] text-white rounded-xl text-xs sm:text-sm font-bold shadow-sm shadow-blue-200 transition-all shrink-0 cursor-pointer"
-        >
-          <Plus className="w-4 h-4" />
-          <span>+ Tạo Đơn Nhập Kho</span>
-        </button>
+        <div className="flex items-center gap-3 w-full md:w-auto justify-between md:justify-end flex-wrap">
+          {onWarehouseChange && (
+            <div className="flex items-center gap-2 bg-slate-50 p-2 rounded-xl border border-slate-200 shadow-2xs">
+              <Building2 className="w-4 h-4 text-blue-600 shrink-0 ml-1" />
+              <div className="flex flex-col">
+                <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Phạm vi kho:</span>
+                <select
+                  value={normalizedWh}
+                  onChange={(e) => onWarehouseChange(e.target.value)}
+                  className="bg-transparent text-xs sm:text-sm font-bold text-slate-900 focus:outline-none cursor-pointer pr-3"
+                >
+                  {WAREHOUSE_OPTIONS.map((opt) => (
+                    <option key={opt.id} value={opt.id}>
+                      {opt.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            </div>
+          )}
+
+          <button
+            onClick={onOpenCreateModal}
+            className="flex items-center gap-2 px-4 py-2.5 bg-blue-600 hover:bg-blue-700 active:scale-[0.99] text-white rounded-xl text-xs sm:text-sm font-bold shadow-xs shadow-blue-200 transition-all shrink-0 cursor-pointer"
+          >
+            <Plus className="w-4 h-4" />
+            <span>+ Tạo Đơn Nhập Kho</span>
+          </button>
+        </div>
       </div>
 
-      {/* 4 Pipeline Stage KPI Cards */}
+      {/* 4 Pipeline Stage KPI Cards - Clean & Interactive */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3.5">
-        {/* Total POs */}
-        <div className="bg-white rounded-2xl p-4 sm:p-5 border border-slate-200/90 border-l-4 border-l-slate-700 shadow-sm hover:shadow-md transition-all">
+        {/* Card 1: Total POs */}
+        <div
+          role="button"
+          tabIndex={0}
+          onClick={() => handleCardClick('ALL')}
+          onKeyDown={(e) => (e.key === 'Enter' || e.key === ' ') && handleCardClick('ALL')}
+          className={`bg-white rounded-2xl p-4 sm:p-5 border border-slate-200/90 border-l-4 border-l-slate-700 shadow-xs hover:shadow-sm transition-all cursor-pointer select-none text-left ${
+            activeStatus === 'ALL' ? 'ring-2 ring-slate-400 ring-offset-1 shadow-sm' : ''
+          }`}
+          title="Bấm để xem tất cả đơn PO"
+        >
           <div className="flex items-start justify-between">
             <div>
-              <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider block">Tổng Kế Hoạch PO</span>
-              <div className="text-2xl sm:text-3xl font-black text-slate-900 font-mono mt-1.5 tabular-nums">{totalCount}</div>
+              <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider block">
+                Tổng Kế Hoạch PO
+              </span>
+              <div className="text-2xl sm:text-3xl font-black text-slate-900 font-mono mt-1.5 tabular-nums">
+                {totalCount}
+              </div>
             </div>
             <div className="p-2.5 rounded-xl bg-slate-100 text-slate-700 border border-slate-200">
               <PackagePlus className="w-5 h-5" />
             </div>
           </div>
-          <div className="mt-2 text-xs text-slate-600 font-medium">Toàn bộ nhu cầu nhập hàng</div>
+          <div className="mt-2 text-xs text-slate-600 font-medium">
+            Toàn bộ nhu cầu nhập hàng
+          </div>
         </div>
 
-        {/* Stage 1: Pending */}
-        <div className="bg-white rounded-2xl p-4 sm:p-5 border border-slate-200/90 border-l-4 border-l-amber-500 shadow-sm hover:shadow-md transition-all">
+        {/* Card 2: Stage 1 - Pending */}
+        <div
+          role="button"
+          tabIndex={0}
+          onClick={() => handleCardClick('PENDING')}
+          onKeyDown={(e) => (e.key === 'Enter' || e.key === ' ') && handleCardClick('PENDING')}
+          className={`bg-white rounded-2xl p-4 sm:p-5 border border-slate-200/90 border-l-4 border-l-amber-500 shadow-xs hover:shadow-sm transition-all cursor-pointer select-none text-left ${
+            activeStatus === 'PENDING' ? 'ring-2 ring-amber-400 ring-offset-1 shadow-sm' : ''
+          }`}
+          title="Bấm để lọc đơn Chờ tiếp nhận"
+        >
           <div className="flex items-start justify-between">
             <div>
-              <span className="text-[11px] font-bold text-amber-700 uppercase tracking-wider block">1. Chờ Xe Tải Đến</span>
-              <div className="text-2xl sm:text-3xl font-black text-amber-600 font-mono mt-1.5 tabular-nums">{pendingCount}</div>
+              <span className="text-[11px] font-bold text-amber-700 uppercase tracking-wider block">
+                1. Chờ Tiếp Nhận (PO)
+              </span>
+              <div className="text-2xl sm:text-3xl font-black text-amber-600 font-sans mt-1.5 tabular-nums">
+                {pendingCount}
+              </div>
             </div>
             <div className="p-2.5 rounded-xl bg-amber-50 text-amber-700 border border-amber-200">
               <Clock className="w-5 h-5" />
@@ -72,16 +155,29 @@ export const InboundHeader: React.FC<InboundHeaderProps> = ({
           </div>
           <div className="mt-2 text-xs text-amber-700 font-semibold flex items-center gap-1">
             <span>{totalCount > 0 ? Math.round((pendingCount / totalCount) * 100) : 0}%</span>
-            <span className="font-medium text-slate-500">• Đang trên đường vận chuyển</span>
+            <span className="font-medium text-slate-500">• Hàng đang trên đường tới kho</span>
           </div>
         </div>
 
-        {/* Stage 2: Staging */}
-        <div className="bg-white rounded-2xl p-4 sm:p-5 border border-slate-200/90 border-l-4 border-l-blue-600 shadow-sm hover:shadow-md transition-all">
+        {/* Card 3: Stage 2 - Staging */}
+        <div
+          role="button"
+          tabIndex={0}
+          onClick={() => handleCardClick('RECEIVED')}
+          onKeyDown={(e) => (e.key === 'Enter' || e.key === ' ') && handleCardClick('RECEIVED')}
+          className={`bg-white rounded-2xl p-4 sm:p-5 border border-slate-200/90 border-l-4 border-l-blue-600 shadow-xs hover:shadow-sm transition-all cursor-pointer select-none text-left ${
+            activeStatus === 'RECEIVED' ? 'ring-2 ring-blue-400 ring-offset-1 shadow-sm' : ''
+          }`}
+          title="Bấm để lọc đơn Tại khu đệm & QC"
+        >
           <div className="flex items-start justify-between">
             <div>
-              <span className="text-[11px] font-bold text-blue-700 uppercase tracking-wider block">2. Đang Tại Khu Đệm</span>
-              <div className="text-2xl sm:text-3xl font-black text-blue-600 font-mono mt-1.5 tabular-nums">{receivedCount}</div>
+              <span className="text-[11px] font-bold text-blue-700 uppercase tracking-wider block">
+                2. Kiểm Đếm & QC (Đệm)
+              </span>
+              <div className="text-2xl sm:text-3xl font-black text-blue-600 font-sans mt-1.5 tabular-nums">
+                {receivedCount}
+              </div>
             </div>
             <div className="p-2.5 rounded-xl bg-blue-50 text-blue-700 border border-blue-200">
               <Truck className="w-5 h-5" />
@@ -89,16 +185,29 @@ export const InboundHeader: React.FC<InboundHeaderProps> = ({
           </div>
           <div className="mt-2 text-xs text-blue-700 font-semibold flex items-center gap-1">
             <span>{totalCount > 0 ? Math.round((receivedCount / totalCount) * 100) : 0}%</span>
-            <span className="font-medium text-slate-500">• Đã hạ tải, chờ xếp kệ</span>
+            <span className="font-medium text-slate-500">• Tại khu đệm, chờ xếp kệ</span>
           </div>
         </div>
 
-        {/* Stage 3: Stocked */}
-        <div className="bg-white rounded-2xl p-4 sm:p-5 border border-slate-200/90 border-l-4 border-l-emerald-600 shadow-sm hover:shadow-md transition-all">
+        {/* Card 4: Stage 3 - Stocked */}
+        <div
+          role="button"
+          tabIndex={0}
+          onClick={() => handleCardClick('STOCKED')}
+          onKeyDown={(e) => (e.key === 'Enter' || e.key === ' ') && handleCardClick('STOCKED')}
+          className={`bg-white rounded-2xl p-4 sm:p-5 border border-slate-200/90 border-l-4 border-l-emerald-600 shadow-xs hover:shadow-sm transition-all cursor-pointer select-none text-left ${
+            activeStatus === 'STOCKED' ? 'ring-2 ring-emerald-400 ring-offset-1 shadow-sm' : ''
+          }`}
+          title="Bấm để lọc đơn Đã cất kệ xong"
+        >
           <div className="flex items-start justify-between">
             <div>
-              <span className="text-[11px] font-bold text-emerald-700 uppercase tracking-wider block">3. Đã Cất Kệ Xong</span>
-              <div className="text-2xl sm:text-3xl font-black text-emerald-600 font-mono mt-1.5 tabular-nums">{stockedCount}</div>
+              <span className="text-[11px] font-bold text-emerald-700 uppercase tracking-wider block">
+                3. Đã Cất Kệ (Putaway)
+              </span>
+              <div className="text-2xl sm:text-3xl font-black text-emerald-600 font-sans mt-1.5 tabular-nums">
+                {stockedCount}
+              </div>
             </div>
             <div className="p-2.5 rounded-xl bg-emerald-50 text-emerald-700 border border-emerald-200">
               <CheckCircle2 className="w-5 h-5" />
@@ -106,11 +215,10 @@ export const InboundHeader: React.FC<InboundHeaderProps> = ({
           </div>
           <div className="mt-2 text-xs text-emerald-700 font-semibold flex items-center gap-1">
             <span>{totalCount > 0 ? Math.round((stockedCount / totalCount) * 100) : 0}%</span>
-            <span className="font-medium text-slate-500">• Đã lưu kho an toàn</span>
+            <span className="font-medium text-slate-500">• Đã ghi sổ Stock Ledger</span>
           </div>
         </div>
       </div>
     </div>
   );
 };
-

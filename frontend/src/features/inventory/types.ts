@@ -1,18 +1,24 @@
 export interface StockItem {
   warehouseId?: number;
+  warehouseName?: string;
   id: number;
   productId: number;
   locationId?: number;
   batchId?: number;
   sku: string;
   name: string;
+  unit?: string;
   locationBarcode: string;
   batchNumber: string;
   expiryDate: string;
   onHandQty: number;
   reservedQty: number;
+  unavailableQty?: number;
   availableQty: number;
   isExpiringSoon?: boolean;
+  isExpired?: boolean;
+  expiryStatus?: 'EXPIRED' | 'EXPIRING_SOON' | 'VALID' | 'NO_EXPIRY';
+  daysRemaining?: number;
 }
 
 export interface StockTransferDto {
@@ -74,7 +80,7 @@ export interface InventoryStats {
 export interface LedgerEntryData {
   warehouseId?: number;
   id: string;
-  transactionType: 'OUTBOUND' | 'INBOUND' | 'ADJUSTMENT' | 'TRANSFER';
+  transactionType: 'OUTBOUND' | 'INBOUND' | 'ADJUSTMENT' | 'TRANSFER' | 'INITIAL_BALANCE';
   referenceCode: string;
   locationBarcode: string;
   productSku: string;

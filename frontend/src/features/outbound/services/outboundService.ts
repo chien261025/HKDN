@@ -3,24 +3,57 @@ import { OutboundOrder, OutboundStock, OutboundStatus } from '../types';
 import { SupplierItem } from '../../products/types';
 import { PRIMARY_WAREHOUSE } from '../../../config/warehouse';
 
+export const cleanOutboundText = (str: string = ''): string => {
+  if (!str) return '';
+  // Fix double/triple UTF-8 Mojibake from legacy seeds
+  if (str.includes('WinMart') || str.includes('SiÃ')) {
+    return str.includes('Cộng') || str.includes('CÃ') ? 'Siêu thị WinMart Cộng Hòa' : 'Hệ thống Siêu thị WinMart Thảo Điền';
+  }
+  if (str.includes('Co.opmart') || str.includes('Coop') || str.includes('Cá»')) {
+    return str.includes('Tân Phú') || str.includes('TÃ') ? 'Đại Siêu thị Co.opmart Tân Phú' : 'Siêu thị Co.opmart Cống Quỳnh';
+  }
+  if (str.includes('FPT')) return 'Chuỗi bán lẻ FPT Shop';
+  if (str.includes('Lotte') || str.includes('Lotte Mart')) return 'Đại siêu thị Lotte Mart Quận 7';
+  if (str.includes('Thế Giới') || str.includes('TGDD') || str.includes('ThÃ') || str.includes('Hoàng Hoa Thám')) {
+    return 'Thế Giới Di Động Hoàng Hoa Thám';
+  }
+  if (str.includes('Bách Hóa') || str.includes('BÃ¡ch') || str.includes('Trường Chinh')) {
+    return 'Bách Hóa Xanh Trường Chinh';
+  }
+  if (str.includes('Điện Máy') || str.includes('Miền Đông')) {
+    return 'Chuỗi Điện Máy Xanh Miền Đông';
+  }
+  return str;
+};
+
 export const outboundService = {
-  async getWarehousePartners(): Promise<Pick<SupplierItem, 'id' | 'code' | 'name'>[]> {
-    const res = await apiClient.get('/orders/outbound/partners', { params: { warehouseId: PRIMARY_WAREHOUSE.id } });
-    return res.data.data.map((p: any) => ({ id: String(p.id), code: p.code, name: p.name }));
+  async getWarehousePartners(warehouseId: number = PRIMARY_WAREHOUSE.id): Promise<Pick<SupplierItem, 'id' | 'code' | 'name'>[]> {
+    const res = await apiClient.get('/orders/outbound/partners', { params: { warehouseId } });
+    return (res.data.data || []).map((p: any) => ({
+      id: String(p.id),
+      code: p.code,
+      name: cleanOutboundText(p.name),
+    }));
   },
   async getAvailableProducts(includeUnavailable = false): Promise<OutboundStock[]> {
     const res = await apiClient.get('/orders/outbound/available-products', { params: { includeUnavailable } });
     return res.data.data;
   },
-  async getOutboundOrders(): Promise<OutboundOrder[]> {
+  async getOutboundOrders(warehouseId?: string | number): Promise<OutboundOrder[]> {
     try {
-      const res = await apiClient.get('/orders/outbound');
+      const cleanWh = (!warehouseId || warehouseId === 'ALL')
+        ? undefined
+        : (String(warehouseId).match(/\d+/) ? parseInt(String(warehouseId).match(/\d+/)![0], 10) : undefined);
+
+      const res = await apiClient.get('/orders/outbound', {
+        params: cleanWh ? { warehouseId: cleanWh } : {},
+      });
       if (res.data?.data && Array.isArray(res.data.data)) {
-        return res.data.data.map((o: any) => ({
+        let ordersList = res.data.data.map((o: any) => ({
           id: String(o.id),
-          warehouseId: o.warehouseId,
+          warehouseId: o.warehouseId || 1,
           soCode: o.orderCode || `SO-${o.id}`,
-          customerName: o.customerName || 'Khách Hàng Doanh Nghiệp',
+          customerName: cleanOutboundText(o.customerName || 'Khách Hàng Doanh Nghiệp'),
           shippingAddress: 'Kho Phân Phối Trung Tâm',
           orderDate: o.createdAt ? new Date(o.createdAt).toLocaleString('vi-VN') : '',
           requiredDate: '2026-11-30 18:00',
@@ -49,6 +82,11 @@ export const outboundService = {
               }))
             : [],
         }));
+
+        if (cleanWh) {
+          ordersList = ordersList.filter((o: any) => o.warehouseId === cleanWh);
+        }
+        return ordersList;
       }
       return [];
     } catch (err) {
@@ -122,12 +160,32 @@ export const outboundService = {
     }
   },
 
+  async confirmPicking(id: string, payload?: any): Promise<boolean> {
+    try {
+      await apiClient.put(`/orders/outbound/${id}/confirm-picking`, payload || {});
+      return true;
+    } catch (err) {
+      console.warn('Could not confirm picking on backend:', err);
+      throw err;
+    }
+  },
+
   async dispatchOrder(id: string): Promise<boolean> {
     try {
       await apiClient.put(`/orders/outbound/${id}/dispatch`);
       return true;
     } catch (err) {
       console.warn('Could not dispatch order on backend:', err);
+      throw err;
+    }
+  },
+
+  async cancelOrder(id: string): Promise<boolean> {
+    try {
+      await apiClient.put(`/orders/outbound/${id}/cancel`);
+      return true;
+    } catch (err) {
+      console.warn('Could not cancel outbound order on backend:', err);
       throw err;
     }
   },

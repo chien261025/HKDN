@@ -22,6 +22,7 @@ import com.wms.module.masterdata.entity.Supplier;
 import com.wms.module.notification.dto.NotificationMessage;
 import com.wms.module.notification.service.NotificationService;
 import com.wms.module.order.dto.request.CreateOutboundOrderRequest;
+import com.wms.module.order.dto.request.ConfirmPickingRequest;
 import com.wms.module.order.dto.response.OutboundOrderItemResponse;
 import com.wms.module.order.dto.response.OutboundOrderResponse;
 import com.wms.module.order.dto.response.OutboundStockResponse;
@@ -64,6 +65,14 @@ public class OutboundService {
 
     @Transactional(readOnly = true)
     public List<Supplier> getWarehousePartners(Long warehouseId) {
+        List<Supplier> customers = supplierRepository.findAll().stream()
+                .filter(p -> p.getCode() != null && p.getCode().startsWith("CUST-") && Boolean.TRUE.equals(p.getIsActive()))
+                .sorted(Comparator.comparing(Supplier::getName))
+                .toList();
+        if (!customers.isEmpty()) {
+            return customers;
+        }
+
         Set<Long> warehouseProducts = getStockProducts(true).stream()
                 .filter(stock -> warehouseId.equals(stock.getWarehouseId()))
                 .map(OutboundStockResponse::getProductId).collect(Collectors.toSet());
@@ -260,6 +269,55 @@ public class OutboundService {
     }
 
     @Transactional
+    public OutboundOrderResponse confirmPicking(Long id, ConfirmPickingRequest request) {
+        OutboundOrder order = outboundOrderRepository.findForUpdate(id)
+                .orElseThrow(() -> new BusinessException(ErrorCode.NOT_FOUND, "Không tìm thấy đơn xuất: " + id));
+
+        if (!Set.of("ALLOCATED", "PICKING").contains(order.getStatus())) {
+            throw new BusinessException(ErrorCode.BAD_REQUEST, "Chỉ đơn ở trạng thái Đã Giữ Hàng (ALLOCATED) mới có thể chuyển sang Đang Lấy Hàng (PICKING)!");
+        }
+
+        order.setStatus("PICKING");
+        order.setUpdatedAt(Instant.now());
+
+        if (order.getItems() != null) {
+            for (OutboundOrderItem item : order.getItems()) {
+                List<PickAllocation> allocations = pickAllocationRepository.findByOutboundOrderItemId(item.getId());
+                int totalItemPicked = 0;
+                if (allocations != null) {
+                    for (PickAllocation alloc : allocations) {
+                        if (!"CANCELLED".equals(alloc.getStatus())) {
+                            int pickQty = alloc.getAllocatedQty();
+                            alloc.setStatus("PICKING");
+                            alloc.setPickedQty(pickQty);
+                            alloc.setPickedAt(Instant.now());
+                            pickAllocationRepository.save(alloc);
+                            totalItemPicked += pickQty;
+                        }
+                    }
+                }
+                item.setPickedQty(totalItemPicked > 0 ? totalItemPicked : item.getAllocatedQty());
+                item.setStatus("PICKING");
+            }
+        }
+
+        OutboundOrder saved = outboundOrderRepository.save(order);
+
+        if (notificationService != null) {
+            notificationService.broadcast(NotificationMessage.builder()
+                    .type("OUTBOUND_ORDER_PICKING")
+                    .title("Xác Nhận Lấy Hàng " + order.getOrderCode())
+                    .message("Đơn xuất " + order.getOrderCode() + " đã gom hàng xong, sẵn sàng đóng gói và xuất kho.")
+                    .severity("INFO")
+                    .referenceCode(order.getOrderCode())
+                    .link("/outbound")
+                    .build());
+        }
+
+        return toResponse(saved);
+    }
+
+    @Transactional
     public OutboundOrderResponse dispatchOutboundOrder(Long id) {
         OutboundOrder order = outboundOrderRepository.findForUpdate(id)
                 .orElseThrow(() -> new BusinessException(ErrorCode.NOT_FOUND, "Không tìm thấy đơn xuất: " + id));
@@ -319,6 +377,60 @@ public class OutboundService {
                     .message("Đã xuất đủ hàng và cập nhật tồn cuối kho.").severity("SUCCESS")
                     .referenceCode(order.getOrderCode()).link("/outbound").build());
         }
+        return toResponse(saved);
+    }
+
+    @Transactional
+    public OutboundOrderResponse cancelOutboundOrder(Long id) {
+        OutboundOrder order = outboundOrderRepository.findForUpdate(id)
+                .orElseThrow(() -> new BusinessException(ErrorCode.NOT_FOUND, "Không tìm thấy đơn xuất: " + id));
+
+        if ("DISPATCHED".equalsIgnoreCase(order.getStatus())) {
+            throw new BusinessException(ErrorCode.BAD_REQUEST, "Đơn xuất đã hoàn tất xuất xưởng (DISPATCHED), không thể hủy!");
+        }
+
+        if ("CANCELLED".equalsIgnoreCase(order.getStatus())) {
+            throw new BusinessException(ErrorCode.BAD_REQUEST, "Đơn xuất đã ở trạng thái hủy trước đó!");
+        }
+
+        // Nếu đơn đã phân bổ (ALLOCATED hoặc PICKING), giải phóng số lượng đã giữ trong Inventory
+        if (order.getItems() != null) {
+            for (OutboundOrderItem item : order.getItems()) {
+                List<PickAllocation> allocations = pickAllocationRepository.findByOutboundOrderItemId(item.getId());
+                if (allocations != null) {
+                    for (PickAllocation alloc : allocations) {
+                        if (!"CANCELLED".equalsIgnoreCase(alloc.getStatus()) && alloc.getAllocatedQty() > 0) {
+                            inventoryLockService.releaseStock(
+                                    alloc.getProductId(),
+                                    alloc.getLocationId(),
+                                    alloc.getBatchId(),
+                                    alloc.getAllocatedQty()
+                            );
+                            alloc.setStatus("CANCELLED");
+                            pickAllocationRepository.save(alloc);
+                        }
+                    }
+                }
+                item.setAllocatedQty(0);
+                item.setStatus("CANCELLED");
+            }
+        }
+
+        order.setStatus("CANCELLED");
+        order.setUpdatedAt(Instant.now());
+        OutboundOrder saved = outboundOrderRepository.save(order);
+
+        if (notificationService != null) {
+            notificationService.broadcast(NotificationMessage.builder()
+                    .type("OUTBOUND_ORDER_CANCELLED")
+                    .title("Hủy Đơn Xuất Kho " + order.getOrderCode())
+                    .message("Đơn xuất " + order.getOrderCode() + " đã được hủy thành công và giải phóng toàn bộ số lượng hàng giữ trước (Reserved).")
+                    .severity("WARNING")
+                    .referenceCode(order.getOrderCode())
+                    .link("/outbound")
+                    .build());
+        }
+
         return toResponse(saved);
     }
 
