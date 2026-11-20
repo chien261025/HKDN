@@ -43,6 +43,10 @@ export interface ProductItem {
   supplierId?: string;
   supplierName: string;
   status: 'ACTIVE' | 'INACTIVE' | 'DELETED';
+  isBatchManaged?: boolean; // Có quản lý theo số Lô (Batch/Lot) hay không
+  isExpiryManaged?: boolean; // Có quản lý Hạn sử dụng (Shelf Life) hay không
+  shelfLifeDays?: number; // Số ngày hạn sử dụng tiêu chuẩn (Master Data)
+  outboundStrategy?: 'FEFO' | 'FIFO' | 'LIFO'; // Chiến lược xuất kho tự động
 }
 
 export interface CategoryItem {

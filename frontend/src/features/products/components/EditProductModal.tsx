@@ -24,6 +24,7 @@ import {
 } from '../types';
 import { Modal, Button, InputField, SelectField } from '../../../components/common';
 import { ProductImageUploader } from './ProductImageUploader';
+import { generateInternalEan13 } from '../utils/barcodeUtils';
 
 interface EditProductModalProps {
   isOpen: boolean;
@@ -73,6 +74,12 @@ export const EditProductModal: React.FC<EditProductModalProps> = ({
   const [businessStatus, setBusinessStatus] = useState<ProductBusinessStatus>('ACTIVE');
   const [status, setStatus] = useState<ProductItem['status']>('ACTIVE');
 
+  // Master Data Policies: Lô, Hạn Sử Dụng & Xuất Kho
+  const [isBatchManaged, setIsBatchManaged] = useState<boolean>(true);
+  const [isExpiryManaged, setIsExpiryManaged] = useState<boolean>(true);
+  const [shelfLifeDays, setShelfLifeDays] = useState<number>(45);
+  const [outboundStrategy, setOutboundStrategy] = useState<'FEFO' | 'FIFO' | 'LIFO'>('FEFO');
+
   useEffect(() => {
     if (product) {
       setSku(product.sku || '');
@@ -98,6 +105,11 @@ export const EditProductModal: React.FC<EditProductModalProps> = ({
       setBusinessStatus(product.businessStatus || 'ACTIVE');
       setStatus(product.status || 'ACTIVE');
 
+      setIsBatchManaged(product.isBatchManaged !== false);
+      setIsExpiryManaged(product.isExpiryManaged !== false);
+      setShelfLifeDays(product.shelfLifeDays || (product.category === 'FOOD_BEVERAGE' ? 45 : 365));
+      setOutboundStrategy(product.outboundStrategy || (product.category === 'FOOD_BEVERAGE' ? 'FEFO' : 'FIFO'));
+
       const matchedSupp = suppliers.find((s) => s.code === product.supplierCode);
       if (product.supplierId) setSupplierId(product.supplierId);
       else if (matchedSupp) setSupplierId(matchedSupp.id);
@@ -118,8 +130,8 @@ export const EditProductModal: React.FC<EditProductModalProps> = ({
   if (!isOpen || !product) return null;
 
   const handleAutoBarcode = () => {
-    const randomCode = '893' + Math.floor(1000000000 + Math.random() * 9000000000);
-    setBarcode(randomCode);
+    const validEan13 = generateInternalEan13();
+    setBarcode(validEan13);
   };
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -149,6 +161,10 @@ export const EditProductModal: React.FC<EditProductModalProps> = ({
       purchasePrice: Number(purchasePrice) || 0,
       sellingPrice: Number(sellingPrice) || 0,
       businessStatus,
+      isBatchManaged,
+      isExpiryManaged,
+      shelfLifeDays: isExpiryManaged ? Number(shelfLifeDays) || 30 : 0,
+      outboundStrategy,
       storageZone,
       storageCondition,
       supplierCode: selectedSupplier?.code || product.supplierCode,
@@ -234,14 +250,16 @@ export const EditProductModal: React.FC<EditProductModalProps> = ({
                 label="Mã Vạch Barcode (GS1 / EAN-13)"
                 value={barcode}
                 onChange={(e) => setBarcode(e.target.value)}
+                helperText="* Mã sinh nội bộ có số kiểm tra Check Digit chuẩn GS1 EAN-13 để máy quét PDA nhận diện chính xác."
                 action={
                   <button
                     type="button"
                     onClick={handleAutoBarcode}
                     className="text-xs text-blue-600 hover:text-blue-800 font-semibold flex items-center gap-1 cursor-pointer"
+                    title="Sinh mã 13 số với số kiểm tra Check Digit Modulo 10 đúng chuẩn EAN-13"
                   >
                     <Sparkles className="w-3 h-3" />
-                    <span>Sinh mã chuẩn 893</span>
+                    <span>Gợi ý mã EAN-13 nội bộ</span>
                   </button>
                 }
               />
@@ -417,6 +435,69 @@ export const EditProductModal: React.FC<EditProductModalProps> = ({
                   { value: 'SECURE', label: 'Kho khóa bảo mật giá trị cao' },
                 ]}
               />
+
+              {/* Chính Sách Quản Lý Lô, Hạn Dùng & Chiến Lược Xuất Kho */}
+              <div className="md:col-span-2 bg-indigo-50/60 p-3.5 rounded-xl border border-indigo-100 space-y-3">
+                <div className="flex items-center justify-between text-xs font-bold text-slate-800">
+                  <span className="flex items-center gap-1.5 text-indigo-900">
+                    <ShieldAlert className="w-4 h-4 text-indigo-600" />
+                    Chính Sách Quản Lý Lô (Batch) & Hạn Sử Dụng (FEFO)
+                  </span>
+                  <span className="text-[11px] text-indigo-700 bg-indigo-100 px-2 py-0.5 rounded-full font-semibold">
+                    Cấu hình Master Data
+                  </span>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3 pt-1">
+                  <div className="flex items-center gap-2">
+                    <input
+                      id="edit-is-batch-managed"
+                      type="checkbox"
+                      checked={isBatchManaged}
+                      onChange={(e) => setIsBatchManaged(e.target.checked)}
+                      className="w-4 h-4 text-blue-600 rounded border-slate-300 focus:ring-blue-500 cursor-pointer"
+                    />
+                    <label htmlFor="edit-is-batch-managed" className="text-xs font-semibold text-slate-700 cursor-pointer">
+                      Bắt buộc theo dõi theo Lô (Batch/Lot Number)
+                    </label>
+                  </div>
+
+                  <div className="flex items-center gap-2">
+                    <input
+                      id="edit-is-expiry-managed"
+                      type="checkbox"
+                      checked={isExpiryManaged}
+                      onChange={(e) => setIsExpiryManaged(e.target.checked)}
+                      className="w-4 h-4 text-blue-600 rounded border-slate-300 focus:ring-blue-500 cursor-pointer"
+                    />
+                    <label htmlFor="edit-is-expiry-managed" className="text-xs font-semibold text-slate-700 cursor-pointer">
+                      Theo dõi Ngày sản xuất & Hạn sử dụng (Shelf Life)
+                    </label>
+                  </div>
+
+                  {isExpiryManaged && (
+                    <InputField
+                      label="Hạn Sử Dụng Tiêu Chuẩn (Số Ngày)"
+                      type="number"
+                      min="1"
+                      value={shelfLifeDays}
+                      onChange={(e) => setShelfLifeDays(parseInt(e.target.value, 10) || 0)}
+                      helperText="VD: 45 ngày (sữa chua), 180 ngày (sữa tươi), 365 ngày (lon)"
+                    />
+                  )}
+
+                  <SelectField
+                    label="Chiến Lược Xuất Kho Tự Động"
+                    value={outboundStrategy}
+                    onChange={(e) => setOutboundStrategy(e.target.value as any)}
+                    options={[
+                      { value: 'FEFO', label: 'FEFO - Hết hạn trước xuất trước (F&B / Dược phẩm)' },
+                      { value: 'FIFO', label: 'FIFO - Nhập trước xuất trước (Thiết bị / Hóa phẩm)' },
+                      { value: 'LIFO', label: 'LIFO - Nhập sau xuất trước' },
+                    ]}
+                  />
+                </div>
+              </div>
             </div>
           </div>
         )}
@@ -425,14 +506,15 @@ export const EditProductModal: React.FC<EditProductModalProps> = ({
         {activeTab === 'FINANCE' && (
           <div className="space-y-4">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {/* Giá Nhập (Cost Price) */}
+              {/* Giá Nhập Chuẩn (Cost Price) */}
               <InputField
-                label="Giá Vốn / Giá Nhập Chuẩn (VNĐ)"
+                label="Giá Vốn / Giá Nhập Chuẩn Tham Khảo (VNĐ)"
                 type="number"
                 step="1000"
                 min="0"
                 value={purchasePrice}
                 onChange={(e) => setPurchasePrice(parseFloat(e.target.value) || 0)}
+                helperText="* Giá tham khảo Master Data. Giá mua thực tế ghi nhận trên từng đơn PO/GRN."
                 icon={<DollarSign className="w-3.5 h-3.5 text-emerald-600" />}
               />
 
@@ -448,7 +530,7 @@ export const EditProductModal: React.FC<EditProductModalProps> = ({
               />
 
               <div className="md:col-span-2 p-3 bg-emerald-50 rounded-xl border border-emerald-200 text-xs text-emerald-800 flex items-center justify-between font-mono">
-                <span>Chênh lệch giá xuất / nhập: <b>{(sellingPrice - purchasePrice).toLocaleString()} ₫</b></span>
+                <span>Chênh lệch giá xuất / nhập chuẩn: <b>{(sellingPrice - purchasePrice).toLocaleString()} ₫</b></span>
                 <span>Tỷ suất lợi nhuận biên: <b>{profitMarginPct}%</b></span>
               </div>
 

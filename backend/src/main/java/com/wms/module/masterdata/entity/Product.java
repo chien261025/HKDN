@@ -119,6 +119,21 @@ public class Product {
     @Builder.Default
     private String businessStatus = "ACTIVE"; // ACTIVE, SUSPENDED, DISCONTINUED
 
+    @Column(name = "is_batch_managed")
+    @Builder.Default
+    private Boolean isBatchManaged = true;
+
+    @Column(name = "is_expiry_managed")
+    @Builder.Default
+    private Boolean isExpiryManaged = true;
+
+    @Column(name = "shelf_life_days")
+    private Integer shelfLifeDays;
+
+    @Column(name = "outbound_strategy", length = 20)
+    @Builder.Default
+    private String outboundStrategy = "FEFO";
+
     @Column(name = "created_at")
     @Builder.Default
     private Instant createdAt = Instant.now();

@@ -20,6 +20,8 @@ import {
   Calendar,
   MapPin,
   Clock,
+  ShieldCheck,
+  TrendingUp,
 } from 'lucide-react';
 import { ProductItem } from '../types';
 import { getCategoryBadge, getZoneBadge } from '../utils/productBadges';
@@ -58,6 +60,65 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
         (b.name && b.name.toLowerCase() === product.name.toLowerCase())
     );
   }, [product, inventoryBalances]);
+
+  // Compute total system stock across all warehouses
+  const totalSystemStock = useMemo(() => {
+    return productBatches.reduce((acc, b) => acc + (b.onHandQty || 0), 0);
+  }, [productBatches]);
+
+  // Helper to determine exact expiry status against system current date (2026-11-20)
+  const getBatchExpiryInfo = (expiryDateStr?: string) => {
+    if (!expiryDateStr) {
+      return {
+        status: 'VALID' as const,
+        label: 'Không xác định',
+        badgeClass: 'bg-slate-100 text-slate-700 border-slate-200',
+        isExpired: false,
+        qcNote: 'Không theo dõi HSD',
+      };
+    }
+    const expDate = new Date(expiryDateStr);
+    // Baseline system timestamp: 2026-11-20
+    const now = new Date('2026-11-20T19:20:00+07:00');
+    const expTime = new Date(expDate.getFullYear(), expDate.getMonth(), expDate.getDate()).getTime();
+    const nowTime = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
+    const diffDays = Math.round((expTime - nowTime) / (1000 * 60 * 60 * 24));
+
+    if (diffDays < 0) {
+      return {
+        status: 'EXPIRED' as const,
+        label: `ĐÃ HẾT HẠN (${Math.abs(diffDays)} ngày trước)`,
+        badgeClass: 'bg-rose-100 text-rose-800 border-rose-300 font-bold',
+        isExpired: true,
+        qcNote: 'Hết hạn - Chặn xuất kho',
+      };
+    } else if (diffDays <= 30) {
+      return {
+        status: 'EXPIRING_SOON' as const,
+        label: `CẬN DATE (còn ${diffDays} ngày)`,
+        badgeClass: 'bg-amber-100 text-amber-800 border-amber-300 font-bold',
+        isExpired: false,
+        qcNote: 'Ưu tiên xuất FEFO',
+      };
+    } else {
+      return {
+        status: 'VALID' as const,
+        label: `Hợp lệ (còn ${diffDays} ngày)`,
+        badgeClass: 'bg-emerald-50 text-emerald-700 border-emerald-200',
+        isExpired: false,
+        qcNote: 'Đạt chuẩn lưu kho',
+      };
+    }
+  };
+
+  const getWarehouseName = (batch: StockItem) => {
+    if (batch.warehouseName) return batch.warehouseName;
+    const barcode = batch.locationBarcode || '';
+    if (barcode.startsWith('WH04')) return 'Kho Trung Chuyển Sóng Thần (WH04)';
+    if (barcode.startsWith('WH02')) return 'Kho Vùng Đà Nẵng (WH02)';
+    if (barcode.startsWith('WH03')) return 'Kho Miền Bắc - Hà Nội (WH03)';
+    return 'Kho Tổng Tân Bình - TP.HCM (WH01)';
+  };
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-xs p-4 overflow-y-auto animate-fade-in">
@@ -212,33 +273,38 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
             <div className="p-4 rounded-2xl border border-slate-200 bg-white shadow-2xs space-y-3">
               <div className="flex items-center gap-2 text-xs font-bold text-slate-800 border-b border-slate-100 pb-2">
                 <DollarSign className="w-4 h-4 text-emerald-600" />
-                <span>Tài Chính & Định Giá</span>
+                <span>Tài Chính & Định Giá Tham Khảo</span>
               </div>
               <div className="space-y-1.5 text-xs">
                 <div className="flex justify-between">
-                  <span className="text-slate-500">Giá vốn / Giá nhập:</span>
+                  <span className="text-slate-500" title="Giá vốn chuẩn tham khảo trong Master Data. Giá thực tế ghi nhận trên từng đơn PO/GRN.">
+                    Giá vốn chuẩn (Master Data):
+                  </span>
                   <span className="font-mono font-bold text-emerald-700">
                     {(product.purchasePrice || 0).toLocaleString()} ₫
                   </span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-slate-500">Giá xuất / Giá bán:</span>
+                  <span className="text-slate-500">Giá xuất / Giá bán đề xuất:</span>
                   <span className="font-mono font-bold text-blue-700">
                     {(product.sellingPrice || 0).toLocaleString()} ₫
                   </span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-slate-500">Chênh lệch giá:</span>
+                  <span className="text-slate-500">Biên độ giá chuẩn:</span>
                   <span className="font-mono text-slate-800">
                     {((product.sellingPrice || 0) - (product.purchasePrice || 0)).toLocaleString()} ₫
                   </span>
                 </div>
                 <div className="flex justify-between pt-1 border-t border-slate-100">
-                  <span className="text-slate-500">Tổng giá trị tồn kho:</span>
+                  <span className="text-slate-500">Trị giá tồn (ước tính giá chuẩn):</span>
                   <span className="font-mono font-extrabold text-slate-900">
                     {inventoryValue.toLocaleString()} ₫
                   </span>
                 </div>
+                <p className="text-[10px] text-slate-400 italic pt-1 border-t border-slate-50 leading-relaxed">
+                  * Giá mua thực tế theo từng lô hàng trên đơn PO; giá trị xuất kho hạch toán theo phương pháp đã cấu hình.
+                </p>
               </div>
             </div>
 
@@ -246,11 +312,11 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
             <div className="p-4 rounded-2xl border border-slate-200 bg-white shadow-2xs space-y-3">
               <div className="flex items-center gap-2 text-xs font-bold text-slate-800 border-b border-slate-100 pb-2">
                 <Layers className="w-4 h-4 text-indigo-600" />
-                <span>Kiểm Soát Tồn Kho</span>
+                <span>Kiểm Soát Tồn Kho & Hệ Thống</span>
               </div>
               <div className="space-y-1.5 text-xs">
                 <div className="flex justify-between">
-                  <span className="text-slate-500">Tồn hiện tại:</span>
+                  <span className="text-slate-500">Tồn tại kho đang chọn:</span>
                   <span
                     className={`font-mono font-bold ${
                       isUnderSafety
@@ -264,6 +330,17 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
                   </span>
                 </div>
                 <div className="flex justify-between">
+                  <span className="text-slate-500">Tổng tồn toàn hệ thống:</span>
+                  <span className="font-mono font-extrabold text-indigo-700">
+                    {totalSystemStock.toLocaleString()} {product.unit}
+                  </span>
+                </div>
+                {product.currentStock === 0 && totalSystemStock > 0 && (
+                  <div className="p-1.5 rounded-lg bg-amber-50 border border-amber-200 text-[10.5px] text-amber-800 leading-snug">
+                    ℹ️ Sản phẩm hiện có <strong>{totalSystemStock} {product.unit}</strong> tồn tại chi nhánh/kho khác trong hệ thống, chưa có hàng tại kho đang chọn.
+                  </div>
+                )}
+                <div className="flex justify-between pt-1 border-t border-slate-100">
                   <span className="text-slate-500">Tồn an toàn (Min):</span>
                   <span className="font-mono text-rose-600">{product.safetyStock} {product.unit}</span>
                 </div>
@@ -296,15 +373,33 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
             </div>
           </div>
 
+          {/* Master Data Policy Card: Quản lý Lô, Hạn Sử Dụng & Chiến Lược FEFO */}
+          <div className="p-3.5 rounded-2xl border border-indigo-100 bg-indigo-50/50 flex flex-wrap items-center justify-between gap-3 text-xs">
+            <div className="flex items-center gap-2">
+              <ShieldCheck className="w-4 h-4 text-indigo-600 shrink-0" />
+              <div>
+                <span className="font-bold text-slate-800">Chính Sách Master Data: </span>
+                <span className="text-slate-600">
+                  Quản lý Lô: <strong>{product.isBatchManaged !== false ? 'Có (Batch Tracked)' : 'Không'}</strong> | 
+                  Hạn dùng (EXP): <strong>{product.isExpiryManaged !== false ? `Có (${product.shelfLifeDays || 45} ngày)` : 'Không'}</strong> | 
+                  Chiến lược xuất: <strong className="text-indigo-700">{product.outboundStrategy || (product.category === 'FOOD_BEVERAGE' ? 'FEFO' : 'FIFO')}</strong>
+                </span>
+              </div>
+            </div>
+            <span className="text-[11px] px-2 py-0.5 rounded-full bg-indigo-100 text-indigo-700 font-semibold border border-indigo-200">
+              Quy tắc điều phối tự động
+            </span>
+          </div>
+
           {/* Box 4: Phân biệt rõ Sản phẩm vs Lô Hàng (Batch/Lot) & Hạn Sử Dụng FEFO */}
           <div className="p-4 rounded-2xl border border-slate-200 bg-white shadow-2xs space-y-3">
             <div className="flex items-center justify-between border-b border-slate-100 pb-2">
               <div className="flex items-center gap-2 text-xs font-bold text-slate-800">
                 <Calendar className="w-4 h-4 text-amber-600" />
-                <span>Các Lô Hàng (Batch/Lot) Đang Lưu Kho & Hạn Dùng FEFO</span>
+                <span>Các Lô Hàng (Batch/Lot) Đang Lưu Kho & Kiểm Soát Hạn Dùng FEFO</span>
               </div>
               <span className="text-[11px] text-slate-500">
-                Phân biệt giữa Sản Phẩm và Lô Hàng
+                Theo dõi chi tiết số lô, hạn dùng và kho lưu trữ
               </span>
             </div>
 
@@ -317,42 +412,64 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
                 <table className="w-full text-left text-xs font-mono">
                   <thead>
                     <tr className="border-b border-slate-200 text-slate-500 text-[11px]">
-                      <th className="py-2 px-2">Số Lô (Batch No)</th>
+                      <th className="py-2 px-2">Kho Lưu Trữ</th>
+                      <th className="py-2 px-2">Số Lô (Batch)</th>
                       <th className="py-2 px-2">Vị Trí Ô Kệ</th>
-                      <th className="py-2 px-2">Hạn Sử Dụng (EXP)</th>
-                      <th className="py-2 px-2 text-right">Tồn Thực Tế</th>
+                      <th className="py-2 px-2">Hạn Dùng (EXP) & Trạng Thái</th>
+                      <th className="py-2 px-2 text-right">Tồn Thực</th>
                       <th className="py-2 px-2 text-right">Khả Dụng</th>
+                      <th className="py-2 px-2 text-center">Kiểm Soát Xuất</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-100">
-                    {productBatches.map((batch, idx) => (
-                      <tr key={idx} className="hover:bg-slate-50">
-                        <td className="py-2 px-2 font-bold text-indigo-700">
-                          {batch.batchNumber || 'BATCH-STD-01'}
-                        </td>
-                        <td className="py-2 px-2 flex items-center gap-1 text-slate-700">
-                          <MapPin className="w-3 h-3 text-slate-400" />
-                          <span>{batch.locationBarcode || 'Khu Lưu Trữ'}</span>
-                        </td>
-                        <td className="py-2 px-2">
-                          <span
-                            className={`px-1.5 py-0.5 rounded text-[10px] font-bold ${
-                              batch.isExpiringSoon
-                                ? 'bg-rose-100 text-rose-700 border border-rose-200'
-                                : 'bg-emerald-50 text-emerald-700 border border-emerald-200'
-                            }`}
-                          >
-                            {batch.expiryDate || '2026-12-31'}
-                          </span>
-                        </td>
-                        <td className="py-2 px-2 text-right font-bold text-slate-900">
-                          {batch.onHandQty} {product.unit}
-                        </td>
-                        <td className="py-2 px-2 text-right text-emerald-600 font-bold">
-                          {batch.availableQty} {product.unit}
-                        </td>
-                      </tr>
-                    ))}
+                    {productBatches.map((batch, idx) => {
+                      const expInfo = getBatchExpiryInfo(batch.expiryDate);
+                      const displayAvailableQty = expInfo.isExpired ? 0 : batch.availableQty;
+
+                      return (
+                        <tr key={idx} className={`hover:bg-slate-50 ${expInfo.isExpired ? 'bg-rose-50/40' : ''}`}>
+                          <td className="py-2 px-2 text-[11px] font-sans font-medium text-slate-700">
+                            {getWarehouseName(batch)}
+                          </td>
+                          <td className="py-2 px-2 font-bold text-indigo-700">
+                            {batch.batchNumber || 'BATCH-STD-01'}
+                          </td>
+                          <td className="py-2 px-2 flex items-center gap-1 text-slate-700">
+                            <MapPin className="w-3 h-3 text-slate-400 shrink-0" />
+                            <span>{batch.locationBarcode || 'Khu Lưu Trữ'}</span>
+                          </td>
+                          <td className="py-2 px-2">
+                            <div className="flex flex-col gap-0.5">
+                              <span className="font-semibold text-slate-800">{batch.expiryDate || 'N/A'}</span>
+                              <span className={`px-1.5 py-0.5 rounded text-[9.5px] w-fit border ${expInfo.badgeClass}`}>
+                                {expInfo.label}
+                              </span>
+                            </div>
+                          </td>
+                          <td className="py-2 px-2 text-right font-bold text-slate-900">
+                            {batch.onHandQty} {product.unit}
+                          </td>
+                          <td className={`py-2 px-2 text-right font-bold ${expInfo.isExpired ? 'text-rose-600' : 'text-emerald-600'}`}>
+                            {displayAvailableQty} {product.unit}
+                          </td>
+                          <td className="py-2 px-2 text-center">
+                            {expInfo.isExpired ? (
+                              <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-rose-600 text-white shadow-2xs">
+                                Chặn xuất (Hết hạn)
+                              </span>
+                            ) : expInfo.status === 'EXPIRING_SOON' ? (
+                              <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-100 text-amber-800 border border-amber-300">
+                                Ưu tiên FEFO
+                              </span>
+                            ) : (
+                              <span className="px-2 py-0.5 rounded-full text-[10px] font-medium bg-emerald-50 text-emerald-700 border border-emerald-200">
+                                Đạt chuẩn QC
+                              </span>
+                            )}
+                          </td>
+                        </tr>
+                      );
+                    })}
                   </tbody>
                 </table>
               </div>

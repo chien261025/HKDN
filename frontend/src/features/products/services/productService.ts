@@ -1,5 +1,5 @@
 import { apiClient } from '../../../services/api';
-import { CategoryItem, ProductItem, SupplierItem } from '../types';
+import { CategoryItem, ProductItem, SupplierItem, ProductCategory } from '../types';
 import { inventoryService } from '../../inventory/services/inventoryService';
 import { PRIMARY_WAREHOUSE } from '../../../config/warehouse';
 
@@ -29,13 +29,20 @@ export const productService = {
             ? 'ZONE_C'
             : (p.storageZone || 'ZONE_A');
 
+          const catId = Number(p.categoryId);
+          const categoryType: ProductCategory = [3, 4].includes(catId)
+            ? 'ELECTRONICS'
+            : catId === 5
+            ? 'CHEMICAL'
+            : 'FOOD_BEVERAGE';
+
           return {
             id: String(p.id),
             sku: p.sku,
             barcode: p.barcode,
             name: p.name,
             description: p.description || '',
-            category: ([2, 3, 4].includes(p.categoryId) ? 'ELECTRONICS' : p.categoryId === 5 ? 'CHEMICAL' : 'FOOD_BEVERAGE') as any,
+            category: categoryType,
             unit: p.unit || 'Cái',
             brand: p.brand || '',
             origin: p.origin || 'Việt Nam',
@@ -58,6 +65,10 @@ export const productService = {
             supplierId: p.supplierId ? String(p.supplierId) : undefined,
             supplierName: suppliers.get(Number(p.supplierId))?.name || '',
             status: p.deletedAt ? 'DELETED' : p.isActive === false ? 'INACTIVE' : 'ACTIVE',
+            isBatchManaged: p.isBatchManaged !== undefined ? Boolean(p.isBatchManaged) : true,
+            isExpiryManaged: p.isExpiryManaged !== undefined ? Boolean(p.isExpiryManaged) : categoryType === 'FOOD_BEVERAGE',
+            shelfLifeDays: p.shelfLifeDays !== undefined ? Number(p.shelfLifeDays) : (p.sku === 'SKU-YOGURT-04' ? 45 : 365),
+            outboundStrategy: p.outboundStrategy || (categoryType === 'FOOD_BEVERAGE' ? 'FEFO' : 'FIFO'),
           };
         }).filter((p: ProductItem) => !stockedOnly || p.currentStock > 0);
       }
@@ -114,7 +125,11 @@ export const productService = {
         purchasePrice: product.purchasePrice || 0,
         sellingPrice: product.sellingPrice || 0,
         businessStatus: product.businessStatus || 'ACTIVE',
-        categoryId: product.category === 'ELECTRONICS' ? 2 : product.category === 'CHEMICAL' ? 3 : 1,
+        categoryId: product.category === 'ELECTRONICS' ? 3 : product.category === 'CHEMICAL' ? 5 : (product.storageZone === 'ZONE_B' ? 2 : 1),
+        isBatchManaged: product.isBatchManaged !== undefined ? product.isBatchManaged : true,
+        isExpiryManaged: product.isExpiryManaged !== undefined ? product.isExpiryManaged : (product.category === 'FOOD_BEVERAGE'),
+        shelfLifeDays: product.shelfLifeDays,
+        outboundStrategy: product.outboundStrategy || (product.category === 'FOOD_BEVERAGE' ? 'FEFO' : 'FIFO'),
         supplierId: product.supplierId ? Number(product.supplierId) : undefined,
       };
       const res = await apiClient.post('/masterdata/products', payload);
@@ -231,7 +246,11 @@ export const productService = {
         sellingPrice: product.sellingPrice,
         businessStatus: product.businessStatus,
         isActive: product.status !== 'INACTIVE',
-        categoryId: product.category === 'ELECTRONICS' ? 4 : product.category === 'CHEMICAL' ? 5 : 2,
+        categoryId: product.category === 'ELECTRONICS' ? 3 : product.category === 'CHEMICAL' ? 5 : (product.storageZone === 'ZONE_B' ? 2 : 1),
+        isBatchManaged: product.isBatchManaged !== undefined ? product.isBatchManaged : true,
+        isExpiryManaged: product.isExpiryManaged !== undefined ? product.isExpiryManaged : (product.category === 'FOOD_BEVERAGE'),
+        shelfLifeDays: product.shelfLifeDays,
+        outboundStrategy: product.outboundStrategy || (product.category === 'FOOD_BEVERAGE' ? 'FEFO' : 'FIFO'),
         supplierId: product.supplierId ? Number(product.supplierId) : undefined,
       };
       const res = await apiClient.put(`/masterdata/products/${id}`, payload);

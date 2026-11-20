@@ -137,6 +137,18 @@ public class ProductServiceImpl implements ProductService {
         if (productUpdate.getIsActive() != null) {
             existing.setIsActive(productUpdate.getIsActive());
         }
+        if (productUpdate.getIsBatchManaged() != null) {
+            existing.setIsBatchManaged(productUpdate.getIsBatchManaged());
+        }
+        if (productUpdate.getIsExpiryManaged() != null) {
+            existing.setIsExpiryManaged(productUpdate.getIsExpiryManaged());
+        }
+        if (productUpdate.getShelfLifeDays() != null) {
+            existing.setShelfLifeDays(productUpdate.getShelfLifeDays());
+        }
+        if (productUpdate.getOutboundStrategy() != null) {
+            existing.setOutboundStrategy(productUpdate.getOutboundStrategy());
+        }
         existing.setUpdatedAt(Instant.now());
         return productRepository.save(existing);
     }

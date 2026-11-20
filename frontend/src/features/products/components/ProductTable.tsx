@@ -168,9 +168,9 @@ export const ProductTable: React.FC<ProductTableProps> = ({
           <thead className="bg-slate-100 text-xs font-semibold text-slate-700 uppercase tracking-wider border-b border-slate-200">
             <tr>
               <th className="py-3 px-3.5">Sản Phẩm & Định Danh</th>
-              <th className="py-3 px-3">Phân Loại & Vùng</th>
+              <th className="py-3 px-3">Phân Loại, Vùng & FEFO</th>
               <th className="py-3 px-3">Quy Cách & Thể Tích</th>
-              <th className="py-3 px-3">Đơn Giá & Giá Vốn</th>
+              <th className="py-3 px-3">Giá Chuẩn & Giá Bán</th>
               <th className="py-3 px-3 text-center">Tồn Cuối / Định Mức</th>
               <th className="py-3 px-3">Trạng Thái</th>
               <th className="py-3 px-3.5 text-right">Thao Tác</th>
@@ -252,9 +252,14 @@ export const ProductTable: React.FC<ProductTableProps> = ({
                       </div>
                     </td>
 
-                    {/* Cột 2: Phân loại & Vùng & NCC */}
+                    {/* Cột 2: Phân loại & Vùng & NCC & FEFO */}
                     <td className="py-3 px-3 space-y-1">
-                      <div>{getCategoryBadge(p.category)}</div>
+                      <div className="flex items-center gap-1.5 flex-wrap">
+                        {getCategoryBadge(p.category)}
+                        <span className="text-[10px] px-1.5 py-0.2 rounded font-bold bg-indigo-50 text-indigo-700 border border-indigo-200">
+                          {p.outboundStrategy || (p.category === 'FOOD_BEVERAGE' ? 'FEFO' : 'FIFO')}
+                        </span>
+                      </div>
                       <div>{getZoneBadge(p.storageZone)}</div>
                       <div className="text-[11px] text-slate-500 truncate max-w-[150px]" title={p.supplierName}>
                         {p.supplierName}
@@ -275,10 +280,10 @@ export const ProductTable: React.FC<ProductTableProps> = ({
                       </div>
                     </td>
 
-                    {/* Cột 4: Đơn Giá (Giá Nhập / Giá Bán & Trị giá tồn) */}
+                    {/* Cột 4: Đơn Giá Chuẩn / Giá Bán Tham Khảo */}
                     <td className="py-3 px-3 font-mono text-xs">
-                      <div className="flex items-center justify-between gap-2">
-                        <span className="text-slate-400 text-[11px]">Giá nhập:</span>
+                      <div className="flex items-center justify-between gap-2" title="Giá vốn chuẩn tham khảo trong Master Data">
+                        <span className="text-slate-400 text-[11px]">Giá chuẩn:</span>
                         <span className="font-bold text-emerald-700">
                           {(p.purchasePrice || 0).toLocaleString()} ₫
                         </span>

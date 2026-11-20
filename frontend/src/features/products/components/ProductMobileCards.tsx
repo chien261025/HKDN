@@ -134,7 +134,7 @@ export const ProductMobileCards: React.FC<ProductMobileCardsProps> = ({
             {/* Pricing Details */}
             <div className="p-2.5 bg-slate-50 rounded-xl border border-slate-200/80 text-xs font-mono grid grid-cols-2 gap-2">
               <div>
-                <span className="text-slate-400 text-[10px] block">Giá nhập / Vốn:</span>
+                <span className="text-slate-400 text-[10px] block" title="Giá vốn chuẩn tham khảo Master Data">Giá chuẩn:</span>
                 <span className="font-bold text-emerald-700">{(p.purchasePrice || 0).toLocaleString()} ₫</span>
               </div>
               <div>
