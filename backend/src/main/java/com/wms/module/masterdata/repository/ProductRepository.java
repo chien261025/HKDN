@@ -13,4 +13,8 @@ public interface ProductRepository extends JpaRepository<Product, Long> {
     Optional<Product> findByBarcodeAndDeletedAtIsNull(String barcode);
     List<Product> findAllByDeletedAtIsNullOrderByCreatedAtDesc();
     List<Product> findAllByOrderByCreatedAtDesc();
+    long countByCategoryIdAndDeletedAtIsNull(Long categoryId);
+    long countByCategoryId(Long categoryId);
+    long countBySupplierIdAndDeletedAtIsNull(Long supplierId);
+    long countBySupplierId(Long supplierId);
 }

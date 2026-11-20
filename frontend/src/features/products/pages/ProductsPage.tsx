@@ -154,10 +154,16 @@ export const ProductsPage: React.FC = () => {
     }
   };
 
-  const handleAddSupplier = async (newSupplier: SupplierItem) => {
-    await productService.createSupplier(newSupplier);
-    const updated = await productService.getSuppliers();
-    setSuppliers(updated);
+  const handleAddSupplier = async (newSupplier: SupplierItem & { categoryIds?: number[] }) => {
+    try {
+      await productService.createSupplier(newSupplier);
+      const updated = await productService.getSuppliers();
+      setSuppliers(updated);
+      setNotice(`Đã thêm nhà cung cấp mới "${newSupplier.name}" (${newSupplier.code}) thành công.`);
+      setError('');
+    } catch (err: any) {
+      setError(err?.response?.data?.message || err.message || 'Không thể tạo nhà cung cấp.');
+    }
   };
 
   const handleEditProduct = (product: ProductItem) => {
@@ -171,11 +177,26 @@ export const ProductsPage: React.FC = () => {
     await fetchData();
   };
 
-  const handleCategoryStatus = async (category: CategoryItem) => {
-    if (category.status === 'DELETED') await productService.restoreCategory(category.id);
-    else if (category.status === 'ACTIVE') await productService.updateCategoryStatus(category.id, false);
-    else await productService.softDeleteCategory(category.id);
-    setCategories(await productService.getCategories());
+  const handleCategoryStatus = async (category: CategoryItem, action?: 'TOGGLE_ACTIVE' | 'DELETE' | 'RESTORE') => {
+    try {
+      if (action === 'RESTORE' || category.status === 'DELETED') {
+        await productService.restoreCategory(category.id);
+        setNotice(`Đã khôi phục danh mục "${category.name}" thành công.`);
+      } else if (action === 'TOGGLE_ACTIVE') {
+        const nextState = category.status !== 'ACTIVE';
+        await productService.updateCategoryStatus(category.id, nextState);
+        setNotice(`Đã chuyển trạng thái danh mục "${category.name}" sang ${nextState ? 'Đang hoạt động' : 'Ngưng hoạt động'}.`);
+      } else {
+        await productService.softDeleteCategory(category.id);
+        setNotice(`Đã xóa danh mục "${category.name}".`);
+      }
+      setCategories(await productService.getCategories());
+      setError('');
+    } catch (err: any) {
+      console.error('Lỗi thao tác danh mục:', err);
+      const errMsg = err?.response?.data?.message || err.message || 'Không thể thực hiện thao tác danh mục.';
+      setError(errMsg);
+    }
   };
 
   const handleSaveEditProduct = async (updatedProduct: ProductItem) => {
@@ -192,9 +213,15 @@ export const ProductsPage: React.FC = () => {
     setSelectedSupplierForEdit(supplier);
   };
 
-  const handleSaveEditSupplier = async (updatedSupplier: SupplierItem) => {
-    await productService.updateSupplier(updatedSupplier.id, updatedSupplier);
-    setSuppliers(await productService.getSuppliers());
+  const handleSaveEditSupplier = async (updatedSupplier: SupplierItem & { categoryIds?: number[] }) => {
+    try {
+      await productService.updateSupplier(updatedSupplier.id, updatedSupplier);
+      setSuppliers(await productService.getSuppliers());
+      setNotice(`Cập nhật thông tin nhà cung cấp "${updatedSupplier.name}" (${updatedSupplier.code}) thành công.`);
+      setError('');
+    } catch (err: any) {
+      setError(err?.response?.data?.message || err.message || 'Không thể cập nhật nhà cung cấp.');
+    }
   };
 
   const handleViewSupplierProducts = (supplier: SupplierItem) => {
@@ -301,6 +328,7 @@ export const ProductsPage: React.FC = () => {
         isOpen={isCreateSupplierOpen}
         onClose={() => setIsCreateSupplierOpen(false)}
         onAddSupplier={handleAddSupplier}
+        availableCategories={categories}
       />
 
       {/* Edit Supplier Modal */}
@@ -309,6 +337,7 @@ export const ProductsPage: React.FC = () => {
         onClose={() => setSelectedSupplierForEdit(null)}
         supplier={selectedSupplierForEdit}
         onUpdateSupplier={handleSaveEditSupplier}
+        availableCategories={categories}
       />
 
       {/* GS1 Barcode Print Preview Modal */}

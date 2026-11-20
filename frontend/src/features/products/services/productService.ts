@@ -95,8 +95,12 @@ export const productService = {
     try {
       const res = await apiClient.get('/masterdata/categories');
       return (res.data?.data || []).map((c: any) => ({
-        id: String(c.id), code: c.code, name: c.name, parentId: c.parentId ? String(c.parentId) : null,
+        id: String(c.id),
+        code: c.code,
+        name: c.name,
+        parentId: c.parentId ? String(c.parentId) : null,
         status: c.deletedAt ? 'DELETED' : c.isActive === false ? 'INACTIVE' : 'ACTIVE',
+        productCount: Number(c.productCount || 0),
       }));
     } catch (err) {
       console.error('Cannot load categories from backend:', err);
@@ -190,18 +194,27 @@ export const productService = {
     try {
       const res = await apiClient.get('/masterdata/suppliers');
       if (res.data?.data && Array.isArray(res.data.data)) {
-        return res.data.data.map((s: any) => ({
-          id: String(s.id),
-          code: s.code,
-          name: s.name,
-          contactPerson: 'Bộ phận Tiếp nhận',
-          phone: s.contactPhone || '028.1234.5678',
-          email: `${s.code.toLowerCase()}@partner.vn`,
-          address: 'Khu Công Nghiệp Tân Bình, TP.HCM',
-          suppliedCategories: ['GENERAL'],
-          activeProductsCount: 1,
-          status: s.isActive === false ? 'INACTIVE' : 'ACTIVE' as const,
-        }));
+        return res.data.data.map((s: any) => {
+          const catList: string[] = Array.isArray(s.categories) && s.categories.length > 0
+            ? s.categories.map((c: any) => c.name || c.code)
+            : Array.isArray(s.suppliedCategories) && s.suppliedCategories.length > 0
+            ? s.suppliedCategories
+            : ['Chưa phân loại'];
+
+          return {
+            id: String(s.id),
+            code: s.code,
+            name: s.name,
+            contactPerson: s.contactPerson || 'Bộ phận Tiếp nhận',
+            phone: s.contactPhone || '028.1234.5678',
+            email: s.email || `${s.code.toLowerCase()}@partner.vn`,
+            address: s.address || 'Khu Công Nghiệp Tân Bình, TP.HCM',
+            suppliedCategories: catList,
+            categories: s.categories || [],
+            activeProductsCount: Number(s.activeProductsCount ?? 0),
+            status: s.isActive === false ? 'INACTIVE' : ('ACTIVE' as const),
+          };
+        });
       }
       return [];
     } catch (err) {
@@ -210,25 +223,32 @@ export const productService = {
     }
   },
 
-  async createSupplier(supplier: Partial<SupplierItem>): Promise<SupplierItem> {
+  async createSupplier(supplier: Partial<SupplierItem> & { categoryIds?: number[] }): Promise<SupplierItem> {
     try {
-      const payload = {
+      const payload: any = {
         code: supplier.code,
         name: supplier.name,
+        contactPerson: supplier.contactPerson,
         contactPhone: supplier.phone,
+        email: supplier.email,
+        address: supplier.address,
         isActive: supplier.status !== 'INACTIVE',
       };
+      if (supplier.categoryIds && supplier.categoryIds.length > 0) {
+        payload.categoryIds = supplier.categoryIds;
+      }
       const res = await apiClient.post('/masterdata/suppliers', payload);
       const saved = res.data?.data;
       return {
         id: String(saved?.id || Date.now()),
-        code: supplier.code || 'SUP-' + Date.now(),
-        name: supplier.name!,
-        contactPerson: supplier.contactPerson || 'Đại diện NCC',
-        phone: supplier.phone || '',
-        email: supplier.email || '',
-        address: supplier.address || '',
-        suppliedCategories: supplier.suppliedCategories || ['GENERAL'],
+        code: saved?.code || supplier.code || 'SUP-' + Date.now(),
+        name: saved?.name || supplier.name!,
+        contactPerson: saved?.contactPerson || supplier.contactPerson || 'Đại diện NCC',
+        phone: saved?.contactPhone || supplier.phone || '',
+        email: saved?.email || supplier.email || '',
+        address: saved?.address || supplier.address || '',
+        suppliedCategories: saved?.suppliedCategories || supplier.suppliedCategories || ['Chưa phân loại'],
+        categories: saved?.categories || [],
         activeProductsCount: 0,
         status: 'ACTIVE',
       };
@@ -303,14 +323,19 @@ export const productService = {
     }
   },
 
-  async updateSupplier(id: string, supplier: Partial<SupplierItem>): Promise<SupplierItem> {
+  async updateSupplier(id: string, supplier: Partial<SupplierItem> & { categoryIds?: number[] }): Promise<SupplierItem> {
     try {
-      const payload = {
+      const payload: any = {
         name: supplier.name,
-        code: supplier.code,
+        contactPerson: supplier.contactPerson,
         contactPhone: supplier.phone,
+        email: supplier.email,
+        address: supplier.address,
         isActive: supplier.status !== 'INACTIVE',
       };
+      if (supplier.categoryIds && supplier.categoryIds.length > 0) {
+        payload.categoryIds = supplier.categoryIds;
+      }
       const res = await apiClient.put(`/masterdata/suppliers/${id}`, payload);
       const saved = res.data?.data;
       return {
@@ -319,6 +344,12 @@ export const productService = {
         name: saved?.name || supplier.name!,
         code: saved?.code || supplier.code!,
         phone: saved?.contactPhone || supplier.phone!,
+        contactPerson: saved?.contactPerson || supplier.contactPerson!,
+        email: saved?.email || supplier.email!,
+        address: saved?.address || supplier.address!,
+        suppliedCategories: saved?.suppliedCategories || supplier.suppliedCategories || [],
+        categories: saved?.categories || supplier.categories || [],
+        activeProductsCount: saved?.activeProductsCount ?? supplier.activeProductsCount ?? 0,
       } as SupplierItem;
     } catch (err) {
       console.error('Could not update supplier on backend:', err);

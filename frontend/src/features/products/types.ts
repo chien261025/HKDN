@@ -55,6 +55,7 @@ export interface CategoryItem {
   name: string;
   parentId?: string | null;
   status: 'ACTIVE' | 'INACTIVE' | 'DELETED';
+  productCount?: number;
 }
 
 export interface SupplierItem {
@@ -66,6 +67,7 @@ export interface SupplierItem {
   email: string;
   address: string;
   suppliedCategories: string[];
+  categories?: { id: number | string; code: string; name: string }[];
   activeProductsCount: number;
   status: 'ACTIVE' | 'INACTIVE';
 }

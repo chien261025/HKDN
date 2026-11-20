@@ -39,6 +39,7 @@ public class Category {
     @Column(name = "parent_id")
     private Long parentId;
 
+    @com.fasterxml.jackson.annotation.JsonIgnore
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "parent_id", insertable = false, updatable = false)
     private Category parent;
@@ -57,4 +58,8 @@ public class Category {
     @Column(name = "updated_at")
     @Builder.Default
     private Instant updatedAt = Instant.now();
+
+    @jakarta.persistence.Transient
+    @Builder.Default
+    private Long productCount = 0L;
 }
