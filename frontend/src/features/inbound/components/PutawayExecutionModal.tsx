@@ -133,7 +133,7 @@ export const PutawayExecutionModal: React.FC<Props> = ({ order, onClose, onConfi
             </option>
             {bins.map(l => (
               <option key={l.id} value={l.id}>
-                {l.binBarcode} · {l.zoneCode} (Tải trọng max: {l.maxWeightKg} kg)
+                {l.binBarcode} · {l.zoneCode} {l.binBarcode.includes('BUFFER') || l.binBarcode.includes('FLOOR') ? '★ [BÃI SÀN LƯU TẠM / XẢ TẢI]' : ''} (Tải trọng max: {l.maxWeightKg.toLocaleString()} kg)
               </option>
             ))}
           </select>

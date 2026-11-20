@@ -97,6 +97,37 @@ public class InboundService {
                 items.add(item);
             }
             order.setItems(items);
+
+            // Kiểm tra sức chứa vật lý của kho đích (Warehouse Capacity Validation)
+            java.util.Map<String, BigDecimal> zoneWeightMap = new java.util.HashMap<>();
+            for (var itemReq : request.getItems()) {
+                Product p = productRepository.findById(itemReq.getProductId()).orElse(null);
+                if (p != null) {
+                    BigDecimal unitWeight = p.getWeightKg() != null ? p.getWeightKg() : BigDecimal.ONE;
+                    BigDecimal itemWeight = unitWeight.multiply(BigDecimal.valueOf(itemReq.getExpectedQty()));
+                    String condition = p.getStorageCondition() != null ? p.getStorageCondition() : "AMBIENT";
+                    String zone = "COOL".equalsIgnoreCase(condition) ? "ZONE_B" :
+                                  "COLD".equalsIgnoreCase(condition) ? "ZONE_C" :
+                                  "SECURE".equalsIgnoreCase(condition) ? "ZONE_D" : "ZONE_A";
+                    zoneWeightMap.merge(zone, itemWeight, BigDecimal::add);
+                }
+            }
+
+            for (java.util.Map.Entry<String, BigDecimal> entry : zoneWeightMap.entrySet()) {
+                String zone = entry.getKey();
+                BigDecimal neededWeight = entry.getValue();
+                List<Location> zoneLocs = locationRepository.findByWarehouseIdAndZoneCode(request.getWarehouseId(), zone);
+                BigDecimal zoneCapacity = zoneLocs.stream()
+                        .filter(Location::getIsActive)
+                        .map(Location::getMaxWeightKg)
+                        .filter(java.util.Objects::nonNull)
+                        .reduce(BigDecimal.ZERO, BigDecimal::add);
+
+                if (zoneCapacity.compareTo(BigDecimal.ZERO) > 0 && neededWeight.compareTo(zoneCapacity) > 0) {
+                    throw new BusinessException(ErrorCode.BAD_REQUEST,
+                            "Tải trọng đơn hàng (" + neededWeight.toBigInteger() + " kg) vượt quá tổng sức chứa phân khu " + zone + " của kho đích (" + zoneCapacity.toBigInteger() + " kg). Vui lòng điều chỉnh số lượng hoặc chia đợt đặt hàng!");
+                }
+            }
         }
         return inboundOrderRepository.save(order);
     }

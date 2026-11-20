@@ -1,10 +1,11 @@
 import React, { useState, useEffect } from 'react';
-import { X, Plus, Trash2, Building2 } from 'lucide-react';
+import { X, Plus, Trash2, Building2, AlertTriangle, ShieldCheck } from 'lucide-react';
 import { InboundOrder } from '../types';
 import { productService } from '../../products/services/productService';
 import { ProductItem, SupplierItem } from '../../products/types';
 import { WarehouseItem } from '../../masterdata/types';
 import { warehouseService, DEFAULT_WAREHOUSES } from '../../masterdata/services/warehouseService';
+import { LocationDto, operatorService } from '../../operator/services/operatorService';
 
 interface CreatePoModalProps {
   initialWarehouseId?: string | number;
@@ -44,10 +45,47 @@ export const CreatePoModal: React.FC<CreatePoModalProps> = ({ initialWarehouseId
   const [notes, setNotes] = useState('Giao hàng buổi sáng trước 11h. Xe tải có bửng nâng hạ.');
 
   const [items, setItems] = useState<PoItemRow[]>([]);
+  const [locations, setLocations] = useState<LocationDto[]>([]);
+
+  useEffect(() => {
+    operatorService.getLocations().then((all) => {
+      setLocations(all.filter((l) => l.isActive && (l.warehouseId === warehouseId || !warehouseId)));
+    }).catch(() => {});
+  }, [warehouseId]);
+
   const selectedSupplier = suppliers.find((s) => s.code === supplierCode);
   const supplierProducts = availableProducts.filter(
     (p) => p.status === 'ACTIVE' && selectedSupplier && String(p.supplierId) === selectedSupplier.id
   );
+
+  // Enterprise Real-time Weight & Zone Capacity Checking
+  const zoneRequirement = React.useMemo(() => {
+    const map: Record<string, number> = {};
+    for (const it of items) {
+      const prod = availableProducts.find((p) => Number(p.id) === it.productId);
+      const unitWeight = prod?.weightKg || 1;
+      const condition = prod?.storageCondition || 'AMBIENT';
+      const zone = condition === 'COOL' ? 'ZONE_B' : condition === 'COLD' ? 'ZONE_C' : condition === 'SECURE' ? 'ZONE_D' : 'ZONE_A';
+      map[zone] = (map[zone] || 0) + (it.expectedQty * unitWeight);
+    }
+    return map;
+  }, [items, availableProducts]);
+
+  const totalPoWeightKg = Object.values(zoneRequirement).reduce((sum, w) => sum + w, 0);
+
+  const capacityError = React.useMemo(() => {
+    if (locations.length === 0) return null;
+    for (const [zone, neededWeight] of Object.entries(zoneRequirement)) {
+      const zoneCapacity = locations
+        .filter((l) => l.zoneCode === zone)
+        .reduce((sum, l) => sum + (l.maxWeightKg || 0), 0);
+      if (zoneCapacity > 0 && neededWeight > zoneCapacity) {
+        const zoneLabel = zone === 'ZONE_B' ? 'Kho Mát (Zone B)' : zone === 'ZONE_C' ? 'Kho Đông (Zone C)' : 'Kho Khô (Zone A)';
+        return `Chặn đặt quá tải trọng: Tổng tải trọng ${neededWeight.toLocaleString()} kg vượt quá tổng sức chứa của phân khu ${zoneLabel} (${zoneCapacity.toLocaleString()} kg)!`;
+      }
+    }
+    return null;
+  }, [zoneRequirement, locations]);
 
   useEffect(() => {
     warehouseService.getWarehouses().then((whs) => {
@@ -349,13 +387,28 @@ export const CreatePoModal: React.FC<CreatePoModalProps> = ({ initialWarehouseId
               ))}
             </div>
 
-            {/* Total Order Amount Banner */}
-            <div className="p-3 bg-blue-50/80 rounded-2xl border border-blue-200 flex items-center justify-between text-xs font-mono">
-              <span className="text-blue-900 font-semibold">TỔNG GIÁ TRỊ ĐƠN HÀNG PO:</span>
-              <span className="font-extrabold text-blue-700 text-base">
-                {totalPoValue.toLocaleString('vi-VN')} VNĐ
-              </span>
+            {/* Total Order Amount & Weight Banner */}
+            <div className="p-3 bg-blue-50/80 rounded-2xl border border-blue-200 space-y-1 text-xs font-mono">
+              <div className="flex items-center justify-between">
+                <span className="text-blue-900 font-semibold">TỔNG GIÁ TRỊ ĐƠN HÀNG PO:</span>
+                <span className="font-extrabold text-blue-700 text-base">
+                  {totalPoValue.toLocaleString('vi-VN')} VNĐ
+                </span>
+              </div>
+              <div className="flex items-center justify-between text-[11px] pt-1 border-t border-blue-200/60">
+                <span className="text-slate-600 font-medium">Tổng tải trọng dự kiến:</span>
+                <span className="font-bold text-slate-800">
+                  {totalPoWeightKg.toLocaleString()} kg
+                </span>
+              </div>
             </div>
+
+            {capacityError && (
+              <div className="p-2.5 rounded-xl bg-rose-50 border border-rose-200 text-rose-700 text-xs flex items-center gap-2">
+                <AlertTriangle className="w-4 h-4 shrink-0 text-rose-600" />
+                <span className="font-semibold">{capacityError}</span>
+              </div>
+            )}
           </div>
 
           <div>
@@ -380,10 +433,10 @@ export const CreatePoModal: React.FC<CreatePoModalProps> = ({ initialWarehouseId
             </button>
             <button
               type="submit"
-              disabled={submitting || items.length === 0}
-              className="flex-1 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs shadow-sm shadow-blue-200 cursor-pointer transition-all"
+              disabled={submitting || items.length === 0 || !!capacityError}
+              className="flex-1 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 disabled:bg-slate-300 disabled:cursor-not-allowed text-white font-bold text-xs shadow-sm shadow-blue-200 cursor-pointer transition-all"
             >
-              {submitting ? 'Đang tạo đơn...' : 'Tạo Đơn Nhập Kho (Phát Hành PO)'}
+              {submitting ? 'Đang tạo đơn...' : capacityError ? 'Đang bị khóa (Quá tải trọng kho)' : 'Tạo Đơn Nhập Kho (Phát Hành PO)'}
             </button>
           </div>
         </form>

@@ -22,6 +22,8 @@ export const QC_REJECT_REASONS = [
   { code: 'SAI_QUY_CACH', label: 'Sai tem nhãn, barcode hoặc sai phân loại SKU' },
   { code: 'CHAT_LUONG_KEM', label: 'Biến chất, rò rỉ dung dịch hoặc hư hỏng vật lý' },
   { code: 'THIEU_HO_SO', label: 'Thiếu chứng nhận kiểm định chất lượng (CO/CQ)' },
+  { code: 'QUA_TAI_TRONG_KHO', label: 'Từ chối nhận do vượt sức chứa kho / kho không đủ chỗ chứa' },
+  { code: 'DAT_NHAM_PO', label: 'Từ chối nhận do đặt nhầm số lượng / sai lệch hợp đồng' },
   { code: 'KHAC', label: 'Lý do khác (ghi chú biên bản giám định)' },
 ];
 
