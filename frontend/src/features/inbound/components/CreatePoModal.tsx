@@ -349,14 +349,6 @@ export const CreatePoModal: React.FC<CreatePoModalProps> = ({ initialWarehouseId
               ))}
             </div>
 
-            {/* WMS Guidance Note */}
-            <div className="p-2.5 rounded-xl bg-amber-50 border border-amber-200 text-amber-900 text-xs flex items-center gap-2">
-              <span className="font-bold shrink-0">💡 Lưu ý WMS:</span>
-              <span>
-                Mã Lô (Batch) & Hạn Dùng (HSD/FEFO) sẽ được kiểm định và cấp phát tại bước <strong>Tiếp Nhận & QC</strong> khi xe tải chở hàng tới cổng kho.
-              </span>
-            </div>
-
             {/* Total Order Amount Banner */}
             <div className="p-3 bg-blue-50/80 rounded-2xl border border-blue-200 flex items-center justify-between text-xs font-mono">
               <span className="text-blue-900 font-semibold">TỔNG GIÁ TRỊ ĐƠN HÀNG PO:</span>

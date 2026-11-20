@@ -138,14 +138,6 @@ export const InboundDetailModal: React.FC<InboundDetailModalProps> = ({ order, o
             </div>
           </div>
 
-          {/* Quy tắc WMS Box */}
-          <div className="p-3 rounded-xl bg-blue-50/70 border border-blue-200 flex items-start gap-2.5 text-xs text-blue-900 leading-relaxed">
-            <ShieldCheck className="w-4 h-4 text-blue-600 shrink-0 mt-0.5" />
-            <div>
-              <strong className="font-bold">Nguyên tắc cốt lõi:</strong> Hệ thống <strong>không cộng tồn kho</strong> khi mới lập PO. Tồn kho khả dụng On-hand và Sổ cái giao dịch (Stock Ledger) chỉ được ghi nhận bất biến khi nhân viên kho hoàn tất bước <strong>Cất Lên Kệ (Put-away)</strong>.
-            </div>
-          </div>
-
           {/* Bảng danh sách mặt hàng */}
           <div className="space-y-2.5">
             <div className="flex items-center justify-between">
