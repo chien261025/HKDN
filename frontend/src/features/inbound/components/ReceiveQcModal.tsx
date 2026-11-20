@@ -215,17 +215,6 @@ export const ReceiveQcModal: React.FC<ReceiveQcModalProps> = ({ order, onClose, 
             </div>
           </div>
 
-          {/* Workflow Guide */}
-          <div className="p-3.5 rounded-2xl bg-blue-50/70 border border-blue-200 space-y-2">
-            <div className="flex items-center justify-between text-xs font-bold text-blue-900">
-              <div className="flex items-center gap-2">
-                <ShieldCheck className="w-4 h-4 text-blue-600" />
-                <span>Nghiệp Vụ Nhập Kho (Mục 2.4): Tiếp Nhận · Kiểm Định · Cấp Mã Lô (FEFO)</span>
-              </div>
-              <span className="text-[11px] text-blue-700 font-medium">Hàng đạt QC sẽ chuyển về Khu Đệm (Staging)</span>
-            </div>
-          </div>
-
           {/* Table Items */}
           <div className="space-y-2">
             <div className="flex items-center justify-between">
@@ -368,35 +357,6 @@ export const ReceiveQcModal: React.FC<ReceiveQcModalProps> = ({ order, onClose, 
                   })}
                 </tbody>
               </table>
-            </div>
-          </div>
-
-          {/* Two-Step Inbound Enterprise Architecture Banner */}
-          <div className="p-4 rounded-2xl bg-gradient-to-r from-blue-50 via-indigo-50 to-slate-50 border border-blue-200 space-y-2">
-            <div className="flex items-center gap-2 text-xs font-bold text-slate-800">
-              <ShieldCheck className="w-4 h-4 text-blue-600" />
-              <span>Quy Trình Kiểm Soát Tồn Kho 2 Chặng Chuẩn Enterprise (Two-Step Inbound Verification)</span>
-            </div>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-xs text-slate-700">
-              <div className="bg-white/80 p-2.5 rounded-xl border border-blue-100 shadow-2xs">
-                <div className="font-bold text-blue-800 flex items-center gap-1.5 mb-1">
-                  <span className="w-2 h-2 rounded-full bg-blue-500"></span>
-                  <span>Chặng 1: Khu Đệm Tiếp Nhận (Inbound Staging Area)</span>
-                </div>
-                <p className="text-[11px] text-slate-600 leading-relaxed">
-                  Hàng hóa sau khi xác nhận kiểm đếm sẽ lưu giữ tại Khu Đệm. Tại đây, <strong>Tồn Khả Dụng (Available) = 0</strong> để đảm bảo an toàn, ngăn chặn việc xuất bán khi hàng chưa an vị trên giá kệ.
-                </p>
-              </div>
-
-              <div className="bg-white/80 p-2.5 rounded-xl border border-blue-100 shadow-2xs">
-                <div className="font-bold text-emerald-800 flex items-center gap-1.5 mb-1">
-                  <span className="w-2 h-2 rounded-full bg-emerald-500"></span>
-                  <span>Chặng 2: Cất Lên Ô Kệ (Putaway & Stock Ledger)</span>
-                </div>
-                <p className="text-[11px] text-slate-600 leading-relaxed">
-                  Khi nhân viên hoàn tất cất hàng vào ô kệ đích (Bin), hệ thống sẽ chính thức ghi nhận bút toán tăng tồn vào <strong>Sổ Cái (Stock Ledger)</strong> và mở khả dụng xuất kho theo chuẩn FEFO.
-                </p>
-              </div>
             </div>
           </div>
 
