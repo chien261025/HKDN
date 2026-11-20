@@ -23,6 +23,7 @@ import {
   ProductBusinessStatus,
 } from '../types';
 import { Modal, Button, InputField, SelectField } from '../../../components/common';
+import { ProductImageUploader } from './ProductImageUploader';
 
 interface CreateProductModalProps {
   isOpen: boolean;
@@ -30,15 +31,6 @@ interface CreateProductModalProps {
   onAddProduct: (product: ProductItem) => void;
   suppliers: SupplierItem[];
 }
-
-const SAMPLE_IMAGES: { label: string; url: string }[] = [
-  { label: 'Sữa tươi / Đồ uống', url: 'https://images.unsplash.com/photo-1550583724-b2692b85b150?w=300&auto=format&fit=crop&q=80' },
-  { label: 'Điện thoại Smartphone', url: 'https://images.unsplash.com/photo-1610945265064-0e34e5519bbf?w=300&auto=format&fit=crop&q=80' },
-  { label: 'Tai nghe AirPods', url: 'https://images.unsplash.com/photo-1600294037681-c80b4cb5b434?w=300&auto=format&fit=crop&q=80' },
-  { label: 'Nước giặt / Hóa phẩm', url: 'https://images.unsplash.com/photo-1583947215259-38e31be8751f?w=300&auto=format&fit=crop&q=80' },
-  { label: 'Bia / Đóng thùng', url: 'https://images.unsplash.com/photo-1608270586620-248524c67de9?w=300&auto=format&fit=crop&q=80' },
-  { label: 'Cà phê hộp', url: 'https://images.unsplash.com/photo-1514432324607-a09d9b4aefdd?w=300&auto=format&fit=crop&q=80' },
-];
 
 export const CreateProductModal: React.FC<CreateProductModalProps> = ({
   isOpen,
@@ -317,46 +309,12 @@ export const CreateProductModal: React.FC<CreateProductModalProps> = ({
                 />
               </div>
 
-              {/* Hình ảnh sản phẩm URL */}
-              <div className="md:col-span-2 space-y-2">
-                <InputField
-                  label="URL Hình Ảnh Sản Phẩm"
-                  placeholder="https://images.unsplash.com/..."
+              {/* Hình ảnh sản phẩm */}
+              <div className="md:col-span-2">
+                <ProductImageUploader
                   value={imageUrl}
-                  onChange={(e) => setImageUrl(e.target.value)}
-                  icon={<ImageIcon className="w-3.5 h-3.5 text-slate-400" />}
+                  onChange={setImageUrl}
                 />
-
-                <div className="flex flex-wrap items-center gap-1.5 text-[11px] text-slate-500">
-                  <span className="font-semibold text-slate-700">Chọn nhanh ảnh mẫu:</span>
-                  {SAMPLE_IMAGES.map((img) => (
-                    <button
-                      key={img.label}
-                      type="button"
-                      onClick={() => setImageUrl(img.url)}
-                      className="px-2 py-0.5 bg-slate-100 hover:bg-slate-200 rounded text-slate-700 transition-colors cursor-pointer"
-                    >
-                      {img.label}
-                    </button>
-                  ))}
-                </div>
-
-                {imageUrl && (
-                  <div className="flex items-center gap-3 p-2 bg-slate-50 rounded-xl border border-slate-200 w-fit">
-                    <img
-                      src={imageUrl}
-                      alt="Preview"
-                      className="w-12 h-12 object-cover rounded-lg border border-slate-200"
-                      onError={(e) => {
-                        (e.target as HTMLImageElement).src = 'https://images.unsplash.com/photo-1550583724-b2692b85b150?w=100';
-                      }}
-                    />
-                    <div className="text-xs text-emerald-600 font-medium flex items-center gap-1">
-                      <CheckCircle2 className="w-3.5 h-3.5" />
-                      <span>Xem trước ảnh hợp lệ</span>
-                    </div>
-                  </div>
-                )}
               </div>
             </div>
           </div>

@@ -72,7 +72,7 @@ public class Product {
     @Column(name = "origin", length = 100)
     private String origin;
 
-    @Column(name = "image_url", length = 500)
+    @Column(name = "image_url", columnDefinition = "LONGTEXT")
     private String imageUrl;
 
     @Column(name = "storage_condition", length = 50)

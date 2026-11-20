@@ -102,7 +102,7 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
                   className="w-full h-full object-cover hover:scale-105 transition-transform duration-300"
                   onError={(e) => {
                     (e.target as HTMLImageElement).src =
-                      'https://images.unsplash.com/photo-1550583724-b2692b85b150?w=300';
+                      'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="100" height="100" viewBox="0 0 24 24" fill="none" stroke="%2394a3b8" stroke-width="1.5"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>';
                   }}
                 />
               ) : (
