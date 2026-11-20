@@ -5,6 +5,7 @@ import {
   AlertTriangle,
   ShieldAlert,
   Sparkles,
+  Loader2,
   DollarSign,
   Ruler,
   Image as ImageIcon,
@@ -26,6 +27,7 @@ import { Modal, Button, InputField, SelectField } from '../../../components/comm
 import { ProductImageUploader } from './ProductImageUploader';
 import { generateInternalEan13 } from '../utils/barcodeUtils';
 import { analyzeProductAndGenerateSku } from '../utils/smartSkuGenerator';
+import { productService } from '../services/productService';
 
 interface CreateProductModalProps {
   isOpen: boolean;
@@ -49,6 +51,8 @@ export const CreateProductModal: React.FC<CreateProductModalProps> = ({
   const [description, setDescription] = useState('');
   const [category, setCategory] = useState<ProductCategory>('FOOD_BEVERAGE');
   const [aiSuggestion, setAiSuggestion] = useState<string | null>(null);
+  const [isAiPowered, setIsAiPowered] = useState<boolean | null>(null);
+  const [isAiLoading, setIsAiLoading] = useState<boolean>(false);
   const [brand, setBrand] = useState('');
   const [origin, setOrigin] = useState('Việt Nam');
   const [imageUrl, setImageUrl] = useState('');
@@ -125,24 +129,43 @@ export const CreateProductModal: React.FC<CreateProductModalProps> = ({
 
   if (!isOpen) return null;
 
-  const handleAutoSku = (nameToUse?: string) => {
+  const handleAutoSku = async (nameToUse?: string) => {
     const targetName = typeof nameToUse === 'string' ? nameToUse : name;
     if (!targetName.trim()) {
       const random = Math.floor(100 + Math.random() * 900);
       setSku(`SKU-GEN-${random}`);
       setAiSuggestion(null);
+      setIsAiPowered(null);
       return;
     }
-    const analysis = analyzeProductAndGenerateSku(targetName);
-    setSku(analysis.sku);
-    setCategory(analysis.category);
-    setStorageZone(analysis.storageZone);
-    setStorageCondition(analysis.storageCondition);
-    setUnit(analysis.unit);
-    setIsExpiryManaged(analysis.isExpiryManaged);
-    setOutboundStrategy(analysis.outboundStrategy);
-    if (analysis.shelfLifeDays > 0) setShelfLifeDays(analysis.shelfLifeDays);
-    setAiSuggestion(analysis.reason);
+    setIsAiLoading(true);
+    try {
+      const analysis = await productService.suggestSkuByAi(targetName);
+      setSku(analysis.sku);
+      setCategory(analysis.category);
+      setStorageZone(analysis.storageZone);
+      setStorageCondition(analysis.storageCondition);
+      setUnit(analysis.unit);
+      setIsExpiryManaged(analysis.isExpiryManaged);
+      setOutboundStrategy(analysis.outboundStrategy);
+      if (analysis.shelfLifeDays > 0) setShelfLifeDays(analysis.shelfLifeDays);
+      setAiSuggestion(analysis.reason);
+      setIsAiPowered(analysis.aiPowered ?? false);
+    } catch {
+      const analysis = analyzeProductAndGenerateSku(targetName);
+      setSku(analysis.sku);
+      setCategory(analysis.category);
+      setStorageZone(analysis.storageZone);
+      setStorageCondition(analysis.storageCondition);
+      setUnit(analysis.unit);
+      setIsExpiryManaged(analysis.isExpiryManaged);
+      setOutboundStrategy(analysis.outboundStrategy);
+      if (analysis.shelfLifeDays > 0) setShelfLifeDays(analysis.shelfLifeDays);
+      setAiSuggestion(analysis.reason);
+      setIsAiPowered(false);
+    } finally {
+      setIsAiLoading(false);
+    }
   };
 
   const handleAutoBarcode = () => {
@@ -261,12 +284,17 @@ export const CreateProductModal: React.FC<CreateProductModalProps> = ({
                 action={
                   <button
                     type="button"
+                    disabled={isAiLoading}
                     onClick={() => handleAutoSku()}
-                    className="text-xs text-indigo-600 hover:text-indigo-800 font-semibold flex items-center gap-1 cursor-pointer"
-                    title="AI tự động phân tích tên sản phẩm để sinh mã SKU và thiết lập phân khu chuẩn"
+                    className="text-xs text-indigo-600 hover:text-indigo-800 disabled:opacity-50 font-semibold flex items-center gap-1 cursor-pointer"
+                    title="Gọi Google Gemini AI / Semantic Engine phân tích tên sản phẩm để sinh mã SKU và thiết lập phân khu chuẩn"
                   >
-                    <Sparkles className="w-3 h-3 text-indigo-600" />
-                    <span>Gợi ý mã SKU bằng AI</span>
+                    {isAiLoading ? (
+                      <Loader2 className="w-3 h-3 text-indigo-600 animate-spin" />
+                    ) : (
+                      <Sparkles className="w-3 h-3 text-indigo-600" />
+                    )}
+                    <span>{isAiLoading ? 'AI đang phân tích...' : 'Gợi ý mã SKU bằng AI'}</span>
                   </button>
                 }
               />
@@ -319,9 +347,20 @@ export const CreateProductModal: React.FC<CreateProductModalProps> = ({
                 />
 
                 {aiSuggestion && (
-                  <div className="flex items-center gap-2 text-xs text-indigo-700 bg-indigo-50/90 border border-indigo-200 px-3 py-2 rounded-xl transition-all">
-                    <Sparkles className="w-4 h-4 text-indigo-600 shrink-0 animate-pulse" />
-                    <span><strong>AI Phân Tích Thông Minh:</strong> {aiSuggestion}</span>
+                  <div className="flex items-center justify-between gap-2 text-xs text-indigo-800 bg-gradient-to-r from-indigo-50 via-blue-50 to-indigo-50/60 border border-indigo-200/80 px-3.5 py-2.5 rounded-xl shadow-xs transition-all">
+                    <div className="flex items-center gap-2">
+                      <Sparkles className="w-4 h-4 text-indigo-600 shrink-0 animate-pulse" />
+                      <span><strong>AI Gợi Ý Tự Động:</strong> {aiSuggestion}</span>
+                    </div>
+                    {isAiPowered !== null && (
+                      <span className={`shrink-0 ml-2 px-2 py-0.5 rounded-full text-[10px] font-bold tracking-wide uppercase ${
+                        isAiPowered
+                          ? 'bg-indigo-600 text-white shadow-xs'
+                          : 'bg-slate-200 text-slate-700'
+                      }`}>
+                        {isAiPowered ? '✨ Gemini 1.5' : '⚡ Semantic Engine'}
+                      </span>
+                    )}
                   </div>
                 )}
               </div>

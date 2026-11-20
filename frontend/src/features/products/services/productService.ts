@@ -1,7 +1,8 @@
 import { apiClient } from '../../../services/api';
-import { CategoryItem, ProductItem, SupplierItem, ProductCategory } from '../types';
+import { CategoryItem, ProductItem, SupplierItem, ProductCategory, StorageZoneReq, StorageConditionType } from '../types';
 import { inventoryService } from '../../inventory/services/inventoryService';
 import { PRIMARY_WAREHOUSE } from '../../../config/warehouse';
+import { SmartProductAnalysis, analyzeProductAndGenerateSku } from '../utils/smartSkuGenerator';
 
 export const productService = {
   async getProducts(stockedOnly = false): Promise<ProductItem[]> {
@@ -311,6 +312,32 @@ export const productService = {
     } catch (err) {
       console.error('Could not update supplier on backend:', err);
       throw err;
+    }
+  },
+
+  async suggestSkuByAi(name: string): Promise<SmartProductAnalysis & { aiPowered?: boolean }> {
+    try {
+      const res = await apiClient.post('/masterdata/products/ai-suggest-sku', { name });
+      const d = res.data?.data;
+      if (d && d.sku) {
+        return {
+          sku: d.sku,
+          category: (d.category || 'GENERAL') as ProductCategory,
+          categoryLabel: d.categoryLabel || '',
+          storageZone: (d.storageZone || 'ZONE_A') as StorageZoneReq,
+          storageCondition: (d.storageCondition || 'AMBIENT') as StorageConditionType,
+          unit: d.unit || 'Cái',
+          isExpiryManaged: Boolean(d.isExpiryManaged),
+          outboundStrategy: (d.outboundStrategy === 'FEFO' ? 'FEFO' : 'FIFO') as 'FEFO' | 'FIFO',
+          shelfLifeDays: Number(d.shelfLifeDays || 0),
+          reason: d.reason || 'AI phân tích thành công',
+          aiPowered: Boolean(d.aiPowered),
+        };
+      }
+      return analyzeProductAndGenerateSku(name);
+    } catch (err) {
+      console.warn('Backend AI SKU endpoint error, fallback to client semantic engine:', err);
+      return analyzeProductAndGenerateSku(name);
     }
   },
 };

@@ -129,7 +129,7 @@ services:
       RABBITMQ_PASS: 1234567
       SPRING_RABBITMQ_LISTENER_SIMPLE_AUTO_STARTUP: "true"
       GEMINI_API_KEY: ${GEMINI_API_KEY:-}
-      GEMINI_MODEL: ${GEMINI_MODEL:-gemini-3.8-flash}
+      GEMINI_MODEL: ${GEMINI_MODEL:-gemini-1.5-flash}
       GEMINI_BASE_URL: ${GEMINI_BASE_URL:-https://generativelanguage.googleapis.com/v1beta}
       GEMINI_MAX_TOKENS: ${GEMINI_MAX_TOKENS:-1000}
       GEMINI_TEMPERATURE: ${GEMINI_TEMPERATURE:-0.1}

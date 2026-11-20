@@ -21,6 +21,15 @@ import java.util.Map;
 public class ProductController {
 
     private final ProductService productService;
+    private final com.wms.module.masterdata.service.AiSkuService aiSkuService;
+
+    @PostMapping("/ai-suggest-sku")
+    @Operation(summary = "Gợi ý mã SKU và thuộc tính kho bằng AI (Google Gemini + Hybrid Fallback)",
+               description = "Phân tích ngữ nghĩa tên sản phẩm bằng AI để đề xuất mã SKU, phân khu lưu trữ và chính sách xuất kho")
+    public ApiResponse<com.wms.module.masterdata.dto.AiSkuSuggestionDto> suggestSkuByAi(@RequestBody Map<String, String> body) {
+        String name = body != null ? body.get("name") : "";
+        return ApiResponse.success("AI gợi ý mã SKU thành công!", aiSkuService.suggestSku(name));
+    }
 
     @GetMapping
     @Operation(summary = "Lấy toàn bộ danh sách sản phẩm", description = "Trả về danh sách SKU, Barcode, Tên hàng hóa, Ngưỡng an toàn")
