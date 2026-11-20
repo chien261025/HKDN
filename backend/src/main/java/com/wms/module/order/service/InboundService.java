@@ -76,8 +76,8 @@ public class InboundService {
                 Product product = productRepository.findById(itemReq.getProductId())
                         .orElseThrow(() -> new BusinessException(ErrorCode.NOT_FOUND,
                                 "Không tìm thấy sản phẩm: " + itemReq.getProductId()));
-                if (!Boolean.TRUE.equals(product.getIsActive()) || product.getDeletedAt() != null) {
-                    throw new BusinessException(ErrorCode.BAD_REQUEST, "Sản phẩm không còn hoạt động: " + product.getName());
+                if (!Boolean.TRUE.equals(product.getIsActive()) || product.getDeletedAt() != null || "DISCONTINUED".equalsIgnoreCase(product.getBusinessStatus()) || "SUSPENDED".equalsIgnoreCase(product.getBusinessStatus())) {
+                    throw new BusinessException(ErrorCode.BAD_REQUEST, "Sản phẩm không hoạt động hoặc đang ngưng/tạm dừng kinh doanh (" + product.getBusinessStatus() + "): " + product.getName());
                 }
                 if (!request.getSupplierId().equals(product.getSupplierId())) {
                     throw new BusinessException(ErrorCode.BAD_REQUEST,
@@ -147,8 +147,19 @@ public class InboundService {
             if (BigDecimal.valueOf(line.receivedQty()).compareTo(max) > 0) {
                 throw new BusinessException(ErrorCode.BAD_REQUEST, "Số thực nhận vượt dung sai của đơn");
             }
-            if (line.receivedQty() > line.rejectedQty() && (line.batchNumber() == null || line.batchNumber().isBlank())) {
-                throw new BusinessException(ErrorCode.BAD_REQUEST, "Hàng đạt QC phải có mã lô");
+            if (line.receivedQty() > line.rejectedQty()) {
+                if (line.batchNumber() == null || line.batchNumber().isBlank()) {
+                    throw new BusinessException(ErrorCode.BAD_REQUEST, "Hàng đạt QC phải có mã lô");
+                }
+                Product product = productRepository.findById(item.getProductId()).orElse(null);
+                if (product != null && Boolean.TRUE.equals(product.getIsExpiryManaged())) {
+                    if (line.expiryDate() == null) {
+                        throw new BusinessException(ErrorCode.BAD_REQUEST, "Sản phẩm " + product.getName() + " thuộc diện quản lý HSD, bắt buộc phải khai báo ngày hết hạn khi nhận lô!");
+                    }
+                    if (line.expiryDate().isBefore(LocalDate.now())) {
+                        throw new BusinessException(ErrorCode.BAD_REQUEST, "Hạn sử dụng của lô (" + line.expiryDate() + ") đã quá hạn, không được phép tiếp nhận nhập kho!");
+                    }
+                }
             }
             item.setReceivedQty(line.receivedQty());
             item.setRejectedQty(line.rejectedQty());

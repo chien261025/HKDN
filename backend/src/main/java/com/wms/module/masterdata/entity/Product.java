@@ -134,6 +134,24 @@ public class Product {
     @Builder.Default
     private String outboundStrategy = "FEFO";
 
+    @Column(name = "packaging_unit", length = 30)
+    @Builder.Default
+    private String packagingUnit = "Thùng";
+
+    @Column(name = "conversion_rate")
+    @Builder.Default
+    private Integer conversionRate = 24;
+
+    public int convertToBaseQty(int packagingQty) {
+        int rate = (conversionRate != null && conversionRate > 0) ? conversionRate : 1;
+        return packagingQty * rate;
+    }
+
+    public int convertToPackagingQty(int baseQty) {
+        int rate = (conversionRate != null && conversionRate > 0) ? conversionRate : 1;
+        return baseQty / rate;
+    }
+
     @Column(name = "created_at")
     @Builder.Default
     private Instant createdAt = Instant.now();

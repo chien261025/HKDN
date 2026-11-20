@@ -51,3 +51,4 @@ export function generateInternalEan13(): string {
   const checkDigit = calculateEan13CheckDigit(first12);
   return first12 + checkDigit.toString();
 }
+

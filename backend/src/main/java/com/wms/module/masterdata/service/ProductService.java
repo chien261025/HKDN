@@ -12,5 +12,6 @@ public interface ProductService {
     Product updateProduct(Long id, Product productUpdate);
     Product updateStatus(Long id, Boolean active);
     Product softDelete(Long id);
+    void hardDeleteProduct(Long id);
     Product restore(Long id);
 }

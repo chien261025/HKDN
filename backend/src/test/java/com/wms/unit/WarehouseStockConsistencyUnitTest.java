@@ -52,7 +52,7 @@ class WarehouseStockConsistencyUnitTest {
                 Inventory.builder().productId(1L).locationId(1L).batchId(11L).onHandQty(8).reservedQty(0).build(),
                 Inventory.builder().productId(1L).locationId(2L).batchId(10L).onHandQty(500).reservedQty(0).build()));
         WarehouseStockService summary = new WarehouseStockService(products, inventory, locations, batches);
-        ProductServiceImpl catalogue = new ProductServiceImpl(products, suppliers, summary);
+        ProductServiceImpl catalogue = new ProductServiceImpl(products, suppliers, categories, inventory, batches, summary);
         assertEquals(20, catalogue.getAllProducts().get(0).getCurrentStock());
         assertEquals(20, summary.getClosingBalances(true).stream().filter(s -> s.getWarehouseId() == 1L).findFirst().orElseThrow().getOnHandQty());
     }

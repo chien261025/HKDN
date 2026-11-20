@@ -137,6 +137,11 @@ public class OutboundService {
                     || item.getRequestedQty() <= 0 || !seen.add(item.getProductId())) {
                 throw new BusinessException(ErrorCode.BAD_REQUEST, "Sản phẩm không hợp lệ, bị trùng hoặc số lượng xuất không hợp lệ!");
             }
+            Product product = productRepository.findById(item.getProductId())
+                    .orElseThrow(() -> new BusinessException(ErrorCode.NOT_FOUND, "Không tìm thấy sản phẩm: " + item.getProductId()));
+            if (!Boolean.TRUE.equals(product.getIsActive()) || product.getDeletedAt() != null || "DISCONTINUED".equalsIgnoreCase(product.getBusinessStatus())) {
+                throw new BusinessException(ErrorCode.BAD_REQUEST, "Sản phẩm đã ngừng kinh doanh (DISCONTINUED) hoặc bị vô hiệu hóa, không thể tạo đơn xuất: " + product.getName());
+            }
             if (item.getRequestedQty() > available.getOrDefault(item.getProductId(), 0)) {
                 throw new BusinessException(ErrorCode.INSUFFICIENT_STOCK,
                         "Sản phẩm " + item.getProductId() + " không đủ tồn khả dụng trong kho đã chọn!");

@@ -70,6 +70,13 @@ public class ProductController {
         return ApiResponse.success("Đã xóa mềm sản phẩm!", productService.softDelete(id));
     }
 
+    @DeleteMapping("/{id}/hard")
+    @org.springframework.security.access.prepost.PreAuthorize("hasRole('ADMIN')")
+    public ApiResponse<Void> hardDeleteProduct(@PathVariable Long id) {
+        productService.hardDeleteProduct(id);
+        return ApiResponse.success("Đã xóa vật lý sản phẩm thành công!", null);
+    }
+
     @PostMapping("/{id}/restore")
     @org.springframework.security.access.prepost.PreAuthorize("hasAnyRole('ADMIN', 'WAREHOUSE_MANAGER')")
     public ApiResponse<Product> restoreProduct(@PathVariable Long id) {

@@ -33,4 +33,6 @@ public interface ProductBatchRepository extends JpaRepository<ProductBatch, Long
     );
 
     java.util.Optional<ProductBatch> findByProductIdAndBatchNumber(Long productId, String batchNumber);
+
+    List<ProductBatch> findByProductId(Long productId);
 }

@@ -5,6 +5,9 @@ import com.wms.common.exception.ErrorCode;
 import com.wms.module.masterdata.entity.Product;
 import com.wms.module.masterdata.repository.ProductRepository;
 import com.wms.module.masterdata.repository.SupplierRepository;
+import com.wms.module.masterdata.repository.CategoryRepository;
+import com.wms.module.inventory.repository.InventoryRepository;
+import com.wms.module.inventory.repository.ProductBatchRepository;
 import com.wms.module.masterdata.entity.Supplier;
 import com.wms.module.masterdata.service.ProductService;
 import lombok.RequiredArgsConstructor;
@@ -23,6 +26,9 @@ public class ProductServiceImpl implements ProductService {
 
     private final ProductRepository productRepository;
     private final SupplierRepository supplierRepository;
+    private final CategoryRepository categoryRepository;
+    private final InventoryRepository inventoryRepository;
+    private final ProductBatchRepository productBatchRepository;
     private final com.wms.module.inventory.service.WarehouseStockService warehouseStockService;
 
     @Override
@@ -56,13 +62,28 @@ public class ProductServiceImpl implements ProductService {
         if (product.getSku() == null || product.getSku().isBlank()) {
             throw new BusinessException(ErrorCode.BAD_REQUEST, "Mã SKU không được để trống!");
         }
-        if (productRepository.findBySkuAndDeletedAtIsNull(product.getSku()).isPresent()) {
+        if (product.getName() == null || product.getName().isBlank()) {
+            throw new BusinessException(ErrorCode.BAD_REQUEST, "Tên hàng hóa/sản phẩm không được để trống!");
+        }
+        if (product.getUnit() == null || product.getUnit().isBlank()) {
+            throw new BusinessException(ErrorCode.BAD_REQUEST, "Đơn vị tính (Unit) không được để trống!");
+        }
+        if (product.getCategoryId() == null) {
+            throw new BusinessException(ErrorCode.BAD_REQUEST, "Danh mục sản phẩm (Category) không được để trống!");
+        }
+        categoryRepository.findById(product.getCategoryId())
+                .orElseThrow(() -> new BusinessException(ErrorCode.BAD_REQUEST, "Danh mục sản phẩm không tồn tại: " + product.getCategoryId()));
+
+        String formattedSku = product.getSku().trim().toUpperCase();
+        if (productRepository.findBySkuAndDeletedAtIsNull(formattedSku).isPresent()) {
             throw new BusinessException(ErrorCode.BAD_REQUEST, "Mã SKU đã tồn tại: " + product.getSku());
         }
         validateSupplierForNewProduct(product.getSupplierId());
         if (product.getBarcode() == null || product.getBarcode().isBlank()) {
             product.setBarcode("893" + System.currentTimeMillis());
         }
+        product.setSku(formattedSku);
+        product.setCurrentStock(0);
         product.setCreatedAt(Instant.now());
         product.setUpdatedAt(Instant.now());
         return productRepository.save(product);
@@ -149,6 +170,12 @@ public class ProductServiceImpl implements ProductService {
         if (productUpdate.getOutboundStrategy() != null) {
             existing.setOutboundStrategy(productUpdate.getOutboundStrategy());
         }
+        if (productUpdate.getPackagingUnit() != null) {
+            existing.setPackagingUnit(productUpdate.getPackagingUnit());
+        }
+        if (productUpdate.getConversionRate() != null && productUpdate.getConversionRate() > 0) {
+            existing.setConversionRate(productUpdate.getConversionRate());
+        }
         existing.setUpdatedAt(Instant.now());
         return productRepository.save(existing);
     }
@@ -165,8 +192,21 @@ public class ProductServiceImpl implements ProductService {
     public Product softDelete(Long id) {
         Product product = findProduct(id);
         product.setDeletedAt(Instant.now());
+        product.setIsActive(false);
         product.setUpdatedAt(Instant.now());
         return productRepository.save(product);
+    }
+
+    @Override
+    public void hardDeleteProduct(Long id) {
+        Product product = findProduct(id);
+        boolean hasStock = !inventoryRepository.findByProductId(id).isEmpty();
+        boolean hasBatches = !productBatchRepository.findByProductId(id).isEmpty();
+        if (hasStock || hasBatches) {
+            throw new BusinessException(ErrorCode.BAD_REQUEST,
+                    "Sản phẩm đã phát sinh giao dịch xuất/nhập/tồn kho, không được phép xóa vật lý! Chỉ được phép xóa mềm (Soft Delete) để bảo toàn tính toàn vẹn sổ cái.");
+        }
+        productRepository.delete(product);
     }
 
     @Override
