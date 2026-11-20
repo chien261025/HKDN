@@ -124,8 +124,11 @@ public class InboundService {
                         .reduce(BigDecimal.ZERO, BigDecimal::add);
 
                 if (zoneCapacity.compareTo(BigDecimal.ZERO) > 0 && neededWeight.compareTo(zoneCapacity) > 0) {
-                    throw new BusinessException(ErrorCode.BAD_REQUEST,
-                            "Tải trọng đơn hàng (" + neededWeight.toBigInteger() + " kg) vượt quá tổng sức chứa phân khu " + zone + " của kho đích (" + zoneCapacity.toBigInteger() + " kg). Vui lòng điều chỉnh số lượng hoặc chia đợt đặt hàng!");
+                    // Enterprise Planning Principle: Ở bước tạo Đơn đặt hàng (PO), không chặn cứng (Hard Block)
+                    // để doanh nghiệp có thể ký kết hợp đồng số lượng lớn, giao hàng nhiều đợt (Split Deliveries)
+                    // hoặc luân chuyển Cross-Docking không qua kệ. Hệ thống ghi log cảnh báo sức chứa kho.
+                    log.warn("Lưu ý tải trọng PO: Đơn hàng {} kg vượt quá sức chứa kệ tức thời phân khu {} của kho đích ({} kg). Doanh nghiệp có thể chia đợt giao hoặc Cross-Docking.",
+                            neededWeight.toBigInteger(), zone, zoneCapacity.toBigInteger());
                 }
             }
         }

@@ -336,10 +336,11 @@ export const CreatePoModal: React.FC<CreatePoModalProps> = ({ initialWarehouseId
                     )}
                   </div>
 
-                  <div className="grid grid-cols-12 gap-2 text-xs items-center">
-                    <div className="col-span-4">
-                      <span className="text-[11px] text-slate-500 block mb-0.5">Số lượng đặt:</span>
-                      <div className="flex items-center gap-1.5">
+                  <div className="grid grid-cols-12 gap-3 text-xs items-start">
+                    {/* Cột 1: Số lượng đặt */}
+                    <div className="col-span-4 space-y-1">
+                      <span className="text-[11px] font-semibold text-slate-600 block">Số lượng đặt:</span>
+                      <div className="flex rounded-lg shadow-2xs border border-slate-300 focus-within:border-blue-600 focus-within:ring-2 focus-within:ring-blue-100 overflow-hidden bg-white h-[38px]">
                         <input
                           type="number"
                           value={it.expectedQty}
@@ -350,37 +351,49 @@ export const CreatePoModal: React.FC<CreatePoModalProps> = ({ initialWarehouseId
                               prev.map((item, i) => (i === idx ? { ...item, expectedQty: val } : item))
                             );
                           }}
-                          className="w-full p-1.5 rounded-lg bg-white border border-slate-300 text-slate-900 font-mono font-bold text-center focus:outline-none focus:border-blue-600"
+                          className="w-full px-2.5 py-1.5 text-slate-900 font-mono font-bold text-center text-xs focus:outline-none"
                         />
-                        <span className="text-slate-700 font-bold whitespace-nowrap">{it.unit}</span>
+                        <span className="inline-flex items-center px-2.5 bg-slate-100 text-slate-700 font-bold text-xs border-l border-slate-200 shrink-0 select-none">
+                          {it.unit}
+                        </span>
                       </div>
+                      <span className="text-[10px] text-slate-400 block font-mono">
+                        Quy cách: {it.unit}
+                      </span>
                     </div>
 
-                    <div className="col-span-4">
-                      <span className="text-[11px] text-slate-500 block mb-0.5">Đơn giá mua:</span>
-                      <input
-                        type="number"
-                        step="500"
-                        min="0"
-                        value={it.unitPrice}
-                        onChange={(e) => {
-                          const val = parseFloat(e.target.value) || 0;
-                          setItems((prev) =>
-                            prev.map((item, i) => (i === idx ? { ...item, unitPrice: val } : item))
-                          );
-                        }}
-                        className="w-full p-1.5 rounded-lg bg-white border border-slate-300 text-slate-900 font-mono font-bold text-right focus:outline-none focus:border-blue-600"
-                      />
-                      <span className="text-[10px] text-slate-500 block text-right mt-0.5 font-mono">
+                    {/* Cột 2: Đơn giá mua */}
+                    <div className="col-span-4 space-y-1">
+                      <span className="text-[11px] font-semibold text-slate-600 block">Đơn giá mua:</span>
+                      <div className="rounded-lg shadow-2xs border border-slate-300 focus-within:border-blue-600 focus-within:ring-2 focus-within:ring-blue-100 overflow-hidden bg-white h-[38px] flex items-center">
+                        <input
+                          type="number"
+                          step="500"
+                          min="0"
+                          value={it.unitPrice}
+                          onChange={(e) => {
+                            const val = parseFloat(e.target.value) || 0;
+                            setItems((prev) =>
+                              prev.map((item, i) => (i === idx ? { ...item, unitPrice: val } : item))
+                            );
+                          }}
+                          className="w-full px-2.5 py-1.5 text-slate-900 font-mono font-bold text-right text-xs focus:outline-none"
+                        />
+                      </div>
+                      <span className="text-[10px] text-slate-500 block text-right font-mono font-medium">
                         {(it.unitPrice || 0).toLocaleString('vi-VN')} ₫
                       </span>
                     </div>
 
-                    <div className="col-span-4">
-                      <span className="text-[11px] text-slate-500 block mb-0.5">Thành tiền:</span>
-                      <div className="p-1.5 font-mono font-bold text-emerald-700 text-right bg-emerald-50 rounded-lg border border-emerald-200">
+                    {/* Cột 3: Thành tiền */}
+                    <div className="col-span-4 space-y-1">
+                      <span className="text-[11px] font-semibold text-slate-600 block">Thành tiền:</span>
+                      <div className="flex items-center justify-end px-3 font-mono font-extrabold text-emerald-700 bg-emerald-50 rounded-lg border border-emerald-300 text-xs shadow-2xs h-[38px]">
                         {(it.expectedQty * (it.unitPrice || 0)).toLocaleString('vi-VN')} ₫
                       </div>
+                      <span className="text-[10px] text-emerald-600 block text-right font-mono">
+                        Tổng tiền dòng hàng
+                      </span>
                     </div>
                   </div>
                 </div>
