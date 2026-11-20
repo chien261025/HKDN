@@ -130,6 +130,8 @@ export const productService = {
         isExpiryManaged: product.isExpiryManaged !== undefined ? product.isExpiryManaged : (product.category === 'FOOD_BEVERAGE'),
         shelfLifeDays: product.shelfLifeDays,
         outboundStrategy: product.outboundStrategy || (product.category === 'FOOD_BEVERAGE' ? 'FEFO' : 'FIFO'),
+        packagingUnit: (product as any).packagingUnit || 'Thùng',
+        conversionRate: (product as any).conversionRate || 24,
         supplierId: product.supplierId ? Number(product.supplierId) : undefined,
       };
       const res = await apiClient.post('/masterdata/products', payload);
@@ -251,6 +253,8 @@ export const productService = {
         isExpiryManaged: product.isExpiryManaged !== undefined ? product.isExpiryManaged : (product.category === 'FOOD_BEVERAGE'),
         shelfLifeDays: product.shelfLifeDays,
         outboundStrategy: product.outboundStrategy || (product.category === 'FOOD_BEVERAGE' ? 'FEFO' : 'FIFO'),
+        packagingUnit: (product as any).packagingUnit || 'Thùng',
+        conversionRate: (product as any).conversionRate || 24,
         supplierId: product.supplierId ? Number(product.supplierId) : undefined,
       };
       const res = await apiClient.put(`/masterdata/products/${id}`, payload);

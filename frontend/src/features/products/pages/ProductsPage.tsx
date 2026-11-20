@@ -145,10 +145,13 @@ export const ProductsPage: React.FC = () => {
   };
 
   const handleAddProduct = async (newProduct: ProductItem) => {
-    await productService.createProduct(newProduct);
-    const updated = await productService.getProducts(true);
-    setProducts(updated);
-    setNotice('Đã đăng ký sản phẩm mới thành công.');
+    try {
+      await productService.createProduct(newProduct);
+      await fetchData();
+      setNotice(`Đã đăng ký sản phẩm mới "${newProduct.name}" (${newProduct.sku}) thành công.`);
+    } catch (err: any) {
+      setError(err.message || 'Không thể đăng ký sản phẩm mới.');
+    }
   };
 
   const handleAddSupplier = async (newSupplier: SupplierItem) => {
@@ -165,7 +168,7 @@ export const ProductsPage: React.FC = () => {
     if (product.status === 'DELETED') await productService.restoreProduct(product.id);
     else if (product.status === 'ACTIVE') await productService.updateProductStatus(product.id, false);
     else await productService.softDeleteProduct(product.id);
-    setProducts(await productService.getProducts(true));
+    await fetchData();
   };
 
   const handleCategoryStatus = async (category: CategoryItem) => {
@@ -177,7 +180,7 @@ export const ProductsPage: React.FC = () => {
 
   const handleSaveEditProduct = async (updatedProduct: ProductItem) => {
     await productService.updateProduct(updatedProduct.id, updatedProduct);
-    setProducts(await productService.getProducts(true));
+    await fetchData();
   };
 
   const handleDeleteProduct = async (product: ProductItem) => {
