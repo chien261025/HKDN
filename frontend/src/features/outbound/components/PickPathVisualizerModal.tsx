@@ -47,7 +47,6 @@ export const PickPathVisualizerModal: React.FC<PickPathVisualizerModalProps> = (
   const [isPlaying, setIsPlaying] = useState(false);
   const [pdaSynced, setPdaSynced] = useState(false);
 
-  // ✅ Dùng dữ liệu thật từ order.items[].allocations thay vì hardcode
   const realWaypoints: PickWaypoint[] = useMemo(() => {
     if (!order?.items?.length) return [];
 

@@ -67,7 +67,7 @@ export const OutboundOrdersPage: React.FC = () => {
       {error && <p role="alert" className="rounded-xl bg-rose-50 p-3 text-sm text-rose-700">{error}</p>}
       {message && <p role="status" className="rounded-xl bg-emerald-50 p-3 text-sm text-emerald-700">{message}</p>}
       {processing && <p role="status" className="text-sm text-indigo-600">Đang xử lý đơn xuất…</p>}
-      <WarehouseClosingBalances balances={stock} />
+      {/* <WarehouseClosingBalances balances={stock} /> */}
       {/* Orders Table */}
       <OutboundOrderTable
         orders={orders}

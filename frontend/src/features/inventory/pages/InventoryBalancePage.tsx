@@ -109,16 +109,16 @@ export const InventoryBalancePage: React.FC = () => {
   // Xem Sổ Cái từ bảng tồn kho thực tế (Tab 2)
   const handleViewLedgerFromTable = async (item: StockItem) => {
     try {
-    const currentLedgers = await inventoryService.getRecentLedger();
-    setLedgers(currentLedgers.filter(l => l.warehouseId === PRIMARY_WAREHOUSE.id));
-    const entry = currentLedgers.find((ledger) => ledger.productSku === item.sku
-      && ledger.locationBarcode === item.locationBarcode && ledger.batchNumber === item.batchNumber);
-    if (!entry) {
-      setNotification({ type: 'error', message: 'Không tìm thấy bút toán sổ cái gần đây cho dòng tồn kho này.' });
-      return;
-    }
-    setActiveLedgerEntry(entry);
-    setShowLedgerModal(true);
+      const currentLedgers = await inventoryService.getRecentLedger();
+      setLedgers(currentLedgers.filter(l => l.warehouseId === PRIMARY_WAREHOUSE.id));
+      const entry = currentLedgers.find((ledger) => ledger.productSku === item.sku
+        && ledger.locationBarcode === item.locationBarcode && ledger.batchNumber === item.batchNumber);
+      if (!entry) {
+        setNotification({ type: 'error', message: 'Không tìm thấy bút toán sổ cái gần đây cho dòng tồn kho này.' });
+        return;
+      }
+      setActiveLedgerEntry(entry);
+      setShowLedgerModal(true);
     } catch {
       setNotification({ type: 'error', message: 'Không tải được sổ cái từ backend.' });
     }
@@ -300,7 +300,7 @@ export const InventoryBalancePage: React.FC = () => {
       <div key={activeTab} className="tab-panel-transition">
         {activeTab === 'balance' && (
           <div className="space-y-4">
-            <WarehouseClosingBalances balances={closingBalances} />
+            {/* <WarehouseClosingBalances balances={closingBalances} /> */}
             <h3 className="font-semibold text-slate-800">Chi tiết tồn cuối theo lô và ô kệ</h3>
             <StockBalanceTable
               stocks={stocks}
