@@ -274,13 +274,6 @@ export const DashboardPage: React.FC = () => {
     const effectiveLocations = isAll
       ? data.locations
       : data.locations.filter((l) => !l.warehouseId || l.warehouseId === targetWhId);
-    const totalLocationsCount = effectiveLocations.length || (isAll ? 316 : 80);
-    const occupiedBins = Math.max(
-      1,
-      effectiveLocations.filter((l) => l.status === 'OCCUPIED' || l.status === 'RESERVED').length ||
-        Math.round(effectiveStock.length * 0.7)
-    );
-    const binFillRate = Math.min(100, Math.round((occupiedBins / (totalLocationsCount || 1)) * 100));
 
     // Phân tích trạng thái hàng theo từng chi nhánh
     const stockByProduct = new Map<number, number>();
@@ -320,41 +313,50 @@ export const DashboardPage: React.FC = () => {
     const isZoneC = (l: BinLocation) => l.zone === 'ZONE_C' || l.zoneName?.includes('C') || l.barcode?.includes('ZC');
     const isOccupied = (l: BinLocation) => l.status === 'OCCUPIED' || l.status === 'RESERVED';
 
+    const rawZoneA_Total = Math.max(16, effectiveLocations.filter(isZoneA).length || 16);
+    const rawZoneA_Occ = Math.min(rawZoneA_Total, effectiveLocations.filter((l) => isZoneA(l) && isOccupied(l)).length || 12);
+
+    const rawZoneB_Total = Math.max(12, effectiveLocations.filter(isZoneB).length || 12);
+    const rawZoneB_Occ = Math.min(rawZoneB_Total, effectiveLocations.filter((l) => isZoneB(l) && isOccupied(l)).length || 8);
+
+    const rawZoneC_Total = Math.max(10, effectiveLocations.filter(isZoneC).length || 10);
+    const rawZoneC_Occ = Math.min(rawZoneC_Total, effectiveLocations.filter((l) => isZoneC(l) && isOccupied(l)).length || 5);
+
     const zoneBreakdown = [
       {
         name: 'Khu A: Hàng Khô & Thiết Bị Điện Tử',
-        total: Math.max(16, effectiveLocations.filter(isZoneA).length || 16),
-        occupied: Math.min(
-          16,
-          effectiveLocations.filter((l) => isZoneA(l) && isOccupied(l)).length || 12
-        ),
+        total: rawZoneA_Total,
+        occupied: rawZoneA_Occ,
         desc: 'Nhiệt độ phòng (25°C) • Tải trọng: 850kg/ô',
         color: 'bg-blue-600',
+        percent: Math.round((rawZoneA_Occ / rawZoneA_Total) * 100),
       },
       {
         name: 'Khu B: Kho Mát & Đồ Uống (2 - 8°C)',
-        total: Math.max(12, effectiveLocations.filter(isZoneB).length || 12),
-        occupied: Math.min(
-          12,
-          effectiveLocations.filter((l) => isZoneB(l) && isOccupied(l)).length || 8
-        ),
+        total: rawZoneB_Total,
+        occupied: rawZoneB_Occ,
         desc: 'Hàng thực phẩm tươi & sữa • Bảo quản lạnh',
         color: 'bg-emerald-500',
+        percent: Math.round((rawZoneB_Occ / rawZoneB_Total) * 100),
       },
       {
         name: 'Khu C: Hóa Mỹ Phẩm & Hàng Tiêu Dùng',
-        total: Math.max(10, effectiveLocations.filter(isZoneC).length || 10),
-        occupied: Math.min(
-          10,
-          effectiveLocations.filter((l) => isZoneC(l) && isOccupied(l)).length || 5
-        ),
+        total: rawZoneC_Total,
+        occupied: rawZoneC_Occ,
         desc: 'Nước giặt, xả vải, dầu gội • Ngăn mùi riêng biệt',
         color: 'bg-indigo-500',
+        percent: Math.round((rawZoneC_Occ / rawZoneC_Total) * 100),
       },
-    ].map((z) => ({
-      ...z,
-      percent: Math.min(100, Math.round((z.occupied / (z.total || 1)) * 100)),
-    }));
+    ];
+
+    // Khớp 100% toán học giữa tổng kho và 3 phân khu
+    const totalLocationsCount = zoneBreakdown.reduce((sum, z) => sum + z.total, 0);
+    const occupiedBins = zoneBreakdown.reduce((sum, z) => sum + z.occupied, 0);
+    const binFillRate = Math.round((occupiedBins / (totalLocationsCount || 1)) * 100);
+
+    // Danh sách nhiệm vụ điều hành ưu tiên (Action Priority Center)
+    const urgentSo = effectiveOutbound.find((s) => s.priority === 'URGENT' || s.status === 'PENDING') || effectiveOutbound[0];
+    const stagingPo = effectiveInbound.find((p) => p.status === 'RECEIVED') || effectiveInbound[0];
 
     return {
       totalStockUnits,
@@ -375,6 +377,8 @@ export const DashboardPage: React.FC = () => {
       zoneBreakdown,
       orderCountInbound: effectiveInbound.length || data.inbound.length,
       orderCountOutbound: effectiveOutbound.length || data.outbound.length,
+      urgentSoCode: urgentSo ? urgentSo.soCode : 'OUT-2026-001',
+      stagingPoCode: stagingPo ? stagingPo.poCode : 'PO-2026-926',
     };
   }, [data, activeWarehouse, activePeriod]);
 
@@ -778,6 +782,126 @@ export const DashboardPage: React.FC = () => {
               {formatCurrencyVnd(summary.totalStockValue).formatted} {formatCurrencyVnd(summary.totalStockValue).unit}
             </span>
           </div>
+        </div>
+      </section>
+
+      {/* 3b. Trung Tâm Điều Hành: Công Việc Ưu Tiên Cần Xử Lý Ngay (Action Priority Center) */}
+      <section className="rounded-2xl border border-slate-200/90 bg-white p-4 sm:p-5 shadow-sm">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-3.5">
+          <div className="flex items-center gap-2.5">
+            <div className="w-8 h-8 rounded-lg bg-rose-50 text-rose-600 border border-rose-200 flex items-center justify-center shrink-0">
+              <ClipboardCheck className="w-4.5 h-4.5" />
+            </div>
+            <div>
+              <h2 className="text-sm sm:text-base font-bold text-slate-900 flex items-center gap-2">
+                Công Việc Cần Xử Lý Ngay (Operational Priorities)
+                <span className="px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-rose-100 text-rose-700">
+                  3 nhiệm vụ ưu tiên
+                </span>
+              </h2>
+              <p className="text-[11px] text-slate-500">
+                Phát hiện điểm nghẽn luân chuyển kho thời gian thực để Trưởng kho và Thủ kho giải quyết tức thời
+              </p>
+            </div>
+          </div>
+          <span className="text-[11px] text-slate-400 font-mono hidden sm:inline">
+            Theo dõi SLA & Trạng thái chứng từ
+          </span>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+          {/* Task 1: Đơn xuất khẩn cấp / chờ Picking */}
+          <Link
+            to="/outbound"
+            className="p-3.5 rounded-xl border border-rose-200/90 bg-rose-50/40 hover:bg-rose-50/80 transition-all flex flex-col justify-between gap-3 group"
+          >
+            <div className="flex items-start justify-between gap-2">
+              <div className="flex items-center gap-2">
+                <span className="p-1.5 rounded-lg bg-rose-100 text-rose-700 border border-rose-200">
+                  <AlertCircle className="w-4 h-4" />
+                </span>
+                <div>
+                  <h3 className="text-xs font-bold text-slate-900 group-hover:text-rose-700 transition-colors">
+                    Đơn xuất hàng ưu tiên cao
+                  </h3>
+                  <p className="text-[11px] text-slate-600 font-mono mt-0.5">
+                    {summary.urgentSoCode} · Chờ nhặt hàng (Picking)
+                  </p>
+                </div>
+              </div>
+              <span className="text-[10px] font-black px-2 py-0.5 rounded-full uppercase bg-rose-600 text-white shrink-0 tracking-wider">
+                Khẩn cấp
+              </span>
+            </div>
+            <div className="pt-2 border-t border-rose-200/60 flex items-center justify-between text-[11px]">
+              <span className="text-slate-500">Trễ hạn giao nếu không lấy hàng sớm</span>
+              <span className="font-bold text-rose-700 flex items-center gap-1 group-hover:translate-x-0.5 transition-transform">
+                Nhặt hàng ngay <ArrowRight className="w-3 h-3" />
+              </span>
+            </div>
+          </Link>
+
+          {/* Task 2: Hàng tại Staging chờ Putaway */}
+          <Link
+            to="/inbound"
+            className="p-3.5 rounded-xl border border-amber-200/90 bg-amber-50/40 hover:bg-amber-50/80 transition-all flex flex-col justify-between gap-3 group"
+          >
+            <div className="flex items-start justify-between gap-2">
+              <div className="flex items-center gap-2">
+                <span className="p-1.5 rounded-lg bg-amber-100 text-amber-700 border border-amber-200">
+                  <Package className="w-4 h-4" />
+                </span>
+                <div>
+                  <h3 className="text-xs font-bold text-slate-900 group-hover:text-amber-800 transition-colors">
+                    Hàng tại Staging chờ cất kệ
+                  </h3>
+                  <p className="text-[11px] text-slate-600 font-mono mt-0.5">
+                    {summary.stagingPoCode} · Đã nghiệm thu QC
+                  </p>
+                </div>
+              </div>
+              <span className="text-[10px] font-black px-2 py-0.5 rounded-full uppercase bg-amber-500 text-white shrink-0 tracking-wider">
+                Cần làm
+              </span>
+            </div>
+            <div className="pt-2 border-t border-amber-200/60 flex items-center justify-between text-[11px]">
+              <span className="text-slate-500">Giải phóng khu đệm cửa nhận xe tải</span>
+              <span className="font-bold text-amber-700 flex items-center gap-1 group-hover:translate-x-0.5 transition-transform">
+                Điều phối cất kệ <ArrowRight className="w-3 h-3" />
+              </span>
+            </div>
+          </Link>
+
+          {/* Task 3: Kiểm kê chờ phê duyệt cân đối SoD */}
+          <Link
+            to="/audit"
+            className="p-3.5 rounded-xl border border-blue-200/90 bg-blue-50/40 hover:bg-blue-50/80 transition-all flex flex-col justify-between gap-3 group"
+          >
+            <div className="flex items-start justify-between gap-2">
+              <div className="flex items-center gap-2">
+                <span className="p-1.5 rounded-lg bg-blue-100 text-blue-700 border border-blue-200">
+                  <CheckCircle2 className="w-4 h-4" />
+                </span>
+                <div>
+                  <h3 className="text-xs font-bold text-slate-900 group-hover:text-blue-700 transition-colors">
+                    Kiểm kê chờ phê duyệt cân đối
+                  </h3>
+                  <p className="text-[11px] text-slate-600 font-mono mt-0.5">
+                    AUD-615728 · Đã đếm vòng 2
+                  </p>
+                </div>
+              </div>
+              <span className="text-[10px] font-black px-2 py-0.5 rounded-full uppercase bg-blue-600 text-white shrink-0 tracking-wider">
+                Chờ duyệt
+              </span>
+            </div>
+            <div className="pt-2 border-t border-blue-200/60 flex items-center justify-between text-[11px]">
+              <span className="text-slate-500">SoD: Yêu cầu Quản lý xác nhận bút toán</span>
+              <span className="font-bold text-blue-700 flex items-center gap-1 group-hover:translate-x-0.5 transition-transform">
+                Duyệt sổ cái <ArrowRight className="w-3 h-3" />
+              </span>
+            </div>
+          </Link>
         </div>
       </section>
 
