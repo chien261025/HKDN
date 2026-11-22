@@ -78,7 +78,7 @@ export const AstSecuritySidebar: React.FC<AstSecuritySidebarProps> = ({
         </div>
 
         <p className="text-xs text-slate-600 leading-relaxed font-medium">
-          Mọi câu SQL do AI sinh ra đều được phân tích thành cây cú pháp trừu tượng (Abstract Syntax Tree) trước khi cấp phép gửi đến PostgreSQL:
+          Mọi câu SQL do AI sinh ra đều được phân tích thành cây cú pháp trừu tượng (Abstract Syntax Tree) trước khi cấp phép gửi đến MySQL:
         </p>
 
         <div className="space-y-2 text-xs font-mono">

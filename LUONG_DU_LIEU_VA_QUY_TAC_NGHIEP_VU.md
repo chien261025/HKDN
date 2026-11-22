@@ -197,7 +197,7 @@ Trước khi viết bất kỳ dòng code Service hay Controller nào, **cả 2 
 ### ⚠️ Nguyên tắc 2: Thứ tự Khóa dữ liệu chống Deadlock (Lock Ordering)
 > Khi một đơn hàng xuất cần giữ hàng cho nhiều mặt hàng/nhiều ô kệ cùng lúc:
 > - **Luôn sắp xếp thứ tự các ô cần khóa theo ID tăng dần (`location_id ASC, product_id ASC, batch_id ASC`) trước khi gọi `SELECT ... FOR UPDATE`.**
-> - **Lý do:** Nếu Luồng 1 khóa A rồi khóa B, trong khi Luồng 2 khóa B rồi khóa A $\rightarrow$ PostgreSQL sẽ xảy ra **Deadlock** và huỷ một trong hai giao dịch. Sắp xếp thứ tự khóa triệt tiêu 100% nguy cơ Deadlock.
+> - **Lý do:** Nếu Luồng 1 khóa A rồi khóa B, trong khi Luồng 2 khóa B rồi khóa A $\rightarrow$ MySQL InnoDB sẽ xảy ra **Deadlock** và huỷ một trong hai giao dịch. Sắp xếp thứ tự khóa triệt tiêu 100% nguy cơ Deadlock.
 
 ### ⚠️ Nguyên tắc 3: Tính Bất Biến Tuyệt Đối của Sổ Cái (Ledger Immutability)
 > - Bảng `wms_stock_ledger` là tài liệu pháp lý và kế toán kho. **Không bao giờ được viết câu lệnh UPDATE hoặc DELETE trên bảng này.**

@@ -26,9 +26,9 @@ Khởi chạy thành công cơ sở dữ liệu và hàng đợi qua Docker, đ�
 #### 1. Khởi động hạ tầng Docker (Chạy 1 lần duy nhất):
 Mở terminal gõ:
 ```bash
-docker-compose up -d wms-postgres wms-rabbitmq wms-minio
+docker compose up -d wms-mysql wms-redis wms-rabbitmq wms-minio
 ```
-- Truy cập PostgreSQL qua DBeaver / Navicat tại port `5432` (db: `wms_db`, user: `postgres`, pass: `password123`).
+- Truy cập MySQL 8.0 qua DBeaver / Navicat tại port `3307` (db: `wms_db`, user: `wms_user`, pass: `wms_password`).
 - Kiểm tra các bảng đã được Flyway tự động tạo: `wms_location`, `wms_product`, `wms_inventory`...
 
 #### 2. Việc của Bạn 1 (Backend Lead):

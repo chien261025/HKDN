@@ -75,7 +75,7 @@ export const LocationStockGauge: React.FC<LocationStockGaugeProps> = ({
           <span>Quy tắc cân đối: <strong className="text-slate-900 font-mono">On-Hand = Allocated + Available</strong></span>
         </div>
         <p className="text-xs text-slate-500 leading-relaxed font-sans font-medium">
-          Bảo vệ chống âm kho bằng khóa dòng bi quan (<span className="text-indigo-700 font-mono font-bold">SELECT ... FOR UPDATE</span>) trên PostgreSQL.
+          Bảo vệ chống âm kho bằng khóa dòng bi quan (<span className="text-indigo-700 font-mono font-bold">SELECT ... FOR UPDATE</span>) trên MySQL 8.0.
         </p>
       </div>
     </div>

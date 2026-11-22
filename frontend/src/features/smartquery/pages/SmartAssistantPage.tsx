@@ -111,7 +111,7 @@ export const SmartAssistantPage: React.FC = () => {
         id: `attack-ai-${Date.now()}`,
         sender: 'ai',
         timestamp: new Date().toLocaleTimeString('vi-VN'),
-        text: 'CẢNH BÁO BẢO MẬT: Câu lệnh bị từ chối trước khi gửi đến PostgreSQL!',
+        text: 'CẢNH BÁO BẢO MẬT: Câu lệnh bị từ chối trước khi gửi đến MySQL!',
         sqlQuery: attackSql,
         astStatus: 'REJECTED',
         astRejectionReason: reason,

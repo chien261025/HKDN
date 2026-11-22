@@ -31,7 +31,7 @@
 ### 1.1. Định vị kiến trúc: Event-Driven Modular Monolith
 Hệ thống **Smart WMS** được thiết kế dựa trên mô hình **Modular Monolith** kết hợp **Xử lý bất đồng bộ theo sự kiện (Event-Driven)**:
 - **Nguyên khối theo Module (Modular Monolith):** Toàn bộ Backend chạy trong 1 Runtime Spring Boot duy nhất nhưng được chia tách nghiêm ngặt thành các phân hệ nghiệp vụ độc lập (Bounded Context theo tư tưởng Domain-Driven Design - DDD).
-- **Tính toàn vẹn dữ liệu (Strict ACID):** Sử dụng chung 1 cơ sở dữ liệu quan hệ (PostgreSQL) giúp tận dụng tối đa Database Transaction, giải quyết triệt để rủi ro âm kho, lệch kho mà kiến trúc Microservices thường mắc phải do độ trễ mạng và tính nhất quán sau (Eventual Consistency).
+- **Tính toàn vẹn dữ liệu (Strict ACID):** Sử dụng chung 1 cơ sở dữ liệu quan hệ (MySQL 8.0) giúp tận dụng tối đa Database Transaction, giải quyết triệt để rủi ro âm kho, lệch kho mà kiến trúc Microservices thường mắc phải do độ trễ mạng và tính nhất quán sau (Eventual Consistency).
 - **Tách biệt tác vụ nặng (Offloading with RabbitMQ):** Những tác vụ tốn CPU/RAM (sinh file Excel lớn, tổng hợp báo cáo lịch sử) được đẩy sang hàng đợi RabbitMQ để Worker xử lý ngầm, giữ cho REST API luôn có độ trễ cực thấp (< 50ms).
 - **Mô hình Client-Server (Headless Backend):** Backend đóng vai trò cung cấp RESTful API thuần túy, Frontend là Single Page Application (React 18) hỗ trợ quét mã Barcode/QR qua camera hoặc thiết bị cầm tay.
 
@@ -72,7 +72,8 @@ graph TB
     end
 
     subgraph Storage_Infrastructure ["HẠ TẦNG DỮ LIỆU & HÀNG ĐỢI"]
-        Postgres[(PostgreSQL Database: wms_db)]
+        MySQL[(MySQL 8.0 Database: wms_db)]
+        Redis[(Redis 7 Cache & Locks)]
         RabbitMQ[(RabbitMQ Message Broker)]
         MinIO[(MinIO Object Storage S3)]
     end
@@ -83,12 +84,12 @@ graph TB
     OrderCtrl --> PutAwaySvc & FEFOSvc
     ReportCtrl --> ReportSvc
     AICtrl --> AISvc
-    InvLockSvc & PutAwaySvc & FEFOSvc & AuditSvc -->|ACID Transactions| Postgres
+    InvLockSvc & PutAwaySvc & FEFOSvc & AuditSvc -->|ACID Transactions| MySQL
     ReportSvc -->|Publish Task| RabbitMQ
     RabbitMQ -->|Consume Task| ExcelWorker
     ExcelWorker -->|Stream Excel & Upload| MinIO
-    ExcelWorker -->|Update Status| Postgres
-    AISvc -->|Sanitized Read-Only Queries| Postgres
+    ExcelWorker -->|Update Status| MySQL
+    AISvc -->|Sanitized Read-Only Queries| MySQL
 ```
 
 ---
@@ -103,7 +104,7 @@ smart-wms/
 ├── docker/
 │   ├── nginx/
 │   │   └── nginx.conf                         # Reverse Proxy, SSL, Rate Limit, định tuyến API/Static
-│   ├── postgres/
+│   ├── mysql/
 │   │   └── init/
 │   │       ├── 01-init-schema.sql             # Tạo database, các bảng nghiệp vụ wms_db
 │   │       ├── 02-create-views.sql            # Tạo các View nghiệp vụ báo cáo (ẩn trường nhạy cảm)
@@ -111,7 +112,7 @@ smart-wms/
 │   └── rabbitmq/
 │       ├── definitions.json                  # Tạo sẵn Exchange, Queues, DLX, DLQ, Routing Keys
 │       └── rabbitmq.conf                      # Cấu hình Web Management UI trên cổng 15672
-├── docker-compose.yml                        # Điều phối 5 container: Postgres, RabbitMQ, MinIO, Backend, Frontend
+├── docker-compose.yml                        # Điều phối 6 container: MySQL, Redis, RabbitMQ, MinIO, Backend, Frontend
 ├── Makefile                                  # Phím tắt lệnh: make up, make down, make seed
 ├── README.md                                 # Tài liệu kiến trúc, hướng dẫn chạy và API specs
 │
@@ -363,12 +364,13 @@ smart-wms/
 ## 3. BÓC TÁCH CHI TIẾT TỪNG TẦNG VÀ PHÂN HỆ (DEEP-DIVE)
 
 ### 3.1. Tầng Hạ tầng & Điều phối (DevOps / Docker)
-- **`docker-compose.yml`:** Khởi chạy đồng bộ 5 container trong cùng một bridge network (`wms-net`):
-  1. `wms-postgres`: Lưu trữ dữ liệu quan hệ, chạy script khởi tạo tự động.
-  2. `wms-rabbitmq`: Broker xử lý tác vụ nền, mở port 5672 (AMQP) và 15672 (Management UI).
-  3. `wms-minio`: Hệ thống lưu trữ đối tượng (Object Storage tương thích AWS S3), lưu file Excel báo cáo và tài liệu đính kèm.
-  4. `wms-backend`: Container chạy Java 17 + Spring Boot 3 jar.
-  5. `wms-frontend`: Container chạy Nginx phân phối bundle tĩnh React Vite.
+- **`docker-compose.yml`:** Khởi chạy đồng bộ 6 container trong cùng một bridge network (`wms-net`):
+  1. `wms-mysql`: Lưu trữ dữ liệu quan hệ MySQL 8.0, chạy script khởi tạo tự động.
+  2. `wms-redis`: Bộ nhớ đệm phân tán Redis 7, quản lý phiên và khóa.
+  3. `wms-rabbitmq`: Broker xử lý tác vụ nền, mở port 5672 (AMQP) và 15672 (Management UI).
+  4. `wms-minio`: Hệ thống lưu trữ đối tượng (Object Storage tương thích AWS S3), lưu file Excel báo cáo và tài liệu đính kèm.
+  5. `wms-backend`: Container chạy Java 25 + Spring Boot 3.5 jar.
+  6. `wms-frontend`: Container chạy Nginx phân phối bundle tĩnh React Vite.
 - **`docker/nginx/nginx.conf`:** Cấu hình Reverse Proxy làm cửa ngõ duy nhất (Port 80/443), định tuyến `/api/` về Backend, còn lại phục vụ Web Frontend; tích hợp Rate Limiting chống DDoS API.
 - **`03-create-readonly-ai-user.sql`:** Tạo riêng user `ai_readonly` chỉ có quyền `SELECT` trên các View nghiệp vụ (`v_stock_summary`, `v_expiring_batches`). Không thể tác động vào bảng chính.
 
@@ -458,7 +460,7 @@ Module cao cấp mang lại giá trị khác biệt cho hệ thống, cho phép 
   - Đối với các yêu cầu chuẩn hóa như tra cứu hàng sắp hết hạn (`ExpiringBatchHandler`) hay hàng dưới mức an toàn (`LowStockAlertHandler`), AI sẽ gọi các hàm Java viết sẵn với độ chính xác 100%.
 - **Text-to-SQL An toàn Tuyệt đối (Safe Text-to-SQL Architecture):**
   - **Giới hạn Schema:** Chỉ nạp cấu trúc của các View nghiệp vụ (`v_stock_summary`, `v_location_occupancy`), ẩn toàn bộ thông tin nhạy cảm (bảng User, mật khẩu).
-  - **Tài khoản Database chuyên biệt:** Sử dụng DataSource riêng với kết nối PostgreSQL của user `ai_readonly` (chỉ có quyền `GRANT SELECT` trên Views, cấm mọi quyền ghi/xóa).
+  - **Tài khoản Database chuyên biệt:** Sử dụng DataSource riêng với kết nối MySQL của user `ai_readonly` (chỉ có quyền `GRANT SELECT` trên Views, cấm mọi quyền ghi/xóa).
   - **Kiểm duyệt cú pháp với JSqlParser (`SqlAstSanitizer.java`):** Phân tích cú pháp cây trừu tượng (AST) của câu SQL do LLM sinh ra:
     - Chặn đứng hoàn toàn nếu phát hiện các từ khóa: `DROP`, `DELETE`, `UPDATE`, `INSERT`, `TRUNCATE`, `ALTER`.
     - Tự động ép thêm mệnh đề `LIMIT 50` vào cuối câu để ngăn chặn việc quét cạn tài nguyên database.
@@ -496,7 +498,7 @@ sequenceDiagram
     participant Svc as OutboundService
     participant LockSvc as InventoryLockService
     participant Repo as InventoryRepository
-    participant DB as PostgreSQL (wms_db)
+    participant DB as MySQL (wms_db)
 
     Mgr->>FE: Bấm duyệt đơn xuất hàng #ORD-101
     FE->>Ctrl: POST /api/v1/orders/outbound/101/reserve
@@ -544,7 +546,7 @@ sequenceDiagram
     participant Consumer as ReportTaskConsumer
     participant Worker as ExcelStreamingWorker
     participant MinIO as MinIO S3 Storage
-    participant DB as PostgreSQL
+    participant DB as MySQL
 
     User->>FE: Yêu cầu xuất Báo cáo Xuất-Nhập-Tồn 1 năm
     FE->>Ctrl: POST /api/v1/reports/export (Filter params)
@@ -588,7 +590,7 @@ sequenceDiagram
     participant Router as IntentClassifier
     participant LLM as Mô hình Ngôn ngữ Lớn (LLM API)
     participant Sanitizer as SqlAstSanitizer (JSqlParser)
-    participant ReadOnlyDB as PostgreSQL (User: ai_readonly)
+    participant ReadOnlyDB as MySQL (User: ai_readonly)
 
     Mgr->>FE: Nhập: "Cho tôi xem top 5 ô kệ có nhiều hàng nhất ở Zone A"
     FE->>Ctrl: POST /api/v1/ai/assistant/chat { prompt }
@@ -649,6 +651,47 @@ Dưới đây là các câu hỏi "hóc búa" nhất mà các giảng viên ch�
   > *"Trong quản lý kho, các báo cáo xuất-nhập-tồn hoặc kiểm kê có thể chứa hàng chục ngàn dòng lịch sử. Nếu xử lý đồng bộ qua REST API, người dùng sẽ phải chờ lâu, dễ bị HTTP Timeout và việc sinh file Excel lớn bằng bộ nhớ RAM có thể làm sập ứng dụng (OutOfMemory). 
   > Em tích hợp **RabbitMQ** đóng vai trò là Hàng đợi tác vụ nền (Background Worker Queue). Khi người dùng yêu cầu xuất file, Backend ghi nhận Job và phản hồi ngay cho giao diện trong 15ms. RabbitMQ Worker sau đó sẽ tiêu thụ task và sử dụng cơ chế ghi dữ liệu trực tiếp ra ổ đĩa (**Streaming SXSSFWorkbook**) với dung lượng RAM kiểm soát dưới 50MB, sau đó lưu trữ lên MinIO S3. 
   > Điều này giúp tách biệt hoàn toàn tải nặng ra khỏi luồng nghiệp vụ chính của kho, giữ cho hệ thống luôn phản hồi mượt mà."*
+
+---
+
+### Câu 5: "Sổ cái thẻ kho (Stock Ledger) có vai trò gì trong kế toán kho và tại sao lại cấm sửa xóa?"
+- **Trả lời:**
+  > *"Trong kế toán kho và kiểm toán tài chính, thẻ kho là chứng từ pháp lý chứng minh mọi biến động hàng hóa. Bảng `wms_stock_ledger` của hệ thống được thiết kế theo nguyên tắc **Append-Only (Chỉ thêm, không sửa, không xóa)**.
+  > Mọi hành vi nhập hàng, xuất hàng, điều chuyển hay cân đối kiểm kê đều chỉ được ghi nhận bằng một dòng mới có dấu chênh lệch (+/-) và số dư sau giao dịch (`balance_after`). Phía CSDL có Trigger `trg_prevent_stock_ledger_tampering` khóa cứng không cho phép chạy lệnh UPDATE hoặc DELETE, giúp hệ thống bảo đảm tính minh bạch kiểm toán 100%."*
+
+---
+
+### Câu 6: "Nguyên tắc Phân tách Nhiệm vụ (Segregation of Duties - SoD) trong phân hệ kiểm kê hoạt động như thế nào?"
+- **Trả lời:**
+  > *"Nguyên tắc SoD được thiết lập nhằm ngăn ngừa rủi ro gian lận nội bộ. Nếu một người vừa là thủ kho trực tiếp kiểm đếm, vừa có quyền tự duyệt chênh lệch, họ có thể dễ dàng hợp thức hóa việc làm thất thoát hàng hóa.
+  > Trong Smart WMS, nếu tài khoản `admin` là người tạo phiên kiểm kê, hệ thống sẽ chặn không cho tài khoản này duyệt cân đối sổ cái. Việc phê duyệt bắt buộc phải do một người quản lý độc lập khác (như `manager01` - Trưởng kho) thực hiện, sau khi đã ký nhận biên bản đối soát điện tử."*
+
+---
+
+### Câu 7: "Tại sao trong quá trình cân đối kiểm kê lại xuất hiện lỗi tồn kho âm (-42) và hệ thống đã xử lý triệt để ra sao?"
+- **Trả lời:**
+  > *"Lỗi này xảy ra khi một đợt kiểm kê được tạo tại thời điểm snapshot cũ (ví dụ 60 sản phẩm). Sau đó, một giao dịch khác đã xuất kho bớt hàng khiến tồn thực tế chỉ còn 17. Khi cân đối theo công thức cũ cộng dồn chênh lệch snapshot, hệ thống lấy `17 + (-59) = -42`, dẫn đến tồn kho bị tính âm sai lệch.
+  > Nghiệp vụ kho thực tế quy định: **Số lượng tồn kho sau cân đối chính là số lượng thực tế nhân viên đếm được tại kệ**. Chúng em đã chuẩn hóa lại logic backend: gán trực tiếp tồn mới bằng số thực đếm (`after = countedQty`), và ghi vào thẻ kho số chênh lệch thực tế giữa số tồn hiện tại và số thực đếm. Nhờ đó, số liệu sau cân đối luôn dương, phản ánh đúng 100% thực tế trên kệ."*
+
+---
+
+### Câu 8: "Chiến lược cấp phát FEFO khác FIFO như thế nào trong quản trị kho thực tế?"
+- **Trả lời:**
+  > *"FIFO (First-In, First-Out) xuất hàng dựa trên thời gian nhập kho (hàng nhập trước xuất trước). Tuy nhiên, trong ngành thực phẩm, dược phẩm và FMCG, hàng nhập trước chưa chắc đã hết hạn trước (do nhà cung cấp giao các lô sản xuất khác nhau).
+  > **FEFO (First-Expired, First-Out)** xuất hàng dựa trên Hạn sử dụng của từng Lô hàng (Expiry Date). Lô nào cận date nhất sẽ được thuật toán cấp phát xuất trước, triệt tiêu tối đa rủi ro hư hỏng hàng tồn do hết hạn."*
+
+---
+
+### Câu 9: "Tại sao hệ thống dùng Server-Sent Events (SSE) cho thông báo thời gian thực thay vì WebSocket?"
+- **Trả lời:**
+  > *"Đối với chức năng thông báo trong hệ thống quản lý kho (báo có đơn xuất mới, cảnh báo kiểm kê, thông báo hủy đơn), luồng truyền thông chủ yếu là **Một chiều từ Server đẩy xuống Client (One-way Push)**.
+  > **SSE (Server-Sent Events)** chạy trên giao thức HTTP tiêu chuẩn, nhẹ hơn WebSocket rất nhiều, tự động hỗ trợ Reconnect khi mất mạng và đi qua tường lửa/Nginx dễ dàng mà không cần cấu hình bắt tay phức tạp như WebSocket song công."*
+
+---
+
+### Câu 10: "Tại sao lịch sử Git lại có nhiều commit và cách phân bổ commit như thế nào?"
+- **Trả lời:**
+  > *"Em tuân thủ theo chuẩn **Conventional Commits** và phương pháp **Atomic Commits** phổ biến trong các dự án công nghệ chuyên nghiệp. Thay vì dồn cả tuần làm việc vào một commit lớn khó kiểm soát, em chia nhỏ theo từng đơn vị tính năng (`feat`), sửa lỗi (`fix`), và tối ưu giao diện (`refactor`). Điều này giúp lịch sử Git minh bạch, dễ dàng Code Review, phân tách trách nhiệm và có thể rollback an toàn nếu phát sinh lỗi."*
 
 ---
 *(Tài liệu này được tạo tự động nhằm phục vụ thuyết minh đồ án và hướng dẫn phát triển hệ thống Smart WMS).*
