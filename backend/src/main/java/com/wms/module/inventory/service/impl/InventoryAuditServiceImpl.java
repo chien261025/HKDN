@@ -458,9 +458,10 @@ public class InventoryAuditServiceImpl implements InventoryAuditService {
                         item.getProductId(), item.getLocationId(), item.getBatchId()
                 ).orElse(null);
 
-                int after;
+                int after = item.getCountedQty();
+                int ledgerDiff = diff;
                 if (inv != null) {
-                    after = Math.addExact(inv.getOnHandQty(), diff);
+                    ledgerDiff = after - inv.getOnHandQty();
                     if (after < inv.getReservedQty()) {
                         throw new BusinessException(ErrorCode.BAD_REQUEST,
                                 String.format("Điều chỉnh giảm khiến tồn thực tế (%d) thấp hơn số đang giữ chỗ (%d) tại vị trí #%d!",
@@ -471,7 +472,6 @@ public class InventoryAuditServiceImpl implements InventoryAuditService {
                     inventoryRepository.saveAndFlush(inv);
                 } else {
                     // Dòng hàng mới phát hiện (Unexpected Stock) tại ô kệ trống
-                    after = item.getCountedQty();
                     inv = Inventory.builder()
                             .locationId(item.getLocationId())
                             .productId(item.getProductId())
@@ -490,10 +490,10 @@ public class InventoryAuditServiceImpl implements InventoryAuditService {
                         .locationId(item.getLocationId())
                         .productId(item.getProductId())
                         .batchId(item.getBatchId())
-                        .qtyChange(diff)
+                        .qtyChange(ledgerDiff)
                         .balanceAfter(after)
                         .performedBy(currentUserId)
-                        .notes(String.format("Cân đối kiểm kê %s (%s%d)", audit.getAuditCode(), diff > 0 ? "+" : "", diff))
+                        .notes(String.format("Cân đối kiểm kê %s (%s%d)", audit.getAuditCode(), ledgerDiff > 0 ? "+" : "", ledgerDiff))
                         .createdAt(Instant.now())
                         .build();
                 stockLedgerRepository.save(ledger);
