@@ -1,5 +1,5 @@
 -- ==========================================================
--- 04-seed-demo-data.sql: NẠP DỮ LIỆU GIẢ LẬP DEMO ĐỒ ÁN CHUẨN DOANH NGHIỆP ENTERPRISE
+-- 04-seed-demo-data.sql: NẠP DỮ LIỆU GIẢ LẬP DEMO CHUẨN DOANH NGHIỆP ENTERPRISE
 -- ==========================================================
 
 -- 1. Nạp Quyền (Roles) & Danh mục quyền chi tiết (Permissions) & RBAC

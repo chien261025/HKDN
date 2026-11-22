@@ -1,7 +1,7 @@
-# HƯỚNG DẪN CHI TIẾT TỪNG BƯỚC THỰC HIỆN DỰ ÁN SMART WMS
+# LỘ TRÌNH PHÁT TRIỂN & HƯỚNG DẪN TRIỂN KHAI DỰ ÁN SMART WMS
 > **Đề tài:** Hệ Thống Quản Lý Kho Thông Minh (Event-Driven Modular Monolith)  
-> **Dành cho:** Nhóm 2 thành viên (Bạn & Đồng đội)  
-> **Mục tiêu:** Hoàn thành đồ án tốt nghiệp xuất sắc đạt điểm 9.5 - 10
+> **Dành cho:** Đội ngũ phát triển & kỹ sư vận hành  
+> **Mục tiêu:** Xây dựng hệ thống quản trị kho hoàn chỉnh theo chuẩn Enterprise
 
 ---
 
@@ -9,9 +9,9 @@
 
 ```
 [GIAI ĐOẠN 1: TUẦN 1-2] ──► [GIAI ĐOẠN 2: TUẦN 3-4] ──► [GIAI ĐOẠN 3: TUẦN 5-6] ──► [GIAI ĐOẠN 4: TUẦN 7-8] ──► [GIAI ĐOẠN 5: TUẦN 9-10]
-  Hạ Tầng Docker             Lõi Tồn Kho Chống Âm        Quy Trình Xuất FEFO         RabbitMQ Báo Cáo Lớn        Viết Báo Cáo Word
-  Master Data Ô Kệ & SKU     Khóa Concurrency (20 Luồng) Lộ Trình Nhặt Hàng          Trợ Lý AI Safe Text-to-SQL  Slide & Video Demo
-  Đăng Nhập JWT RBAC         Quét Barcode Camera / USB   Sổ Cái Bất Biến & Kiểm Kê   Gợi Ý Hành Động Thanh Lý    Tổng Duyệt Phản Biện
+  Hạ Tầng Docker             Lõi Tồn Kho Chống Âm        Quy Trình Xuất FEFO         RabbitMQ Báo Cáo Lớn        Kiểm Thử Tổng Thể
+  Master Data Ô Kệ & SKU     Khóa Concurrency (20 Luồng) Lộ Trình Nhặt Hàng          Trợ Lý AI Safe Text-to-SQL  Tối Ưu Hiệu Năng
+  Đăng Nhập JWT RBAC         Quét Barcode Camera / USB   Sổ Cái Bất Biến & Kiểm Kê   Gợi Ý Hành Động Thanh Lý    Triển Khai Production
 ```
 
 ---
@@ -119,7 +119,7 @@ Xây dựng quy trình xuất kho chuẩn Logistics theo chiến lược **FEFO*
 ## GIAI ĐOẠN 4: BÁO CÁO NẶNG RABBITMQ & TRỢ LÝ AI SAFE TEXT-TO-SQL (TUẦN 7 - 8)
 
 ### 🎯 Mục tiêu giai đoạn:
-Tạo 2 "vũ khí ghi điểm tuyệt đối" cho đồ án:
+Tạo 2 tính năng nổi bật cho hệ thống:
 1. **Hàng đợi RabbitMQ:** Xuất báo cáo dữ liệu lớn ngầm không làm đơ ứng dụng.
 2. **Trợ lý AI Smart Query:** Hỏi đáp số liệu kho tự nhiên, Text-to-SQL an toàn với JSqlParser và nút bấm hành động thông minh.
 
@@ -149,29 +149,26 @@ Tạo 2 "vũ khí ghi điểm tuyệt đối" cho đồ án:
 
 ---
 
-## GIAI ĐOẠN 5: TỔNG DUYỆT, VIẾT BÁO CÁO WORD & PHẢN BIỆN (TUẦN 9 - 10)
+## GIAI ĐOẠN 5: KIỂM THỬ TỔNG THỂ, TỐI ƯU HIỆU NĂNG & TRIỂN KHAI (TUẦN 9 - 10)
 
 ### 🎯 Mục tiêu giai đoạn:
-Chuẩn bị đầy đủ hồ sơ khóa luận, slide thuyết trình, video demo dự phòng và luyện tập phản biện để đạt điểm 9.5 - 10.
+Kiểm thử toàn diện end-to-end các luồng nghiệp vụ, tối ưu hóa câu truy vấn cơ sở dữ liệu và chuẩn bị môi trường production ổn định.
 
-### 📋 Việc cụ thể của bạn và đồng đội:
+### 📋 Việc cụ thể của đội ngũ kỹ thuật:
 
-#### 1. Viết Báo cáo Khóa luận (File Word):
-- **Bạn 1 viết:** Chương 2 (Cơ sở lý thuyết về Modular Monolith, Concurrency Locking, RabbitMQ) & Chương 3 (Thiết kế CSDL, Thuật toán Put-away, Thuật toán FEFO, Bảo mật Text-to-SQL).
-- **Bạn 2 viết:** Chương 1 (Khảo sát bài toán quản lý kho) & Chương 4 (Hiện thực giao diện, hướng dẫn sử dụng, hình ảnh chụp màn hình).
+#### 1. Kiểm thử End-to-End & Tối ưu:
+- **Tầng Backend:** Chạy toàn bộ bộ test tích hợp `WarehouseLifecycleTest.java`, `InventoryLockingTest.java`, kiểm tra độ trễ API < 50ms.
+- **Tầng Frontend:** Kiểm tra responsive giao diện, tương thích thiết bị cầm tay PDA, camera scanner và hiển thị thời gian thực SSE.
 
-#### 2. Quay Video Demo Dự Phòng (5 - 7 phút):
-Quay lại video màn hình chạy mượt mà:
-1. Đăng nhập $\rightarrow$ Xem sơ đồ kho.
-2. Quét mã vạch cất hàng đúng ô chỉ định.
-3. Xuất hàng tự động gom lô cận date theo FEFO.
-4. Chạy bài test Concurrency đa luồng `InventoryLockingTest`.
-5. Xuất báo cáo qua RabbitMQ và Chat với Trợ lý AI.
-*(Đề phòng ngày bảo vệ hội trường bị mất mạng Internet).*
+#### 2. Kịch bản Vận hành Thử nghiệm:
+1. Đăng nhập $\rightarrow$ Xem sơ đồ kho 2D Floor Plan.
+2. Quét mã vạch cất hàng đúng ô chỉ định (Multi-bin Putaway).
+3. Xuất hàng tự động gom lô cận date theo giải thuật FEFO.
+4. Chạy kiểm thử Concurrency đa luồng chống âm kho.
+5. Xuất báo cáo dữ liệu lớn ngầm qua RabbitMQ và truy vấn Trợ lý AI Smart Query.
 
-#### 3. Diễn tập trả lời 4 câu hỏi "tủ" của Hội đồng:
-1. *Tại sao không dùng Microservices mà dùng Modular Monolith?*
-2. *Làm sao đảm bảo kho không bị âm khi 20 người cùng bấm xuất 1 lúc?*
-3. *AI sinh SQL có nguy cơ phá hỏng cơ sở dữ liệu không?*
-4. *Tại sao cần RabbitMQ trong hệ thống Monolith?*
-*(Xem kịch bản trả lời mẫu chi tiết trong file `SMART_WMS_ARCHITECTURE.md`).*
+#### 3. Các câu hỏi kỹ thuật cốt lõi cần nắm:
+1. *Cơ chế giải quyết Race Condition bằng Khóa bi quan (Pessimistic Locking).*
+2. *Lá chắn an toàn AST (JSqlParser) ngăn chặn SQL Injection trong AI.*
+3. *Nguyên lý xử lý tác vụ nền bất đồng bộ với RabbitMQ & MinIO.*
+4. *Tính toàn vẹn bất biến của Sổ cái Thẻ kho (Stock Ledger).*

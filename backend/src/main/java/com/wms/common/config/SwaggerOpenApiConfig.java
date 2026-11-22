@@ -23,7 +23,7 @@ public class SwaggerOpenApiConfig {
         return new OpenAPI()
                 .info(new Info()
                         .title("Smart WMS API - Hệ Thống Quản Lý Kho Thông Minh")
-                        .description("Tài liệu đặc tả toàn bộ REST API cho dự án Đồ án Tốt nghiệp Smart WMS " +
+                        .description("Tài liệu đặc tả toàn bộ REST API cho hệ thống Smart WMS " +
                                 "(Event-Driven Modular Monolith).\n\n" +
                                 "Các phân hệ cốt lõi:\n" +
                                 "- **Identity & RBAC:** Đăng nhập JWT phân quyền Admin, Warehouse Manager, Operator.\n" +
@@ -34,7 +34,7 @@ public class SwaggerOpenApiConfig {
                                 "- **Async Reporting:** Xuất báo cáo dữ liệu lớn ngầm với RabbitMQ.")
                         .version("1.0.0")
                         .contact(new Contact()
-                                .name("Nhóm Đồ Án Smart WMS")
+                                .name("Smart WMS Engineering Team")
                                 .email("contact@smartwms.vn"))
                         .license(new License().name("Apache 2.0").url("https://springdoc.org")))
                 .servers(List.of(

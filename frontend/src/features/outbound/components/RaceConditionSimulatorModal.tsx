@@ -120,7 +120,7 @@ export const RaceConditionSimulatorModal: React.FC<Props> = ({ isOpen, onClose }
             <Database className="w-4 h-4 text-indigo-600 shrink-0 mt-0.5" />
             <div className="space-y-1">
               <p className="font-bold text-indigo-900">
-                Cơ chế kỹ thuật độc quyền trong Đồ Án Tốt Nghiệp:
+                Cơ chế kiểm soát đồng thời (Concurrency Control):
               </p>
               <p className="text-indigo-800">
                 Sử dụng mệnh đề <strong>`SELECT ... FOR UPDATE`</strong> của MySQL InnoDB kết hợp Transaction Isolation Level

@@ -1,5 +1,5 @@
 # TÀI LIỆU ĐẶC TẢ KIẾN TRÚC HỆ THỐNG QUẢN LÝ KHO THÔNG MINH (SMART WMS)
-> **Đề tài Đồ án Tốt nghiệp / Dự án Doanh nghiệp:** Hệ Thống Quản Lý Kho Hàng Thông Minh Tích Hợp AI & Hàng Đợi Bất Đồng Bộ  
+> **Hệ Thống Doanh Nghiệp (Enterprise WMS):** Hệ Thống Quản Lý Kho Hàng Thông Minh Tích Hợp AI & Hàng Đợi Bất Đồng Bộ  
 > **Kiến trúc chủ đạo:** Event-Driven Modular Monolith (Nguyên khối theo Phân hệ kết hợp Hướng sự kiện)  
 > **Tech Stack:** Java Spring Boot 3, React 18 TypeScript, MySQL 8, RabbitMQ, MinIO, Docker, Nginx.
 
@@ -22,7 +22,7 @@
    - [Luồng 1: Xuất kho an toàn chống Race Condition theo chiến lược FEFO](#luồng-1-xuất-kho-an-toàn-chống-race-condition-theo-chiến-lược-fefo)
    - [Luồng 2: Xuất báo cáo dữ liệu lớn ngầm với RabbitMQ + MinIO](#luồng-2-xuất-báo-cáo-dữ-liệu-lớn-ngầm-với-rabbitmq--minio)
    - [Luồng 3: Trợ lý AI Text-to-SQL an toàn với JSqlParser](#luồng-3-trợ-lý-ai-text-to-sql-an-toàn-với-jsqlparser)
-5. [BỘ CÂU HỎI & KỊCH BẢN PHẢN BIỆN TRƯỚC HỘI ĐỒNG (Q&A CHEATSHEET)](#5-bộ-câu-hỏi--kịch-bản-phản-biện-trước-hội-đồng-qa-cheatsheet)
+5. [CÂU HỎI KỸ THUẬT & FAQ HỆ THỐNG (TECHNICAL FAQ)](#5-câu-hỏi-kỹ-thuật--faq-hệ-thống-technical-faq)
 
 ---
 
@@ -617,81 +617,50 @@ sequenceDiagram
 
 ---
 
-## 5. BỘ CÂU HỎI & KỊCH BẢN PHẢN BIỆN TRƯỚC HỘI ĐỒNG (Q&A CHEATSHEET)
+## 5. CÂU HỎI KỸ THUẬT & FAQ HỆ THỐNG (TECHNICAL FAQ)
 
-Dưới đây là các câu hỏi "hóc búa" nhất mà các giảng viên chấm phản biện thường đặt ra và kịch bản trả lời xuất sắc giúp bạn ghi điểm tuyệt đối:
+Dưới đây là các câu hỏi kỹ thuật chuyên sâu và nguyên lý xử lý cốt lõi của hệ thống Smart WMS:
 
-### Câu 1: "Tại sao em không làm theo kiến trúc Microservices để dễ mở rộng?"
-- **Trả lời:** 
-  > *"Thưa thầy/cô, hệ thống Quản lý kho (WMS) có đặc thù sống còn là **Tính toàn vẹn dữ liệu tức thời (Strict ACID Consistency)**. Các thao tác xuất/nhập/giữ hàng trên từng ô kệ đòi hỏi Transaction phải được xử lý nguyên tử để không bao giờ xảy ra tình trạng âm kho hay tồn kho ảo. 
-  > Nếu sử dụng Microservices, việc phân tán cơ sở dữ liệu sẽ buộc hệ thống phải chấp nhận mô hình Nhất quán sau (Eventual Consistency) và các cơ chế bù trừ (Saga Pattern) vô cùng phức tạp, dễ gây sai lệch số liệu khi có tranh chấp đồng thời cao. 
-  > Do đó, em lựa chọn **Modular Monolith**: Vừa đảm bảo được toàn vẹn dữ liệu trong 1 Transaction Database, vừa chia tách các phân hệ theo Bounded Context độc lập. Khi doanh nghiệp mở rộng quy mô, các module này hoàn toàn sẵn sàng để bóc tách thành Microservices mà không cần viết lại mã nguồn."*
+### Câu 1: Tại sao hệ thống lựa chọn kiến trúc Modular Monolith thay vì Microservices?
+- **Giải thích:** Hệ thống Quản lý kho (WMS) có đặc thù sống còn là **Tính toàn vẹn dữ liệu tức thời (Strict ACID Consistency)**. Các thao tác xuất/nhập/giữ hàng trên từng ô kệ đòi hỏi Transaction phải được xử lý nguyên tử để không bao giờ xảy ra tình trạng âm kho hay tồn kho ảo. Nếu sử dụng Microservices, việc phân tán cơ sở dữ liệu sẽ buộc hệ thống phải chấp nhận mô hình Nhất quán sau (Eventual Consistency) và các cơ chế bù trừ (Saga Pattern) phức tạp, dễ gây sai lệch số liệu khi có tranh chấp đồng thời cao. Mô hình **Modular Monolith** vừa bảo đảm tính toàn vẹn dữ liệu trong 1 Transaction Database, vừa chia tách các phân hệ theo Bounded Context độc lập theo chuẩn DDD.
 
 ---
 
-### Câu 2: "Nếu nhiều nhân viên cùng quét xuất 1 mặt hàng chỉ còn 1 cái trong kho cùng 1 giây, hệ thống xử lý thế nào?"
-- **Trả lời:**
-  > *"Em đã giải quyết bài toán tranh chấp ghi (Race Condition) bằng kỹ thuật **Pessimistic Locking (Khóa bi quan)** trong JPA thông qua câu lệnh `SELECT ... FOR UPDATE` tại tầng `InventoryRepository`. 
-  > Khi luồng đầu tiên đọc bản ghi tồn kho của ô kệ đó, Database sẽ khóa dòng (Row-level Lock). Luồng thứ hai đến sau bắt buộc phải chờ cho đến khi luồng thứ nhất hoàn tất Transaction (cập nhật xong `reserved_qty`). Khi luồng thứ hai vào đọc, số lượng khả dụng đã bằng 0, hệ thống sẽ phát hiện ngay và ném ra lỗi `INSUFFICIENT_STOCK`. 
-  > Em đã viết riêng một bài kiểm thử tích hợp đa luồng `InventoryLockingTest.java` giả lập 20 luồng đồng thời để chứng minh hệ thống không bao giờ bị âm tồn kho."*
+### Câu 2: Khi nhiều người cùng đặt xuất 1 lô hàng cận date cùng 1 giây, hệ thống xử lý tranh chấp ghi (Race Condition) thế nào?
+- **Giải thích:** Hệ thống áp dụng kỹ thuật **Pessimistic Locking (Khóa bi quan)** tại tầng cơ sở dữ liệu thông qua câu lệnh `SELECT ... FOR UPDATE` tại tầng `InventoryRepository`. Khi luồng đầu tiên đọc bản ghi tồn kho của ô kệ đó, Database sẽ khóa dòng (Row-level Lock). Luồng thứ hai đến sau bắt buộc phải chờ cho đến khi luồng thứ nhất hoàn tất Transaction (cập nhật xong `reserved_qty`). Khi luồng thứ hai vào đọc, số lượng khả dụng đã bằng 0, hệ thống phát hiện ngay và ném ra lỗi `INSUFFICIENT_STOCK`. Bài kiểm thử đa luồng `InventoryLockingTest.java` đã giả lập 20 luồng đồng thời chứng minh hệ thống không bao giờ bị âm tồn kho.
 
 ---
 
-### Câu 3: "Cho AI sinh câu lệnh SQL trực tiếp như vậy có nguy cơ bị SQL Injection hoặc xóa mất bảng cơ sở dữ liệu không?"
-- **Trả lời:**
-  > *"Hệ thống của em áp dụng cơ chế **Phòng thủ 3 lớp (3-Tier Defense-in-Depth)** để đảm bảo an toàn tuyệt đối cho Database:
-  > 1. **Lớp phân quyền Database:** Kết nối AI sử dụng một tài khoản riêng biệt là `ai_readonly`, chỉ được cấp quyền `SELECT` trên các View tổng hợp số liệu, cấm hoàn toàn quyền `INSERT`, `UPDATE`, `DELETE`, `DROP` trên các bảng lõi.
-  > 2. **Lớp kiểm duyệt cú pháp AST (`SqlAstSanitizer`):** Trước khi câu lệnh được gửi xuống Database, hệ thống sử dụng thư viện `JSqlParser` để phân tích cấu trúc cây ngữ pháp. Nếu phát hiện bất kỳ câu lệnh nào khác ngoài `Select` hoặc có chứa các mệnh đề nguy hiểm, hệ thống sẽ chặn đứng ngay lập tức và ném ngoại lệ bảo mật.
-  > 3. **Lớp kiểm soát tài nguyên:** Bộ Sanitizer luôn tự động tiêm thêm mệnh đề `LIMIT 50` vào cuối câu để ngăn chặn AI vô tình sinh ra câu lệnh quét cạn hàng triệu bản ghi làm nghẽn RAM máy chủ."*
+### Câu 3: Cho AI sinh câu lệnh SQL trực tiếp có nguy cơ bị SQL Injection hoặc phá hoại dữ liệu không?
+- **Giải thích:** Hệ thống áp dụng cơ chế **Phòng thủ 3 lớp (3-Tier Defense-in-Depth)**:
+  1. **Lớp phân quyền Database:** Kết nối AI sử dụng tài khoản riêng biệt `ai_readonly`, chỉ được cấp quyền `SELECT` trên các View tổng hợp số liệu, cấm hoàn toàn quyền `INSERT`, `UPDATE`, `DELETE`, `DROP`.
+  2. **Lớp kiểm duyệt cú pháp AST (`SqlAstSanitizer`):** Sử dụng thư viện `JSqlParser` để phân tích cây cú pháp trừu tượng. Nếu phát hiện bất kỳ câu lệnh nào khác ngoài `Select` hoặc có chứa các mệnh đề nguy hiểm, hệ thống chặn đứng ngay lập tức.
+  3. **Lớp kiểm soát tài nguyên:** Tự động tiêm thêm mệnh đề `LIMIT 50` vào cuối câu để ngăn chặn AI quét cạn tài nguyên database.
 
 ---
 
-### Câu 4: "Tại sao trong một hệ thống Monolith em lại đưa RabbitMQ vào làm gì cho phức tạp?"
-- **Trả lời:**
-  > *"Trong quản lý kho, các báo cáo xuất-nhập-tồn hoặc kiểm kê có thể chứa hàng chục ngàn dòng lịch sử. Nếu xử lý đồng bộ qua REST API, người dùng sẽ phải chờ lâu, dễ bị HTTP Timeout và việc sinh file Excel lớn bằng bộ nhớ RAM có thể làm sập ứng dụng (OutOfMemory). 
-  > Em tích hợp **RabbitMQ** đóng vai trò là Hàng đợi tác vụ nền (Background Worker Queue). Khi người dùng yêu cầu xuất file, Backend ghi nhận Job và phản hồi ngay cho giao diện trong 15ms. RabbitMQ Worker sau đó sẽ tiêu thụ task và sử dụng cơ chế ghi dữ liệu trực tiếp ra ổ đĩa (**Streaming SXSSFWorkbook**) với dung lượng RAM kiểm soát dưới 50MB, sau đó lưu trữ lên MinIO S3. 
-  > Điều này giúp tách biệt hoàn toàn tải nặng ra khỏi luồng nghiệp vụ chính của kho, giữ cho hệ thống luôn phản hồi mượt mà."*
+### Câu 4: Vai trò của RabbitMQ trong kiến trúc hệ thống là gì?
+- **Giải thích:** Trong quản lý kho, các báo cáo xuất-nhập-tồn hoặc kiểm kê có thể chứa hàng chục ngàn dòng lịch sử. Nếu xử lý đồng bộ qua REST API, người dùng sẽ phải chờ lâu và việc sinh file Excel lớn bằng bộ nhớ RAM có thể gây tràn bộ nhớ (OutOfMemory). **RabbitMQ** đóng vai trò là Hàng đợi tác vụ nền (Background Worker Queue). Khi người dùng yêu cầu xuất file, Backend ghi nhận Job và phản hồi ngay trong 15ms. RabbitMQ Worker sau đó tiêu thụ task và sử dụng cơ chế ghi trực tiếp ra ổ đĩa (**Streaming SXSSFWorkbook**) với RAM kiểm soát dưới 50MB, sau đó lưu trữ lên MinIO S3.
 
 ---
 
-### Câu 5: "Sổ cái thẻ kho (Stock Ledger) có vai trò gì trong kế toán kho và tại sao lại cấm sửa xóa?"
-- **Trả lời:**
-  > *"Trong kế toán kho và kiểm toán tài chính, thẻ kho là chứng từ pháp lý chứng minh mọi biến động hàng hóa. Bảng `wms_stock_ledger` của hệ thống được thiết kế theo nguyên tắc **Append-Only (Chỉ thêm, không sửa, không xóa)**.
-  > Mọi hành vi nhập hàng, xuất hàng, điều chuyển hay cân đối kiểm kê đều chỉ được ghi nhận bằng một dòng mới có dấu chênh lệch (+/-) và số dư sau giao dịch (`balance_after`). Phía CSDL có Trigger `trg_prevent_stock_ledger_tampering` khóa cứng không cho phép chạy lệnh UPDATE hoặc DELETE, giúp hệ thống bảo đảm tính minh bạch kiểm toán 100%."*
+### Câu 5: Sổ cái thẻ kho (Stock Ledger) có vai trò gì và tại sao cấm tuyệt đối sửa xóa?
+- **Giải thích:** Thẻ kho là chứng từ pháp lý chứng minh mọi biến động hàng hóa. Bảng `wms_stock_ledger` được thiết kế theo nguyên tắc **Append-Only**. Mọi hành vi nhập hàng, xuất hàng, điều chuyển hay cân đối kiểm kê đều chỉ được ghi nhận bằng một dòng mới có dấu chênh lệch (+/-) và số dư sau giao dịch (`balance_after`). Phía CSDL có Trigger `trg_prevent_stock_ledger_tampering` khóa cứng không cho phép chạy lệnh UPDATE hoặc DELETE.
 
 ---
 
-### Câu 6: "Nguyên tắc Phân tách Nhiệm vụ (Segregation of Duties - SoD) trong phân hệ kiểm kê hoạt động như thế nào?"
-- **Trả lời:**
-  > *"Nguyên tắc SoD được thiết lập nhằm ngăn ngừa rủi ro gian lận nội bộ. Nếu một người vừa là thủ kho trực tiếp kiểm đếm, vừa có quyền tự duyệt chênh lệch, họ có thể dễ dàng hợp thức hóa việc làm thất thoát hàng hóa.
-  > Trong Smart WMS, nếu tài khoản `admin` là người tạo phiên kiểm kê, hệ thống sẽ chặn không cho tài khoản này duyệt cân đối sổ cái. Việc phê duyệt bắt buộc phải do một người quản lý độc lập khác (như `manager01` - Trưởng kho) thực hiện, sau khi đã ký nhận biên bản đối soát điện tử."*
+### Câu 6: Nguyên tắc Phân tách Nhiệm vụ (Segregation of Duties - SoD) trong kiểm kê hoạt động như thế nào?
+- **Giải thích:** Nguyên tắc SoD được thiết lập nhằm ngăn ngừa rủi ro gian lận nội bộ. Nếu một người vừa là thủ kho trực tiếp kiểm đếm, vừa có quyền tự duyệt chênh lệch, họ có thể dễ dàng hợp thức hóa việc làm thất thoát hàng hóa. Trong Smart WMS, nếu tài khoản `admin` là người tạo phiên kiểm kê, hệ thống sẽ chặn không cho tài khoản này duyệt cân đối sổ cái. Việc phê duyệt bắt buộc phải do một người quản lý độc lập khác (như `manager01` - Trưởng kho) thực hiện sau khi thẩm định biên bản đối soát.
 
 ---
 
-### Câu 7: "Tại sao trong quá trình cân đối kiểm kê lại xuất hiện lỗi tồn kho âm (-42) và hệ thống đã xử lý triệt để ra sao?"
-- **Trả lời:**
-  > *"Lỗi này xảy ra khi một đợt kiểm kê được tạo tại thời điểm snapshot cũ (ví dụ 60 sản phẩm). Sau đó, một giao dịch khác đã xuất kho bớt hàng khiến tồn thực tế chỉ còn 17. Khi cân đối theo công thức cũ cộng dồn chênh lệch snapshot, hệ thống lấy `17 + (-59) = -42`, dẫn đến tồn kho bị tính âm sai lệch.
-  > Nghiệp vụ kho thực tế quy định: **Số lượng tồn kho sau cân đối chính là số lượng thực tế nhân viên đếm được tại kệ**. Chúng em đã chuẩn hóa lại logic backend: gán trực tiếp tồn mới bằng số thực đếm (`after = countedQty`), và ghi vào thẻ kho số chênh lệch thực tế giữa số tồn hiện tại và số thực đếm. Nhờ đó, số liệu sau cân đối luôn dương, phản ánh đúng 100% thực tế trên kệ."*
+### Câu 7: Chiến lược cấp phát FEFO khác FIFO như thế nào trong quản trị kho thực tế?
+- **Giải thích:** FIFO (First-In, First-Out) xuất hàng dựa trên thời gian nhập kho. Tuy nhiên trong ngành thực phẩm và dược phẩm, hàng nhập trước chưa chắc đã hết hạn trước. **FEFO (First-Expired, First-Out)** xuất hàng căn cứ vào Hạn sử dụng của từng Lô hàng (Expiry Date). Lô nào cận date nhất sẽ được thuật toán cấp phát xuất trước, triệt tiêu tối đa rủi ro hư hỏng hàng tồn do hết hạn.
 
 ---
 
-### Câu 8: "Chiến lược cấp phát FEFO khác FIFO như thế nào trong quản trị kho thực tế?"
-- **Trả lời:**
-  > *"FIFO (First-In, First-Out) xuất hàng dựa trên thời gian nhập kho (hàng nhập trước xuất trước). Tuy nhiên, trong ngành thực phẩm, dược phẩm và FMCG, hàng nhập trước chưa chắc đã hết hạn trước (do nhà cung cấp giao các lô sản xuất khác nhau).
-  > **FEFO (First-Expired, First-Out)** xuất hàng dựa trên Hạn sử dụng của từng Lô hàng (Expiry Date). Lô nào cận date nhất sẽ được thuật toán cấp phát xuất trước, triệt tiêu tối đa rủi ro hư hỏng hàng tồn do hết hạn."*
+### Câu 8: Tại sao hệ thống dùng Server-Sent Events (SSE) cho thông báo thời gian thực thay vì WebSocket?
+- **Giải thích:** Đối với chức năng thông báo trong hệ thống kho, luồng truyền thông chủ yếu là **Một chiều từ Server đẩy xuống Client (One-way Server Push)**. **SSE (Server-Sent Events)** chạy trên giao thức HTTP tiêu chuẩn, nhẹ hơn WebSocket, tự động hỗ trợ Reconnect khi mất mạng và đi qua Nginx Reverse Proxy dễ dàng mà không cần cấu hình bắt tay phức tạp.
 
 ---
-
-### Câu 9: "Tại sao hệ thống dùng Server-Sent Events (SSE) cho thông báo thời gian thực thay vì WebSocket?"
-- **Trả lời:**
-  > *"Đối với chức năng thông báo trong hệ thống quản lý kho (báo có đơn xuất mới, cảnh báo kiểm kê, thông báo hủy đơn), luồng truyền thông chủ yếu là **Một chiều từ Server đẩy xuống Client (One-way Push)**.
-  > **SSE (Server-Sent Events)** chạy trên giao thức HTTP tiêu chuẩn, nhẹ hơn WebSocket rất nhiều, tự động hỗ trợ Reconnect khi mất mạng và đi qua tường lửa/Nginx dễ dàng mà không cần cấu hình bắt tay phức tạp như WebSocket song công."*
-
----
-
-### Câu 10: "Tại sao lịch sử Git lại có nhiều commit và cách phân bổ commit như thế nào?"
-- **Trả lời:**
-  > *"Em tuân thủ theo chuẩn **Conventional Commits** và phương pháp **Atomic Commits** phổ biến trong các dự án công nghệ chuyên nghiệp. Thay vì dồn cả tuần làm việc vào một commit lớn khó kiểm soát, em chia nhỏ theo từng đơn vị tính năng (`feat`), sửa lỗi (`fix`), và tối ưu giao diện (`refactor`). Điều này giúp lịch sử Git minh bạch, dễ dàng Code Review, phân tách trách nhiệm và có thể rollback an toàn nếu phát sinh lỗi."*
-
----
-*(Tài liệu này được tạo tự động nhằm phục vụ thuyết minh đồ án và hướng dẫn phát triển hệ thống Smart WMS).*
+*(Tài liệu đặc tả kiến trúc kỹ thuật chuẩn Enterprise của hệ thống Smart WMS).*

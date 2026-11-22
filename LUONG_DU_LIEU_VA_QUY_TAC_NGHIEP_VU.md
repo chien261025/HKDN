@@ -1,7 +1,7 @@
 # TÀI LIỆU ĐẶC TẢ LUỒNG DỮ LIỆU & QUY TẮC BẤT BIẾN NGHIỆP VỤ (SMART WMS)
 > **Đề tài:** Hệ Thống Quản Lý Kho Hàng Thông Minh (Event-Driven Modular Monolith)  
-> **Dành cho:** Nhóm đồ án tốt nghiệp 2 thành viên (Chuẩn Doanh Nghiệp)  
-> **Mục tiêu:** Cẩm nang kiến trúc, luồng dữ liệu chi tiết, các bất biến kỹ thuật (Invariants) và nguyên tắc cốt tử cần nắm vững trước và trong quá trình phát triển.
+> **Dành cho:** Đội ngũ kỹ sư phát triển & quản trị hệ thống (Chuẩn Doanh Nghiệp)  
+> **Mục tiêu:** Cẩm nang kiến trúc, luồng dữ liệu chi tiết, các bất biến kỹ thuật (Invariants) và nguyên tắc cốt tử cần nắm vững trong quá trình phát triển và vận hành.
 
 ---
 
@@ -14,7 +14,6 @@
    - [2.4. Phân Hệ Quản Trị & Hạ Tầng (Governance & Event-Driven Platform)](#24-phân-hệ-quản-trị--hạ-tầng-governance--event-driven-platform)
 3. [6 NGUYÊN TẮC CỐT TỬ & BẤT BIẾN KỸ THUẬT (CRITICAL INVARIANTS)](#3-6-nguyên-tắc-cốt-tử--bất-biến-kỹ-thuật-critical-invariants)
 4. [BẢN ĐỒ STATE MACHINE (MÁY TRẠNG THÁI CÁC ĐƠN TỪ)](#4-bản-đồ-state-machine-máy-trạng-thái-các-đơn-từ)
-5. [PHÂN CÔNG TRÁCH NHIỆM & KỊCH BẢN PHẢN BIỆN (2 THÀNH VIÊN)](#5-phân-công-trách-nhiệm--kịch-bản-phản-biện-2-thành-viên)
 
 ---
 
@@ -212,7 +211,7 @@ Trước khi viết bất kỳ dòng code Service hay Controller nào, **cả 2 
 > - Ràng buộc khóa ngoại phức hợp đảm bảo: Sản phẩm được nhặt (`product_id`) phải trùng khớp 100% với Sản phẩm của dòng đơn hàng (`outbound_order_item.product_id`) và Sản phẩm của lô hàng (`product_batch.product_id`). Tuyệt đối không thể nhặt nhầm quả táo cho dòng đơn mua quả cam.
 
 ### ⚠️ Nguyên tắc 6: Chuẩn Xác Khi Thuyết Minh Kỹ Thuật (No False Claims)
-> - **Không tuyên bố:** *"Thuật toán FEFO chạy với độ phức tạp O(log N)"* khi bảo vệ trước Hội đồng.
+> - **Lưu ý:** Thuật toán FEFO hoạt động dựa trên Index Scan của Database, tối ưu theo chỉ mục `(expiry_date, id)`.
 > - **Cách giải thích chuẩn kỹ thuật phần mềm:** *"Hệ thống sử dụng Partial B-Tree Index lọc trước các lô trạng thái ACTIVE và sắp xếp theo hạn sử dụng. Điều này giúp Database Planner chọn đường dẫn **Index Scan / Index Range Scan** thay vì phải quét toàn bộ bảng **Sequential Scan**, giảm thiểu I/O đĩa từ hàng nghìn block xuống chỉ vài phép đọc index."* (Chứng minh bằng `EXPLAIN ANALYZE`).
 
 ---
@@ -253,21 +252,3 @@ stateDiagram-v2
 ```
 
 ---
-
-## 5. PHÂN CÔNG TRÁCH NHIỆM & KỊCH BẢN PHẢN BIỆN (2 THÀNH VIÊN)
-
-### 🧑‍💻 Thành viên A: Lead Inbound, Master Data & Infrastructure
-- **Phạm vi code:**
-  - Master Data Kho (`Warehouse`, `Location`, `Category`, `Supplier`, `Product`).
-  - Toàn bộ dòng Inbound (`InboundOrder`, `Receiving`, `Putaway Algorithm`).
-  - Quản trị bảo mật RBAC (`User`, `Role`, `Permission`), Sổ cái `Stock Ledger`, Transactional Outbox.
-- **Kịch bản trả lời Hội đồng:**
-  - *"Em chịu trách nhiệm thiết kế mô hình dữ liệu Master Data chuẩn hóa, giải thuật cất hàng Putaway tối ưu theo khu vực/tải trọng kệ, và cơ chế bảo vệ tính toàn vẹn bất biến của Sổ cái Thẻ kho bằng Database Trigger."*
-
-### 🧑‍💻 Thành viên B: Lead Outbound, Inventory Optimization & AI/Analytics
-- **Phạm vi code:**
-  - Quản lý tồn kho đa luồng: `InventoryLockService` (Pessimistic Locking `SELECT FOR UPDATE` chống bán lố).
-  - Toàn bộ dòng Outbound: Giải thuật FEFO, `Pick Allocation`, sinh lộ trình nhặt hàng tối ưu theo tọa độ kệ, `Packing & Shipping`.
-  - Nghiệp vụ Kiểm kê (`Inventory Audit`), Báo cáo bất đồng bộ qua RabbitMQ + MinIO, và Trợ lý AI Smart Query.
-- **Kịch bản trả lời Hội đồng:**
-  - *"Em chịu trách nhiệm giải quyết bài toán Concurrency khi nhiều đơn hàng cùng tranh chấp tồn kho bằng Khóa bi quan, giải thuật xuất hàng cận date FEFO kết hợp tối ưu lộ trình nhặt hàng, cùng kiến trúc xử lý tác vụ nặng bất đồng bộ với Message Queue."*

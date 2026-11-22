@@ -289,26 +289,7 @@ Giao diện chuyên dụng tối ưu cho thiết bị cầm tay PDA hoặc đi�
 
 ---
 
-## 🎓 10. Kịch bản bảo vệ đồ án tốt nghiệp & Phản biện hội đồng (Q&A Cheatsheet)
-
-### Câu 1: Tại sao nhóm chọn Modular Monolith thay vì Microservices?
-- **Trả lời**: *"Trong quản trị kho, tính toàn vẹn dữ liệu tức thời (Immediate Strict Consistency - ACID) là tiêu chí sống còn. Nếu chia nhỏ thành Microservices, việc giữ chỗ tồn kho và xuất hàng sẽ phụ thuộc vào Distributed Transactions (Saga / 2PC) qua mạng, dẫn đến độ trễ và rủi ro bán âm kho rất lớn. Kiến trúc Modular Monolith giúp hệ thống tận dụng tối đa Database Transactions và Khóa bi quan (`SELECT FOR UPDATE`), giải quyết triệt để Race Condition trong khi mã nguồn vẫn được tách biệt nghiêm ngặt theo các Module nghiệp vụ độc lập theo chuẩn DDD."*
-
-### Câu 2: Khi nhiều người cùng đặt xuất 1 lô hàng cận date cùng 1 giây, hệ thống xử lý thế nào?
-- **Trả lời**: *"Hệ thống sử dụng kỹ thuật **Pessimistic Locking (Khóa bi quan)** tại tầng cơ sở dữ liệu. Khi giao dịch đầu tiên vào cấp phát, câu lệnh `SELECT ... FOR UPDATE` sẽ khóa dòng tồn kho của ô kệ đó lại. Giao dịch thứ hai buộc phải xếp hàng chờ cho đến khi giao dịch thứ nhất hoàn tất việc tăng `reserved_qty` và commit transaction. Khi giao dịch thứ hai vào đọc, số lượng tồn khả dụng (`OnHand - Reserved`) đã giảm về 0, hệ thống phát hiện ngay và ném ngoại lệ `INSUFFICIENT_STOCK` an toàn."*
-
-### Câu 3: Thẻ kho (Stock Ledger) có vai trò gì và tại sao cấm tuyệt đối sửa xóa?
-- **Trả lời**: *"Trong kế toán kho và kiểm toán tài chính doanh nghiệp, thẻ kho là chứng từ pháp lý chứng minh mọi biến động hàng hóa. Bảng `wms_stock_ledger` được thiết kế theo nguyên lý **Append-Only**. Mọi hành vi nhập, xuất, cân đối kiểm kê hay điều chuyển đều chỉ được ghi nhận dưới dạng một dòng mới có chênh lệch (+/-) và số dư tồn sau giao dịch (`balance_after`). Phía CSDL có Trigger khóa cứng không cho chạy lệnh UPDATE hay DELETE, bảo đảm tính minh bạch kiểm toán 100%."*
-
-### Câu 4: Nguyên tắc Phân tách nhiệm vụ (Segregation of Duties - SoD) trong kiểm kê hoạt động thế nào?
-- **Trả lời**: *"Nguyên tắc SoD được áp dụng nhằm ngăn ngừa gian lận nội bộ. Nếu một người vừa là thủ kho trực tiếp kiểm đếm, vừa có quyền tự duyệt chênh lệch, họ có thể lấy cắp hàng hóa rồi tự lập phiếu kiểm kê để hợp thức hóa số tồn bị thiếu. Trong Smart WMS, nếu tài khoản `admin` là người tạo phiên kiểm kê, hệ thống sẽ chặn không cho tài khoản này duyệt cân đối sổ cái. Việc phê duyệt bắt buộc phải do một người quản lý độc lập khác (như `manager01` - Trưởng kho) thực hiện sau khi thẩm tra biên bản đối soát."*
-
-### Câu 5: Lỗi âm kho (-42) khi cân đối kiểm kê là gì và hệ thống đã chuẩn hóa theo nghiệp vụ ra sao?
-- **Trả lời**: *"Lỗi này phát sinh do công thức cũ cộng dồn chênh lệch snapshot: `Tồn hiện tại + (countedQty - systemQty)`. Nếu thời điểm tạo snapshot hệ thống có 60 cái, sau đó một giao dịch khác đã xuất bớt 43 cái (tồn còn 17), khi kiểm kê thực tế còn 1 cái (chênh lệch -59), công thức cũ lấy `17 + (-59) = -42` dẫn đến tồn kho bị tính âm sai lệch. Nghiệp vụ kho thực tế quy định: **Số lượng tồn kho sau cân đối chính là số lượng thực tế nhân viên đếm được tại kệ**. Chúng em đã chuẩn hóa lại logic backend: gán trực tiếp tồn mới bằng số thực đếm (`after = countedQty = 1`), và thẻ kho chỉ ghi nhận chênh lệch giữa số thực đếm và số tồn thực tế trên kệ tại thời điểm duyệt. Nhờ đó, số liệu sau cân đối luôn khớp 100% với thực tế tại kho."*
-
----
-
 <p align="center">
   <b>Smart WMS — Enterprise Warehouse Management System</b><br>
-  Được phát triển phục vụ Đồ án Tốt nghiệp & Ứng dụng Doanh nghiệp Thực chiến.
+  Enterprise-grade Supply Chain, Multi-bin Tracking & Warehouse Automation Solution.
 </p>
