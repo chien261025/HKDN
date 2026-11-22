@@ -17,7 +17,8 @@ import {
   Calendar,
   Building2,
   X,
-  Ban
+  Ban,
+  FileText
 } from 'lucide-react';
 import { InboundOrder } from '../types';
 import { Pagination } from '../../../components/common';
@@ -28,6 +29,7 @@ export type InboundListFilterStatus = 'ALL' | 'PENDING' | 'RECEIVED' | 'STOCKED'
 
 interface InboundOrderListProps {
   orders: InboundOrder[];
+  selectedWarehouse?: string;
   activeStatus?: InboundListFilterStatus;
   onStatusChange?: (status: InboundListFilterStatus) => void;
   busyOrderId?: string | null;
@@ -36,6 +38,7 @@ interface InboundOrderListProps {
   onPutawayClick: (order: InboundOrder) => void;
   onCloseOrder?: (order: InboundOrder) => void;
   onPrintVoucher?: (order: InboundOrder) => void;
+  onResetWarehouse?: () => void;
 }
 
 type DateFilterType = 'ALL' | 'TODAY' | 'YESTERDAY' | 'WEEK' | 'CUSTOM';
@@ -61,6 +64,7 @@ export const getOrderDateString = (o: InboundOrder): string => {
 
 export const InboundOrderList: React.FC<InboundOrderListProps> = ({
   orders,
+  selectedWarehouse = 'ALL',
   activeStatus,
   onStatusChange,
   busyOrderId,
@@ -69,12 +73,41 @@ export const InboundOrderList: React.FC<InboundOrderListProps> = ({
   onPutawayClick,
   onCloseOrder,
   onPrintVoucher,
+  onResetWarehouse,
 }) => {
   const [currentPage, setCurrentPage] = useState(1);
   const [searchTerm, setSearchTerm] = useState('');
   const [internalStatus, setInternalStatus] = useState<InboundListFilterStatus>('ALL');
   const [dateFilter, setDateFilter] = useState<DateFilterType>('ALL');
   const [customDate, setCustomDate] = useState<string>('');
+
+  // Lắng nghe tìm kiếm từ thanh Top Header (Ctrl+K)
+  useEffect(() => {
+    const handleGlobalSearch = (e: any) => {
+      if (typeof e.detail === 'string') {
+        setSearchTerm(e.detail);
+      }
+    };
+    window.addEventListener('smart_wms_global_search', handleGlobalSearch);
+    return () => window.removeEventListener('smart_wms_global_search', handleGlobalSearch);
+  }, []);
+
+  const handleSearchChange = (val: string) => {
+    setSearchTerm(val);
+    window.dispatchEvent(new CustomEvent('smart_wms_global_search', { detail: val }));
+    window.dispatchEvent(new CustomEvent('smart_wms_sync_search_input', { detail: val }));
+  };
+
+  const targetWhId = useMemo(() => {
+    if (!selectedWarehouse || selectedWarehouse === 'ALL') return undefined;
+    const match = selectedWarehouse.match(/\d+/);
+    return match ? parseInt(match[0], 10) : undefined;
+  }, [selectedWarehouse]);
+
+  const warehouseBaseOrders = useMemo(() => {
+    if (!targetWhId) return orders;
+    return orders.filter((o) => o.warehouseId === targetWhId);
+  }, [orders, targetWhId]);
 
   const currentStatus = activeStatus !== undefined ? activeStatus : internalStatus;
   const setStatus = (status: InboundListFilterStatus) => {
@@ -98,7 +131,7 @@ export const InboundOrderList: React.FC<InboundOrderListProps> = ({
     let yesterday = 0;
     let week = 0;
 
-    orders.forEach((o) => {
+    warehouseBaseOrders.forEach((o) => {
       const dt = getOrderDateString(o);
       if (dt === todayStr) today++;
       if (dt === yesterdayStr) yesterday++;
@@ -113,7 +146,7 @@ export const InboundOrderList: React.FC<InboundOrderListProps> = ({
     });
 
     return { today, yesterday, week };
-  }, [orders, todayStr, yesterdayStr]);
+  }, [warehouseBaseOrders, todayStr, yesterdayStr]);
 
   const handleResetFilters = () => {
     setSearchTerm('');
@@ -173,7 +206,7 @@ export const InboundOrderList: React.FC<InboundOrderListProps> = ({
 
     if (isPending) {
       return {
-        stage: '1. Chờ tiếp nhận',
+        stage: 'Chờ tiếp nhận',
         subText: 'Chờ xe tải đến',
         percent: 0,
         barColor: 'bg-amber-500',
@@ -186,8 +219,10 @@ export const InboundOrderList: React.FC<InboundOrderListProps> = ({
 
     if (isStocked) {
       return {
-        stage: '3. Đã cất kệ & ghi sổ',
-        subText: `${qc.totalStocked}/${qc.totalStocked} ${unitLabel} (100%)`,
+        stage: 'Đã cất kệ & ghi sổ',
+        subText: qc.totalRejected > 0
+          ? `Đã cất ${qc.totalStocked}/${qc.totalExpected} ${unitLabel} (Loại ${qc.totalRejected} lỗi QC)`
+          : `Đã cất ${qc.totalStocked}/${qc.totalExpected} ${unitLabel} (Hoàn tất 100%)`,
         percent: 100,
         barColor: 'bg-emerald-500',
         textColor: 'text-emerald-700',
@@ -198,18 +233,19 @@ export const InboundOrderList: React.FC<InboundOrderListProps> = ({
     if (targetStock > 0 && qc.totalStocked > 0) {
       const putawayPct = Math.min(100, Math.round((qc.totalStocked / targetStock) * 100));
       return {
-        stage: '2. Đang cất lên kệ',
-        subText: `${qc.totalStocked}/${targetStock} ${unitLabel} (${putawayPct}%)`,
+        stage: 'Đang cất lên kệ',
+        subText: `Đã cất ${qc.totalStocked}/${targetStock} ${unitLabel} đạt QC`,
         percent: Math.min(95, Math.round(50 + putawayPct * 0.45)),
         barColor: 'bg-blue-600',
         textColor: 'text-blue-700',
       };
     }
 
-    const receivePct = qc.totalExpected > 0 ? Math.min(100, Math.round((qc.totalReceived / qc.totalExpected) * 100)) : 100;
     return {
-      stage: '2. Tại khu đệm & QC',
-      subText: `${qc.totalReceived}/${qc.totalExpected} ${unitLabel} (${receivePct}%)`,
+      stage: 'Tại khu đệm & QC',
+      subText: qc.totalRejected > 0
+        ? `Đã nhận ${qc.totalReceived}/${qc.totalExpected} ${unitLabel} (Đạt QC: ${targetStock})`
+        : `Đã nhận ${qc.totalReceived}/${qc.totalExpected} ${unitLabel} vào khu đệm`,
       percent: 50,
       barColor: 'bg-blue-500',
       textColor: 'text-blue-600',
@@ -217,8 +253,8 @@ export const InboundOrderList: React.FC<InboundOrderListProps> = ({
   };
 
   const qcIssueCount = useMemo(() => {
-    return orders.filter((o) => getOrderQcMetrics(o).hasDiscrepancy).length;
-  }, [orders]);
+    return warehouseBaseOrders.filter((o) => getOrderQcMetrics(o).hasDiscrepancy).length;
+  }, [warehouseBaseOrders]);
 
   const filteredOrders = useMemo(() => {
     return orders.filter((o) => {
@@ -227,12 +263,22 @@ export const InboundOrderList: React.FC<InboundOrderListProps> = ({
         !q ||
         o.poCode.toLowerCase().includes(q) ||
         o.supplierName.toLowerCase().includes(q) ||
+        (o.notes && o.notes.toLowerCase().includes(q)) ||
         o.items.some(
           (it) =>
             it.productName.toLowerCase().includes(q) ||
             it.sku.toLowerCase().includes(q) ||
             (it.batchNumber && it.batchNumber.toLowerCase().includes(q))
         );
+
+      let matchWarehouse = true;
+      if (targetWhId) {
+        // Khi có từ khóa tìm kiếm: cho phép hiển thị đơn trùng khớp từ mọi kho (tìm kiếm đa kho)
+        // Khi không có từ khóa: chỉ hiển thị đúng kho đang chọn
+        if (!q) {
+          matchWarehouse = o.warehouseId === targetWhId;
+        }
+      }
 
       let matchStatus = true;
       if (currentStatus === 'QC_ISSUE') {
@@ -259,9 +305,9 @@ export const InboundOrderList: React.FC<InboundOrderListProps> = ({
         matchDate = orderDateStr === customDate;
       }
 
-      return matchSearch && matchStatus && matchDate;
-    });
-  }, [orders, searchTerm, currentStatus, dateFilter, customDate, todayStr, yesterdayStr]);
+      return matchWarehouse && matchSearch && matchStatus && matchDate;
+    }).sort((a, b) => Number(b.id) - Number(a.id));
+  }, [orders, searchTerm, currentStatus, dateFilter, customDate, todayStr, yesterdayStr, targetWhId]);
 
   const totalPages = Math.max(1, Math.ceil(filteredOrders.length / PAGE_SIZE));
   const visibleOrders = filteredOrders.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE);
@@ -330,10 +376,10 @@ export const InboundOrderList: React.FC<InboundOrderListProps> = ({
           </div>
           <div>
             <h2 className="text-sm sm:text-base font-bold text-slate-900">
-              Danh Sách Đơn Nhập Kho (PO)
+              Danh Sách Đơn Nhập Kho
             </h2>
             <p className="text-xs text-slate-500 hidden sm:block">
-              Theo dõi tiến độ từ tiếp nhận xe tải, kiểm đếm QC đến cất kệ ô kho và ghi sổ cái Stock Ledger
+              Theo dõi tiến độ tiếp nhận, kiểm đếm chất lượng và cất kệ ô kho
             </p>
           </div>
         </div>
@@ -348,7 +394,7 @@ export const InboundOrderList: React.FC<InboundOrderListProps> = ({
             <span>Xuất CSV</span>
           </button>
           <span className="text-xs font-semibold text-slate-700 bg-white px-2.5 py-1 rounded-lg border border-slate-200 shadow-2xs">
-            {filteredOrders.length} / {orders.length} Đơn PO
+            {filteredOrders.length} / {targetWhId && !searchTerm.trim() ? warehouseBaseOrders.length : orders.length} Đơn Hàng
           </span>
         </div>
       </div>
@@ -360,11 +406,21 @@ export const InboundOrderList: React.FC<InboundOrderListProps> = ({
           <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
           <input
             type="text"
-            placeholder="Tìm theo mã PO, nhà cung cấp, tên sản phẩm hoặc SKU..."
+            placeholder="Tìm theo mã đơn, nhà cung cấp, tên sản phẩm hoặc mã SKU..."
             value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            className="w-full pl-9 pr-3 py-1.5 text-xs rounded-xl border border-slate-200 bg-slate-50/50 text-slate-800 placeholder-slate-400 outline-none focus:bg-white focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100 transition-all font-medium"
+            onChange={(e) => handleSearchChange(e.target.value)}
+            className="w-full pl-9 pr-8 py-1.5 text-xs rounded-xl border border-slate-200 bg-slate-50/50 text-slate-800 placeholder-slate-400 outline-none focus:bg-white focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100 transition-all font-medium"
           />
+          {searchTerm && (
+            <button
+              type="button"
+              onClick={() => handleSearchChange('')}
+              className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 p-0.5 text-xs cursor-pointer"
+              title="Xóa tìm kiếm"
+            >
+              <X className="w-3.5 h-3.5" />
+            </button>
+          )}
         </div>
 
         {/* Date Filter & Status Filter Pills */}
@@ -486,7 +542,7 @@ export const InboundOrderList: React.FC<InboundOrderListProps> = ({
                   : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
               }`}
             >
-              Tất cả ({orders.length})
+              Tất cả ({warehouseBaseOrders.length})
             </button>
             <button
               onClick={() => setStatus('PENDING')}
@@ -496,7 +552,7 @@ export const InboundOrderList: React.FC<InboundOrderListProps> = ({
                   : 'bg-amber-50 text-amber-700 hover:bg-amber-100 border border-amber-200'
               }`}
             >
-              Chờ tiếp nhận ({orders.filter((o) => o.status === 'PENDING').length})
+              Chờ tiếp nhận ({warehouseBaseOrders.filter((o) => o.status === 'PENDING').length})
             </button>
             <button
               onClick={() => setStatus('RECEIVED')}
@@ -506,7 +562,7 @@ export const InboundOrderList: React.FC<InboundOrderListProps> = ({
                   : 'bg-blue-50 text-blue-700 hover:bg-blue-100 border border-blue-200'
               }`}
             >
-              Tại khu đệm ({orders.filter((o) => o.status === 'RECEIVED').length})
+              Tại khu đệm ({warehouseBaseOrders.filter((o) => o.status === 'RECEIVED').length})
             </button>
             <button
               onClick={() => setStatus('STOCKED')}
@@ -516,7 +572,7 @@ export const InboundOrderList: React.FC<InboundOrderListProps> = ({
                   : 'bg-emerald-50 text-emerald-700 hover:bg-emerald-100 border border-emerald-200'
               }`}
             >
-              Đã cất kệ ({orders.filter((o) => o.status === 'STOCKED').length})
+              Đã cất kệ ({warehouseBaseOrders.filter((o) => o.status === 'STOCKED').length})
             </button>
             {qcIssueCount > 0 && (
               <button
@@ -534,19 +590,37 @@ export const InboundOrderList: React.FC<InboundOrderListProps> = ({
         </div>
       </div>
 
+      {/* Thông báo tìm kiếm thông minh đa kho khi kết quả khớp đơn ở kho khác */}
+      {searchTerm.trim() && targetWhId && filteredOrders.some((o) => o.warehouseId !== targetWhId) && (
+        <div className="mx-4 mt-3 px-3.5 py-2.5 bg-blue-50 border border-blue-200 rounded-xl text-xs text-blue-900 flex items-center justify-between gap-2 shadow-2xs">
+          <div className="flex items-center gap-2">
+            <Building2 className="w-4 h-4 text-blue-600 shrink-0" />
+            <span>
+              <strong>Tìm kiếm đa kho:</strong> Tìm thấy đơn hàng khớp từ khóa thuộc chi nhánh kho khác (ví dụ: Kho Phân Phối VSIP Bắc Ninh).
+            </span>
+          </div>
+          <button
+            onClick={() => handleSearchChange('')}
+            className="text-blue-700 hover:text-blue-900 underline font-semibold cursor-pointer shrink-0"
+          >
+            Về kho hiện tại
+          </button>
+        </div>
+      )}
+
       {/* DESKTOP TABLE VIEW */}
       <div className="hidden md:block overflow-x-auto">
         <table className="w-full text-left text-sm">
           <thead className="bg-slate-50 text-slate-600 font-semibold text-xs border-b border-slate-200">
             <tr>
-              <th className="py-3 px-3 w-8 text-center"></th>
-              <th className="py-3 px-4 min-w-[200px]">Mã Đơn PO / Nhà Cung Cấp</th>
-              <th className="py-3 px-4 whitespace-nowrap">Ngày Giao Hàng</th>
-              <th className="py-3 px-4 whitespace-nowrap">Quy Mô & Giá Trị PO</th>
-              <th className="py-3 px-4 whitespace-nowrap">Kiểm Đếm & QC</th>
-              <th className="py-3 px-4 min-w-[170px]">Tiến Độ Quy Trình</th>
-              <th className="py-3 px-4 whitespace-nowrap">Trạng Thái</th>
-              <th className="py-3 px-4 text-right whitespace-nowrap min-w-[240px]">Thao Tác</th>
+              <th className="py-3 px-2 w-10 text-center sticky left-0 bg-slate-50 z-20"></th>
+              <th className="py-3 px-3 min-w-[200px] sticky left-10 bg-slate-50 z-20 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.06)]">Mã Đơn Nhập / Nhà Cung Cấp</th>
+              <th className="py-3 px-3 whitespace-nowrap">Ngày Giao Hàng</th>
+              <th className="py-3 px-3 whitespace-nowrap">Số Lượng & Giá Trị</th>
+              <th className="py-3 px-3 whitespace-nowrap">Kiểm Đếm & QC</th>
+              <th className="py-3 px-3 min-w-[160px]">Tiến Độ Quy Trình</th>
+              <th className="py-3 px-3 whitespace-nowrap">Trạng Thái</th>
+              <th className="py-3 px-3 text-right whitespace-nowrap">Thao Tác</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-100 text-slate-800">
@@ -557,17 +631,30 @@ export const InboundOrderList: React.FC<InboundOrderListProps> = ({
                     <Filter className="w-7 h-7 text-slate-300" />
                     <span className="font-bold text-slate-800 text-sm">Không tìm thấy đơn nhập kho nào</span>
                     <p className="text-slate-500 text-xs text-center">
-                      Không có đơn PO nào thỏa mãn bộ lọc hiện tại
-                      {currentStatus !== 'ALL' && ` (Trạng thái: ${currentStatus})`}
-                      {dateFilter !== 'ALL' && ` (Ngày: ${dateFilter})`}
-                      {searchTerm && ` (Tìm kiếm: "${searchTerm}")`}.
+                      {targetWhId && warehouseBaseOrders.length === 0
+                        ? 'Chi nhánh kho này hiện chưa có đơn nhập kho nào trong hệ thống.'
+                        : `Không có đơn nào thỏa mãn bộ lọc hiện tại${
+                            currentStatus !== 'ALL' ? ` (Trạng thái: ${currentStatus})` : ''
+                          }${dateFilter !== 'ALL' ? ` (Ngày: ${dateFilter})` : ''}${
+                            searchTerm ? ` (Tìm kiếm: "${searchTerm}")` : ''
+                          }.`}
                     </p>
-                    <button
-                      onClick={handleResetFilters}
-                      className="mt-2 px-3.5 py-1.5 bg-blue-50 text-blue-700 hover:bg-blue-100 border border-blue-200 rounded-lg text-xs font-bold transition-all cursor-pointer shadow-2xs"
-                    >
-                      Đặt lại toàn bộ bộ lọc
-                    </button>
+                    <div className="flex items-center gap-2 mt-2">
+                      <button
+                        onClick={handleResetFilters}
+                        className="px-3.5 py-1.5 bg-blue-50 text-blue-700 hover:bg-blue-100 border border-blue-200 rounded-lg text-xs font-bold transition-all cursor-pointer shadow-2xs"
+                      >
+                        Đặt lại bộ lọc
+                      </button>
+                      {targetWhId && onResetWarehouse && (
+                        <button
+                          onClick={onResetWarehouse}
+                          className="px-3.5 py-1.5 bg-indigo-600 text-white hover:bg-indigo-700 rounded-lg text-xs font-bold transition-all cursor-pointer shadow-2xs"
+                        >
+                          Xem tất cả chi nhánh kho
+                        </button>
+                      )}
+                    </div>
                   </div>
                 </td>
               </tr>
@@ -586,11 +673,13 @@ export const InboundOrderList: React.FC<InboundOrderListProps> = ({
                   <React.Fragment key={order.id}>
                     <tr
                       onClick={() => toggleExpand(order.id)}
-                      className={`hover:bg-slate-50/80 transition-colors cursor-pointer select-none ${
+                      className={`group hover:bg-slate-50/80 transition-colors cursor-pointer select-none ${
                         isExpanded ? 'bg-blue-50/20' : ''
                       }`}
                     >
-                      <td className="py-3.5 px-3 text-center">
+                      <td className={`py-3.5 px-2 text-center sticky left-0 z-10 transition-colors ${
+                        isExpanded ? 'bg-blue-50/90' : 'bg-white group-hover:bg-slate-50'
+                      }`}>
                         <button
                           type="button"
                           className="p-1 rounded hover:bg-slate-200 text-slate-500"
@@ -606,7 +695,9 @@ export const InboundOrderList: React.FC<InboundOrderListProps> = ({
                           )}
                         </button>
                       </td>
-                      <td className="py-3.5 px-4">
+                      <td className={`py-3.5 px-3 sticky left-10 z-10 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.06)] transition-colors ${
+                        isExpanded ? 'bg-blue-50/90' : 'bg-white group-hover:bg-slate-50'
+                      }`}>
                         <div className="font-bold text-slate-900 text-sm tracking-tight flex items-center gap-1.5">
                           <span>{order.poCode}</span>
                           {order.warehouseId === 2 && (
@@ -616,12 +707,18 @@ export const InboundOrderList: React.FC<InboundOrderListProps> = ({
                           )}
                         </div>
                         <div className="text-xs text-slate-500 line-clamp-1 mt-0.5">{order.supplierName}</div>
+                        {order.notes && (
+                          <div className="text-[11px] text-amber-800 font-medium line-clamp-1 mt-1 flex items-center gap-1 bg-amber-50/80 px-1.5 py-0.5 rounded border border-amber-200/60 max-w-xs" title={order.notes}>
+                            <FileText className="w-3 h-3 text-amber-600 shrink-0" />
+                            <span className="truncate">{order.notes}</span>
+                          </div>
+                        )}
                       </td>
-                      <td className="py-3.5 px-4 text-xs whitespace-nowrap">
+                      <td className="py-3.5 px-3 text-xs whitespace-nowrap">
                         <div className="text-slate-900 font-semibold tabular-nums">{order.expectedDeliveryDate}</div>
                         <div className="text-xs text-slate-400 mt-0.5 tabular-nums">Tạo: {order.createdAt}</div>
                       </td>
-                      <td className="py-3.5 px-4 text-xs whitespace-nowrap">
+                      <td className="py-3.5 px-3 text-xs whitespace-nowrap">
                         <div className="text-slate-900 font-semibold">
                           {order.items.length} mặt hàng • <strong className="text-blue-700 font-bold">{qc.totalExpected}</strong> {unitLabel}
                         </div>
@@ -631,7 +728,7 @@ export const InboundOrderList: React.FC<InboundOrderListProps> = ({
                       </td>
 
                       {/* Tình trạng kiểm định QC (Ưu tiên 2) */}
-                      <td className="py-3.5 px-4 text-xs whitespace-nowrap">
+                      <td className="py-3.5 px-3 text-xs whitespace-nowrap">
                         {isPending ? (
                           <span className="text-slate-400 italic text-[11px]">Chờ xe tải đến</span>
                         ) : qc.totalRejected > 0 ? (
@@ -653,8 +750,8 @@ export const InboundOrderList: React.FC<InboundOrderListProps> = ({
                         )}
                       </td>
 
-                      <td className="py-3.5 px-4">
-                        <div className="w-44 space-y-1">
+                      <td className="py-3.5 px-3">
+                        <div className="w-40 space-y-1">
                           <div className="flex justify-between items-center text-xs text-slate-600 font-medium whitespace-nowrap">
                             <span className="font-semibold text-slate-800">{progress.stage}</span>
                             <span className={`font-bold tabular-nums text-xs ${progress.textColor}`}>
@@ -673,7 +770,7 @@ export const InboundOrderList: React.FC<InboundOrderListProps> = ({
                         </div>
                       </td>
 
-                      <td className="py-3.5 px-4 text-xs whitespace-nowrap">
+                      <td className="py-3.5 px-3 text-xs whitespace-nowrap">
                         {order.status === 'CLOSED_NO_STOCK' && <span className="text-amber-700">Đóng · Không có hàng đạt QC</span>}
                         {isPending && (
                           <span className="inline-flex items-center gap-1.5 text-xs font-bold text-amber-700 bg-amber-50 px-2.5 py-1 rounded-lg border border-amber-200">
@@ -695,7 +792,7 @@ export const InboundOrderList: React.FC<InboundOrderListProps> = ({
                         )}
                       </td>
 
-                      <td className="py-3.5 px-4 text-right whitespace-nowrap" onClick={(e) => e.stopPropagation()}>
+                      <td className="py-3.5 px-3 text-right whitespace-nowrap" onClick={(e) => e.stopPropagation()}>
                         <div className="flex items-center justify-end gap-1.5 whitespace-nowrap">
                           {isPending && (
                             <button
@@ -723,10 +820,10 @@ export const InboundOrderList: React.FC<InboundOrderListProps> = ({
                                   onClick={() => onCloseOrder(order)}
                                   disabled={busyOrderId === order.id}
                                   className="px-2 py-1.5 bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-300 rounded-lg text-xs font-semibold transition-colors cursor-pointer flex items-center gap-1 shadow-2xs whitespace-nowrap shrink-0"
-                                  title="Đóng đơn và hủy/từ chối nhận phần chưa cất do quá tải kho"
+                                  title={qc.totalRejected > 0 ? "Đóng đơn và xử lý phần hàng lỗi / thiếu" : "Đóng đơn và hủy/từ chối nhận phần chưa cất"}
                                 >
                                   <Ban className="w-3.5 h-3.5 shrink-0 text-rose-600" />
-                                  <span>Đóng Đơn Thừa</span>
+                                  <span>Đóng Đơn</span>
                                 </button>
                               )}
                             </>
@@ -771,26 +868,26 @@ export const InboundOrderList: React.FC<InboundOrderListProps> = ({
                               <table className="w-full text-xs text-left">
                                 <thead className="bg-slate-50 text-slate-500 font-semibold border-b border-slate-200 uppercase tracking-wider text-[11px]">
                                   <tr>
-                                    <th className="py-2 px-3">Mã SKU</th>
-                                    <th className="py-2 px-3">Tên Mặt Hàng</th>
-                                    <th className="py-2 px-3 text-center">ĐVT</th>
-                                    <th className="py-2 px-3 text-center">Số Lượng Đặt</th>
-                                    <th className="py-2 px-3 text-center">Thực Nhận</th>
-                                    <th className="py-2 px-3 text-center">Lỗi QC</th>
-                                    <th className="py-2 px-3 text-center">Đã Cất Kệ</th>
-                                    <th className="py-2 px-3">Lô & Hạn Dùng</th>
-                                    <th className="py-2 px-3 text-right">Đơn Giá Nhập</th>
+                                    <th className="py-2 px-3 whitespace-nowrap sticky left-0 bg-slate-50 z-10">Mã SKU</th>
+                                    <th className="py-2 px-3 min-w-[160px] sticky left-28 bg-slate-50 z-10 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.06)]">Tên Mặt Hàng</th>
+                                    <th className="py-2 px-3 text-center whitespace-nowrap">ĐVT</th>
+                                    <th className="py-2 px-3 text-center whitespace-nowrap">Số Lượng Đặt</th>
+                                    <th className="py-2 px-3 text-center whitespace-nowrap">Thực Nhận</th>
+                                    <th className="py-2 px-3 text-center whitespace-nowrap">Lỗi QC</th>
+                                    <th className="py-2 px-3 text-center whitespace-nowrap">Đã Cất Kệ</th>
+                                    <th className="py-2 px-3 whitespace-nowrap">Lô & Hạn Dùng</th>
+                                    <th className="py-2 px-3 text-right whitespace-nowrap">Đơn Giá Nhập</th>
                                   </tr>
                                 </thead>
                                 <tbody className="divide-y divide-slate-100 text-slate-800">
                                   {order.items.map((it, idx) => (
-                                    <tr key={it.id || idx} className="hover:bg-slate-50/90">
-                                      <td className="py-2 px-3 font-mono font-bold text-slate-900">{it.sku}</td>
-                                      <td className="py-2 px-3 font-semibold text-slate-900">{it.productName}</td>
-                                      <td className="py-2 px-3 text-center text-slate-600">{it.unit}</td>
-                                      <td className="py-2 px-3 text-center font-bold text-slate-900">{it.expectedQty}</td>
-                                      <td className="py-2 px-3 text-center font-bold text-blue-700">{it.receivedQty || 0}</td>
-                                      <td className="py-2 px-3 text-center">
+                                    <tr key={it.id || idx} className="group hover:bg-slate-50/90">
+                                      <td className="py-2 px-3 font-mono font-bold text-slate-900 sticky left-0 bg-white group-hover:bg-slate-50 z-10 whitespace-nowrap">{it.sku}</td>
+                                      <td className="py-2 px-3 font-semibold text-slate-900 sticky left-28 bg-white group-hover:bg-slate-50 z-10 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.06)]">{it.productName}</td>
+                                      <td className="py-2 px-3 text-center text-slate-600 whitespace-nowrap">{it.unit}</td>
+                                      <td className="py-2 px-3 text-center font-bold text-slate-900 whitespace-nowrap">{it.expectedQty}</td>
+                                      <td className="py-2 px-3 text-center font-bold text-blue-700 whitespace-nowrap">{it.receivedQty || 0}</td>
+                                      <td className="py-2 px-3 text-center whitespace-nowrap">
                                         {(it.rejectedQty || 0) > 0 ? (
                                           <span className="font-bold text-rose-700 bg-rose-50 px-1.5 py-0.2 rounded border border-rose-200">
                                             {it.rejectedQty}
@@ -799,8 +896,8 @@ export const InboundOrderList: React.FC<InboundOrderListProps> = ({
                                           <span className="text-slate-400">0</span>
                                         )}
                                       </td>
-                                      <td className="py-2 px-3 text-center font-bold text-emerald-700">{it.stockedQty || 0}</td>
-                                      <td className="py-2 px-3 font-mono text-slate-700">
+                                      <td className="py-2 px-3 text-center font-bold text-emerald-700 whitespace-nowrap">{it.stockedQty || 0}</td>
+                                      <td className="py-2 px-3 font-mono text-slate-700 whitespace-nowrap">
                                         {it.batchNumber ? (
                                           <span>
                                             <strong>{it.batchNumber}</strong>
@@ -810,7 +907,7 @@ export const InboundOrderList: React.FC<InboundOrderListProps> = ({
                                           <span className="text-slate-400 italic">Chưa tạo lô</span>
                                         )}
                                       </td>
-                                      <td className="py-2 px-3 text-right font-mono text-slate-700">
+                                      <td className="py-2 px-3 text-right font-mono text-slate-700 whitespace-nowrap">
                                         {it.unitPrice ? `${it.unitPrice.toLocaleString('vi-VN')} đ` : '-'}
                                       </td>
                                     </tr>
@@ -818,6 +915,16 @@ export const InboundOrderList: React.FC<InboundOrderListProps> = ({
                                 </tbody>
                               </table>
                             </div>
+
+                            {order.notes && (
+                              <div className="mt-3 p-3 rounded-xl bg-amber-50/90 border border-amber-200 text-xs text-amber-950 flex items-start gap-2.5 shadow-xs">
+                                <FileText className="w-4 h-4 text-amber-700 shrink-0 mt-0.5" />
+                                <div className="space-y-0.5">
+                                  <span className="font-bold text-amber-900 block">Biên bản / Ghi chú kiểm định QC & Tiếp nhận:</span>
+                                  <p className="text-amber-800 leading-relaxed whitespace-pre-wrap">{order.notes}</p>
+                                </div>
+                              </div>
+                            )}
                           </div>
                         </td>
                       </tr>

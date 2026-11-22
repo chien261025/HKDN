@@ -52,7 +52,7 @@ export const ProfileInfoTab: React.FC<ProfileInfoTabProps> = ({ session }) => {
     <div className="p-6 space-y-4 text-sm">
       <div className="p-4 rounded-xl bg-slate-50 border border-slate-200 space-y-3">
         <div className="flex items-center justify-between">
-          <span className="text-slate-500 font-medium">Vai Trò Hệ Thống (RBAC):</span>
+          <span className="text-slate-500 font-medium">Vai Trò Hệ Thống:</span>
           {getRoleBadge(session.role)}
         </div>
         <div className="flex items-center justify-between border-t border-slate-200 pt-2.5">

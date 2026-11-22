@@ -1,5 +1,5 @@
 import React from 'react';
-import { Lock, FileText, AlertTriangle, ArrowRightLeft, MapPin, Ban } from 'lucide-react';
+import { Lock, FileText, AlertTriangle, ArrowRightLeft, MapPin, Ban, Clock } from 'lucide-react';
 import { StockItem } from '../../types';
 
 interface StockBalanceMobileCardsProps {
@@ -47,23 +47,43 @@ export const StockBalanceMobileCards: React.FC<StockBalanceMobileCardsProps> = (
             </span>
           </div>
 
-          {/* Batch & Expiry Date */}
-          <div className="flex items-center justify-between text-xs bg-slate-50 p-2.5 rounded-lg border border-slate-200/60">
-            <div>
-              <span className="text-slate-500">Mã lô: </span>
-              <span className="font-mono font-semibold text-slate-800">{item.batchNumber}</span>
+          {/* Batch, Expiry Date & Tuổi Tồn Kho */}
+          <div className="text-xs bg-slate-50 p-2.5 rounded-lg border border-slate-200/60 space-y-1.5">
+            <div className="flex items-center justify-between">
+              <div>
+                <span className="text-slate-500">Mã lô: </span>
+                <span className="font-mono font-semibold text-slate-800">{item.batchNumber}</span>
+              </div>
+              <div className="flex items-center gap-1.5">
+                <span className="text-slate-500">HSD: <strong className="text-slate-700 font-mono">{item.expiryDate}</strong></span>
+                {item.isExpired ? (
+                  <span className="text-[10px] font-bold bg-rose-100 text-rose-800 border border-rose-300 px-1.5 py-0.5 rounded inline-flex items-center gap-0.5">
+                    <Ban className="w-2.5 h-2.5 text-rose-600" /> Đã Hết Hạn
+                  </span>
+                ) : item.isExpiringSoon ? (
+                  <span className="text-[10px] font-semibold bg-amber-50 text-amber-800 border border-amber-300 px-1.5 py-0.5 rounded inline-flex items-center gap-0.5">
+                    <AlertTriangle className="w-2.5 h-2.5 text-amber-600" /> Cận Hạn {item.daysRemaining != null && item.daysRemaining >= 0 ? `(${item.daysRemaining}d)` : ''}
+                  </span>
+                ) : null}
+              </div>
             </div>
-            <div className="flex items-center gap-1.5">
-              <span className="text-slate-500">HSD: <strong className="text-slate-700 font-mono">{item.expiryDate}</strong></span>
-              {item.isExpired ? (
-                <span className="text-[10px] font-bold bg-rose-100 text-rose-800 border border-rose-300 px-1.5 py-0.5 rounded inline-flex items-center gap-0.5">
-                  <Ban className="w-2.5 h-2.5 text-rose-600" /> Đã Hết Hạn
+
+            <div className="flex items-center justify-between pt-1 border-t border-slate-200/60 text-2xs">
+              <span className="text-slate-500">Tuổi tồn kho:</span>
+              <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded font-semibold border ${
+                (item.daysInStock ?? 0) > 180
+                  ? 'bg-rose-50 text-rose-700 border-rose-200 font-bold'
+                  : (item.daysInStock ?? 0) >= 90
+                  ? 'bg-amber-50 text-amber-800 border-amber-300'
+                  : (item.daysInStock ?? 0) >= 30
+                  ? 'bg-sky-50 text-sky-700 border-sky-200'
+                  : 'bg-emerald-50 text-emerald-700 border-emerald-200'
+              }`}>
+                <Clock className="w-2.5 h-2.5" />
+                <span>
+                  {item.daysInStock ?? 0} ngày {(item.daysInStock ?? 0) > 180 ? '[Đọng vốn]' : (item.daysInStock ?? 0) >= 90 ? '[Tồn chậm]' : (item.daysInStock ?? 0) >= 30 ? '[Chuẩn]' : '[Mới]'}
                 </span>
-              ) : item.isExpiringSoon ? (
-                <span className="text-[10px] font-semibold bg-amber-50 text-amber-800 border border-amber-300 px-1.5 py-0.5 rounded inline-flex items-center gap-0.5">
-                  <AlertTriangle className="w-2.5 h-2.5 text-amber-600" /> Cận Hạn {item.daysRemaining != null && item.daysRemaining >= 0 ? `(${item.daysRemaining}d)` : ''}
-                </span>
-              ) : null}
+              </span>
             </div>
           </div>
 

@@ -1,4 +1,5 @@
-import React from 'react';
+import React, { useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { Printer, X, FileText, CheckCircle2, Building2, Truck, ShieldCheck, AlertOctagon } from 'lucide-react';
 import { InboundOrder } from '../types';
 import { getWarehouseDisplayName } from '../../masterdata/services/warehouseService';
@@ -9,6 +10,13 @@ interface InboundVoucherModalProps {
 }
 
 export const InboundVoucherModal: React.FC<InboundVoucherModalProps> = ({ order, onClose }) => {
+  useEffect(() => {
+    document.body.classList.add('has-printable-voucher');
+    return () => {
+      document.body.classList.remove('has-printable-voucher');
+    };
+  }, []);
+
   const totalExpected = order.items.reduce((sum, it) => sum + it.expectedQty, 0);
   const totalReceived = order.items.reduce((sum, it) => sum + (it.receivedQty || 0), 0);
   const totalRejected = order.items.reduce((sum, it) => sum + (it.rejectedQty || 0), 0);
@@ -17,9 +25,9 @@ export const InboundVoucherModal: React.FC<InboundVoucherModalProps> = ({ order,
 
   const warehouseName = getWarehouseDisplayName(order.warehouseId);
 
-  return (
-    <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4 z-50 animate-in fade-in duration-150 print:bg-white print:p-0 print:static">
-      <div className="printable-voucher bg-white rounded-2xl max-w-4xl w-full border border-slate-200 shadow-2xl overflow-hidden text-slate-900 relative">
+  return createPortal(
+    <div className="printable-voucher-overlay fixed inset-0 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4 z-50 animate-in fade-in duration-150 print:bg-white print:p-0 print:static print:block">
+      <div className="printable-voucher bg-white rounded-2xl max-w-5xl w-full border border-slate-200 shadow-2xl overflow-hidden text-slate-900 relative print:border-none print:shadow-none print:max-w-none print:w-full">
         {/* Header Bar */}
         <div className="p-4 sm:p-5 border-b border-slate-200 flex items-center justify-between bg-slate-50/90 print:hidden">
           <div className="flex items-center gap-3">
@@ -54,16 +62,16 @@ export const InboundVoucherModal: React.FC<InboundVoucherModalProps> = ({ order,
         </div>
 
         {/* Modal Printable Content */}
-        <div className="p-6 sm:p-8 space-y-6 max-h-[80vh] overflow-y-auto print:max-h-none print:overflow-visible">
+        <div className="modal-body-scroll p-6 sm:p-8 space-y-6 max-h-[80vh] overflow-y-auto print:max-h-none print:overflow-visible print:p-0 print:space-y-3">
           {/* Header Tiêu Ngữ Chuẩn Doanh Nghiệp */}
-          <div className="text-center space-y-1 pb-4 border-b border-slate-200">
-            <div className="text-xs font-semibold text-slate-500 uppercase tracking-widest">
-              HỆ THỐNG QUẢN LÝ KHO THÔNG MINH - SMART WMS ENTERPRISE
+          <div className="text-center space-y-1 pb-3 border-b-2 border-slate-900 print:pb-2">
+            <div className="text-xs font-semibold text-slate-500 uppercase tracking-widest print:text-[10px]">
+              TỔNG KHO VẬN SMART LOGISTICS VIỆT NAM - SMART WMS ENTERPRISE
             </div>
-            <h1 className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight uppercase">
-              PHIẾU NHẬP KHO KIÊM BIÊN BẢN KIỂM ĐỊNH (GRN)
+            <h1 className="text-xl sm:text-2xl print:text-base font-black text-slate-900 tracking-tight uppercase">
+              PHIẾU NHẬP KHO KIÊM BIÊN BẢN TIẾP NHẬN (GRN)
             </h1>
-            <div className="text-xs text-slate-600 font-medium">
+            <div className="text-xs text-slate-600 font-medium print:text-[10px]">
               Số: <strong className="font-mono text-slate-900">{order.poCode}</strong> • Ngày lập: {order.createdAt || order.expectedDeliveryDate}
             </div>
           </div>
@@ -105,15 +113,15 @@ export const InboundVoucherModal: React.FC<InboundVoucherModalProps> = ({ order,
               <table className="w-full text-left text-xs">
                 <thead className="bg-slate-100 text-slate-700 font-bold uppercase tracking-wider text-[11px] border-b border-slate-200">
                   <tr>
-                    <th className="py-2.5 px-3 w-8 text-center">STT</th>
-                    <th className="py-2.5 px-3">Mặt Hàng & SKU</th>
-                    <th className="py-2.5 px-3 text-center">ĐVT</th>
-                    <th className="py-2.5 px-3 text-center">Số Lượng Đặt</th>
-                    <th className="py-2.5 px-3 text-center">Thực Nhận</th>
-                    <th className="py-2.5 px-3 text-center">Hàng Lỗi QC</th>
-                    <th className="py-2.5 px-3 text-center">Đã Cất Kệ</th>
-                    <th className="py-2.5 px-3 text-right">Đơn Giá Nhập</th>
-                    <th className="py-2.5 px-3 text-right">Thành Tiền</th>
+                    <th className="py-2.5 px-3 w-8 text-center whitespace-nowrap">STT</th>
+                    <th className="py-2.5 px-3 min-w-[200px]">Mặt Hàng & SKU</th>
+                    <th className="py-2.5 px-3 text-center whitespace-nowrap">ĐVT</th>
+                    <th className="py-2.5 px-3 text-center whitespace-nowrap">Số Lượng Đặt</th>
+                    <th className="py-2.5 px-3 text-center whitespace-nowrap">Thực Nhận</th>
+                    <th className="py-2.5 px-3 text-center whitespace-nowrap">Hàng Lỗi QC</th>
+                    <th className="py-2.5 px-3 text-center whitespace-nowrap">Đã Cất Kệ</th>
+                    <th className="py-2.5 px-3 text-right whitespace-nowrap min-w-[110px]">Đơn Giá Nhập</th>
+                    <th className="py-2.5 px-3 text-right whitespace-nowrap min-w-[125px]">Thành Tiền</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100 font-medium text-slate-800">
@@ -121,7 +129,7 @@ export const InboundVoucherModal: React.FC<InboundVoucherModalProps> = ({ order,
                     const itemTotal = (it.expectedQty || 0) * (it.unitPrice || 0);
                     return (
                       <tr key={it.id || idx} className="hover:bg-slate-50/80">
-                        <td className="py-2.5 px-3 text-center text-slate-500 font-mono">{idx + 1}</td>
+                        <td className="py-2.5 px-3 text-center text-slate-500 font-mono whitespace-nowrap">{idx + 1}</td>
                         <td className="py-2.5 px-3">
                           <div className="font-bold text-slate-900">{it.productName}</div>
                           <div className="text-[11px] text-slate-500 font-mono mt-0.5">
@@ -130,14 +138,14 @@ export const InboundVoucherModal: React.FC<InboundVoucherModalProps> = ({ order,
                             {it.expiryDate && <span> • HSD: {it.expiryDate}</span>}
                           </div>
                         </td>
-                        <td className="py-2.5 px-3 text-center text-slate-600">{it.unit}</td>
-                        <td className="py-2.5 px-3 text-center font-bold text-slate-900 tabular-nums">
+                        <td className="py-2.5 px-3 text-center text-slate-600 whitespace-nowrap">{it.unit}</td>
+                        <td className="py-2.5 px-3 text-center font-bold text-slate-900 tabular-nums whitespace-nowrap">
                           {it.expectedQty}
                         </td>
-                        <td className="py-2.5 px-3 text-center font-bold text-blue-700 tabular-nums">
+                        <td className="py-2.5 px-3 text-center font-bold text-blue-700 tabular-nums whitespace-nowrap">
                           {it.receivedQty || 0}
                         </td>
-                        <td className="py-2.5 px-3 text-center tabular-nums">
+                        <td className="py-2.5 px-3 text-center tabular-nums whitespace-nowrap">
                           {(it.rejectedQty || 0) > 0 ? (
                             <span className="font-bold text-rose-700 bg-rose-50 px-1.5 py-0.5 rounded border border-rose-200">
                               {it.rejectedQty}
@@ -146,13 +154,13 @@ export const InboundVoucherModal: React.FC<InboundVoucherModalProps> = ({ order,
                             <span className="text-slate-400">0</span>
                           )}
                         </td>
-                        <td className="py-2.5 px-3 text-center font-bold text-emerald-700 tabular-nums">
+                        <td className="py-2.5 px-3 text-center font-bold text-emerald-700 tabular-nums whitespace-nowrap">
                           {it.stockedQty || 0}
                         </td>
-                        <td className="py-2.5 px-3 text-right font-mono text-slate-600 tabular-nums">
+                        <td className="py-2.5 px-3 text-right font-mono text-slate-600 tabular-nums whitespace-nowrap">
                           {(it.unitPrice || 0).toLocaleString('vi-VN')} đ
                         </td>
-                        <td className="py-2.5 px-3 text-right font-mono font-bold text-slate-900 tabular-nums">
+                        <td className="py-2.5 px-3 text-right font-mono font-bold text-slate-900 tabular-nums whitespace-nowrap">
                           {itemTotal.toLocaleString('vi-VN')} đ
                         </td>
                       </tr>
@@ -161,13 +169,13 @@ export const InboundVoucherModal: React.FC<InboundVoucherModalProps> = ({ order,
                 </tbody>
                 <tfoot className="bg-slate-50 border-t border-slate-200 font-bold text-xs text-slate-900">
                   <tr>
-                    <td colSpan={3} className="py-2.5 px-3 text-right uppercase">Tổng cộng:</td>
-                    <td className="py-2.5 px-3 text-center font-mono">{totalExpected}</td>
-                    <td className="py-2.5 px-3 text-center font-mono text-blue-700">{totalReceived}</td>
-                    <td className="py-2.5 px-3 text-center font-mono text-rose-700">{totalRejected}</td>
-                    <td className="py-2.5 px-3 text-center font-mono text-emerald-700">{totalStocked}</td>
-                    <td></td>
-                    <td className="py-2.5 px-3 text-right font-mono text-emerald-800 text-sm">
+                    <td colSpan={3} className="py-2.5 px-3 text-right uppercase tracking-wider whitespace-nowrap">Tổng cộng:</td>
+                    <td className="py-2.5 px-3 text-center font-mono whitespace-nowrap">{totalExpected}</td>
+                    <td className="py-2.5 px-3 text-center font-mono text-blue-700 whitespace-nowrap">{totalReceived}</td>
+                    <td className="py-2.5 px-3 text-center font-mono text-rose-700 whitespace-nowrap">{totalRejected}</td>
+                    <td className="py-2.5 px-3 text-center font-mono text-emerald-700 whitespace-nowrap">{totalStocked}</td>
+                    <td className="py-2.5 px-3"></td>
+                    <td className="py-2.5 px-3 text-right font-mono text-emerald-800 text-sm whitespace-nowrap font-bold">
                       {totalVal.toLocaleString('vi-VN')} đ
                     </td>
                   </tr>
@@ -198,47 +206,51 @@ export const InboundVoucherModal: React.FC<InboundVoucherModalProps> = ({ order,
           </div>
 
           {/* Chữ ký 4 bên chuẩn mực */}
-          <div className="pt-6 border-t border-slate-200">
-            <div className="grid grid-cols-4 gap-3 text-center text-xs">
-              <div className="space-y-1">
+          <div className="pt-4 border-t-2 border-slate-900 print:pt-2 print:mt-2">
+            <div className="grid grid-cols-4 gap-3 text-center text-xs print:text-[10px]">
+              <div className="space-y-0.5">
                 <span className="font-bold text-slate-900 block">Đại Diện Giao Hàng</span>
-                <span className="text-[11px] text-slate-400 block italic">(Ký, ghi rõ họ tên)</span>
-                <div className="h-16 flex items-end justify-center">
-                  <span className="text-slate-400 border-t border-dashed border-slate-300 pt-1 w-28 text-[11px]">
+                <span className="text-[10px] text-slate-400 block italic">(Ký, ghi rõ họ tên)</span>
+                <div className="h-12 print:h-12 flex items-end justify-center">
+                  <span className="text-slate-400 border-t border-dashed border-slate-400 pt-1 w-24 text-[10px]">
                     (Ký nhận)
                   </span>
                 </div>
               </div>
 
-              <div className="space-y-1">
-                <span className="font-bold text-slate-900 block">Nhân Viên Kiểm Đếm QC</span>
-                <span className="text-[11px] text-slate-400 block italic">(Ký, ghi rõ họ tên)</span>
-                <div className="h-16 flex items-end justify-center">
-                  <span className="font-bold text-blue-700 border-t border-dashed border-slate-300 pt-1 w-28 text-[11px]">
+              <div className="space-y-0.5">
+                <span className="font-bold text-slate-900 block">Nhân Viên QC</span>
+                <span className="text-[10px] text-slate-400 block italic">(Ký, ghi rõ họ tên)</span>
+                <div className="h-12 print:h-12 flex items-end justify-center">
+                  <span className="font-bold text-slate-900 border-t border-dashed border-slate-400 pt-1 w-24 text-[10px]">
                     Lê Kiểm Định
                   </span>
                 </div>
               </div>
 
-              <div className="space-y-1">
+              <div className="space-y-0.5">
                 <span className="font-bold text-slate-900 block">Thủ Kho Nhận Hàng</span>
-                <span className="text-[11px] text-slate-400 block italic">(Ký, ghi rõ họ tên)</span>
-                <div className="h-16 flex items-end justify-center">
-                  <span className="font-bold text-blue-700 border-t border-dashed border-slate-300 pt-1 w-28 text-[11px]">
+                <span className="text-[10px] text-slate-400 block italic">(Ký, ghi rõ họ tên)</span>
+                <div className="h-12 print:h-12 flex items-end justify-center">
+                  <span className="font-bold text-slate-900 border-t border-dashed border-slate-400 pt-1 w-24 text-[10px]">
                     Trần Trưởng Kho
                   </span>
                 </div>
               </div>
 
-              <div className="space-y-1">
+              <div className="space-y-0.5">
                 <span className="font-bold text-slate-900 block">Kế Toán / Quản Lý Kho</span>
-                <span className="text-[11px] text-slate-400 block italic">(Ký, đóng dấu)</span>
-                <div className="h-16 flex items-end justify-center">
-                  <span className="font-bold text-indigo-700 border-t border-dashed border-slate-300 pt-1 w-28 text-[11px]">
+                <span className="text-[10px] text-slate-400 block italic">(Ký, đóng dấu)</span>
+                <div className="h-12 print:h-12 flex items-end justify-center">
+                  <span className="font-bold text-slate-900 border-t border-dashed border-slate-400 pt-1 w-24 text-[10px]">
                     Đã Phê Duyệt
                   </span>
                 </div>
               </div>
+            </div>
+
+            <div className="text-center mt-3 pt-2 border-t border-slate-200 text-[10px] print:text-[8.5px] text-slate-500 italic">
+              Chứng từ điện tử trích xuất từ Hệ thống Quản trị Kho SMART WMS • Thời gian in: {new Date().toLocaleString('vi-VN')}
             </div>
           </div>
         </div>
@@ -261,7 +273,8 @@ export const InboundVoucherModal: React.FC<InboundVoucherModalProps> = ({ order,
           </button>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 };
 

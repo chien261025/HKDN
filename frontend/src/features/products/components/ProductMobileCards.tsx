@@ -2,6 +2,7 @@ import React from 'react';
 import { Barcode, Box, Copy, Check, Printer, Edit2, Eye, DollarSign, Ruler, Image as ImageIcon } from 'lucide-react';
 import { ProductItem } from '../types';
 import { getCategoryBadge, getZoneBadge } from '../utils/productBadges';
+import { canViewCostPrice, formatMaskedPrice } from '../../auth/utils/permissionUtils';
 
 interface ProductMobileCardsProps {
   products: ProductItem[];
@@ -134,16 +135,16 @@ export const ProductMobileCards: React.FC<ProductMobileCardsProps> = ({
             {/* Pricing Details */}
             <div className="p-2.5 bg-slate-50 rounded-xl border border-slate-200/80 text-xs font-mono grid grid-cols-2 gap-2">
               <div>
-                <span className="text-slate-400 text-[10px] block" title="Giá vốn chuẩn tham khảo Master Data">Giá chuẩn:</span>
-                <span className="font-bold text-emerald-700">{(p.purchasePrice || 0).toLocaleString()} ₫</span>
+                <span className="text-slate-400 text-[10px] block" title="Giá nhập tham khảo">Giá nhập:</span>
+                <span className="font-bold text-emerald-700">{formatMaskedPrice(p.purchasePrice, canViewCostPrice())}</span>
               </div>
               <div>
                 <span className="text-slate-400 text-[10px] block">Giá bán đề xuất:</span>
-                <span className="font-bold text-blue-700">{(p.sellingPrice || 0).toLocaleString()} ₫</span>
+                <span className="font-bold text-blue-700">{formatMaskedPrice(p.sellingPrice, canViewCostPrice())}</span>
               </div>
               <div className="col-span-2 pt-1 border-t border-slate-200 flex items-center justify-between text-[11px]">
-                <span className="text-slate-500">Trị giá tồn kho:</span>
-                <span className="font-extrabold text-slate-900">{inventoryValue.toLocaleString()} ₫</span>
+                <span className="text-slate-500">Tổng giá trị tồn:</span>
+                <span className="font-extrabold text-slate-900">{formatMaskedPrice(inventoryValue, canViewCostPrice())}</span>
               </div>
             </div>
 
@@ -166,6 +167,19 @@ export const ProductMobileCards: React.FC<ProductMobileCardsProps> = ({
               </span>
               {getCategoryBadge(p.category)}
               {getZoneBadge(p.storageZone)}
+              {p.trackingMethod === 'SERIAL_IMEI' ? (
+                <span className="text-[10px] px-1.5 py-0.5 rounded font-bold bg-cyan-50 text-cyan-700 border border-cyan-200">
+                  Serial/IMEI
+                </span>
+              ) : p.trackingMethod === 'STANDARD' ? (
+                <span className="text-[10px] px-1.5 py-0.5 rounded font-bold bg-slate-100 text-slate-700 border border-slate-200">
+                  Tiêu Chuẩn
+                </span>
+              ) : (
+                <span className="text-[10px] px-1.5 py-0.5 rounded font-bold bg-indigo-50 text-indigo-700 border border-indigo-200">
+                  {p.outboundStrategy === 'FEFO' || p.category === 'FOOD_BEVERAGE' ? 'Theo Lô & HSD' : 'Nhập trước xuất trước'}
+                </span>
+              )}
             </div>
 
             {/* Stock Level Bar */}
@@ -185,7 +199,7 @@ export const ProductMobileCards: React.FC<ProductMobileCardsProps> = ({
                 </span>
               </div>
               <div className="text-[11px] font-mono text-slate-400">
-                Min: {p.safetyStock} | ROP: {p.reorderPoint}
+                Tối thiểu: {p.safetyStock} | Ngưỡng: {p.reorderPoint}
               </div>
             </div>
           </div>

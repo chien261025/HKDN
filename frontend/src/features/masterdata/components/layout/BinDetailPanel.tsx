@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { BinLocation } from '../../types';
 import {
   Scale,
@@ -12,6 +12,8 @@ import {
   Truck,
   CheckCircle2,
   AlertTriangle,
+  Lock,
+  Unlock,
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 
@@ -28,6 +30,34 @@ export const BinDetailPanel: React.FC<BinDetailPanelProps> = ({
   occupiedCount,
   onOpenTransferModal,
 }) => {
+  const [lockedBins, setLockedBins] = useState<string[]>(() => {
+    try {
+      const saved = localStorage.getItem('smart_wms_locked_bins');
+      return saved ? JSON.parse(saved) : [];
+    } catch {
+      return [];
+    }
+  });
+
+  const isLocked = selectedBin ? lockedBins.includes(selectedBin.barcode) : false;
+
+  const handleToggleLock = () => {
+    if (!selectedBin) return;
+    setLockedBins((prev) => {
+      const next = prev.includes(selectedBin.barcode)
+        ? prev.filter((b) => b !== selectedBin.barcode)
+        : [...prev, selectedBin.barcode];
+      try {
+        localStorage.setItem('smart_wms_locked_bins', JSON.stringify(next));
+        window.dispatchEvent(
+          new CustomEvent('smart_wms_bin_status_changed', {
+            detail: { barcode: selectedBin.barcode, locked: next.includes(selectedBin.barcode) },
+          })
+        );
+      } catch {}
+      return next;
+    });
+  };
   if (!selectedBin) {
     return (
       <div className="bg-white rounded-2xl p-5 border border-slate-200 space-y-4 shadow-sm text-sm sticky top-4">
@@ -111,6 +141,49 @@ export const BinDetailPanel: React.FC<BinDetailPanelProps> = ({
             ? 'Cận Hạn (FEFO)'
             : 'Ô Còn Trống'}
         </span>
+      </div>
+
+      {/* Khối quản lý trạng thái Khóa / Mở Khóa Ô Kệ (Toggle Switch) */}
+      <div
+        className={`p-3 rounded-xl border flex items-center justify-between gap-2 transition-all ${
+          isLocked ? 'bg-rose-50 border-rose-300' : 'bg-slate-50 border-slate-200'
+        }`}
+      >
+        <div className="flex items-center gap-2">
+          {isLocked ? (
+            <div className="flex items-center gap-1.5 text-xs font-bold text-rose-800">
+              <AlertTriangle className="w-4 h-4 text-rose-600 shrink-0" />
+              <span>Đang Khóa / Bảo Trì</span>
+            </div>
+          ) : (
+            <div className="flex items-center gap-1.5 text-xs font-bold text-emerald-800">
+              <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+              <span>Hoạt Động Bình Thường</span>
+            </div>
+          )}
+        </div>
+        <button
+          type="button"
+          onClick={handleToggleLock}
+          className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all border shadow-xs cursor-pointer flex items-center gap-1.5 ${
+            isLocked
+              ? 'bg-rose-600 text-white border-rose-700 hover:bg-rose-700 shadow-rose-200'
+              : 'bg-white text-slate-700 border-slate-300 hover:bg-slate-100 hover:text-slate-900'
+          }`}
+          title={isLocked ? 'Bấm để Mở Khóa ô kệ' : 'Bấm để Khóa Bảo Trì ô kệ này'}
+        >
+          {isLocked ? (
+            <>
+              <Unlock className="w-3.5 h-3.5 text-white" />
+              <span>Mở Khóa Ô</span>
+            </>
+          ) : (
+            <>
+              <Lock className="w-3.5 h-3.5 text-slate-500" />
+              <span>Khóa Bảo Trì</span>
+            </>
+          )}
+        </button>
       </div>
 
       {/* Tọa độ không gian kho */}
@@ -230,7 +303,7 @@ export const BinDetailPanel: React.FC<BinDetailPanelProps> = ({
               className="w-full py-2.5 px-3 rounded-xl bg-emerald-600 hover:bg-emerald-700 active:scale-[0.99] text-white font-bold text-xs flex items-center justify-center gap-1.5 transition-all shadow-md shadow-emerald-200 cursor-pointer"
             >
               <Plus className="w-3.5 h-3.5" />
-              <span>Cất Hàng Nhập Kho (Putaway)</span>
+              <span>Cất Hàng Nhập Kho</span>
             </Link>
 
             <Link

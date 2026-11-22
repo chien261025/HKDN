@@ -23,7 +23,7 @@ apiClient.interceptors.request.use(
   (error) => Promise.reject(error)
 );
 
-// Response Interceptor: Bắt lỗi 401 Unauthorized và tự động đăng xuất
+// Response Interceptor: Bắt lỗi 401 Unauthorized và tự động đăng xuất, chuẩn hóa thông báo lỗi từ backend
 apiClient.interceptors.response.use(
   (response) => response,
   (error) => {
@@ -35,6 +35,12 @@ apiClient.interceptors.response.use(
         window.location.href = '/login';
       }
     }
+
+    // Tự động giải nén thông điệp lỗi nghiệp vụ từ backend thay vì hiển thị "Request failed with status code 400"
+    if (error.response?.data?.message) {
+      error.message = error.response.data.message;
+    }
+
     return Promise.reject(error);
   }
 );

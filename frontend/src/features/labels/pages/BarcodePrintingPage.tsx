@@ -4,6 +4,7 @@ import { useSearchParams } from 'react-router-dom';
 import { BinLabelPrintSection } from '../components/BinLabelPrintSection';
 import { BatchLabelPrintSection } from '../components/BatchLabelPrintSection';
 import { CustomLabelPrintSection } from '../components/CustomLabelPrintSection';
+import { LabelScannerInspectorModal } from '../components/LabelScannerInspectorModal';
 
 interface BarcodePrintingPageProps {
   onOpenScanner?: () => void;
@@ -12,6 +13,7 @@ interface BarcodePrintingPageProps {
 export const BarcodePrintingPage: React.FC<BarcodePrintingPageProps> = ({ onOpenScanner }) => {
   const [searchParams] = useSearchParams();
   const tabParam = searchParams.get('tab');
+  const [showInspectorModal, setShowInspectorModal] = useState<boolean>(false);
 
   const [activeTab, setActiveTab] = useState<'BINS' | 'BATCHES' | 'PALLETS'>(
     tabParam === 'BATCHES' ? 'BATCHES' : tabParam === 'PALLETS' ? 'PALLETS' : 'BINS'
@@ -28,7 +30,7 @@ export const BarcodePrintingPage: React.FC<BarcodePrintingPageProps> = ({ onOpen
   }, [tabParam, searchParams]);
 
   return (
-    <div className="space-y-5 max-w-7xl mx-auto pb-12">
+    <div className="space-y-4 pb-12">
       {/* Page Header (Hidden on print) */}
       <div className="bg-white p-5 sm:p-6 rounded-2xl border border-slate-200/90 shadow-sm flex flex-wrap items-center justify-between gap-4 no-print">
         <div className="flex items-center gap-4">
@@ -46,25 +48,20 @@ export const BarcodePrintingPage: React.FC<BarcodePrintingPageProps> = ({ onOpen
         </div>
 
         <div className="flex items-center gap-2">
-          {onOpenScanner && (
-            <button
-              type="button"
-              onClick={onOpenScanner}
-              className="flex items-center gap-1.5 px-3.5 py-2 bg-slate-50 hover:bg-slate-100 text-slate-700 rounded-lg text-xs font-medium transition-colors border border-slate-300 shadow-xs cursor-pointer"
-            >
-              <ScanLine className="w-3.5 h-3.5 text-indigo-600" />
-              <span>Quét Thử</span>
-            </button>
-          )}
-
           <button
             type="button"
-            onClick={() => window.print()}
-            className="flex items-center gap-2 px-3.5 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-xs font-semibold shadow-xs transition-colors cursor-pointer"
+            onClick={() => setShowInspectorModal(true)}
+            className="flex items-center gap-1.5 px-3.5 py-2 bg-blue-50 hover:bg-blue-100 text-blue-700 rounded-lg text-xs font-bold transition-colors border border-blue-200 shadow-xs cursor-pointer"
+            title="Mở máy quét tra cứu mã vạch nhanh"
           >
-            <Printer className="w-3.5 h-3.5" />
-            <span>In Toàn Bộ (Ctrl+P)</span>
+            <ScanLine className="w-3.5 h-3.5 text-blue-600" />
+            <span>Quét & Tra Cứu Mã</span>
           </button>
+
+          <div className="hidden sm:flex items-center gap-2 text-xs font-medium text-slate-600 bg-slate-50 px-3.5 py-2 rounded-xl border border-slate-200">
+            <Printer className="w-3.5 h-3.5 text-blue-600" />
+            <span>Chuẩn in nhiệt 100×60mm & Decal A4</span>
+          </div>
         </div>
       </div>
 
@@ -119,6 +116,13 @@ export const BarcodePrintingPage: React.FC<BarcodePrintingPageProps> = ({ onOpen
       {activeTab === 'BINS' && <BinLabelPrintSection />}
       {activeTab === 'BATCHES' && <BatchLabelPrintSection />}
       {activeTab === 'PALLETS' && <CustomLabelPrintSection />}
+
+      {/* Interactive Testing & Inspector Modal */}
+      <LabelScannerInspectorModal
+        isOpen={showInspectorModal}
+        onClose={() => setShowInspectorModal(false)}
+        activeWarehouseCode="WH01"
+      />
     </div>
   );
 };

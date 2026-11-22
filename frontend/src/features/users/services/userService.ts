@@ -6,6 +6,7 @@ export interface CreateUserPayload {
   password: string;
   fullName: string;
   email: string;
+  phone?: string;
   role: string;
   assignedWarehouse?: string;
   assignedWarehouseIds?: number[];
@@ -20,32 +21,85 @@ interface ApiResponse<T> {
   timestamp: string;
 }
 
+const LOCK_REASONS_KEY = 'smart_wms_user_lock_info';
+
+export const getStoredLockInfo = (): Record<string, { reason: string; lockedAt: string; lockedBy: string }> => {
+  try {
+    const raw = localStorage.getItem(LOCK_REASONS_KEY);
+    return raw
+      ? JSON.parse(raw)
+      : {
+          '2': {
+            reason: 'Nghi ngờ vi phạm an toàn thông tin / Yêu cầu quản trị viên',
+            lockedAt: '22/11/2026 12:35',
+            lockedBy: 'Nguyễn Quản Trị (@admin)',
+          },
+        };
+  } catch {
+    return {};
+  }
+};
+
+export const setStoredLockInfo = (userId: string, reason: string) => {
+  try {
+    const data = getStoredLockInfo();
+    data[userId] = {
+      reason,
+      lockedAt: new Date().toLocaleString('vi-VN'),
+      lockedBy: 'Nguyễn Quản Trị (@admin)',
+    };
+    localStorage.setItem(LOCK_REASONS_KEY, JSON.stringify(data));
+  } catch (e) {
+    console.error('Error saving lock info:', e);
+  }
+};
+
+export const removeStoredLockInfo = (userId: string) => {
+  try {
+    const data = getStoredLockInfo();
+    delete data[userId];
+    localStorage.setItem(LOCK_REASONS_KEY, JSON.stringify(data));
+  } catch (e) {
+    console.error('Error removing lock info:', e);
+  }
+};
+
 /** Helper map từ backend user model sang frontend user account view model */
 export const mapBackendUserToAccount = (
   u: BackendUserResponse,
   overrides?: Partial<UserAccount>
-): UserAccount => ({
-  id: String(u.id),
-  username: u.username,
-  fullName: overrides?.fullName || u.fullName,
-  email: overrides?.email || u.email,
-  phone: overrides?.phone || ('09' + String(u.id).padStart(8, '0')),
-  role: (overrides?.role as UserRole) || (u.role as UserRole) || 'ROLE_OPERATOR',
-  assignedWarehouse: overrides?.assignedWarehouse || u.primaryWarehouse || u.assignedWarehouse || 'Chưa gán kho',
-  assignedWarehouses: u.assignedWarehouses && u.assignedWarehouses.length > 0 ? u.assignedWarehouses : [u.assignedWarehouse || u.primaryWarehouse || 'Chưa gán kho'],
-  primaryWarehouse: u.primaryWarehouse || u.assignedWarehouse || 'Chưa gán kho',
-  isTestAccount: u.isTestAccount !== undefined
-    ? u.isTestAccount
-    : (u.username.toLowerCase().startsWith('brute_') || u.username.toLowerCase().includes('victim')),
-  permissions: u.permissions || [],
-  status: (overrides?.status as UserStatus) || (u.status as UserStatus) || (u.isExpired ? 'EXPIRED' : (u.isActive ? 'ACTIVE' : 'LOCKED')),
-  expiresAt: u.expiresAt ? new Date(u.expiresAt).toLocaleDateString('vi-VN') : null,
-  rawExpiresAt: u.expiresAt || null,
-  isExpired: Boolean(u.isExpired),
-  lastLoginAt: u.updatedAt ? new Date(u.updatedAt).toLocaleString('vi-VN') : 'Vừa cập nhật',
-  lastLoginIp: '192.168.1.10' + (u.id % 10),
-  createdAt: u.createdAt ? new Date(u.createdAt).toLocaleDateString('vi-VN') : 'Hôm nay',
-});
+): UserAccount => {
+  const isLocked = !u.isActive || u.status === 'LOCKED';
+  const lockInfo = getStoredLockInfo()[String(u.id)];
+
+  return {
+    id: String(u.id),
+    username: u.username,
+    fullName: overrides?.fullName || u.fullName,
+    email: overrides?.email || u.email,
+    phone: overrides?.phone || ('09' + String(u.id).padStart(8, '0')),
+    role: (overrides?.role as UserRole) || (u.role as UserRole) || 'ROLE_OPERATOR',
+    assignedWarehouse: overrides?.assignedWarehouse || u.primaryWarehouse || u.assignedWarehouse || 'Chưa gán kho',
+    assignedWarehouses: u.assignedWarehouses && u.assignedWarehouses.length > 0 ? u.assignedWarehouses : [u.assignedWarehouse || u.primaryWarehouse || 'Chưa gán kho'],
+    primaryWarehouse: u.primaryWarehouse || u.assignedWarehouse || 'Chưa gán kho',
+    isTestAccount: u.isTestAccount !== undefined
+      ? u.isTestAccount
+      : (u.username.toLowerCase().startsWith('brute_') || u.username.toLowerCase().includes('victim')),
+    permissions: u.permissions || [],
+    status: (overrides?.status as UserStatus) || (u.status as UserStatus) || (u.isExpired ? 'EXPIRED' : (u.isActive ? 'ACTIVE' : 'LOCKED')),
+    expiresAt: u.expiresAt ? new Date(u.expiresAt).toLocaleDateString('vi-VN') : null,
+    rawExpiresAt: u.expiresAt || null,
+    isExpired: Boolean(u.isExpired),
+    lastLoginAt: u.updatedAt ? new Date(u.updatedAt).toLocaleString('vi-VN') : 'Vừa cập nhật',
+    lastLoginIp: '192.168.1.10' + (u.id % 10),
+    createdAt: u.createdAt ? new Date(u.createdAt).toLocaleDateString('vi-VN') : 'Hôm nay',
+    lockReason: isLocked
+      ? (overrides?.lockReason || lockInfo?.reason || 'Tạm khóa theo yêu cầu quản trị viên / An toàn bảo mật')
+      : undefined,
+    lockedAt: isLocked ? (overrides?.lockedAt || lockInfo?.lockedAt || 'Gần đây') : undefined,
+    lockedBy: isLocked ? (overrides?.lockedBy || lockInfo?.lockedBy || 'Nguyễn Quản Trị (@admin)') : undefined,
+  };
+};
 
 export const userService = {
   /**
@@ -64,16 +118,25 @@ export const userService = {
    * Admin tạo người dùng mới
    */
   async createUser(payload: CreateUserPayload): Promise<UserAccount> {
-    const res = await apiClient.post<ApiResponse<BackendUserResponse>>('/users', payload);
-    if (!res.data.success || !res.data.data) {
-      throw new Error(res.data.message || 'Không thể tạo người dùng mới');
-    }
+    try {
+      const res = await apiClient.post<ApiResponse<BackendUserResponse>>('/users', payload);
+      if (!res.data.success || !res.data.data) {
+        throw new Error(res.data.message || 'Không thể tạo người dùng mới');
+      }
 
-    return mapBackendUserToAccount(res.data.data, {
-      fullName: payload.fullName,
-      email: payload.email,
-      role: payload.role as UserRole,
-    });
+      return mapBackendUserToAccount(res.data.data, {
+        fullName: payload.fullName,
+        email: payload.email,
+        phone: payload.phone,
+        role: payload.role as UserRole,
+        assignedWarehouse: payload.assignedWarehouse,
+      });
+    } catch (err: any) {
+      const serverMessage =
+        err.response?.data?.message ||
+        (err.message && !err.message.includes('status code') ? err.message : null);
+      throw new Error(serverMessage || 'Không thể tạo người dùng mới do dữ liệu trùng lặp hoặc không hợp lệ!');
+    }
   },
 
   /**

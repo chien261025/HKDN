@@ -156,35 +156,6 @@
   transition: color 150ms ease, background-color 200ms cubic-bezier(0.16, 1, 0.3, 1), box-shadow 200ms cubic-bezier(0.16, 1, 0.3, 1), border-color 200ms ease;
 }
 
-/* Print Voucher Styling */
-@media print {
-  body {
-    background: #ffffff !important;
-    color: #0f172a !important;
-  }
-  .print\:hidden {
-    display: none !important;
-  }
-  .printable-voucher {
-    position: fixed !important;
-    left: 0 !important;
-    top: 0 !important;
-    width: 100% !important;
-    max-width: 100% !important;
-    background: #ffffff !important;
-    color: #0f172a !important;
-    border: none !important;
-    box-shadow: none !important;
-    padding: 10px !important;
-  }
-  .printable-voucher * {
-    color: #0f172a !important;
-    background-color: transparent !important;
-    border-color: #cbd5e1 !important;
-    box-shadow: none !important;
-  }
-}
-
 /* Scanner Viewport & Industrial Laser Beam Animation */
 @keyframes laserSweep {
   0% {
@@ -237,25 +208,146 @@
   scrollbar-width: none;
 }
 
-/* Industrial Print Media Query for Labels & Decals */
+/* Industrial Print Media Query for Labels & Decals (Multi-page Pagination Support) */
 @media print {
+  @page {
+    size: auto;
+    margin: 8mm;
+  }
+
+  html,
   body {
+    height: auto !important;
+    min-height: 0 !important;
+    max-height: none !important;
+    overflow: visible !important;
     background-color: #ffffff !important;
     color: #000000 !important;
+    margin: 0 !important;
+    padding: 0 !important;
   }
-  .no-print, header, nav, aside {
+
+  #root,
+  #root > div,
+  main,
+  div {
+    overflow: visible !important;
+  }
+
+  .no-print,
+  header,
+  nav,
+  aside,
+  footer,
+  [role="dialog"] {
     display: none !important;
   }
-  .print-single-label, .print-pallet-label {
+
+  .print-single-label,
+  .print-pallet-label {
     page-break-inside: avoid !important;
     break-inside: avoid !important;
-    margin: 4px auto !important;
-    border: 2px solid #000000 !important;
     box-shadow: none !important;
   }
-  .print-label-sheet {
+
+  .print-decal-grid {
     display: flex !important;
     flex-wrap: wrap !important;
-    gap: 8px !important;
+    justify-content: flex-start !important;
+    gap: 12px !important;
+    width: 100% !important;
+    height: auto !important;
+    overflow: visible !important;
+  }
+
+  .print-decal-item {
+    width: calc(50% - 6px) !important;
+    display: flex !important;
+    justify-content: center !important;
+    page-break-inside: avoid !important;
+    break-inside: avoid !important;
+    margin-bottom: 8px !important;
+  }
+
+  /* =========================================================================
+     Dedicated Official Warehouse Voucher Print Styles (Stock Ledger / Inbound / Outbound / Audit)
+     ========================================================================= */
+  body.has-printable-voucher > *:not(.printable-voucher-overlay) {
+    display: none !important;
+    visibility: hidden !important;
+    height: 0 !important;
+    max-height: 0 !important;
+    overflow: hidden !important;
+  }
+
+  body.has-printable-voucher {
+    margin: 0 !important;
+    padding: 0 !important;
+    background: #ffffff !important;
+    height: auto !important;
+    min-height: 0 !important;
+    max-height: none !important;
+    overflow: visible !important;
+  }
+
+  body.has-printable-voucher .printable-voucher-overlay {
+    position: static !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    background: transparent !important;
+    display: block !important;
+    width: 100% !important;
+    height: auto !important;
+    overflow: visible !important;
+  }
+
+  body.has-printable-voucher .printable-voucher {
+    position: static !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    border: none !important;
+    border-radius: 0 !important;
+    box-shadow: none !important;
+    overflow: visible !important;
+    page-break-inside: avoid !important;
+    break-inside: avoid !important;
+    page-break-after: avoid !important;
+    break-after: avoid !important;
+    background: #ffffff !important;
+  }
+
+  body.has-printable-voucher .printable-voucher .modal-body-scroll {
+    max-height: none !important;
+    overflow: visible !important;
+    padding: 0 !important;
+  }
+
+  body.has-printable-voucher table {
+    width: 100% !important;
+    table-layout: auto !important;
+    page-break-inside: auto !important;
+  }
+
+  body.has-printable-voucher tr {
+    page-break-inside: avoid !important;
+    break-inside: avoid !important;
+  }
+
+  body.has-printable-voucher thead {
+    display: table-header-group !important;
+  }
+
+  body.has-printable-voucher tfoot {
+    display: table-footer-group !important;
+  }
+
+  /* Regular page clean print optimizations (when printing tables directly) */
+  body:not(.has-printable-voucher) button,
+  body:not(.has-printable-voucher) input,
+  body:not(.has-printable-voucher) select,
+  body:not(.has-printable-voucher) .pagination-container {
+    display: none !important;
   }
 }

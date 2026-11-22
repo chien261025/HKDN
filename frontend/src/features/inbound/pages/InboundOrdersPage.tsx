@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { InboundHeader, InboundFilterStatus } from '../components/InboundHeader';
 import { InboundOrderList } from '../components/InboundOrderList';
 import { CreatePoModal } from '../components/CreatePoModal';
@@ -20,6 +21,14 @@ export const InboundOrdersPage: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [busyOrderId, setBusyOrderId] = useState<string | null>(null);
 
+  const [searchParams] = useSearchParams();
+
+  useEffect(() => {
+    if (searchParams.get('create') === 'true') {
+      setIsCreateModalOpen(true);
+    }
+  }, [searchParams]);
+
   // Bộ lọc trạng thái đồng bộ giữa KPI Cards và danh sách đơn PO
   const [activeStatus, setActiveStatus] = useState<InboundFilterStatus>('ALL');
 
@@ -34,12 +43,10 @@ export const InboundOrdersPage: React.FC = () => {
     return match ? parseInt(match[0], 10) : undefined;
   };
 
-  const loadOrders = async (explicitWhId?: number | null) => {
+  const loadOrders = async () => {
     try {
-      const whToUse = explicitWhId !== undefined
-        ? (explicitWhId === null ? undefined : explicitWhId)
-        : getTargetWhId(selectedWarehouse);
-      const data = await inboundService.getInboundOrders(whToUse);
+      // Tải toàn bộ đơn hàng để phục vụ tra cứu tức thì và tìm kiếm đa kho
+      const data = await inboundService.getInboundOrders();
       setOrders(data);
     } catch {
       setError('Không tải được danh sách đơn nhập kho từ backend.');
@@ -49,14 +56,11 @@ export const InboundOrdersPage: React.FC = () => {
   useEffect(() => {
     const activeWh = warehouseService.getActiveWarehouseId() || 'ALL';
     setSelectedWarehouse(activeWh);
-    const targetWh = getTargetWhId(activeWh);
-    loadOrders(targetWh === undefined ? null : targetWh);
+    loadOrders();
 
     const handleWhChange = (e: any) => {
       const newWh = e.detail || warehouseService.getActiveWarehouseId() || 'ALL';
       setSelectedWarehouse(newWh);
-      const newTarget = getTargetWhId(newWh);
-      loadOrders(newTarget === undefined ? null : newTarget);
     };
 
     window.addEventListener('smart_wms_warehouse_changed', handleWhChange);
@@ -68,9 +72,13 @@ export const InboundOrdersPage: React.FC = () => {
   const handleWarehouseChange = (whIdStr: string) => {
     setSelectedWarehouse(whIdStr);
     warehouseService.setActiveWarehouseId(whIdStr);
-    const targetWh = getTargetWhId(whIdStr);
-    loadOrders(targetWh === undefined ? null : targetWh);
   };
+
+  const targetWhId = getTargetWhId(selectedWarehouse);
+  const warehouseOrders = React.useMemo(() => {
+    if (!targetWhId) return orders;
+    return orders.filter((o) => o.warehouseId === targetWhId);
+  }, [orders, targetWhId]);
 
   const handleCreateOrder = async (newOrder: InboundOrder) => {
     try {
@@ -85,12 +93,13 @@ export const InboundOrdersPage: React.FC = () => {
 
   const handleConfirmReceive = async (
     orderId: string,
-    itemUpdates: ReceiptLine[]
+    itemUpdates: ReceiptLine[],
+    notes?: string
   ) => {
     setBusyOrderId(orderId);
     setError(null);
     try {
-      await inboundService.receiveOrder(orderId, itemUpdates);
+      await inboundService.receiveOrder(orderId, itemUpdates, notes);
       await loadOrders();
     } catch (err: any) {
       setError(err.response?.data?.message || err.message || 'Lỗi khi tiếp nhận đơn hàng');
@@ -142,7 +151,7 @@ export const InboundOrdersPage: React.FC = () => {
   };
 
   return (
-    <div className="space-y-5 max-w-7xl mx-auto pb-8">
+    <div className="space-y-4 pb-8">
       {error && (
         <div role="alert" className="rounded-xl border border-red-200 bg-red-50 p-3 text-sm text-red-700">
           {error}
@@ -151,7 +160,7 @@ export const InboundOrdersPage: React.FC = () => {
 
       {/* Header with Interactive KPI Filter Cards & Synchronized Warehouse Selector */}
       <InboundHeader
-        orders={orders}
+        orders={warehouseOrders}
         selectedWarehouse={selectedWarehouse}
         activeStatus={activeStatus}
         onStatusChange={(status) => setActiveStatus(status)}
@@ -162,6 +171,7 @@ export const InboundOrdersPage: React.FC = () => {
       {/* Orders Table with QC badges, Date Filter & Accordion Drill-down */}
       <InboundOrderList
         orders={orders}
+        selectedWarehouse={selectedWarehouse}
         activeStatus={activeStatus}
         onStatusChange={(status) => setActiveStatus(status)}
         busyOrderId={busyOrderId}
@@ -170,6 +180,7 @@ export const InboundOrdersPage: React.FC = () => {
         onPutawayClick={(order) => setPutawayOrder(order)}
         onCloseOrder={handleCloseOrder}
         onPrintVoucher={(order) => setVoucherOrder(order)}
+        onResetWarehouse={() => handleWarehouseChange('ALL')}
       />
 
       {/* Create PO Modal */}
@@ -204,6 +215,10 @@ export const InboundOrdersPage: React.FC = () => {
         <InboundDetailModal
           order={selectedOrder}
           onClose={() => setSelectedOrder(null)}
+          onPrintVoucher={(order) => {
+            setSelectedOrder(null);
+            setVoucherOrder(order);
+          }}
         />
       )}
 

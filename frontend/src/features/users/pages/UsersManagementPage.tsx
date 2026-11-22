@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { Loader2, AlertTriangle, CheckCircle2, AlertCircle, X, RefreshCw } from 'lucide-react';
-import { UsersHeader } from '../components/UsersHeader';
+import { Loader2, AlertTriangle, CheckCircle2, AlertCircle, X, RefreshCw, Users, Smartphone, ShieldCheck } from 'lucide-react';
+import { UsersHeader, UserKpiFilter } from '../components/UsersHeader';
 import { UserListTable } from '../components/UserListTable';
 import { CreateUserModal } from '../components/CreateUserModal';
 import { EditUserModal } from '../components/EditUserModal';
@@ -8,8 +8,11 @@ import { ResetPasswordModal } from '../components/ResetPasswordModal';
 import { LockUserModal } from '../components/LockUserModal';
 import { UserSecurityAuditModal } from '../components/UserSecurityAuditModal';
 import { RbacMatrixModal } from '../components/RbacMatrixModal';
+import { UserDetailModal } from '../components/UserDetailModal';
+import { PdaDeviceManagerTab } from '../components/PdaDeviceManagerTab';
 import { UserAccount, UpdateUserPayload } from '../types';
-import { userService } from '../services/userService';
+import { userService, setStoredLockInfo, removeStoredLockInfo } from '../services/userService';
+import { authService } from '../../auth/services/authService';
 
 interface ToastState {
   type: 'success' | 'error' | 'info';
@@ -17,6 +20,9 @@ interface ToastState {
 }
 
 export const UsersManagementPage: React.FC = () => {
+  const session = authService.getCurrentSession();
+  const isAdmin = session?.role === 'ROLE_ADMIN';
+
   const [users, setUsers] = useState<UserAccount[]>([]);
   const [loading, setLoading] = useState(true);
   const [fetchError, setFetchError] = useState<string | null>(null);
@@ -28,7 +34,14 @@ export const UsersManagementPage: React.FC = () => {
   const [resettingUser, setResettingUser] = useState<UserAccount | null>(null);
   const [lockingUser, setLockingUser] = useState<UserAccount | null>(null);
   const [auditUser, setAuditUser] = useState<UserAccount | null>(null);
+  const [viewingDetailUser, setViewingDetailUser] = useState<UserAccount | null>(null);
   const [isRbacMatrixOpen, setIsRbacMatrixOpen] = useState(false);
+  const [activeTab, setActiveTab] = useState<'USERS' | 'DEVICES'>('USERS');
+  const [kpiFilter, setKpiFilter] = useState<UserKpiFilter>('ALL');
+
+  const handleSelectKpiFilter = (filter: UserKpiFilter) => {
+    setKpiFilter((prev) => (prev === filter ? 'ALL' : filter));
+  };
 
   useEffect(() => {
     if (toast) {
@@ -94,7 +107,26 @@ export const UsersManagementPage: React.FC = () => {
       }
     }
 
-    setUsers((prev) => prev.map((u) => (u.id === userId ? { ...u, status: updated.status } : u)));
+    if (!nextActive) {
+      setStoredLockInfo(userId, reason);
+    } else {
+      removeStoredLockInfo(userId);
+    }
+
+    const updatedAccountFields = {
+      status: updated.status,
+      lockReason: !nextActive ? reason : undefined,
+      lockedAt: !nextActive ? new Date().toLocaleString('vi-VN') : undefined,
+      lockedBy: !nextActive ? 'Nguyễn Quản Trị (@admin)' : undefined,
+    };
+
+    setUsers((prev) =>
+      prev.map((u) => (u.id === userId ? { ...u, ...updatedAccountFields } : u))
+    );
+    setViewingDetailUser((prev) =>
+      prev && prev.id === userId ? { ...prev, ...updatedAccountFields } : prev
+    );
+
     setToast({
       type: 'success',
       message: nextActive
@@ -115,12 +147,26 @@ export const UsersManagementPage: React.FC = () => {
     try {
       const msg = await userService.bulkUpdateStatus(selectedIds, isActive);
       const targetIds = new Set(selectedIds);
+
+      if (!isActive) {
+        selectedIds.forEach((id) => setStoredLockInfo(id, 'Khóa hàng loạt bởi quản trị viên'));
+      } else {
+        selectedIds.forEach((id) => removeStoredLockInfo(id));
+      }
+
       setUsers((prev) =>
-        prev.map((u) =>
-          targetIds.has(u.id)
-            ? { ...u, status: isActive ? 'ACTIVE' : 'LOCKED' }
-            : u
-        )
+        prev.map((u) => {
+          if (targetIds.has(u.id)) {
+            return {
+              ...u,
+              status: isActive ? 'ACTIVE' : 'LOCKED',
+              lockReason: !isActive ? 'Khóa hàng loạt bởi quản trị viên' : undefined,
+              lockedAt: !isActive ? new Date().toLocaleString('vi-VN') : undefined,
+              lockedBy: !isActive ? 'Nguyễn Quản Trị (@admin)' : undefined,
+            };
+          }
+          return u;
+        })
       );
       setToast({
         type: 'success',
@@ -164,10 +210,55 @@ export const UsersManagementPage: React.FC = () => {
       <UsersHeader
         users={users}
         onOpenCreateModal={() => setIsCreateModalOpen(true)}
+        selectedFilter={kpiFilter}
+        onSelectFilter={handleSelectKpiFilter}
+        isAdmin={isAdmin}
       />
 
-      {/* Danh Sách Nhân Viên & Quản Lý Tài Khoản Doanh Nghiệp */}
-      {loading ? (
+      {/* Navigation Tab Bar: Tài Khoản & Máy Quét PDA Tin Cậy */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between border-b border-slate-200 bg-white px-4 rounded-2xl shadow-xs gap-3 py-1">
+        <div className="flex gap-2">
+          <button
+            onClick={() => setActiveTab('USERS')}
+            className={`py-3 px-3.5 text-xs sm:text-sm font-bold border-b-2 transition-all flex items-center gap-2 cursor-pointer ${
+              activeTab === 'USERS'
+                ? 'border-blue-600 text-blue-600'
+                : 'border-transparent text-slate-500 hover:text-slate-800'
+            }`}
+          >
+            <Users className="w-4 h-4" />
+            <span>Tài Khoản Nhân Sự ({users.length})</span>
+          </button>
+          <button
+            data-testid="tab-pda-devices"
+            onClick={() => setActiveTab('DEVICES')}
+            className={`py-3 px-3.5 text-xs sm:text-sm font-bold border-b-2 transition-all flex items-center gap-2 cursor-pointer ${
+              activeTab === 'DEVICES'
+                ? 'border-blue-600 text-blue-600'
+                : 'border-transparent text-slate-500 hover:text-slate-800'
+            }`}
+          >
+            <Smartphone className="w-4 h-4" />
+            <span>Máy Quét PDA & Thiết Bị Tin Cậy</span>
+            <span className="w-2 h-2 rounded-full bg-amber-500 animate-pulse"></span>
+          </button>
+        </div>
+
+        {isAdmin && (
+          <button
+            onClick={() => setIsRbacMatrixOpen(true)}
+            className="flex items-center gap-1.5 px-3 py-1.5 self-start sm:self-auto bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-semibold transition-colors cursor-pointer"
+          >
+            <ShieldCheck className="w-4 h-4 text-blue-600" />
+            <span>Ma Trận Phân Quyền Hệ Thống</span>
+          </button>
+        )}
+      </div>
+
+      {/* Nội dung Tab */}
+      {activeTab === 'DEVICES' ? (
+        <PdaDeviceManagerTab />
+      ) : loading ? (
         <div className="bg-white rounded-2xl border border-slate-200 p-12 flex flex-col items-center justify-center gap-3 shadow-xs">
           <Loader2 className="w-8 h-8 text-indigo-600 animate-spin" />
           <p className="text-xs text-slate-500 font-medium">Đang tải danh sách tài khoản...</p>
@@ -191,8 +282,12 @@ export const UsersManagementPage: React.FC = () => {
           onResetPassword={(u) => setResettingUser(u)}
           onEditUser={(u) => setEditingUser(u)}
           onViewSecurityLog={(u) => setAuditUser(u)}
+          onViewDetail={(u) => setViewingDetailUser(u)}
           onBulkStatus={handleBulkStatus}
-          onOpenRbacMatrix={() => setIsRbacMatrixOpen(true)}
+          onOpenRbacMatrix={isAdmin ? () => setIsRbacMatrixOpen(true) : undefined}
+          kpiFilter={kpiFilter}
+          onClearKpiFilter={() => setKpiFilter('ALL')}
+          isAdmin={isAdmin}
         />
       )}
 
@@ -201,6 +296,8 @@ export const UsersManagementPage: React.FC = () => {
         isOpen={isCreateModalOpen}
         onClose={() => setIsCreateModalOpen(false)}
         onAddUser={handleAddUser}
+        existingUsers={users}
+        isAdmin={isAdmin}
       />
 
       <EditUserModal
@@ -208,6 +305,7 @@ export const UsersManagementPage: React.FC = () => {
         onClose={() => setEditingUser(null)}
         user={editingUser}
         onUpdateUser={handleUpdateUser}
+        isAdmin={isAdmin}
       />
 
       <ResetPasswordModal
@@ -234,6 +332,17 @@ export const UsersManagementPage: React.FC = () => {
       <RbacMatrixModal
         isOpen={isRbacMatrixOpen}
         onClose={() => setIsRbacMatrixOpen(false)}
+      />
+
+      <UserDetailModal
+        isOpen={!!viewingDetailUser}
+        onClose={() => setViewingDetailUser(null)}
+        user={viewingDetailUser}
+        onEditUser={(u) => setEditingUser(u)}
+        onResetPassword={(u) => setResettingUser(u)}
+        onToggleStatus={(u) => setLockingUser(u)}
+        onViewSecurityLog={(u) => setAuditUser(u)}
+        isAdmin={isAdmin}
       />
     </div>
   );

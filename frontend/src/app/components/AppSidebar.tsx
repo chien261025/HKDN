@@ -29,7 +29,7 @@ interface AppSidebarProps {
   onCloseMobile?: () => void;
   onOpenScanner: () => void;
   session: AuthSession;
-  currentTime: string;
+  currentTime?: string;
 }
 
 interface NavItem {
@@ -56,6 +56,14 @@ export const AppSidebar: React.FC<AppSidebarProps> = ({
 }) => {
   const location = useLocation();
   const [, setRbacVersion] = React.useState(0);
+  const [localTime, setLocalTime] = React.useState(() => currentTime || new Date().toLocaleTimeString('vi-VN'));
+
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setLocalTime(new Date().toLocaleTimeString('vi-VN'));
+    }, 1000);
+    return () => clearInterval(timer);
+  }, []);
 
   useEffect(() => {
     const handleRbacUpdate = () => setRbacVersion((v) => v + 1);
@@ -74,43 +82,79 @@ export const AppSidebar: React.FC<AppSidebarProps> = ({
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [onToggleSidebar]);
 
-  const navGroups: NavGroup[] = [
-    {
-      items: [{ name: 'Tổng Quan Kho', path: '/', icon: LayoutDashboard }],
-    },
-    {
-      sectionTitle: 'Khai Báo & Mặt Bằng',
-      items: [
-        { name: 'Hàng Hóa & Danh Mục', path: '/products', icon: Boxes },
-        { name: 'Chi Nhánh Kho Hàng', path: '/warehouses', icon: Building2 },
-        { name: 'Sơ Đồ Mặt Bằng Ô Kệ', path: '/layout', icon: Layers },
-        { name: 'In Tem Mã Vạch & QR', path: '/labels', icon: Printer },
-      ],
-    },
-    {
-      sectionTitle: 'Nghiệp Vụ Kho',
-      items: [
-        { name: 'Đơn Nhập Kho (PO)', path: '/inbound', icon: Truck },
-        { name: 'Đơn Xuất Kho (SO)', path: '/outbound', icon: PackageCheck },
-        { name: 'Tồn Kho & Sổ Cái', path: '/inventory', icon: Package },
-        { name: 'Kiểm Kê Kho Hàng', path: '/audit', icon: ClipboardCheck },
-      ],
-    },
-    {
-      sectionTitle: 'Hiện Trường Thực Địa',
-      items: [
-        { name: 'Cổng Quét Mã PDA', path: '/operator', icon: Smartphone },
-      ],
-    },
-    {
-      sectionTitle: 'Báo Cáo & Hệ Thống',
-      items: [
-        { name: 'Báo Cáo & Thống Kê', path: '/reports', icon: FileSpreadsheet },
-        { name: 'Truy Vấn Dữ Liệu', path: '/smartquery', icon: Search },
-        { name: 'Phân Quyền & Tài Khoản', path: '/users', icon: ShieldCheck, requiredRole: 'ROLE_ADMIN' },
-      ],
-    },
-  ];
+  const isAdmin = session?.role?.toUpperCase().includes('ADMIN');
+  const isManager = session?.role?.toUpperCase().includes('MANAGER');
+
+  const navGroups: NavGroup[] = isAdmin
+    ? [
+        {
+          sectionTitle: 'Quản Trị Hệ Thống',
+          items: [
+            { name: 'Tổng Quan Quản Trị', path: '/', icon: LayoutDashboard },
+            { name: 'Tài Khoản & Phân Quyền', path: '/users', icon: ShieldCheck },
+            { name: 'Mạng Lưới Chi Nhánh', path: '/warehouses', icon: Building2 },
+            { name: 'Kiểm Toán & Truy Vấn', path: '/smartquery', icon: Search },
+          ],
+        },
+        {
+          sectionTitle: 'Giám Sát Vận Hành',
+          items: [
+            { name: 'Đơn Nhập Kho', path: '/inbound', icon: Truck },
+            { name: 'Đơn Xuất Kho', path: '/outbound', icon: PackageCheck },
+            { name: 'Tồn Kho & Thẻ Kho', path: '/inventory', icon: Package },
+            { name: 'Kiểm Kê Kho Hàng', path: '/audit', icon: ClipboardCheck },
+            { name: 'Sơ Đồ Mặt Bằng Ô Kệ', path: '/layout', icon: Layers },
+            { name: 'Hàng Hóa & Danh Mục', path: '/products', icon: Boxes },
+            { name: 'Báo Cáo & Thống Kê', path: '/reports', icon: FileSpreadsheet },
+            { name: 'In Tem Mã Vạch & QR', path: '/labels', icon: Printer },
+          ],
+        },
+      ]
+    : isManager
+    ? [
+        {
+          items: [{ name: 'Tổng Quan Vận Hành', path: '/', icon: LayoutDashboard }],
+        },
+        {
+          sectionTitle: 'Vận Hành Nhập - Xuất',
+          items: [
+            { name: 'Đơn Nhập Kho', path: '/inbound', icon: Truck },
+            { name: 'Đơn Xuất Kho', path: '/outbound', icon: PackageCheck },
+          ],
+        },
+        {
+          sectionTitle: 'Kho Bãi & Tồn Kho',
+          items: [
+            { name: 'Tồn Kho & Thẻ Kho', path: '/inventory', icon: Package },
+            { name: 'Sơ Đồ Mặt Bằng Ô Kệ', path: '/layout', icon: Layers },
+            { name: 'Kiểm Kê Kho Hàng', path: '/audit', icon: ClipboardCheck },
+          ],
+        },
+        {
+          sectionTitle: 'Danh Mục & Công Cụ',
+          items: [
+            { name: 'Hàng Hóa & Danh Mục', path: '/products', icon: Boxes },
+            { name: 'Chi Nhánh Kho', path: '/warehouses', icon: Building2 },
+            { name: 'In Tem Mã Vạch & QR', path: '/labels', icon: Printer },
+          ],
+        },
+        {
+          sectionTitle: 'Báo Cáo & Đội Ngũ',
+          items: [
+            { name: 'Báo Cáo & Thống Kê', path: '/reports', icon: FileSpreadsheet },
+            { name: 'Đội Ngũ Nhân Sự Kho', path: '/users', icon: ShieldCheck },
+          ],
+        },
+      ]
+    : [
+        {
+          sectionTitle: 'Hiện Trường Thực Địa',
+          items: [
+            { name: 'Máy Quét Mã Vạch PDA', path: '/operator', icon: Smartphone },
+            { name: 'Tra Cứu Tồn Kho', path: '/inventory', icon: Package },
+          ],
+        },
+      ];
 
   return (
     <>
@@ -129,7 +173,7 @@ export const AppSidebar: React.FC<AppSidebarProps> = ({
           isMobileOpen
             ? 'translate-x-0 w-72 max-w-[85vw]'
             : '-translate-x-full md:translate-x-0'
-        } ${isSidebarCollapsed ? 'md:w-20' : 'md:w-68'}`}
+        } ${isSidebarCollapsed ? 'md:w-16' : 'md:w-[220px]'}`}
       >
         {/* Brand Header */}
         <div
@@ -268,7 +312,7 @@ export const AppSidebar: React.FC<AppSidebarProps> = ({
                 <span className="w-1.5 h-1.5 rounded-full bg-emerald-400"></span>
                 <span>Trực tuyến</span>
               </div>
-              <span>{currentTime}</span>
+              <span>{localTime}</span>
             </div>
           )}
         </div>

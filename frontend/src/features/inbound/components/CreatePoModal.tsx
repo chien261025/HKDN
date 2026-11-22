@@ -212,7 +212,6 @@ export const CreatePoModal: React.FC<CreatePoModalProps> = ({ initialWarehouseId
             </div>
             <div>
               <h3 className="font-bold text-base text-slate-900">Tạo Đơn Đặt Hàng Nhập Kho (PO)</h3>
-              <p className="text-xs text-slate-500 mt-0.5">Bước 1: Khởi tạo PO từ Nhà Cung Cấp (Chưa cộng tồn kho)</p>
             </div>
           </div>
           <button onClick={onClose} className="p-1 rounded-lg text-slate-400 hover:text-slate-700 cursor-pointer">

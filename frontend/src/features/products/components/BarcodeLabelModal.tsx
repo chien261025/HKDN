@@ -1,35 +1,43 @@
 import React, { useState } from 'react';
-import { X, Printer, Barcode, CheckCircle2, ShieldAlert, QrCode, Sparkles } from 'lucide-react';
+import { X, Printer, Barcode, CheckCircle2, ShieldAlert, QrCode, Sparkles, ChevronLeft, ChevronRight, Layers } from 'lucide-react';
 import { ProductItem } from '../types';
 
 interface BarcodeLabelModalProps {
   isOpen: boolean;
   onClose: () => void;
-  product: ProductItem | null;
+  product?: ProductItem | null;
+  products?: ProductItem[];
 }
 
 export const BarcodeLabelModal: React.FC<BarcodeLabelModalProps> = ({
   isOpen,
   onClose,
   product,
+  products,
 }) => {
   const [codeType, setCodeType] = useState<'BARCODE' | 'QR'>('BARCODE');
   const [showPrice, setShowPrice] = useState(true);
+  const [currentIndex, setCurrentIndex] = useState(0);
 
-  if (!isOpen || !product) return null;
+  const itemList: ProductItem[] = products && products.length > 0 
+    ? products 
+    : (product ? [product] : []);
+
+  if (!isOpen || itemList.length === 0) return null;
+
+  const currentProduct = itemList[Math.min(currentIndex, itemList.length - 1)];
 
   const handlePrint = () => {
     window.print();
   };
 
-  // Generate QR data URL using public SVG generator or QR matrix representation
-  const qrData = encodeURIComponent(
+  const getQrData = (p: ProductItem) => encodeURIComponent(
     JSON.stringify({
-      sku: product.sku,
-      bc: product.barcode,
-      name: product.name,
-      zone: product.storageZone,
-      price: product.sellingPrice,
+      sku: p.sku,
+      bc: p.barcode,
+      name: p.name,
+      zone: p.storageZone,
+      price: p.sellingPrice,
     })
   );
 
@@ -43,8 +51,15 @@ export const BarcodeLabelModal: React.FC<BarcodeLabelModalProps> = ({
               <Barcode className="w-5 h-5" />
             </div>
             <div>
-              <h2 className="text-base sm:text-lg font-bold text-slate-900">In Tem Nhãn Định Danh Barcode / QR</h2>
-              <p className="text-xs text-slate-500 mt-0.5">Tiêu chuẩn GS1-128 & QR Code 2D dán thùng / Pallet WMS</p>
+              <h2 className="text-base sm:text-lg font-bold text-slate-900">
+                In Tem Mã Vạch & Mã QR
+                {itemList.length > 1 && (
+                  <span className="ml-2 px-2 py-0.5 rounded-full text-xs font-semibold bg-blue-100 text-blue-700">
+                    {itemList.length} sản phẩm
+                  </span>
+                )}
+              </h2>
+              <p className="text-xs text-slate-500 mt-0.5">In tem dán lên thùng hàng, kiện pallet hoặc từng sản phẩm</p>
             </div>
           </div>
           <button
@@ -56,7 +71,7 @@ export const BarcodeLabelModal: React.FC<BarcodeLabelModalProps> = ({
         </div>
 
         {/* Options Toolbar */}
-        <div className="px-5 py-3 bg-white border-b border-slate-200 flex items-center justify-between gap-3 text-xs">
+        <div className="px-5 py-3 bg-white border-b border-slate-200 flex flex-wrap items-center justify-between gap-3 text-xs">
           <div className="flex items-center gap-1.5 bg-slate-100 p-1 rounded-xl border border-slate-200">
             <button
               onClick={() => setCodeType('BARCODE')}
@@ -82,6 +97,32 @@ export const BarcodeLabelModal: React.FC<BarcodeLabelModalProps> = ({
             </button>
           </div>
 
+          {itemList.length > 1 && (
+            <div className="flex items-center gap-1.5 bg-slate-100 px-2 py-1 rounded-xl border border-slate-200 font-mono text-xs">
+              <button
+                type="button"
+                disabled={currentIndex === 0}
+                onClick={() => setCurrentIndex((prev) => Math.max(0, prev - 1))}
+                className="p-1 rounded hover:bg-white text-slate-700 disabled:opacity-30 cursor-pointer"
+                title="Tem trước"
+              >
+                <ChevronLeft className="w-3.5 h-3.5" />
+              </button>
+              <span className="font-bold text-slate-900 px-1">
+                {currentIndex + 1} / {itemList.length}
+              </span>
+              <button
+                type="button"
+                disabled={currentIndex === itemList.length - 1}
+                onClick={() => setCurrentIndex((prev) => Math.min(itemList.length - 1, prev + 1))}
+                className="p-1 rounded hover:bg-white text-slate-700 disabled:opacity-30 cursor-pointer"
+                title="Tem kế tiếp"
+              >
+                <ChevronRight className="w-3.5 h-3.5" />
+              </button>
+            </div>
+          )}
+
           <label className="flex items-center gap-1.5 text-slate-700 font-medium cursor-pointer">
             <input
               type="checkbox"
@@ -99,12 +140,12 @@ export const BarcodeLabelModal: React.FC<BarcodeLabelModalProps> = ({
             {/* Tag Header */}
             <div className="flex items-center justify-between border-b-2 border-black pb-2 mb-3">
               <div>
-                <div className="text-[10px] font-bold uppercase tracking-widest text-slate-600">SMART WMS ENTERPRISE</div>
-                <div className="text-sm font-black uppercase tracking-tight">TEM NHÃN ĐỊNH DANH HÀNG HÓA</div>
+                <div className="text-[10px] font-bold uppercase tracking-widest text-slate-600">SMART WMS - KHO DOANH NGHIỆP</div>
+                <div className="text-sm font-black uppercase tracking-tight">TEM SẢN PHẨM & MÃ VẠCH</div>
               </div>
               <div className="text-right">
                 <span className="inline-block px-2.5 py-0.5 text-xs font-black uppercase bg-black text-white rounded">
-                  {product.storageZone}
+                  {currentProduct.storageZone}
                 </span>
               </div>
             </div>
@@ -113,33 +154,33 @@ export const BarcodeLabelModal: React.FC<BarcodeLabelModalProps> = ({
             <div className="space-y-1 mb-3">
               <div className="flex items-center justify-between">
                 <span className="text-xs font-mono font-black text-blue-900">
-                  SKU: <span className="text-base">{product.sku}</span>
+                  Mã SP: <span className="text-base">{currentProduct.sku}</span>
                 </span>
-                {product.brand && (
+                {currentProduct.brand && (
                   <span className="text-[11px] font-bold uppercase bg-slate-100 px-2 py-0.5 rounded border border-slate-200">
-                    {product.brand}
+                    {currentProduct.brand}
                   </span>
                 )}
               </div>
 
               <div className="text-sm font-extrabold leading-snug text-slate-900 line-clamp-2">
-                {product.name}
+                {currentProduct.name}
               </div>
 
               <div className="text-xs text-slate-700 font-medium">
-                NCC: {product.supplierName} ({product.supplierCode})
+                Nhà cung cấp: {currentProduct.supplierName} ({currentProduct.supplierCode})
               </div>
 
               <div className="flex items-center justify-between text-xs text-slate-700 font-mono pt-1">
-                <span>ĐVT: <b>{product.unit}</b> ({product.weightKg} kg)</span>
-                <span>KT: <b>{product.lengthCm || 20}x{product.widthCm || 15}x{product.heightCm || 10}cm</b></span>
+                <span>ĐVT: <b>{currentProduct.unit}</b> ({currentProduct.weightKg} kg)</span>
+                <span>Kích thước: <b>{currentProduct.lengthCm || 20}x{currentProduct.widthCm || 15}x{currentProduct.heightCm || 10}cm</b></span>
               </div>
 
-              {showPrice && product.sellingPrice && product.sellingPrice > 0 && (
+              {showPrice && currentProduct.sellingPrice && currentProduct.sellingPrice > 0 && (
                 <div className="flex items-center justify-between pt-1 border-t border-slate-200 text-xs">
-                  <span className="text-slate-500 font-medium">Giá bán niêm yết:</span>
+                  <span className="text-slate-500 font-medium">Giá niêm yết:</span>
                   <span className="font-mono font-black text-slate-900 text-sm">
-                    {product.sellingPrice.toLocaleString()} VNĐ
+                    {currentProduct.sellingPrice.toLocaleString()} VNĐ
                   </span>
                 </div>
               )}
@@ -161,26 +202,26 @@ export const BarcodeLabelModal: React.FC<BarcodeLabelModalProps> = ({
                     )}
                   </div>
                   <div className="font-mono text-sm font-black tracking-[0.25em] text-slate-900 mt-1.5">
-                    {product.barcode}
+                    {currentProduct.barcode}
                   </div>
                   <div className="text-[10px] text-slate-500 font-mono uppercase mt-0.5">
-                    GS1-128 / Code-128 Standard
+                    MÃ VẠCH QUÉT KHO
                   </div>
                 </div>
               ) : (
                 <div className="flex flex-col items-center">
                   <div className="p-2 bg-white rounded-xl border-2 border-black">
                     <img
-                      src={`https://api.qrserver.com/v1/create-qr-code/?size=130x130&data=${qrData}`}
+                      src={`https://api.qrserver.com/v1/create-qr-code/?size=130x130&data=${getQrData(currentProduct)}`}
                       alt="QR Code"
                       className="w-28 h-28"
                     />
                   </div>
                   <div className="font-mono text-xs font-bold text-slate-900 mt-1.5">
-                    SCAN TO IDENTIFY SKU
+                    QUÉT MÃ TRUY XUẤT SẢN PHẨM
                   </div>
                   <div className="text-[10px] text-slate-500 font-mono uppercase mt-0.5">
-                    GS1 Digital Link 2D Matrix
+                    MÃ QR TRUY XUẤT NHANH
                   </div>
                 </div>
               )}
@@ -188,9 +229,9 @@ export const BarcodeLabelModal: React.FC<BarcodeLabelModalProps> = ({
 
             {/* Footer Notice */}
             <div className="mt-3 pt-2 border-t border-slate-200 flex items-center justify-between text-[10px] text-slate-500 font-mono">
-              <span>ĐK: {product.storageCondition || 'AMBIENT'}</span>
-              <span>CBM: {product.volumeCbm || 0.003} m³</span>
-              <span>SMART-WMS v2.0</span>
+              <span>Bảo quản: {currentProduct.storageCondition === 'COOL' ? 'Kho mát' : currentProduct.storageCondition === 'COLD' ? 'Kho lạnh' : 'Nhiệt độ phòng'}</span>
+              <span>Thể tích: {currentProduct.volumeCbm || 0.003} m³</span>
+              <span>SMART WMS</span>
             </div>
           </div>
         </div>
@@ -198,7 +239,7 @@ export const BarcodeLabelModal: React.FC<BarcodeLabelModalProps> = ({
         {/* Modal Actions */}
         <div className="p-4 border-t border-slate-200 bg-slate-50 flex items-center justify-between">
           <p className="text-xs text-slate-500">
-            Hỗ trợ máy in tem nhãn nhiệt Zebra, Xprinter hoặc máy in văn phòng A4.
+            Hỗ trợ các loại máy in tem nhiệt (Zebra, Xprinter) và máy in văn phòng A4.
           </p>
           <div className="flex items-center gap-2">
             <button
@@ -212,7 +253,7 @@ export const BarcodeLabelModal: React.FC<BarcodeLabelModalProps> = ({
               className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-bold text-xs shadow-sm shadow-blue-200 flex items-center gap-1.5 transition-colors cursor-pointer"
             >
               <Printer className="w-3.5 h-3.5" />
-              <span>In Ngay</span>
+              <span>{itemList.length > 1 ? `In Tất Cả (${itemList.length} Tem)` : 'In Ngay'}</span>
             </button>
           </div>
         </div>

@@ -65,23 +65,15 @@ public class OutboundService {
 
     @Transactional(readOnly = true)
     public List<Supplier> getWarehousePartners(Long warehouseId) {
-        List<Supplier> customers = supplierRepository.findAll().stream()
-                .filter(p -> p.getCode() != null && p.getCode().startsWith("CUST-") && Boolean.TRUE.equals(p.getIsActive()))
-                .sorted(Comparator.comparing(Supplier::getName))
-                .toList();
-        if (!customers.isEmpty()) {
-            return customers;
-        }
-
-        Set<Long> warehouseProducts = getStockProducts(true).stream()
-                .filter(stock -> warehouseId.equals(stock.getWarehouseId()))
-                .map(OutboundStockResponse::getProductId).collect(Collectors.toSet());
-        Set<Long> partnerIds = productRepository.findAll().stream()
-                .filter(product -> warehouseProducts.contains(product.getId()))
-                .map(Product::getSupplierId).filter(Objects::nonNull).collect(Collectors.toSet());
         return supplierRepository.findAll().stream()
-                .filter(partner -> partnerIds.contains(partner.getId()) && Boolean.TRUE.equals(partner.getIsActive()))
-                .sorted(Comparator.comparing(Supplier::getName)).toList();
+                .filter(p -> p.getCode() != null && Boolean.TRUE.equals(p.getIsActive()))
+                .sorted((a, b) -> {
+                    boolean aCust = a.getCode().startsWith("CUST-");
+                    boolean bCust = b.getCode().startsWith("CUST-");
+                    if (aCust != bCust) return aCust ? -1 : 1;
+                    return a.getName().compareToIgnoreCase(b.getName());
+                })
+                .toList();
     }
 
     @Transactional(readOnly = true)
@@ -106,6 +98,7 @@ public class OutboundService {
         if (orders.isEmpty()) {
             return Collections.emptyList();
         }
+        orders.sort((a, b) -> b.getId().compareTo(a.getId()));
         return toResponses(orders);
     }
 
@@ -143,8 +136,13 @@ public class OutboundService {
                 throw new BusinessException(ErrorCode.BAD_REQUEST, "Sản phẩm đã ngừng kinh doanh (DISCONTINUED) hoặc bị vô hiệu hóa, không thể tạo đơn xuất: " + product.getName());
             }
             if (item.getRequestedQty() > available.getOrDefault(item.getProductId(), 0)) {
+                String prodName = product.getName() != null ? product.getName() : "ID " + item.getProductId();
+                String prodSku = product.getSku() != null ? product.getSku() : "";
+                String unit = product.getUnit() != null ? product.getUnit() : "đơn vị";
+                int curAvail = available.getOrDefault(item.getProductId(), 0);
                 throw new BusinessException(ErrorCode.INSUFFICIENT_STOCK,
-                        "Sản phẩm " + item.getProductId() + " không đủ tồn khả dụng trong kho đã chọn!");
+                        String.format("Sản phẩm '%s' (%s) không đủ tồn khả dụng trong kho đã chọn! (Yêu cầu: %d %s, Khả dụng: %d %s)",
+                                prodName, prodSku, item.getRequestedQty(), unit, curAvail, unit));
             }
         }
         String code = request.getOrderCode() != null && !request.getOrderCode().isBlank()
@@ -201,8 +199,12 @@ public class OutboundService {
                 if (required <= 0) throw new BusinessException(ErrorCode.BAD_REQUEST, "Số lượng xuất phải lớn hơn 0!");
                 List<ProductBatch> activeBatches = productBatchRepository.findActiveBatchesOrderByExpiryAsc(item.getProductId(), LocalDate.now());
                 if (activeBatches.isEmpty()) {
+                    Product prod = productRepository.findById(item.getProductId()).orElse(null);
+                    String prodName = prod != null ? prod.getName() : "ID " + item.getProductId();
+                    String prodSku = prod != null ? prod.getSku() : "";
                     throw new BusinessException(ErrorCode.INSUFFICIENT_STOCK,
-                            "Sản phẩm ID " + item.getProductId() + " không có lô hàng nào còn hạn dùng khả dụng!");
+                            String.format("Sản phẩm '%s' (%s) không có lô hàng nào còn hạn dùng khả dụng!",
+                                    prodName, prodSku));
                 }
 
                 int remaining = required;
@@ -246,8 +248,13 @@ public class OutboundService {
                 }
 
                 if (remaining > 0) {
+                    Product prod = productRepository.findById(item.getProductId()).orElse(null);
+                    String prodName = prod != null ? prod.getName() : "ID " + item.getProductId();
+                    String prodSku = prod != null ? prod.getSku() : "";
+                    String unit = prod != null && prod.getUnit() != null ? prod.getUnit() : "đơn vị";
                     throw new BusinessException(ErrorCode.INSUFFICIENT_STOCK,
-                            String.format("Không đủ tồn kho khả dụng để cấp phát FEFO cho mặt hàng %d! Thiếu: %d", item.getProductId(), remaining));
+                            String.format("Không đủ tồn kho khả dụng để cấp phát FEFO cho sản phẩm '%s' (%s)! Thiếu: %d %s",
+                                    prodName, prodSku, remaining, unit));
                 }
 
                 item.setAllocatedQty(required);
@@ -405,12 +412,16 @@ public class OutboundService {
                 if (allocations != null) {
                     for (PickAllocation alloc : allocations) {
                         if (!"CANCELLED".equalsIgnoreCase(alloc.getStatus()) && alloc.getAllocatedQty() > 0) {
-                            inventoryLockService.releaseStock(
-                                    alloc.getProductId(),
-                                    alloc.getLocationId(),
-                                    alloc.getBatchId(),
-                                    alloc.getAllocatedQty()
-                            );
+                            try {
+                                inventoryLockService.releaseStock(
+                                        alloc.getProductId(),
+                                        alloc.getLocationId(),
+                                        alloc.getBatchId(),
+                                        alloc.getAllocatedQty()
+                                );
+                            } catch (Exception ex) {
+                                log.warn("Không thể giải phóng tồn kho cho allocation {}: {}", alloc.getId(), ex.getMessage());
+                            }
                             alloc.setStatus("CANCELLED");
                             pickAllocationRepository.save(alloc);
                         }

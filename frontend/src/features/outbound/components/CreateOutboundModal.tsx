@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { X, Plus, Trash2, PackageCheck, Building2, Info, AlertTriangle } from 'lucide-react';
+import { X, Plus, Trash2, PackageCheck, Building2, AlertTriangle, RotateCcw } from 'lucide-react';
 import { OutboundOrder, OutboundStock } from '../types';
 import { outboundService, cleanOutboundText } from '../services/outboundService';
 import { inventoryService } from '../../inventory/services/inventoryService';
@@ -14,6 +14,7 @@ interface Props {
 }
 
 export const CreateOutboundModal: React.FC<Props> = ({ initialWarehouseId, onClose, onCreateOrder }) => {
+  const [orderType, setOrderType] = useState<'SO' | 'RTV'>('SO');
   const [warehouses, setWarehouses] = useState<WarehouseItem[]>(DEFAULT_WAREHOUSES);
   const [warehouseId, setWarehouseId] = useState<number>(() => {
     if (initialWarehouseId && initialWarehouseId !== 'ALL') {
@@ -48,12 +49,15 @@ export const CreateOutboundModal: React.FC<Props> = ({ initialWarehouseId, onClo
     setLoading(true);
     try {
       const [data, recipients] = await Promise.all([
-        inventoryService.getClosingBalances(),
+        inventoryService.getClosingBalances(whId),
         outboundService.getWarehousePartners(whId),
       ]);
       setStock(data);
       setPartners(recipients);
-      if (recipients.length > 0) {
+      const suitable = recipients.filter(p => orderType === 'RTV' ? !p.code?.startsWith('CUST-') : p.code?.startsWith('CUST-'));
+      if (suitable.length > 0) {
+        setPartnerId(suitable[0].id);
+      } else if (recipients.length > 0) {
         setPartnerId(recipients[0].id);
       } else {
         setPartnerId('');
@@ -69,6 +73,13 @@ export const CreateOutboundModal: React.FC<Props> = ({ initialWarehouseId, onClo
     loadDataForWarehouse(warehouseId);
   }, [warehouseId]);
 
+  const filteredPartners = partners.filter(p => {
+    if (orderType === 'RTV') {
+      return !p.code?.startsWith('CUST-');
+    }
+    return p.code?.startsWith('CUST-') || !p.code?.startsWith('SUP-');
+  });
+
   const products = stock.filter(p => p.warehouseId === warehouseId && p.availableQty > 0);
   const valid = items.length > 0 && items.every(i => i.productId !== null && Number.isInteger(i.qty) && i.qty > 0
     && i.qty <= (products.find(p => p.productId === i.productId)?.availableQty ?? 0));
@@ -80,8 +91,10 @@ export const CreateOutboundModal: React.FC<Props> = ({ initialWarehouseId, onClo
     setSaving(true);
     setError('');
     try {
-      const soPrefix = warehouseId === 2 ? 'SO-BN-2026' : 'SO-2026';
-      const soCode = `${soPrefix}-${Math.floor(100 + Math.random() * 900)}`;
+      const prefix = orderType === 'RTV'
+        ? (warehouseId === 2 ? 'RTV-BN-2026' : 'RTV-2026')
+        : (warehouseId === 2 ? 'SO-BN-2026' : 'SO-2026');
+      const soCode = `${prefix}-${Math.floor(100 + Math.random() * 900)}`;
 
       await onCreateOrder({
         id: '',
@@ -89,12 +102,12 @@ export const CreateOutboundModal: React.FC<Props> = ({ initialWarehouseId, onClo
         warehouseId,
         customerName: partner.name,
         partnerId: Number(partner.id),
-        shippingAddress: 'Địa chỉ giao hàng theo hợp đồng khách hàng',
+        shippingAddress: orderType === 'RTV' ? 'Nhà máy / Kho trả hàng của Nhà cung cấp' : 'Địa chỉ giao hàng theo hợp đồng khách hàng',
         orderDate: new Date().toLocaleString('vi-VN'),
         requiredDate,
         priority: 'NORMAL',
         status: 'PENDING',
-        notes,
+        notes: notes || (orderType === 'RTV' ? 'Xuất trả hàng lỗi QC / bao bì móp méo theo biên bản tiếp nhận đơn PO' : ''),
         items: items.map((i, index) => {
           const p = products.find(p => p.productId === i.productId)!;
           return {
@@ -122,16 +135,17 @@ export const CreateOutboundModal: React.FC<Props> = ({ initialWarehouseId, onClo
       <div role="dialog" aria-modal="true" aria-labelledby="outbound-title" className="max-h-[92vh] w-full max-w-4xl overflow-y-auto rounded-3xl bg-white text-slate-900 shadow-2xl border border-slate-200">
         <div className="flex items-center justify-between border-b border-slate-200 p-5 bg-slate-50">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-2xl bg-blue-50 text-blue-600 border border-blue-200 flex items-center justify-center">
-              <PackageCheck className="h-5 w-5" />
+            <div className={`w-10 h-10 rounded-2xl flex items-center justify-center border ${
+              orderType === 'RTV'
+                ? 'bg-purple-50 text-purple-600 border-purple-200'
+                : 'bg-blue-50 text-blue-600 border-blue-200'
+            }`}>
+              {orderType === 'RTV' ? <RotateCcw className="h-5 w-5" /> : <PackageCheck className="h-5 w-5" />}
             </div>
             <div>
               <h3 id="outbound-title" className="font-bold text-base text-slate-900">
-                Tạo Đơn Đặt Hàng Xuất Kho (SO)
+                {orderType === 'RTV' ? 'Tạo Phiếu Xuất Trả Nhà Cung Cấp (RTV)' : 'Tạo Đơn Đặt Hàng Xuất Kho (SO)'}
               </h3>
-              <p className="text-xs text-slate-500 mt-0.5">
-                Khởi tạo nhu cầu xuất hàng từ khách hàng (Tồn khả dụng sẽ được giữ chỗ an toàn khi duyệt phân bổ)
-              </p>
             </div>
           </div>
           <button type="button" disabled={saving} onClick={onClose} aria-label="Đóng" className="p-1 rounded-lg text-slate-400 hover:text-slate-700 cursor-pointer">
@@ -144,6 +158,55 @@ export const CreateOutboundModal: React.FC<Props> = ({ initialWarehouseId, onClo
             <div role="alert" className="rounded-xl bg-rose-50 p-3 text-xs text-rose-700 border border-rose-200 flex items-center gap-2">
               <AlertTriangle className="w-4 h-4 shrink-0" />
               <span>{error}</span>
+            </div>
+          )}
+
+          {/* Loại Đơn Xuất Kho (SO vs RTV) */}
+          <div className="flex p-1 bg-slate-100 rounded-xl gap-1 border border-slate-200">
+            <button
+              type="button"
+              onClick={() => {
+                setOrderType('SO');
+                const firstCust = partners.find(p => p.code?.startsWith('CUST-'));
+                if (firstCust) setPartnerId(firstCust.id);
+              }}
+              className={`flex-1 py-2 px-3 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
+                orderType === 'SO'
+                  ? 'bg-white text-blue-700 shadow-xs border border-slate-200/80'
+                  : 'text-slate-600 hover:text-slate-900'
+              }`}
+            >
+              <PackageCheck className="w-3.5 h-3.5" />
+              <span>Xuất Bán Hàng (SO)</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setOrderType('RTV');
+                const firstSup = partners.find(p => !p.code?.startsWith('CUST-'));
+                if (firstSup) setPartnerId(firstSup.id);
+                if (!notes) setNotes('Xuất trả hàng lỗi QC theo biên bản tiếp nhận');
+              }}
+              className={`flex-1 py-2 px-3 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
+                orderType === 'RTV'
+                  ? 'bg-purple-600 text-white shadow-xs'
+                  : 'text-slate-600 hover:text-slate-900'
+              }`}
+            >
+              <RotateCcw className="w-3.5 h-3.5" />
+              <span>Xuất Trả Nhà Cung Cấp (RTV)</span>
+            </button>
+          </div>
+
+          {orderType === 'RTV' && (
+            <div className="p-3 rounded-xl bg-purple-50/80 border border-purple-200 text-purple-900 text-xs flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <span className="font-bold">Nguồn xuất hàng:</span>
+                <span className="px-2 py-0.5 rounded bg-purple-100 text-purple-800 font-bold text-[11px] border border-purple-300 font-mono">
+                  Khu Biệt Trữ / Cách Ly Kiểm Định (Quarantine Zone)
+                </span>
+              </div>
+              <span className="text-[11px] text-purple-700 italic">Xuất trừ hàng lỗi & giải phóng góc kho cách ly</span>
             </div>
           )}
 
@@ -172,7 +235,7 @@ export const CreateOutboundModal: React.FC<Props> = ({ initialWarehouseId, onClo
 
             <div>
               <label className="space-y-1 text-xs font-bold text-slate-700 block mb-1">
-                Khách Hàng / Đối Tác Nhận:
+                {orderType === 'RTV' ? 'Nhà Cung Cấp Nhận Hàng Trả (Vendor):' : 'Khách Hàng / Đối Tác Nhận:'}
               </label>
               <select
                 aria-label="Khách hàng / Đơn vị nhận"
@@ -182,12 +245,16 @@ export const CreateOutboundModal: React.FC<Props> = ({ initialWarehouseId, onClo
                 required
                 disabled={loading || saving}
               >
-                <option value="" disabled>Chọn khách hàng / chuỗi bán lẻ tiếp nhận</option>
-                {partners.map(p => {
+                <option value="" disabled>
+                  {orderType === 'RTV'
+                    ? 'Chọn nhà cung ứng tiếp nhận hàng trả (VD: Vinamilk)'
+                    : 'Chọn khách hàng / chuỗi bán lẻ tiếp nhận'}
+                </option>
+                {filteredPartners.map(p => {
                   const isCust = p.code?.startsWith('CUST-');
                   return (
                     <option key={p.id} value={p.id}>
-                      {isCust ? '🏢 [Khách Hàng] ' : ''}{cleanOutboundText(p.name)} ({p.code})
+                      {isCust ? '🏢 [Khách Hàng] ' : '🏭 [Nhà Cung Cấp] '}{cleanOutboundText(p.name)} ({p.code})
                     </option>
                   );
                 })}
@@ -320,21 +387,15 @@ export const CreateOutboundModal: React.FC<Props> = ({ initialWarehouseId, onClo
             </div>
           </div>
 
-          {/* WMS Reservation Guidance Note */}
-          <div className="p-3 rounded-xl bg-amber-50 border border-amber-200 text-amber-900 text-xs flex items-start gap-2">
-            <Info className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
-            <div>
-              <strong>Nguyên tắc kiểm soát tồn xuất:</strong> Sau khi tạo đơn, hệ thống sẽ thực hiện khóa giữ chỗ an toàn <strong>(Reservation)</strong> theo đúng số lượng yêu cầu. Tồn khả dụng (Available) sẽ giảm để chống xuất âm, trong khi tồn vật lý trên kệ (On-hand) chỉ được trừ khi nhân viên hoàn tất xuất kho.
-            </div>
-          </div>
-
           <div>
-            <label className="block text-xs font-bold text-slate-700 mb-1">Ghi Chú Đơn Hàng SO:</label>
+            <label className="block text-xs font-bold text-slate-700 mb-1">
+              {orderType === 'RTV' ? 'Ghi Chú Xuất Trả Nhà Cung Cấp:' : 'Ghi Chú Đơn Hàng SO:'}
+            </label>
             <input
               className={inputClass}
               value={notes}
               onChange={e => setNotes(e.target.value)}
-              placeholder="Ghi chú đơn vị vận chuyển, yêu cầu bốc xếp..."
+              placeholder={orderType === 'RTV' ? 'Ghi chú lý do xuất trả (VD: Xuất trả 10 hộp lỗi bao bì theo biên bản PO)...' : 'Ghi chú đơn vị vận chuyển, yêu cầu bốc xếp...'}
               disabled={saving}
             />
           </div>
@@ -351,9 +412,17 @@ export const CreateOutboundModal: React.FC<Props> = ({ initialWarehouseId, onClo
             <button
               type="submit"
               disabled={loading || saving || !valid || !partner}
-              className="px-5 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 font-bold text-xs text-white shadow-md shadow-blue-200 disabled:opacity-40 cursor-pointer transition-all"
+              className={`px-5 py-2.5 rounded-xl font-bold text-xs text-white shadow-md disabled:opacity-40 cursor-pointer transition-all ${
+                orderType === 'RTV'
+                  ? 'bg-purple-600 hover:bg-purple-700 shadow-purple-200'
+                  : 'bg-blue-600 hover:bg-blue-700 shadow-blue-200'
+              }`}
             >
-              {saving ? 'Đang tạo...' : 'Tạo Đơn Xuất Kho (Phát Hành SO)'}
+              {saving
+                ? 'Đang tạo...'
+                : orderType === 'RTV'
+                  ? 'Tạo Phiếu Xuất Trả (Phát Hành RTV)'
+                  : 'Tạo Đơn Xuất Kho (Phát Hành SO)'}
             </button>
           </div>
         </form>

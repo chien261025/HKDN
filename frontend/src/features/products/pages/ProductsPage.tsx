@@ -10,6 +10,7 @@ import { EditProductModal } from '../components/EditProductModal';
 import { EditSupplierModal } from '../components/EditSupplierModal';
 import { BarcodeLabelModal } from '../components/BarcodeLabelModal';
 import { ProductDetailModal } from '../components/ProductDetailModal';
+import { ImportProductsModal } from '../components/ImportProductsModal';
 import { CategoryItem, ProductItem, SupplierItem } from '../types';
 import { CategoryTable } from '../components/CategoryTable';
 import { productService } from '../services/productService';
@@ -129,11 +130,14 @@ export const ProductsPage: React.FC = () => {
 
   // Modals state
   const [isCreateProductOpen, setIsCreateProductOpen] = useState(false);
+  const [isImportModalOpen, setIsImportModalOpen] = useState(false);
   const [isCreateSupplierOpen, setIsCreateSupplierOpen] = useState(false);
   const [selectedProductForEdit, setSelectedProductForEdit] = useState<ProductItem | null>(null);
   const [selectedSupplierForEdit, setSelectedSupplierForEdit] = useState<SupplierItem | null>(null);
   const [selectedProductForBarcode, setSelectedProductForBarcode] = useState<ProductItem | null>(null);
   const [selectedProductForDetail, setSelectedProductForDetail] = useState<ProductItem | null>(null);
+  const [selectedStockHealthFilter, setSelectedStockHealthFilter] = useState<string>('ALL');
+  const [batchPrintProducts, setBatchPrintProducts] = useState<ProductItem[] | null>(null);
 
   const handleOpenCreateModal = () => {
     if (activeTab === 'CATEGORIES') return;
@@ -141,6 +145,26 @@ export const ProductsPage: React.FC = () => {
       setIsCreateProductOpen(true);
     } else {
       setIsCreateSupplierOpen(true);
+    }
+  };
+
+  const handleBatchImport = async (productsToImport: Partial<ProductItem>[]) => {
+    try {
+      setIsLoading(true);
+      const res = await productService.batchCreateProducts(productsToImport);
+      await fetchData();
+      if (res.errors.length > 0) {
+        setNotice(
+          `Đã nạp thành công ${res.created.length}/${productsToImport.length} sản phẩm. Có ${res.errors.length} sản phẩm gặp lỗi.`
+        );
+      } else {
+        setNotice(`Đã nạp thành công toàn bộ ${res.created.length} sản phẩm mới từ file vào hệ thống.`);
+      }
+      setIsImportModalOpen(false);
+    } catch (err: any) {
+      setError(err?.message || 'Có lỗi xảy ra khi nạp dữ liệu hàng loạt.');
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -231,12 +255,16 @@ export const ProductsPage: React.FC = () => {
   return (
     <div className="space-y-4">
       {/* Top Banner & KPI Header */}
+      {/* Products Header với 4 KPI lọc tương tác & định giá tài sản kho */}
       <ProductsHeader
         activeTab={activeTab}
         setActiveTab={setActiveTab}
         products={displayedProducts}
         suppliers={suppliers}
         onOpenCreateModal={handleOpenCreateModal}
+        onOpenImportModal={() => setIsImportModalOpen(true)}
+        selectedHealthFilter={selectedStockHealthFilter}
+        onSelectHealthFilter={setSelectedStockHealthFilter}
       />
 
       {error && <p role="alert" className="rounded-xl bg-rose-50 p-3 text-sm text-rose-700">{error}</p>}
@@ -290,9 +318,18 @@ export const ProductsPage: React.FC = () => {
       {activeTab === 'PRODUCTS' ? (
         <ProductTable
           products={displayedProducts}
-          onPrintBarcode={(p) => setSelectedProductForBarcode(p)}
+          onPrintBarcode={(p) => {
+            setSelectedProductForBarcode(p);
+            setBatchPrintProducts(null);
+          }}
+          onPrintBatchBarcodes={(list) => {
+            setBatchPrintProducts(list);
+            setSelectedProductForBarcode(null);
+          }}
           onEditProduct={handleEditProduct}
           onViewDetail={(p) => setSelectedProductForDetail(p)}
+          healthFilter={selectedStockHealthFilter}
+          onHealthFilterChange={setSelectedStockHealthFilter}
         />
       ) : activeTab === 'SUPPLIERS' ? (
         <SupplierTable
@@ -340,11 +377,24 @@ export const ProductsPage: React.FC = () => {
         availableCategories={categories}
       />
 
-      {/* GS1 Barcode Print Preview Modal */}
+      {/* GS1 Barcode Print Preview Modal (Hỗ trợ in đơn lẻ & hàng loạt) */}
       <BarcodeLabelModal
-        isOpen={!!selectedProductForBarcode}
-        onClose={() => setSelectedProductForBarcode(null)}
+        isOpen={!!selectedProductForBarcode || (!!batchPrintProducts && batchPrintProducts.length > 0)}
+        onClose={() => {
+          setSelectedProductForBarcode(null);
+          setBatchPrintProducts(null);
+        }}
         product={selectedProductForBarcode}
+        products={batchPrintProducts || undefined}
+      />
+
+      {/* Bulk CSV / Excel Import Modal */}
+      <ImportProductsModal
+        isOpen={isImportModalOpen}
+        onClose={() => setIsImportModalOpen(false)}
+        existingSkus={products.map((p) => p.sku)}
+        suppliers={suppliers}
+        onConfirmImport={handleBatchImport}
       />
 
       {/* Full Master Data Specification Detail Modal */}
@@ -353,7 +403,10 @@ export const ProductsPage: React.FC = () => {
         onClose={() => setSelectedProductForDetail(null)}
         product={selectedProductForDetail}
         onEditProduct={handleEditProduct}
-        onPrintBarcode={(p) => setSelectedProductForBarcode(p)}
+        onPrintBarcode={(p) => {
+          setSelectedProductForBarcode(p);
+          setBatchPrintProducts(null);
+        }}
         inventoryBalances={inventoryBalances}
       />
     </div>

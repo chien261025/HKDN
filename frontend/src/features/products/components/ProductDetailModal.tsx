@@ -26,6 +26,7 @@ import {
 import { ProductItem } from '../types';
 import { getCategoryBadge, getZoneBadge } from '../utils/productBadges';
 import { StockItem } from '../../labels/types';
+import { canViewCostPrice, formatMaskedPrice } from '../../auth/utils/permissionUtils';
 
 interface ProductDetailModalProps {
   isOpen: boolean;
@@ -131,13 +132,13 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
             </div>
             <div>
               <div className="flex items-center gap-2">
-                <h2 className="text-lg font-bold text-slate-900">Hồ Sơ Kỹ Thuật Mặt Hàng (Master Data)</h2>
-                <span className="font-mono text-xs px-2 py-0.5 rounded-full bg-blue-100 text-blue-700 font-bold border border-blue-200">
+                <h2 className="text-lg font-bold text-slate-900">Chi Tiết Sản Phẩm</h2>
+                <span className="font-mono text-xs px-2.5 py-0.5 rounded-full bg-blue-100 text-blue-700 font-bold border border-blue-200">
                   {product.sku}
                 </span>
               </div>
               <p className="text-xs text-slate-500 mt-0.5">
-                Quy cách đóng gói, thông số kích thước CBM, giá vốn & ngưỡng tồn kho
+                Thông tin quy cách, giá cả, định mức tồn kho và lô hàng thực tế
               </p>
             </div>
           </div>
@@ -179,6 +180,19 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
               <div className="flex flex-wrap items-center gap-2">
                 {getCategoryBadge(product.category)}
                 {getZoneBadge(product.storageZone)}
+                {product.trackingMethod === 'SERIAL_IMEI' ? (
+                  <span className="text-xs px-2 py-0.5 rounded-md font-bold bg-cyan-50 text-cyan-700 border border-cyan-200">
+                    Serial/IMEI
+                  </span>
+                ) : product.trackingMethod === 'STANDARD' ? (
+                  <span className="text-xs px-2 py-0.5 rounded-md font-bold bg-slate-100 text-slate-700 border border-slate-200">
+                    Tiêu Chuẩn
+                  </span>
+                ) : (
+                  <span className="text-xs px-2 py-0.5 rounded-md font-bold bg-indigo-50 text-indigo-700 border border-indigo-200">
+                    {product.outboundStrategy || (product.category === 'FOOD_BEVERAGE' ? 'FEFO' : 'FIFO')}
+                  </span>
+                )}
                 <span
                   className={`px-2 py-0.5 rounded-md text-xs font-semibold border ${
                     product.businessStatus === 'ACTIVE' || !product.businessStatus
@@ -227,11 +241,11 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
 
           {/* 3 Grid Sections */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            {/* Box 1: Quy cách & Kích thước CBM */}
+            {/* Box 1: Quy cách & Kích thước */}
             <div className="p-4 rounded-2xl border border-slate-200 bg-white shadow-2xs space-y-3">
               <div className="flex items-center gap-2 text-xs font-bold text-slate-800 border-b border-slate-100 pb-2">
                 <Ruler className="w-4 h-4 text-blue-600" />
-                <span>Quy Cách & Thể Tích CBM</span>
+                <span>Quy Cách & Kích Thước</span>
               </div>
               <div className="space-y-1.5 text-xs">
                 <div className="flex justify-between">
@@ -239,72 +253,77 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
                   <span className="font-bold text-slate-900">{product.unit}</span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-slate-500">Trọng lượng net:</span>
+                  <span className="text-slate-500">Trọng lượng:</span>
                   <span className="font-bold text-slate-900">{product.weightKg} kg</span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-slate-500">Kích thước (DxRxC):</span>
+                  <span className="text-slate-500">Kích thước (Dài x Rộng x Cao):</span>
                   <span className="font-mono text-slate-800">
                     {product.lengthCm || 20} x {product.widthCm || 15} x {product.heightCm || 10} cm
                   </span>
                 </div>
                 <div className="flex justify-between pt-1 border-t border-slate-100">
-                  <span className="text-blue-700 font-semibold">Thể tích CBM:</span>
+                  <span className="text-blue-700 font-semibold">Thể tích thùng:</span>
                   <span className="font-mono font-black text-blue-700">
                     {product.volumeCbm || 0.003} m³
                   </span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-slate-500">Điều kiện lưu kho:</span>
+                  <span className="text-slate-500">Nhiệt độ bảo quản:</span>
                   <span className="font-medium text-slate-800">
                     {product.storageCondition === 'COOL'
-                      ? 'Kho mát 2-8°C'
+                      ? 'Kho mát (2-8°C)'
                       : product.storageCondition === 'COLD'
-                      ? 'Đông lạnh (-18°C)'
+                      ? 'Kho đông lạnh (-18°C)'
                       : product.storageCondition === 'SECURE'
-                      ? 'Kho khóa bảo mật'
-                      : 'Nhiệt độ phòng (Ambient)'}
+                      ? 'Kho khóa bảo mật (Hàng giá trị)'
+                      : 'Nhiệt độ phòng (Kho khô)'}
                   </span>
                 </div>
               </div>
             </div>
 
-            {/* Box 2: Giá Cả & Tài Chính */}
+            {/* Box 2: Giá Nhập & Giá Bán */}
             <div className="p-4 rounded-2xl border border-slate-200 bg-white shadow-2xs space-y-3">
               <div className="flex items-center gap-2 text-xs font-bold text-slate-800 border-b border-slate-100 pb-2">
                 <DollarSign className="w-4 h-4 text-emerald-600" />
-                <span>Tài Chính & Định Giá Tham Khảo</span>
+                <span>Giá Nhập & Giá Bán</span>
               </div>
               <div className="space-y-1.5 text-xs">
                 <div className="flex justify-between">
-                  <span className="text-slate-500" title="Giá vốn chuẩn tham khảo trong Master Data. Giá thực tế ghi nhận trên từng đơn PO/GRN.">
-                    Giá vốn chuẩn (Master Data):
-                  </span>
+                  <span className="text-slate-500">Giá nhập tham khảo:</span>
                   <span className="font-mono font-bold text-emerald-700">
-                    {(product.purchasePrice || 0).toLocaleString()} ₫
+                    {formatMaskedPrice(product.purchasePrice, canViewCostPrice())}
                   </span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-slate-500">Giá xuất / Giá bán đề xuất:</span>
+                  <span className="text-slate-500">Giá bán dự kiến:</span>
                   <span className="font-mono font-bold text-blue-700">
-                    {(product.sellingPrice || 0).toLocaleString()} ₫
+                    {formatMaskedPrice(product.sellingPrice, canViewCostPrice())}
                   </span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-slate-500">Biên độ giá chuẩn:</span>
-                  <span className="font-mono text-slate-800">
-                    {((product.sellingPrice || 0) - (product.purchasePrice || 0)).toLocaleString()} ₫
+                  <span className="text-slate-500">Chênh lệch (Lợi nhuận gộp):</span>
+                  <span className="font-mono text-slate-800 font-bold">
+                    {formatMaskedPrice((product.sellingPrice || 0) - (product.purchasePrice || 0), canViewCostPrice())}
                   </span>
                 </div>
                 <div className="flex justify-between pt-1 border-t border-slate-100">
-                  <span className="text-slate-500">Trị giá tồn (ước tính giá chuẩn):</span>
+                  <span className="text-slate-500">Tổng giá trị tồn kho:</span>
                   <span className="font-mono font-extrabold text-slate-900">
-                    {inventoryValue.toLocaleString()} ₫
+                    {formatMaskedPrice(inventoryValue, canViewCostPrice())}
                   </span>
                 </div>
-                <p className="text-[10px] text-slate-400 italic pt-1 border-t border-slate-50 leading-relaxed">
-                  * Giá mua thực tế theo từng lô hàng trên đơn PO; giá trị xuất kho hạch toán theo phương pháp đã cấu hình.
-                </p>
+                {!canViewCostPrice() && (
+                  <p className="text-[10px] text-amber-700 bg-amber-50 p-1.5 rounded-lg border border-amber-200 mt-1 leading-relaxed">
+                    * Giá vốn và biên lợi nhuận được che giấu theo chính sách bảo mật cho nhân viên tác nghiệp kho.
+                  </p>
+                )}
+                {canViewCostPrice() && (
+                  <p className="text-[10px] text-slate-400 italic pt-1 border-t border-slate-50 leading-relaxed">
+                    * Giá nhập thực tế được ghi nhận chính xác theo từng hóa đơn nhập kho.
+                  </p>
+                )}
               </div>
             </div>
 
@@ -312,11 +331,11 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
             <div className="p-4 rounded-2xl border border-slate-200 bg-white shadow-2xs space-y-3">
               <div className="flex items-center gap-2 text-xs font-bold text-slate-800 border-b border-slate-100 pb-2">
                 <Layers className="w-4 h-4 text-indigo-600" />
-                <span>Kiểm Soát Tồn Kho & Hệ Thống</span>
+                <span>Tình Trạng Tồn Kho</span>
               </div>
               <div className="space-y-1.5 text-xs">
                 <div className="flex justify-between">
-                  <span className="text-slate-500">Tồn tại kho đang chọn:</span>
+                  <span className="text-slate-500">Tồn tại kho hiện tại:</span>
                   <span
                     className={`font-mono font-bold ${
                       isUnderSafety
@@ -330,27 +349,27 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
                   </span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-slate-500">Tổng tồn toàn hệ thống:</span>
+                  <span className="text-slate-500">Tổng tồn tất cả các kho:</span>
                   <span className="font-mono font-extrabold text-indigo-700">
                     {totalSystemStock.toLocaleString()} {product.unit}
                   </span>
                 </div>
                 {product.currentStock === 0 && totalSystemStock > 0 && (
                   <div className="p-1.5 rounded-lg bg-amber-50 border border-amber-200 text-[10.5px] text-amber-800 leading-snug">
-                    ℹ️ Sản phẩm hiện có <strong>{totalSystemStock} {product.unit}</strong> tồn tại chi nhánh/kho khác trong hệ thống, chưa có hàng tại kho đang chọn.
+                    ℹ️ Sản phẩm hiện có <strong>{totalSystemStock} {product.unit}</strong> tại chi nhánh kho khác trong hệ thống, chưa có hàng tại kho đang chọn.
                   </div>
                 )}
                 <div className="flex justify-between pt-1 border-t border-slate-100">
-                  <span className="text-slate-500">Tồn an toàn (Min):</span>
-                  <span className="font-mono text-rose-600">{product.safetyStock} {product.unit}</span>
+                  <span className="text-slate-500">Tồn tối thiểu (Báo động):</span>
+                  <span className="font-mono text-rose-600 font-bold">{product.safetyStock} {product.unit}</span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-slate-500">Điểm đặt hàng (ROP):</span>
-                  <span className="font-mono text-amber-600">{product.reorderPoint} {product.unit}</span>
+                  <span className="text-slate-500">Ngưỡng cần nhập thêm:</span>
+                  <span className="font-mono text-amber-600 font-bold">{product.reorderPoint} {product.unit}</span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-slate-500">Tồn tối đa (Max):</span>
-                  <span className="font-mono text-indigo-600">{product.maxStock || 500} {product.unit}</span>
+                  <span className="text-slate-500">Mức tồn tối đa:</span>
+                  <span className="font-mono text-indigo-600 font-bold">{product.maxStock || 500} {product.unit}</span>
                 </div>
                 <div className="w-full bg-slate-200 rounded-full h-1.5 mt-2 overflow-hidden">
                   <div
@@ -373,39 +392,51 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
             </div>
           </div>
 
-          {/* Master Data Policy Card: Quản lý Lô, Hạn Sử Dụng & Chiến Lược FEFO */}
+          {/* Banner: Phương thức quản lý hàng hóa */}
           <div className="p-3.5 rounded-2xl border border-indigo-100 bg-indigo-50/50 flex flex-wrap items-center justify-between gap-3 text-xs">
             <div className="flex items-center gap-2">
               <ShieldCheck className="w-4 h-4 text-indigo-600 shrink-0" />
               <div>
-                <span className="font-bold text-slate-800">Chính Sách Master Data: </span>
+                <span className="font-bold text-slate-800">Phương Thức Quản Lý Kho: </span>
                 <span className="text-slate-600">
-                  Quản lý Lô: <strong>{product.isBatchManaged !== false ? 'Có (Batch Tracked)' : 'Không'}</strong> | 
-                  Hạn dùng (EXP): <strong>{product.isExpiryManaged !== false ? `Có (${product.shelfLifeDays || 45} ngày)` : 'Không'}</strong> | 
-                  Chiến lược xuất: <strong className="text-indigo-700">{product.outboundStrategy || (product.category === 'FOOD_BEVERAGE' ? 'FEFO' : 'FIFO')}</strong>
+                  Theo Lô: <strong>{product.isBatchManaged !== false ? 'Bắt buộc nhập số Lô' : 'Không bắt buộc'}</strong> | 
+                  Hạn sử dụng: <strong>{product.isExpiryManaged !== false ? `${product.shelfLifeDays || 45} ngày` : 'Không áp dụng'}</strong> | 
+                  Ưu tiên xuất: <strong className="text-indigo-700">{product.outboundStrategy === 'FEFO' ? 'Hàng cận hạn trước (FEFO)' : 'Nhập trước xuất trước (FIFO)'}</strong>
                 </span>
               </div>
             </div>
             <span className="text-[11px] px-2 py-0.5 rounded-full bg-indigo-100 text-indigo-700 font-semibold border border-indigo-200">
-              Quy tắc điều phối tự động
+              Tự động điều phối xuất
             </span>
           </div>
 
-          {/* Box 4: Phân biệt rõ Sản phẩm vs Lô Hàng (Batch/Lot) & Hạn Sử Dụng FEFO */}
+          {/* Box 4: Phân biệt rõ Sản phẩm vs Lô Hàng & Hạn Sử Dụng */}
           <div className="p-4 rounded-2xl border border-slate-200 bg-white shadow-2xs space-y-3">
             <div className="flex items-center justify-between border-b border-slate-100 pb-2">
               <div className="flex items-center gap-2 text-xs font-bold text-slate-800">
                 <Calendar className="w-4 h-4 text-amber-600" />
-                <span>Các Lô Hàng (Batch/Lot) Đang Lưu Kho & Kiểm Soát Hạn Dùng FEFO</span>
+                <span>
+                  {product.trackingMethod === 'SERIAL_IMEI'
+                    ? 'Danh Sách Thiết Bị & Mã Serial / IMEI'
+                    : product.trackingMethod === 'STANDARD'
+                    ? 'Số Dư Tồn Kho Tiêu Chuẩn & Vị Trí Kệ'
+                    : 'Danh Sách Lô Hàng Đang Lưu Kho & Hạn Sử Dụng'}
+                </span>
               </div>
               <span className="text-[11px] text-slate-500">
-                Theo dõi chi tiết số lô, hạn dùng và kho lưu trữ
+                {product.trackingMethod === 'SERIAL_IMEI'
+                  ? 'Theo dõi mã Serial/IMEI từng máy tại các ô kệ'
+                  : product.trackingMethod === 'STANDARD'
+                  ? 'Theo dõi số lượng tồn kho theo từng chi nhánh và ô kệ'
+                  : 'Theo dõi chi tiết số lô, hạn dùng và kho lưu trữ'}
               </span>
             </div>
 
             {productBatches.length === 0 ? (
               <div className="py-4 text-center text-xs text-slate-400 italic">
-                Hiện chưa có lô hàng cụ thể nào được phân bổ trong kho cho mặt hàng này.
+                {product.trackingMethod === 'SERIAL_IMEI'
+                  ? 'Hiện chưa có thiết bị / số Serial cụ thể nào được ghi nhận tồn kho cho mặt hàng này.'
+                  : 'Hiện chưa có lô hàng cụ thể nào được phân bổ trong kho cho mặt hàng này.'}
               </div>
             ) : (
               <div className="overflow-x-auto">
@@ -413,12 +444,12 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
                   <thead>
                     <tr className="border-b border-slate-200 text-slate-500 text-[11px]">
                       <th className="py-2 px-2">Kho Lưu Trữ</th>
-                      <th className="py-2 px-2">Số Lô (Batch)</th>
-                      <th className="py-2 px-2">Vị Trí Ô Kệ</th>
-                      <th className="py-2 px-2">Hạn Dùng (EXP) & Trạng Thái</th>
-                      <th className="py-2 px-2 text-right">Tồn Thực</th>
-                      <th className="py-2 px-2 text-right">Khả Dụng</th>
-                      <th className="py-2 px-2 text-center">Kiểm Soát Xuất</th>
+                      <th className="py-2 px-2">Số Lô</th>
+                      <th className="py-2 px-2">Vị Trí Kệ</th>
+                      <th className="py-2 px-2">Hạn Sử Dụng & Tình Trạng</th>
+                      <th className="py-2 px-2 text-right">Tồn Thực Tế</th>
+                      <th className="py-2 px-2 text-right">Có Thể Xuất</th>
+                      <th className="py-2 px-2 text-center">Trạng Thái Xuất</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-100">
@@ -459,11 +490,11 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
                               </span>
                             ) : expInfo.status === 'EXPIRING_SOON' ? (
                               <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-100 text-amber-800 border border-amber-300">
-                                Ưu tiên FEFO
+                                Ưu tiên xuất trước
                               </span>
                             ) : (
                               <span className="px-2 py-0.5 rounded-full text-[10px] font-medium bg-emerald-50 text-emerald-700 border border-emerald-200">
-                                Đạt chuẩn QC
+                                Đủ điều kiện xuất
                               </span>
                             )}
                           </td>
@@ -488,7 +519,7 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
               className="px-3.5 py-2 bg-white hover:bg-slate-100 text-slate-700 rounded-xl border border-slate-200 font-semibold text-xs flex items-center gap-1.5 transition-colors cursor-pointer"
             >
               <Printer className="w-3.5 h-3.5" />
-              <span>In Tem Nhãn Barcode & QR</span>
+              <span>In Tem Mã Vạch</span>
             </button>
           </div>
 

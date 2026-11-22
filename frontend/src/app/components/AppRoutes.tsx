@@ -26,7 +26,7 @@ export const AppRoutes: React.FC<AppRoutesProps> = ({ onOpenScanner }) => {
       <Route 
         path="/users" 
         element={
-          <ProtectedRoute allowedRoles={['ROLE_ADMIN']} routePath="/users">
+          <ProtectedRoute allowedRoles={['ROLE_ADMIN', 'ROLE_WAREHOUSE_MANAGER']} routePath="/users">
             <UsersManagementPage />
           </ProtectedRoute>
         } 

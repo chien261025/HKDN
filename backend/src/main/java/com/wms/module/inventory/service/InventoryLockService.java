@@ -12,6 +12,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
+import java.util.List;
 
 @Slf4j
 @Service
@@ -70,14 +71,42 @@ public class InventoryLockService {
     public void releaseStock(Long productId, Long locationId, Long batchId, int qtyToRelease) {
         log.info("Bat dau giai phong hang giu: Product={}, Loc={}, Batch={}, Qty={}", productId, locationId, batchId, qtyToRelease);
 
-        Inventory inventory = inventoryRepository.findByProductLocationAndBatchForUpdate(productId, locationId, batchId)
-                .orElseThrow(() -> new BusinessException(ErrorCode.NOT_FOUND, "Không tìm thấy mặt hàng tại vị trí này"));
+        Inventory inventory = null;
+        if (locationId != null) {
+            inventory = inventoryRepository.findByProductLocationAndBatchForUpdate(productId, locationId, batchId)
+                    .orElse(null);
+        }
 
-        int currentReserved = inventory.getReservedQty() != null ? inventory.getReservedQty() : 0;
-        int newReserved = Math.max(0, currentReserved - qtyToRelease);
-        inventory.setReservedQty(newReserved);
-        inventoryRepository.save(inventory);
+        // Nếu không tìm thấy tại vị trí chỉ định, tìm kiếm các bản ghi tồn kho khác của sản phẩm và lô này
+        if (inventory == null && batchId != null) {
+            List<Inventory> batchInvs = inventoryRepository.findByProductIdAndBatchId(productId, batchId);
+            if (batchInvs != null && !batchInvs.isEmpty()) {
+                inventory = batchInvs.stream()
+                        .filter(i -> i.getReservedQty() != null && i.getReservedQty() > 0)
+                        .findFirst()
+                        .orElse(batchInvs.get(0));
+            }
+        }
 
-        log.info("Giai phong hang thanh cong! Reserved moi={}", inventory.getReservedQty());
+        // Nếu vẫn không tìm thấy, tìm theo productId
+        if (inventory == null && productId != null) {
+            List<Inventory> prodInvs = inventoryRepository.findByProductId(productId);
+            if (prodInvs != null && !prodInvs.isEmpty()) {
+                inventory = prodInvs.stream()
+                        .filter(i -> i.getReservedQty() != null && i.getReservedQty() > 0)
+                        .findFirst()
+                        .orElse(null);
+            }
+        }
+
+        if (inventory != null) {
+            int currentReserved = inventory.getReservedQty() != null ? inventory.getReservedQty() : 0;
+            int newReserved = Math.max(0, currentReserved - qtyToRelease);
+            inventory.setReservedQty(newReserved);
+            inventoryRepository.save(inventory);
+            log.info("Giai phong hang thanh cong! LocationId={}, Reserved moi={}", inventory.getLocationId(), inventory.getReservedQty());
+        } else {
+            log.warn("Khong tim thay ban ghi ton kho de giai phong giu hang: Product={}, Loc={}, Batch={}. Bo qua de hoan tat huy don.", productId, locationId, batchId);
+        }
     }
 }

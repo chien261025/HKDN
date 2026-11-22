@@ -22,12 +22,9 @@ export const FefoAllocationCard: React.FC<FefoAllocationCardProps> = ({
       {/* Tiêu đề gọn gàng & trực quan */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-3 border-b border-slate-100">
         <div className="flex items-center gap-2.5">
-          <div className="w-7 h-7 rounded-lg bg-indigo-50 border border-indigo-200 flex items-center justify-center text-indigo-700 font-black text-xs">
-            2
-          </div>
           <div>
             <h2 className="text-xs md:text-sm font-bold text-slate-900 tracking-wide uppercase">
-              Bước 2: Chi Tiết Đơn Hàng & Vị Trí Lấy Hàng
+              Chi Tiết Đơn Hàng & Vị Trí Lấy Hàng
             </h2>
           </div>
         </div>
@@ -149,13 +146,10 @@ export const FefoAllocationCard: React.FC<FefoAllocationCardProps> = ({
         </div>
       </div>
 
-      {/* BƯỚC 3: THAO TÁC XUẤT KHO TRỰC TIẾP */}
+      {/* THAO TÁC XUẤT KHO TRỰC TIẾP */}
       <div className="pt-3 border-t border-slate-100">
         <div className="flex items-center gap-2 mb-3 text-xs font-bold text-slate-900 uppercase">
-          <div className="w-6 h-6 rounded-md bg-indigo-50 border border-indigo-200 text-indigo-700 font-mono text-xs flex items-center justify-center font-black">
-            3
-          </div>
-          <span>Bước 3: Thao Tác Xuất Kho</span>
+          <span>Thao Tác Xuất Kho</span>
         </div>
 
         <div className="flex flex-col sm:flex-row items-center gap-3">
@@ -171,7 +165,7 @@ export const FefoAllocationCard: React.FC<FefoAllocationCardProps> = ({
             <Lock className="w-4 h-4" />
             <span>
               {order.status === 'PENDING'
-                ? `1. Giữ Hàng (${order.qty} SP)`
+                ? `Khóa Giữ Hàng (${order.qty} SP)`
                 : 'Đã Giữ Hàng Thành Công'}
             </span>
           </button>
@@ -191,7 +185,7 @@ export const FefoAllocationCard: React.FC<FefoAllocationCardProps> = ({
             <span>
               {order.status === 'SHIPPED'
                 ? 'Đã Xuất Kho Thành Công'
-                : '2. Xác Nhận Xuất Kho'}
+                : 'Xác Nhận Xuất Kho'}
             </span>
           </button>
 

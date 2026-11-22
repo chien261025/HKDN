@@ -32,7 +32,7 @@ export const OutboundHeader: React.FC<OutboundHeaderProps> = ({
           </div>
           <div>
             <h1 className="text-xl md:text-2xl font-extrabold text-slate-900 tracking-tight">
-              Quản Lý Đơn Xuất Kho (SO)
+              Quản Lý Đơn Xuất Kho
             </h1>
             <p className="text-xs sm:text-sm text-slate-600 font-medium mt-1">
               Phân bổ tự động lô cận hạn (FEFO), khóa giữ tồn an toàn và tối ưu hóa đường đi lấy hàng
@@ -57,11 +57,11 @@ export const OutboundHeader: React.FC<OutboundHeaderProps> = ({
           className={`bg-white rounded-2xl p-4 sm:p-5 border border-slate-200/90 border-l-4 border-l-slate-700 shadow-sm hover:shadow-md transition-all cursor-pointer select-none ${
             activeStatus === 'ALL' ? 'ring-2 ring-slate-400' : ''
           }`}
-          title="Nhấn để xem toàn bộ danh sách đơn SO"
+          title="Toàn bộ danh sách đơn xuất kho"
         >
           <div className="flex items-start justify-between">
             <div>
-              <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider block">Tổng Nhu Cầu SO</span>
+              <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider block">Tổng Đơn Xuất Kho</span>
               <div className="text-2xl sm:text-3xl font-black text-slate-900 font-mono mt-1.5 tabular-nums">{totalCount}</div>
             </div>
             <div className="p-2.5 rounded-xl bg-slate-100 text-slate-700 border border-slate-200">
@@ -81,7 +81,7 @@ export const OutboundHeader: React.FC<OutboundHeaderProps> = ({
         >
           <div className="flex items-start justify-between">
             <div>
-              <span className="text-[11px] font-bold text-amber-700 uppercase tracking-wider block">1. Chờ Phân Bổ</span>
+              <span className="text-[11px] font-bold text-amber-700 uppercase tracking-wider block">Chờ Phân Bổ</span>
               <div className="text-2xl sm:text-3xl font-black text-amber-600 font-mono mt-1.5 tabular-nums">{pendingCount}</div>
             </div>
             <div className="p-2.5 rounded-xl bg-amber-50 text-amber-700 border border-amber-200">
@@ -104,7 +104,7 @@ export const OutboundHeader: React.FC<OutboundHeaderProps> = ({
         >
           <div className="flex items-start justify-between">
             <div>
-              <span className="text-[11px] font-bold text-blue-700 uppercase tracking-wider block">2. Đang Lấy Hàng</span>
+              <span className="text-[11px] font-bold text-blue-700 uppercase tracking-wider block">Đang Lấy Hàng</span>
               <div className="text-2xl sm:text-3xl font-black text-blue-600 font-mono mt-1.5 tabular-nums">{pickingCount}</div>
             </div>
             <div className="p-2.5 rounded-xl bg-blue-50 text-blue-700 border border-blue-200">
@@ -127,7 +127,7 @@ export const OutboundHeader: React.FC<OutboundHeaderProps> = ({
         >
           <div className="flex items-start justify-between">
             <div>
-              <span className="text-[11px] font-bold text-emerald-700 uppercase tracking-wider block">3. Đã Xuất Kho</span>
+              <span className="text-[11px] font-bold text-emerald-700 uppercase tracking-wider block">Đã Xuất Kho</span>
               <div className="text-2xl sm:text-3xl font-black text-emerald-600 font-mono mt-1.5 tabular-nums">{dispatchedCount}</div>
             </div>
             <div className="p-2.5 rounded-xl bg-emerald-50 text-emerald-700 border border-emerald-200">

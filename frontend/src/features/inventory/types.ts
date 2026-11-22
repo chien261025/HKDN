@@ -19,6 +19,12 @@ export interface StockItem {
   isExpired?: boolean;
   expiryStatus?: 'EXPIRED' | 'EXPIRING_SOON' | 'VALID' | 'NO_EXPIRY';
   daysRemaining?: number;
+  daysInStock?: number;
+  agingCategory?: '<30' | '30-90' | '90-180' | '>180';
+  barcode?: string;
+  categoryName?: string;
+  manufactureDate?: string;
+  holdingValue?: number;
 }
 
 export interface StockTransferDto {

@@ -40,7 +40,6 @@ interface OutboundOrderTableProps {
   onOpenPickPath?: (order: OutboundOrder) => void;
   onStartPicking?: (order: OutboundOrder) => void;
   onOpenVoucher?: (order: OutboundOrder) => void;
-  onOpenConcurrencyTest?: () => void;
   onOpenOrderLedger?: (soCode: string) => void;
 }
 
@@ -62,7 +61,6 @@ export const OutboundOrderTable: React.FC<OutboundOrderTableProps> = ({
   onOpenPickPath,
   onStartPicking,
   onOpenVoucher,
-  onOpenConcurrencyTest,
   onOpenOrderLedger,
 }) => {
   const [currentPage, setCurrentPage] = useState(1);
@@ -176,7 +174,7 @@ export const OutboundOrderTable: React.FC<OutboundOrderTableProps> = ({
       }
 
       return true;
-    });
+    }).sort((a, b) => Number(b.id) - Number(a.id));
   }, [orders, activeStatus, searchTerm, dateFilter, customDate, todayStr, yesterdayStr]);
 
   const totalPages = Math.max(1, Math.ceil(filteredOrders.length / PAGE_SIZE));
@@ -231,7 +229,7 @@ export const OutboundOrderTable: React.FC<OutboundOrderTableProps> = ({
           </div>
           <div>
             <h2 className="font-bold text-slate-900 text-sm sm:text-base flex items-center gap-2">
-              <span>Danh Sách Đơn Xuất Kho (SO)</span>
+              <span>Danh Sách Đơn Xuất Kho</span>
             </h2>
             <p className="text-xs text-slate-500 hidden sm:block">
               Theo dõi tiến độ từ phê duyệt cấp phát lô FEFO, khóa giữ tồn kho đến nhặt hàng và bàn giao xe tải
@@ -240,18 +238,6 @@ export const OutboundOrderTable: React.FC<OutboundOrderTableProps> = ({
         </div>
 
         <div className="flex items-center gap-2">
-          {onOpenConcurrencyTest && (
-            <button
-              type="button"
-              onClick={onOpenConcurrencyTest}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200 text-xs font-bold transition-all shadow-2xs cursor-pointer"
-              title="Mô phỏng 20 luồng đồng thời tranh chấp hàng - Demo tính năng khóa Pessimistic"
-            >
-              <Zap className="w-3.5 h-3.5 text-indigo-600 fill-indigo-600" />
-              <span className="hidden sm:inline">Live Concurrency Test</span>
-              <span className="sm:hidden">Test Khóa</span>
-            </button>
-          )}
           <button
             onClick={handleExportCsv}
             className="flex items-center gap-1.5 px-3 py-1.5 bg-white hover:bg-slate-100 text-slate-700 border border-slate-300 rounded-lg text-xs font-semibold shadow-2xs transition-colors cursor-pointer"
@@ -443,9 +429,14 @@ export const OutboundOrderTable: React.FC<OutboundOrderTableProps> = ({
 
                 return (
                   <tr key={order.id} className="hover:bg-slate-50/80 transition-colors">
-                    <td className="py-3.5 px-4">
+                    <td className="py-3.5 px-4 cursor-pointer" onClick={() => onSelectOrder(order)} title="Nhấn để xem chi tiết đơn xuất kho">
                       <div className="flex items-center gap-2">
-                        <span className="font-bold text-slate-900 text-sm font-mono">{order.soCode}</span>
+                        <span className="font-bold text-blue-700 hover:text-blue-900 text-sm font-mono hover:underline">{order.soCode}</span>
+                        {order.soCode.startsWith('RTV-') && (
+                          <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-purple-100 text-purple-800 border border-purple-300">
+                            Xuất Trả NCC
+                          </span>
+                        )}
                         {order.warehouseId === 2 && (
                           <span className="text-[10px] font-bold px-1.5 py-0.2 rounded bg-purple-50 text-purple-700 border border-purple-200">
                             Bắc Ninh
@@ -508,7 +499,7 @@ export const OutboundOrderTable: React.FC<OutboundOrderTableProps> = ({
                         </span>
                       )}
                       {isAllocated && (
-                        <span className="inline-flex items-center gap-1.5 text-indigo-700 bg-indigo-50 px-2.5 py-1 rounded-lg border border-indigo-200 font-bold" title="Đã khóa giữ đúng lô cận date cho đơn này (Reserved)">
+                        <span className="inline-flex items-center gap-1.5 text-indigo-700 bg-indigo-50 px-2.5 py-1 rounded-lg border border-indigo-200 font-bold" title="Đã khóa giữ đúng lô cận hạn cho đơn này">
                           <Lock className="w-3.5 h-3.5 text-indigo-600" /> ĐÃ GIỮ HÀNG
                         </span>
                       )}
@@ -543,11 +534,7 @@ export const OutboundOrderTable: React.FC<OutboundOrderTableProps> = ({
                               <span>Phân Bổ Lô</span>
                             </button>
                             <button
-                              onClick={() => {
-                                if (confirm(`Bạn có chắc chắn muốn hủy đơn xuất ${order.soCode}?`)) {
-                                  onCancelOrder(order.id);
-                                }
-                              }}
+                              onClick={() => onCancelOrder(order.id)}
                               className="px-2 py-1.5 bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 rounded-lg text-xs font-semibold transition-colors flex items-center gap-1 cursor-pointer"
                               title="Hủy đơn xuất kho"
                             >
@@ -581,11 +568,7 @@ export const OutboundOrderTable: React.FC<OutboundOrderTableProps> = ({
                               </button>
                             )}
                             <button
-                              onClick={() => {
-                                if (confirm(`Bạn có chắc chắn muốn hủy đơn xuất ${order.soCode}? Hệ thống sẽ giải phóng toàn bộ số lượng hàng đã giữ trước (Reserved Stock).`)) {
-                                  onCancelOrder(order.id);
-                                }
-                              }}
+                              onClick={() => onCancelOrder(order.id)}
                               className="px-2 py-1.5 bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 rounded-lg text-xs font-semibold transition-colors flex items-center gap-1 cursor-pointer"
                               title="Hủy đơn xuất và giải phóng hàng đã giữ"
                             >

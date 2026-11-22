@@ -18,6 +18,13 @@ import { Pagination } from '../../../../components/common';
 
 const PAGE_SIZE = 10;
 
+const normalizeSearchText = (str?: string) =>
+  (str || '')
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .trim();
+
 interface RecentLedgerCardProps {
   history: LedgerEntryData[];
   onSelectEntry: (entry: LedgerEntryData) => void;
@@ -31,18 +38,44 @@ export const RecentLedgerCard: React.FC<RecentLedgerCardProps> = ({
   const [selectedType, setSelectedType] = useState<'ALL' | 'INBOUND' | 'OUTBOUND' | 'TRANSFER' | 'ADJUSTMENT' | 'INITIAL_BALANCE'>('ALL');
   const [searchQuery, setSearchQuery] = useState('');
 
-  // Lọc dữ liệu theo loại giao dịch và từ khóa tìm kiếm
+  // Lắng nghe sự kiện tìm kiếm toàn hệ thống từ AppHeader
+  useEffect(() => {
+    const handleGlobalSearch = (e: any) => {
+      if (typeof e.detail === 'string') {
+        setSearchQuery(e.detail);
+      }
+    };
+    window.addEventListener('smart_wms_global_search', handleGlobalSearch);
+    return () => window.removeEventListener('smart_wms_global_search', handleGlobalSearch);
+  }, []);
+
+  // Lọc dữ liệu theo loại giao dịch và từ khóa tìm kiếm (hỗ trợ Tiếng Việt không dấu)
   const filteredHistory = history.filter((item) => {
     const matchesType = selectedType === 'ALL' || item.transactionType === selectedType;
-    const q = searchQuery.toLowerCase().trim();
+    const rawQ = searchQuery.toLowerCase().trim();
+    const normQ = normalizeSearchText(searchQuery);
+
+    if (!rawQ) return matchesType;
+
+    const id = item.id || '';
+    const ref = item.referenceCode || '';
+    const sku = item.productSku || '';
+    const name = item.productName || '';
+    const loc = item.locationBarcode || '';
+    const batch = item.batchNumber || '';
+
     const matchesSearch =
-      !q ||
-      item.id.toLowerCase().includes(q) ||
-      item.referenceCode.toLowerCase().includes(q) ||
-      item.productSku.toLowerCase().includes(q) ||
-      item.productName.toLowerCase().includes(q) ||
-      item.locationBarcode.toLowerCase().includes(q) ||
-      item.batchNumber.toLowerCase().includes(q);
+      id.toLowerCase().includes(rawQ) ||
+      ref.toLowerCase().includes(rawQ) ||
+      normalizeSearchText(ref).includes(normQ) ||
+      sku.toLowerCase().includes(rawQ) ||
+      normalizeSearchText(sku).includes(normQ) ||
+      loc.toLowerCase().includes(rawQ) ||
+      normalizeSearchText(loc).includes(normQ) ||
+      batch.toLowerCase().includes(rawQ) ||
+      normalizeSearchText(batch).includes(normQ) ||
+      name.toLowerCase().includes(rawQ) ||
+      normalizeSearchText(name).includes(normQ);
 
     return matchesType && matchesSearch;
   });
@@ -154,7 +187,7 @@ export const RecentLedgerCard: React.FC<RecentLedgerCardProps> = ({
 
   return (
     <div className="bg-white rounded-2xl border border-slate-200 shadow-xs overflow-hidden space-y-4">
-      {/* Tiêu đề & Nguyên tắc Bất biến */}
+      {/* Tiêu đề Sổ Cái */}
       <div className="p-4 sm:p-5 border-b border-slate-200 bg-slate-50/80 flex flex-col lg:flex-row lg:items-center justify-between gap-4">
         <div className="flex items-start sm:items-center gap-3">
           <div className="w-11 h-11 rounded-xl bg-indigo-600 text-white flex items-center justify-center shadow-md shadow-indigo-100 shrink-0">
@@ -163,15 +196,11 @@ export const RecentLedgerCard: React.FC<RecentLedgerCardProps> = ({
           <div>
             <div className="flex items-center gap-2.5 flex-wrap">
               <h2 className="text-base sm:text-lg font-bold text-slate-900 tracking-tight">
-                Sổ Cái Biến Động Thẻ Kho (Stock Ledger)
+                Sổ Cái Thẻ Kho
               </h2>
-              <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200 shadow-2xs">
-                <ShieldCheck className="w-3.5 h-3.5 text-emerald-600" />
-                <span>Nhật ký bất biến (Append-Only)</span>
-              </span>
             </div>
             <p className="text-xs sm:text-sm text-slate-500 font-normal mt-0.5">
-              Lưu giữ toàn bộ lịch sử biến động nhập (+), xuất (-), chuyển vị trí (-/+) và điều chỉnh kiểm kê (+/-) theo thời gian thực
+              Lịch sử chi tiết mọi biến động nhập kho, xuất kho, điều chuyển và điều chỉnh kiểm kê
             </p>
           </div>
         </div>
@@ -181,19 +210,11 @@ export const RecentLedgerCard: React.FC<RecentLedgerCardProps> = ({
           <button
             onClick={handleExportCsv}
             className="inline-flex items-center gap-2 px-3.5 py-2 rounded-xl bg-white hover:bg-slate-50 text-slate-700 font-semibold text-xs sm:text-sm border border-slate-200 shadow-xs transition-colors cursor-pointer"
-            title="Xuất file CSV sổ cái cho kế toán & kiểm toán độc lập"
+            title="Xuất file CSV sổ cái"
           >
             <Download className="w-4 h-4 text-slate-500" />
             <span>Xuất Sổ Cái (CSV)</span>
           </button>
-        </div>
-      </div>
-
-      {/* Banner Nguyên tắc Kiểm toán An Toàn Dữ Liệu */}
-      <div className="mx-4 sm:mx-5 p-3 rounded-xl bg-blue-50/70 border border-blue-200/80 text-blue-900 flex items-start gap-3 text-xs sm:text-sm leading-relaxed">
-        <ShieldCheck className="w-5 h-5 text-blue-600 shrink-0 mt-0.5" />
-        <div>
-          <span className="font-bold">Quy tắc toàn vẹn dữ liệu:</span> Sổ cái thẻ kho là nhật ký chỉ ghi thêm (Append-Only). CSDL được cấu hình khóa bảo vệ vĩnh viễn (JPA @Immutable), nghiêm cấm người dùng hoặc nhân viên tùy tiện sửa đổi, xóa bỏ dữ liệu đã xác nhận nhằm bảo đảm tính minh bạch khi thanh tra.
         </div>
       </div>
 
@@ -271,8 +292,17 @@ export const RecentLedgerCard: React.FC<RecentLedgerCardProps> = ({
             placeholder="Tìm theo Mã GD, đơn PO/SO/TRF, SKU, ô kệ..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full pl-9 pr-4 py-2 bg-slate-50/80 hover:bg-slate-50 focus:bg-white border border-slate-200 rounded-xl text-xs sm:text-sm text-slate-900 placeholder-slate-400 focus:outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100 transition-all font-normal"
+            className="w-full pl-9 pr-9 py-2 bg-slate-50/80 hover:bg-slate-50 focus:bg-white border border-slate-200 rounded-xl text-xs sm:text-sm text-slate-900 placeholder-slate-400 focus:outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100 transition-all font-normal"
           />
+          {searchQuery && (
+            <button
+              onClick={() => setSearchQuery('')}
+              className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 p-1 text-xs cursor-pointer"
+              title="Xóa tìm kiếm"
+            >
+              ✕
+            </button>
+          )}
         </div>
       </div>
 

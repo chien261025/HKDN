@@ -59,6 +59,10 @@ export const OutboundFefoWorkbench: React.FC = () => {
         );
         relevantStocks.sort((a, b) => (a.expiryDate || '').localeCompare(b.expiryDate || ''));
 
+        // Ưu tiên chọn các lô còn hạn sử dụng và còn tồn khả dụng để xuất đơn SO
+        const unexpiredStocks = relevantStocks.filter((s) => !s.isExpired && s.availableQty > 0);
+        const candidateStocks = unexpiredStocks.length > 0 ? unexpiredStocks : relevantStocks;
+
         let locationBarcode = 'WH01-ZA-A01-R01-S01-B01';
         let batchNumber = 'BATCH-FEFO-01';
         let expiryDate = '2027-01-01';
@@ -79,8 +83,8 @@ export const OutboundFefoWorkbench: React.FC = () => {
             reserved = matchingStock.reservedQty;
             available = matchingStock.availableQty;
           }
-        } else if (relevantStocks.length > 0) {
-          const bestFefo = relevantStocks[0];
+        } else if (candidateStocks.length > 0) {
+          const bestFefo = candidateStocks[0];
           locationBarcode = bestFefo.locationBarcode;
           batchNumber = bestFefo.batchNumber;
           expiryDate = bestFefo.expiryDate;
@@ -90,13 +94,12 @@ export const OutboundFefoWorkbench: React.FC = () => {
         }
 
         const expTime = new Date(expiryDate).getTime();
-        const daysRemaining = !isNaN(expTime)
-          ? Math.max(1, Math.ceil((expTime - Date.now()) / (1000 * 3600 * 24)))
-          : 90;
+        const diffDays = Math.ceil((expTime - Date.now()) / (1000 * 3600 * 24));
+        const daysRemaining = !isNaN(expTime) ? diffDays : 90;
 
         let alternateBatch: OrderItem['alternateBatch'] = undefined;
-        if (relevantStocks.length > 1) {
-          const alt = relevantStocks[1];
+        if (candidateStocks.length > 1) {
+          const alt = candidateStocks[1];
           const altExpTime = new Date(alt.expiryDate).getTime();
           alternateBatch = {
             batchNumber: alt.batchNumber,
@@ -104,7 +107,7 @@ export const OutboundFefoWorkbench: React.FC = () => {
             locationBarcode: alt.locationBarcode,
             onHand: alt.onHandQty,
             daysRemaining: !isNaN(altExpTime)
-              ? Math.max(1, Math.ceil((altExpTime - Date.now()) / (1000 * 3600 * 24)))
+              ? Math.ceil((altExpTime - Date.now()) / (1000 * 3600 * 24))
               : 180,
           };
         }

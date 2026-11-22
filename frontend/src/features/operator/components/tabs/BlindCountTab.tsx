@@ -26,12 +26,14 @@ interface BlindCountTabProps {
   onOpenScanner: () => void;
   scannedCode?: string | null;
   onClearScannedCode?: () => void;
+  isCompact?: boolean;
 }
 
 export const BlindCountTab: React.FC<BlindCountTabProps> = ({
   onOpenScanner,
   scannedCode,
   onClearScannedCode,
+  isCompact,
 }) => {
   const [locations, setLocations] = useState<LocationDto[]>([]);
   const [products, setProducts] = useState<ProductDto[]>([]);
@@ -210,11 +212,8 @@ export const BlindCountTab: React.FC<BlindCountTabProps> = ({
           </div>
           <div>
             <h2 className="text-xs font-bold text-slate-900 uppercase tracking-wider">
-              5. Kiểm Đếm Thực Tế (Audit / Cycle Count)
+              Kiểm Đếm Thực Tế
             </h2>
-            <p className="text-xs text-slate-500 font-medium">
-              Đối chiếu thực tế tồn kho theo đợt kiểm kê
-            </p>
           </div>
         </div>
         <button
@@ -243,319 +242,314 @@ export const BlindCountTab: React.FC<BlindCountTabProps> = ({
         </div>
       )}
 
-      {/* Đợt Kiểm Kê & Tiến Độ Hoàn Thành */}
-      <div className="p-4 rounded-2xl bg-white border border-slate-200 shadow-xs space-y-3">
-        <div className="flex items-center justify-between">
-          <span className="text-2xs font-extrabold uppercase text-slate-500 tracking-wider">
-            Đợt Kiểm Kê Được Giao
-          </span>
-          {currentAudit && (
-            <span
-              className={`text-2xs px-2 py-0.5 rounded-full font-bold uppercase tracking-wider ${
-                currentAudit.status === 'COMPLETED' || currentAudit.status === 'APPROVED'
-                  ? 'bg-emerald-100 text-emerald-800'
-                  : 'bg-indigo-100 text-indigo-800'
-              }`}
-            >
-              {currentAudit.status}
-            </span>
-          )}
-        </div>
-
-        <select
-          value={selectedAuditId || ''}
-          onChange={(e) => {
-            const newAuditId = Number(e.target.value);
-            setSelectedAuditId(newAuditId);
-            const found = auditSessions.find((a) => a.id === newAuditId);
-            if (found && found.items && found.items.length > 0) {
-              const pending = found.items.find(
-                (it) => it.status === 'PENDING' || it.countedQty == null
-              );
-              setSelectedItemId(pending ? pending.id : found.items[0].id);
-            } else {
-              setSelectedItemId(null);
-            }
-          }}
-          className="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-xl text-xs font-bold text-slate-800 focus:outline-none focus:border-indigo-500"
-        >
-          {auditSessions.map((a) => (
-            <option key={a.id} value={a.id}>
-              {a.auditCode} ({a.status}) — {a.notes || 'Kiểm kê định kỳ'}
-            </option>
-          ))}
-        </select>
-
-        {/* Progress bar */}
-        <div className="space-y-1.5 pt-1">
-          <div className="flex justify-between text-2xs font-bold text-slate-600">
-            <span>Tiến độ đếm: {countedItemsCount}/{totalItemsCount} vị trí</span>
-            <span className="text-indigo-600 font-extrabold">{progressPercent}%</span>
-          </div>
-          <div className="w-full h-2 bg-slate-100 rounded-full overflow-hidden border border-slate-200">
-            <div
-              className="h-full bg-linear-to-r from-indigo-500 to-emerald-500 transition-all duration-500"
-              style={{ width: `${progressPercent}%` }}
-            />
-          </div>
-        </div>
-      </div>
-
-      {/* Bảng Danh Sách Ô Kệ Phân Công (Worklist) */}
-      <div className="p-4 rounded-2xl bg-white border border-slate-200 shadow-xs space-y-3">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-1.5">
-            <Layers className="w-4 h-4 text-indigo-600" />
-            <h3 className="text-xs font-bold text-slate-800 uppercase tracking-wider">
-              Danh Sách Ô Kệ Phân Công ({totalItemsCount})
-            </h3>
-          </div>
-          <span className="text-2xs text-slate-400 font-medium">Bấm vào ô để đếm</span>
-        </div>
-
-        {auditItems.length === 0 ? (
-          <div className="p-6 text-center text-xs text-slate-500 bg-slate-50 rounded-xl border border-dashed border-slate-200">
-            Đợt kiểm kê này chưa có danh mục ô kệ nào được phân công.
-          </div>
-        ) : (
-          <div className="space-y-2">
-            {auditItems.map((item, idx) => {
-              const isSelected = activeItem?.id === item.id;
-              const isCounted = item.countedQty != null || item.status !== 'PENDING';
-              const isMatched = item.status === 'MATCHED';
-              const isDiscrepancy = item.status === 'DISCREPANCY';
-
-              return (
-                <div
-                  key={item.id}
-                  onClick={() => {
-                    setSelectedItemId(item.id);
-                    setCountedQty(item.countedQty != null ? String(item.countedQty) : '');
-                  }}
-                  className={`p-3 rounded-xl border transition cursor-pointer flex items-center justify-between gap-3 ${
-                    isSelected
-                      ? 'bg-indigo-50/70 border-indigo-400 ring-2 ring-indigo-200'
-                      : isCounted
-                      ? 'bg-slate-50/60 border-slate-200 hover:border-slate-300'
-                      : 'bg-white border-slate-200 hover:border-indigo-300'
+      {/* Layout 2 Cột Chuẩn Trạm Vận Hành & PDA */}
+      <div className={`grid grid-cols-1 ${isCompact ? '' : 'lg:grid-cols-2'} gap-4 items-start`}>
+        {/* Cột Trái: Đợt Kiểm Kê & Danh Sách Ô Kệ */}
+        <div className="space-y-4">
+          {/* Đợt Kiểm Kê & Tiến Độ Hoàn Thành */}
+          <div className="p-4 rounded-2xl bg-white border border-slate-200 shadow-xs space-y-3">
+            <div className="flex items-center justify-between">
+              <span className="text-2xs font-extrabold uppercase text-slate-500 tracking-wider">
+                Đợt Kiểm Kê Được Giao
+              </span>
+              {currentAudit && (
+                <span
+                  className={`text-2xs px-2 py-0.5 rounded-full font-bold uppercase tracking-wider ${
+                    currentAudit.status === 'COMPLETED' || currentAudit.status === 'APPROVED'
+                      ? 'bg-emerald-100 text-emerald-800'
+                      : 'bg-indigo-100 text-indigo-800'
                   }`}
                 >
-                  <div className="flex items-start gap-2.5 min-w-0">
+                  {currentAudit.status}
+                </span>
+              )}
+            </div>
+
+            <select
+              value={selectedAuditId || ''}
+              onChange={(e) => {
+                const newAuditId = Number(e.target.value);
+                setSelectedAuditId(newAuditId);
+                const found = auditSessions.find((a) => a.id === newAuditId);
+                if (found && found.items && found.items.length > 0) {
+                  const pending = found.items.find(
+                    (it) => it.status === 'PENDING' || it.countedQty == null
+                  );
+                  setSelectedItemId(pending ? pending.id : found.items[0].id);
+                } else {
+                  setSelectedItemId(null);
+                }
+              }}
+              className="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-xl text-xs font-bold text-slate-800 focus:outline-none focus:border-indigo-500"
+            >
+              {auditSessions.map((a) => (
+                <option key={a.id} value={a.id}>
+                  {a.auditCode} ({a.status}) — {a.notes || 'Kiểm kê định kỳ'}
+                </option>
+              ))}
+            </select>
+
+            {/* Progress bar */}
+            <div className="space-y-1.5 pt-1">
+              <div className="flex justify-between text-2xs font-bold text-slate-600">
+                <span>Tiến độ đếm: {countedItemsCount}/{totalItemsCount} vị trí</span>
+                <span className="text-indigo-600 font-extrabold">{progressPercent}%</span>
+              </div>
+              <div className="w-full h-2 bg-slate-100 rounded-full overflow-hidden border border-slate-200">
+                <div
+                  className="h-full bg-linear-to-r from-indigo-500 to-emerald-500 transition-all duration-500"
+                  style={{ width: `${progressPercent}%` }}
+                />
+              </div>
+            </div>
+          </div>
+
+          {/* Bảng Danh Sách Ô Kệ Phân Công (Worklist) */}
+          <div className="p-4 rounded-2xl bg-white border border-slate-200 shadow-xs space-y-3">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-1.5">
+                <Layers className="w-4 h-4 text-indigo-600" />
+                <h3 className="text-xs font-bold text-slate-800 uppercase tracking-wider">
+                  Danh Sách Ô Kệ Phân Công ({totalItemsCount})
+                </h3>
+              </div>
+              <span className="text-2xs text-slate-400 font-medium">Bấm vào ô để đếm</span>
+            </div>
+
+            {auditItems.length === 0 ? (
+              <div className="p-6 text-center text-xs text-slate-500 bg-slate-50 rounded-xl border border-dashed border-slate-200">
+                Đợt kiểm kê này chưa có danh mục ô kệ nào được phân công.
+              </div>
+            ) : (
+              <div className="space-y-2 max-h-[480px] overflow-y-auto pr-1">
+                {auditItems.map((item, idx) => {
+                  const isSelected = activeItem?.id === item.id;
+                  const isCounted = item.countedQty != null || item.status !== 'PENDING';
+
+                  return (
                     <div
-                      className={`w-6 h-6 rounded-lg text-2xs font-extrabold flex items-center justify-center shrink-0 mt-0.5 ${
-                        isCounted
-                          ? 'bg-emerald-100 text-emerald-800 border border-emerald-300'
-                          : 'bg-slate-100 text-slate-600 border border-slate-200'
+                      key={item.id}
+                      onClick={() => {
+                        setSelectedItemId(item.id);
+                        setCountedQty(item.countedQty != null ? String(item.countedQty) : '');
+                        setTimeout(() => {
+                          const el = document.getElementById('blind-count-active-form');
+                          if (el) el.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+                        }, 60);
+                      }}
+                      className={`p-3 rounded-xl border transition cursor-pointer flex items-center justify-between gap-3 ${
+                        isSelected
+                          ? 'bg-indigo-50/70 border-indigo-400 ring-2 ring-indigo-200'
+                          : isCounted
+                          ? 'bg-slate-50/60 border-slate-200 hover:border-slate-300'
+                          : 'bg-white border-slate-200 hover:border-indigo-300'
                       }`}
                     >
-                      {idx + 1}
-                    </div>
+                      <div className="flex items-start gap-2.5 min-w-0">
+                        <div
+                          className={`w-6 h-6 rounded-lg text-2xs font-extrabold flex items-center justify-center shrink-0 mt-0.5 ${
+                            isCounted
+                              ? 'bg-emerald-100 text-emerald-800 border border-emerald-300'
+                              : 'bg-slate-100 text-slate-600 border border-slate-200'
+                          }`}
+                        >
+                          {idx + 1}
+                        </div>
 
-                    <div className="min-w-0 space-y-0.5">
-                      <div className="flex items-center gap-2 flex-wrap">
-                        <span className="text-xs font-mono font-extrabold text-slate-900">
-                          {item.locationBarcode}
-                        </span>
-                        {item.zoneCode && (
-                          <span className="text-2xs px-1.5 py-0.2 bg-slate-100 text-slate-600 rounded font-semibold">
-                            {item.zoneCode}
+                        <div className="min-w-0 space-y-0.5">
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <span className="text-xs font-mono font-extrabold text-slate-900">
+                              {item.locationBarcode}
+                            </span>
+                            {item.zoneCode && (
+                              <span className="text-2xs px-1.5 py-0.2 bg-slate-100 text-slate-600 rounded font-semibold">
+                                {item.zoneCode}
+                              </span>
+                            )}
+                          </div>
+                          <p className="text-xs text-slate-700 font-semibold truncate">
+                            {item.productName}
+                          </p>
+                          <p className="text-2xs text-slate-400 font-mono">
+                            SKU: {item.sku} • ĐVT: {item.unit}
+                          </p>
+                        </div>
+                      </div>
+
+                      <div className="text-right shrink-0">
+                        {isCounted ? (
+                          <div>
+                            <span className="inline-flex items-center gap-1 text-2xs px-2.5 py-0.5 rounded-full font-extrabold bg-blue-50 text-blue-700 border border-blue-200">
+                              <CheckCircle2 className="w-3 h-3 text-blue-600" />
+                              {item.countedQty === 0 ? `Đếm = 0 ${item.unit}` : `${item.countedQty} ${item.unit}`}
+                            </span>
+                            <p className="text-3xs text-slate-400 font-medium mt-0.5">
+                              Đã lưu kết quả đếm
+                            </p>
+                          </div>
+                        ) : (
+                          <span className="text-2xs px-2.5 py-0.5 rounded-full font-bold bg-slate-100 text-slate-600 border border-slate-200">
+                            Chờ kiểm đếm
                           </span>
                         )}
                       </div>
-                      <p className="text-xs text-slate-700 font-semibold truncate">
-                        {item.productName}
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Cột Phải: Form Kiểm Đếm Cho Vị Trí Đang Chọn (Sticky trên Desktop) */}
+        <div className="space-y-4 lg:sticky lg:top-4">
+          {activeItem ? (
+            <form id="blind-count-active-form" onSubmit={handleSubmitCount} className="space-y-3">
+              <div className="p-4 rounded-2xl bg-white border border-slate-200 shadow-xs space-y-3">
+                <div className="flex items-center justify-between border-b border-slate-100 pb-2.5">
+                  <span className="text-2xs font-extrabold uppercase text-indigo-600 tracking-wider flex items-center gap-1">
+                    <MapPin className="w-3.5 h-3.5" /> Vị Trí Đang Kiểm Đếm
+                  </span>
+                  <button
+                    type="button"
+                    onClick={onOpenScanner}
+                    className="flex items-center gap-1 text-xs font-bold text-indigo-600 hover:text-indigo-800 bg-indigo-50 px-2.5 py-1 rounded-lg border border-indigo-200 cursor-pointer"
+                  >
+                    <ScanLine className="w-3.5 h-3.5" /> Quét mã vạch
+                  </button>
+                </div>
+
+                <div className="p-3 bg-slate-50 rounded-xl border border-slate-200 space-y-2">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <span className="text-2xs text-slate-400 font-bold uppercase">Mã Ô Kệ (Bin)</span>
+                      <p className="text-sm font-mono font-extrabold text-slate-900">
+                        {activeItem.locationBarcode}
                       </p>
-                      <p className="text-2xs text-slate-400 font-mono">
-                        SKU: {item.sku} • ĐVT: {item.unit}
+                    </div>
+                    <div className="text-right">
+                      <span className="text-2xs text-slate-400 font-bold uppercase">Khu Vực</span>
+                      <p className="text-xs font-bold text-slate-700">
+                        {activeItem.zoneCode || 'ZONE_A'}
                       </p>
                     </div>
                   </div>
 
-                  <div className="text-right shrink-0">
-                    {isCounted ? (
-                      <div>
-                        <span
-                          className={`inline-flex items-center gap-1 text-2xs px-2 py-0.5 rounded-full font-extrabold ${
-                            isDiscrepancy
-                              ? 'bg-rose-100 text-rose-800 border border-rose-200'
-                              : 'bg-emerald-100 text-emerald-800 border border-emerald-200'
-                          }`}
-                        >
-                          <CheckCircle2 className="w-3 h-3" />
-                          {item.countedQty} {item.unit}
-                        </span>
-                        <p className="text-3xs text-slate-400 font-medium mt-0.5">
-                          {isDiscrepancy ? 'Có chênh lệch' : 'Khớp sổ sách'}
-                        </p>
-                      </div>
-                    ) : (
-                      <span className="text-2xs px-2 py-0.5 rounded-full font-bold bg-amber-50 text-amber-700 border border-amber-200">
-                        Chờ kiểm
-                      </span>
-                    )}
+                  <div className="pt-2 border-t border-slate-200/80 flex items-center gap-2">
+                    <Package className="w-4 h-4 text-slate-400 shrink-0" />
+                    <div className="min-w-0">
+                      <p className="text-xs font-bold text-slate-900 leading-tight">
+                        {activeItem.productName}
+                      </p>
+                      <p className="text-2xs text-slate-500 font-mono">
+                        Mã SKU: {activeItem.sku} | Quy cách: {activeItem.unit}
+                      </p>
+                    </div>
                   </div>
                 </div>
-              );
-            })}
-          </div>
-        )}
-      </div>
 
-      {/* Form Kiểm Đếm Cho Ô Đang Chọn */}
-      {activeItem ? (
-        <form onSubmit={handleSubmitCount} className="space-y-3">
-          <div className="p-4 rounded-2xl bg-white border border-slate-200 shadow-xs space-y-3">
-            <div className="flex items-center justify-between border-b border-slate-100 pb-2.5">
-              <span className="text-2xs font-extrabold uppercase text-indigo-600 tracking-wider flex items-center gap-1">
-                <MapPin className="w-3.5 h-3.5" /> Vị Trí Đang Kiểm Đếm
-              </span>
-              <button
-                type="button"
-                onClick={onOpenScanner}
-                className="flex items-center gap-1 text-xs font-bold text-indigo-600 hover:text-indigo-800 bg-indigo-50 px-2.5 py-1 rounded-lg border border-indigo-200 cursor-pointer"
-              >
-                <ScanLine className="w-3.5 h-3.5" /> Quét mã vạch
-              </button>
-            </div>
+                {/* Input Số Lượng Đếm Được */}
+                <div className="space-y-1.5 pt-1">
+                  <label className="text-2xs font-extrabold uppercase text-slate-600 tracking-wider block">
+                    Số Lượng Thực Tế Đếm Được ({activeItem.unit}):
+                  </label>
+                  <div className="relative">
+                    <input
+                      type="number"
+                      value={countedQty}
+                      onChange={(e) => setCountedQty(e.target.value)}
+                      placeholder="Nhập số lượng đếm được..."
+                      className="w-full px-4 py-3 bg-slate-50 border border-slate-300 rounded-xl text-lg font-bold font-mono text-center text-slate-900 focus:outline-none focus:border-emerald-600 focus:bg-white"
+                      min="0"
+                      autoFocus
+                    />
+                  </div>
 
-            <div className="p-3 bg-slate-50 rounded-xl border border-slate-200 space-y-2">
-              <div className="flex items-center justify-between">
-                <div>
-                  <span className="text-2xs text-slate-400 font-bold uppercase">Mã Ô Kệ (Bin)</span>
-                  <p className="text-sm font-mono font-extrabold text-slate-900">
-                    {activeItem.locationBarcode}
-                  </p>
+                  {/* Phím bấm nhanh điều chỉnh số lượng */}
+                  <div className="grid grid-cols-5 gap-1.5 pt-1">
+                    <button
+                      type="button"
+                      onClick={() => handleQuickQtyAdjust(-5)}
+                      className="py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg text-xs font-bold transition cursor-pointer"
+                    >
+                      -5
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleQuickQtyAdjust(-1)}
+                      className="py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg text-xs font-bold transition cursor-pointer"
+                    >
+                      -1
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleQuickQtyAdjust(+1)}
+                      className="py-1.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-200 rounded-lg text-xs font-bold transition cursor-pointer"
+                    >
+                      +1
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleQuickQtyAdjust(+5)}
+                      className="py-1.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-200 rounded-lg text-xs font-bold transition cursor-pointer"
+                    >
+                      +5
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleQuickQtyAdjust(+10)}
+                      className="py-1.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-200 rounded-lg text-xs font-bold transition cursor-pointer"
+                    >
+                      +10
+                    </button>
+                  </div>
                 </div>
-                <div className="text-right">
-                  <span className="text-2xs text-slate-400 font-bold uppercase">Khu Vực</span>
-                  <p className="text-xs font-bold text-slate-700">
-                    {activeItem.zoneCode || 'ZONE_A'}
-                  </p>
+
+                {/* Ghi chú */}
+                <div className="space-y-1">
+                  <label className="text-2xs font-extrabold uppercase text-slate-500 tracking-wider block">
+                    Ghi Chú Kiểm Đếm (Tùy Chọn):
+                  </label>
+                  <input
+                    type="text"
+                    value={notes}
+                    onChange={(e) => setNotes(e.target.value)}
+                    placeholder="VD: Hộp nguyên seal, không móp méo..."
+                    className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-700 focus:outline-none focus:border-indigo-400"
+                  />
                 </div>
+
+                {/* Nút Submit */}
+                <button
+                  type="submit"
+                  disabled={submitting || countedQty === ''}
+                  className="w-full py-3.5 rounded-2xl bg-emerald-600 hover:bg-emerald-700 disabled:bg-slate-200 disabled:text-slate-400 text-white font-extrabold text-sm shadow-md shadow-emerald-200 transition-all active:scale-98 flex items-center justify-center gap-2 cursor-pointer"
+                >
+                  <ClipboardCheck className="w-4 h-4" />
+                  <span>
+                    {submitting
+                      ? 'Đang Ghi Nhận Kiểm Đếm...'
+                      : activeItem.countedQty != null
+                      ? 'Cập Nhật Lại Số Lượng Đếm'
+                      : 'Xác Nhận & Lưu Kết Quả'}
+                  </span>
+                </button>
               </div>
-
-              <div className="pt-2 border-t border-slate-200/80 flex items-center gap-2">
-                <Package className="w-4 h-4 text-slate-400 shrink-0" />
-                <div className="min-w-0">
-                  <p className="text-xs font-bold text-slate-900 leading-tight">
-                    {activeItem.productName}
-                  </p>
-                  <p className="text-2xs text-slate-500 font-mono">
-                    Mã SKU: {activeItem.sku} | Quy cách: {activeItem.unit}
-                  </p>
-                </div>
-              </div>
-            </div>
-
-            {/* Thông điệp chuẩn Kiểm Kê Mù (Blind Count) */}
-            <div className="p-2.5 bg-amber-50/70 border border-amber-200 rounded-xl flex items-center gap-2">
-              <ShieldAlert className="w-4 h-4 text-amber-600 shrink-0" />
-              <p className="text-2xs text-amber-900 font-medium">
-                <strong>Quy chuẩn kiểm kê mù:</strong> Hệ thống ẩn số tồn sổ sách để thủ kho đếm
-                thực tế chính xác và khách quan.
+            </form>
+          ) : (
+            <div className="p-8 text-center bg-white rounded-2xl border border-slate-200 space-y-2">
+              <CheckCircle2 className="w-10 h-10 text-emerald-500 mx-auto" />
+              <h4 className="text-sm font-bold text-slate-800">
+                Đã hoàn thành toàn bộ nhiệm vụ kiểm đếm!
+              </h4>
+              <p className="text-xs text-slate-500">
+                Tất cả vị trí trong đợt kiểm kê đã được ghi nhận. Số liệu đã được đồng bộ lên máy chủ để
+                Trưởng kho xem xét và phê duyệt.
               </p>
             </div>
-
-            {/* Input Số Lượng Đếm Được */}
-            <div className="space-y-1.5 pt-1">
-              <label className="text-2xs font-extrabold uppercase text-slate-600 tracking-wider block">
-                Số Lượng Thực Tế Đếm Được ({activeItem.unit}):
-              </label>
-              <div className="relative">
-                <input
-                  type="number"
-                  value={countedQty}
-                  onChange={(e) => setCountedQty(e.target.value)}
-                  placeholder="Nhập số lượng đếm được..."
-                  className="w-full px-4 py-3 bg-slate-50 border border-slate-300 rounded-xl text-lg font-bold font-mono text-center text-slate-900 focus:outline-none focus:border-emerald-600 focus:bg-white"
-                  min="0"
-                  autoFocus
-                />
-              </div>
-
-              {/* Phím bấm nhanh điều chỉnh số lượng */}
-              <div className="grid grid-cols-5 gap-1.5 pt-1">
-                <button
-                  type="button"
-                  onClick={() => handleQuickQtyAdjust(-5)}
-                  className="py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg text-xs font-bold transition cursor-pointer"
-                >
-                  -5
-                </button>
-                <button
-                  type="button"
-                  onClick={() => handleQuickQtyAdjust(-1)}
-                  className="py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg text-xs font-bold transition cursor-pointer"
-                >
-                  -1
-                </button>
-                <button
-                  type="button"
-                  onClick={() => handleQuickQtyAdjust(+1)}
-                  className="py-1.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-200 rounded-lg text-xs font-bold transition cursor-pointer"
-                >
-                  +1
-                </button>
-                <button
-                  type="button"
-                  onClick={() => handleQuickQtyAdjust(+5)}
-                  className="py-1.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-200 rounded-lg text-xs font-bold transition cursor-pointer"
-                >
-                  +5
-                </button>
-                <button
-                  type="button"
-                  onClick={() => handleQuickQtyAdjust(+10)}
-                  className="py-1.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-200 rounded-lg text-xs font-bold transition cursor-pointer"
-                >
-                  +10
-                </button>
-              </div>
-            </div>
-
-            {/* Ghi chú */}
-            <div className="space-y-1">
-              <label className="text-2xs font-extrabold uppercase text-slate-500 tracking-wider block">
-                Ghi Chú Kiểm Đếm (Tùy Chọn):
-              </label>
-              <input
-                type="text"
-                value={notes}
-                onChange={(e) => setNotes(e.target.value)}
-                placeholder="VD: Hộp nguyên seal, không móp méo..."
-                className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-700 focus:outline-none focus:border-indigo-400"
-              />
-            </div>
-
-            {/* Nút Submit */}
-            <button
-              type="submit"
-              disabled={submitting || countedQty === ''}
-              className="w-full py-3.5 rounded-2xl bg-emerald-600 hover:bg-emerald-700 disabled:bg-slate-200 disabled:text-slate-400 text-white font-extrabold text-sm shadow-md shadow-emerald-200 transition-all active:scale-98 flex items-center justify-center gap-2 cursor-pointer"
-            >
-              <ClipboardCheck className="w-4 h-4" />
-              <span>
-                {submitting
-                  ? 'Đang Ghi Nhận Kiểm Đếm...'
-                  : activeItem.countedQty != null
-                  ? 'Cập Nhật Lại Số Lượng Đếm'
-                  : 'Xác Nhận & Lưu Kết Quả'}
-              </span>
-            </button>
-          </div>
-        </form>
-      ) : (
-        <div className="p-8 text-center bg-white rounded-2xl border border-slate-200 space-y-2">
-          <CheckCircle2 className="w-10 h-10 text-emerald-500 mx-auto" />
-          <h4 className="text-sm font-bold text-slate-800">
-            Đã hoàn thành toàn bộ nhiệm vụ kiểm đếm!
-          </h4>
-          <p className="text-xs text-slate-500">
-            Tất cả vị trí trong đợt kiểm kê đã được ghi nhận. Số liệu đã được đồng bộ lên máy chủ để
-            Trưởng kho xem xét và phê duyệt.
-          </p>
+          )}
         </div>
-      )}
+      </div>
     </div>
   );
 };

@@ -1,5 +1,5 @@
 import React from 'react';
-import { Pencil, KeyRound, ShieldCheck, Lock, Unlock, MapPin, Clock } from 'lucide-react';
+import { Pencil, KeyRound, ShieldCheck, Lock, Unlock, MapPin, Clock, Eye } from 'lucide-react';
 import { UserAccount } from '../types';
 import { getRoleBadge, getStatusBadge } from '../utils/userBadges';
 
@@ -9,6 +9,8 @@ interface UserMobileCardsProps {
   onResetPassword: (user: UserAccount) => void;
   onEditUser: (user: UserAccount) => void;
   onViewSecurityLog: (user: UserAccount) => void;
+  onViewDetail?: (user: UserAccount) => void;
+  isAdmin?: boolean;
 }
 
 export const UserMobileCards: React.FC<UserMobileCardsProps> = ({
@@ -17,6 +19,8 @@ export const UserMobileCards: React.FC<UserMobileCardsProps> = ({
   onResetPassword,
   onEditUser,
   onViewSecurityLog,
+  onViewDetail,
+  isAdmin = true,
 }) => {
   if (users.length === 0) {
     return (
@@ -45,12 +49,23 @@ export const UserMobileCards: React.FC<UserMobileCardsProps> = ({
             {/* User Identity Header */}
             <div className="flex items-start justify-between gap-2">
               <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-xl bg-indigo-50 border border-indigo-200 text-indigo-700 font-extrabold flex items-center justify-center text-sm shrink-0 shadow-2xs">
+                <button
+                  type="button"
+                  onClick={() => onViewDetail && onViewDetail(u)}
+                  className="w-10 h-10 rounded-xl bg-indigo-50 hover:bg-blue-100 border border-indigo-200 text-indigo-700 font-extrabold flex items-center justify-center text-sm shrink-0 shadow-2xs transition-colors cursor-pointer"
+                  title="Xem chi tiết hồ sơ"
+                >
                   {initials}
-                </div>
+                </button>
                 <div>
                   <div className="font-bold text-slate-900 text-sm flex items-center gap-1.5 flex-wrap">
-                    <span>{u.fullName}</span>
+                    <button
+                      type="button"
+                      onClick={() => onViewDetail && onViewDetail(u)}
+                      className="font-bold text-slate-900 hover:text-blue-600 transition-colors text-left cursor-pointer"
+                    >
+                      {u.fullName}
+                    </button>
                     {u.isTestAccount && (
                       <span className="inline-flex items-center gap-1 text-[10px] font-bold text-amber-800 bg-amber-50 border border-amber-300 px-1.5 py-0.2 rounded-full">
                         🧪 Test Lab
@@ -86,6 +101,16 @@ export const UserMobileCards: React.FC<UserMobileCardsProps> = ({
               )}
             </div>
 
+            {/* Hiển thị lý do khóa nếu tài khoản đang bị khóa */}
+            {u.status === 'LOCKED' && u.lockReason && (
+              <div
+                onClick={() => onViewDetail && onViewDetail(u)}
+                className="text-xs text-rose-800 bg-rose-50 border border-rose-200 p-2.5 rounded-xl cursor-pointer hover:bg-rose-100/70 transition-colors"
+              >
+                <span className="font-bold text-rose-950">Lý do khóa:</span> {u.lockReason}
+              </div>
+            )}
+
             {/* Login audit detail */}
             <div className="text-[11px] font-mono text-slate-500 flex items-center justify-between bg-slate-50 p-2 rounded-lg border border-slate-200/60">
               <span className="flex items-center gap-1">
@@ -97,27 +122,14 @@ export const UserMobileCards: React.FC<UserMobileCardsProps> = ({
 
             {/* Security Actions Bar */}
             <div className="pt-2 border-t border-slate-100 flex items-center justify-end gap-1.5">
-              <button
-                onClick={() => onEditUser(u)}
-                title="Chỉnh sửa tài khoản & hạn dùng"
-                className="p-2 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 rounded-lg transition-colors border border-indigo-200 cursor-pointer"
-              >
-                <Pencil className="w-4 h-4" />
-              </button>
-              {isRootAdmin ? (
-                <span
-                  title="Quản trị viên đổi mật khẩu tại trang Hồ sơ cá nhân"
-                  className="p-2 bg-slate-100 text-slate-400 rounded-lg border border-slate-200 cursor-not-allowed inline-flex"
-                >
-                  <KeyRound className="w-4 h-4" />
-                </span>
-              ) : (
+              {onViewDetail && (
                 <button
-                  onClick={() => onResetPassword(u)}
-                  title="Đặt lại mật khẩu"
-                  className="p-2 bg-amber-50 hover:bg-amber-100 text-amber-700 rounded-lg transition-colors border border-amber-200 cursor-pointer"
+                  onClick={() => onViewDetail(u)}
+                  title="Xem chi tiết hồ sơ nhân sự"
+                  className="px-2.5 py-1.5 bg-blue-50 hover:bg-blue-100 text-blue-700 rounded-lg transition-colors border border-blue-200 text-xs font-semibold flex items-center gap-1 cursor-pointer"
                 >
-                  <KeyRound className="w-4 h-4" />
+                  <Eye className="w-4 h-4" />
+                  <span>Chi tiết</span>
                 </button>
               )}
               <button
@@ -127,22 +139,50 @@ export const UserMobileCards: React.FC<UserMobileCardsProps> = ({
               >
                 <ShieldCheck className="w-4 h-4" />
               </button>
-              {isRootAdmin ? (
-                <span className="p-2 bg-slate-100 text-slate-400 rounded-lg border border-slate-200 cursor-not-allowed inline-flex">
-                  <Lock className="w-4 h-4" />
-                </span>
-              ) : (
-                <button
-                  onClick={() => onToggleStatus(u)}
-                  title={u.status === 'ACTIVE' ? 'Khóa tài khoản' : 'Mở khóa tài khoản'}
-                  className={`p-2 rounded-lg transition-colors border cursor-pointer ${
-                    u.status === 'ACTIVE'
-                      ? 'bg-rose-50 hover:bg-rose-100 text-rose-700 border-rose-200'
-                      : 'bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border-emerald-200'
-                  }`}
-                >
-                  {u.status === 'ACTIVE' ? <Lock className="w-4 h-4" /> : <Unlock className="w-4 h-4" />}
-                </button>
+
+              {isAdmin && (
+                <>
+                  <button
+                    onClick={() => onEditUser(u)}
+                    title="Chỉnh sửa tài khoản & hạn dùng"
+                    className="p-2 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 rounded-lg transition-colors border border-indigo-200 cursor-pointer"
+                  >
+                    <Pencil className="w-4 h-4" />
+                  </button>
+                  {isRootAdmin ? (
+                    <span
+                      title="Quản trị viên đổi mật khẩu tại trang Hồ sơ cá nhân"
+                      className="p-2 bg-slate-100 text-slate-400 rounded-lg border border-slate-200 cursor-not-allowed inline-flex"
+                    >
+                      <KeyRound className="w-4 h-4" />
+                    </span>
+                  ) : (
+                    <button
+                      onClick={() => onResetPassword(u)}
+                      title="Đặt lại mật khẩu"
+                      className="p-2 bg-amber-50 hover:bg-amber-100 text-amber-700 rounded-lg transition-colors border border-amber-200 cursor-pointer"
+                    >
+                      <KeyRound className="w-4 h-4" />
+                    </button>
+                  )}
+                  {isRootAdmin ? (
+                    <span className="p-2 bg-slate-100 text-slate-400 rounded-lg border border-slate-200 cursor-not-allowed inline-flex">
+                      <Lock className="w-4 h-4" />
+                    </span>
+                  ) : (
+                    <button
+                      onClick={() => onToggleStatus(u)}
+                      title={u.status === 'ACTIVE' ? 'Khóa tài khoản' : 'Mở khóa tài khoản'}
+                      className={`p-2 rounded-lg transition-colors border cursor-pointer ${
+                        u.status === 'ACTIVE'
+                          ? 'bg-rose-50 hover:bg-rose-100 text-rose-700 border-rose-200'
+                          : 'bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border-emerald-200'
+                      }`}
+                    >
+                      {u.status === 'ACTIVE' ? <Lock className="w-4 h-4" /> : <Unlock className="w-4 h-4" />}
+                    </button>
+                  )}
+                </>
               )}
             </div>
           </div>

@@ -120,7 +120,7 @@ export const OutboundVoucherModal: React.FC<OutboundVoucherModalProps> = ({ orde
           ${rowsHtml}
           <tr style="background-color: #f8fafc; font-weight: 800;">
             <td colspan="6" class="text-right">TỔNG CỘNG HÀNG XUẤT:</td>
-            <td class="text-right font-mono" style="color: #047857;">${totalAllocated.toLocaleString('vi-VN')}</td>
+            <td class="text-right font-mono" style="color: #047857;">${(totalAllocated || totalRequested).toLocaleString('vi-VN')}</td>
             <td></td>
             <td class="text-right font-mono" style="color: #b45309; font-size: 12px;">${totalValue.toLocaleString('vi-VN')} đ</td>
           </tr>
@@ -330,7 +330,7 @@ export const OutboundVoucherModal: React.FC<OutboundVoucherModalProps> = ({ orde
                     {totalRequested.toLocaleString('vi-VN')}
                   </td>
                   <td className="py-2.5 px-3 text-right font-mono text-emerald-700 text-sm font-black">
-                    {totalPicked.toLocaleString('vi-VN')}
+                    {(totalPicked || totalAllocated || totalRequested).toLocaleString('vi-VN')}
                   </td>
                   <td></td>
                   <td className="py-2.5 px-3 text-right font-mono text-blue-900 text-sm font-black">

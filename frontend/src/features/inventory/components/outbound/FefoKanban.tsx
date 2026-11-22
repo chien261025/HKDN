@@ -35,7 +35,7 @@ export const FefoKanban: React.FC<FefoKanbanProps> = ({
         <div className="bg-amber-500 p-3.5 flex items-center justify-between text-white">
           <div className="flex items-center gap-2 font-bold text-xs uppercase tracking-wider">
             <Clock className="w-4 h-4 text-white" />
-            <span>1. Chờ Xuất Kho</span>
+            <span>Chờ Xuất Kho</span>
           </div>
           <span className="font-mono text-xs font-black bg-white/20 text-white px-2.5 py-0.5 rounded-full">
             {pendingOrders.length} đơn
@@ -92,7 +92,7 @@ export const FefoKanban: React.FC<FefoKanbanProps> = ({
         <div className="bg-blue-600 p-3.5 flex items-center justify-between text-white">
           <div className="flex items-center gap-2 font-bold text-xs uppercase tracking-wider">
             <Lock className="w-4 h-4 text-white" />
-            <span>2. Đã Giữ Hàng</span>
+            <span>Đã Giữ Hàng</span>
           </div>
           <span className="font-mono text-xs font-black bg-white/20 text-white px-2.5 py-0.5 rounded-full">
             {reservedOrders.length} đơn
@@ -149,7 +149,7 @@ export const FefoKanban: React.FC<FefoKanbanProps> = ({
         <div className="bg-emerald-600 p-3.5 flex items-center justify-between text-white">
           <div className="flex items-center gap-2 font-bold text-xs uppercase tracking-wider">
             <CheckCircle2 className="w-4 h-4 text-white" />
-            <span>3. Đã Xuất Kho</span>
+            <span>Đã Xuất Kho</span>
           </div>
           <span className="font-mono text-xs font-black bg-white/20 text-white px-2.5 py-0.5 rounded-full">
             {shippedOrders.length} đơn

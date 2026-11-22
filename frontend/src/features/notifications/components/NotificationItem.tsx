@@ -28,8 +28,11 @@ const formatTimeAgo = (isoString: string): string => {
   }
 };
 
-const getSeverityIcon = (severity: NotificationSeverity) => {
-  switch (severity) {
+const getSeverityIcon = (notification: NotificationMessage) => {
+  if (notification.type === 'OUTBOUND_ORDER_CANCELLED' || notification.title?.includes('Hủy Đơn')) {
+    return <Info className="w-4 h-4 text-indigo-600" />;
+  }
+  switch (notification.severity) {
     case 'ERROR':
       return <AlertOctagon className="w-4 h-4 text-rose-600" />;
     case 'WARNING':
@@ -54,13 +57,13 @@ export const NotificationItem: React.FC<NotificationItemProps> = ({
       }`}
     >
       <div className="mt-0.5 p-1.5 rounded-xl bg-white shadow-xs border border-slate-200/80 shrink-0">
-        {getSeverityIcon(notification.severity)}
+        {getSeverityIcon(notification)}
       </div>
 
       <div className="flex-1 min-w-0">
         <div className="flex items-center justify-between gap-2">
           <h4
-            className={`text-xs font-bold leading-tight truncate ${
+            className={`text-xs font-bold leading-tight break-words line-clamp-2 ${
               notification.read ? 'text-slate-700' : 'text-slate-900 font-extrabold'
             }`}
           >
@@ -76,11 +79,18 @@ export const NotificationItem: React.FC<NotificationItemProps> = ({
         </p>
 
         <div className="mt-2 flex items-center justify-between gap-2 text-[11px]">
-          {notification.link ? (
-            <span className="inline-flex items-center gap-1 text-indigo-600 font-semibold group-hover:underline">
-              <span>Chi tiết</span>
+          {notification.link || notification.referenceCode ? (
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                onClick(notification);
+              }}
+              className="inline-flex items-center gap-1 text-indigo-600 hover:text-indigo-800 font-bold group-hover:underline cursor-pointer"
+            >
+              <span>Xem chi tiết</span>
               <ExternalLink className="w-3 h-3" />
-            </span>
+            </button>
           ) : <span />}
 
           {!notification.read && (

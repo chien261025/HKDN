@@ -107,9 +107,11 @@ function mapAuditSession(a: any): AuditSession {
 }
 
 export const auditService = {
-  async getAuditSessions(): Promise<AuditSession[]> {
+  async getAuditSessions(warehouseId?: number): Promise<AuditSession[]> {
     try {
-      const res = await apiClient.get('/inventory/audit');
+      const res = await apiClient.get('/inventory/audit', {
+        params: warehouseId ? { warehouseId } : undefined,
+      });
       if (res.data?.data && Array.isArray(res.data.data)) {
         return res.data.data.map(mapAuditSession);
       }

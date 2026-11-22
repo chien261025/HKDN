@@ -54,7 +54,7 @@ export const WarehouseClosingBalances: React.FC<WarehouseClosingBalancesProps> =
           <div>
             <div className="flex items-center gap-2 flex-wrap">
               <h2 className="font-bold text-slate-900 text-sm sm:text-base">
-                Kiểm Soát Tồn Kho & Giữ Chỗ (Stock Reservation Balance)
+                Kiểm Soát Tồn Kho & Giữ Chỗ
               </h2>
               <span className="text-xs font-bold px-2 py-0.5 rounded bg-blue-50 text-blue-700 border border-blue-200 font-mono">
                 {products.length} Mặt Hàng
@@ -64,7 +64,7 @@ export const WarehouseClosingBalances: React.FC<WarehouseClosingBalancesProps> =
               </span>
             </div>
             <p className="text-xs text-slate-500 mt-0.5">
-              Bóc tách minh bạch: Tồn vật lý · Đã giữ cho đơn (Reserved) · Hàng không được xuất · Tồn khả dụng thực tế.
+              Số dư thực tế, số lượng giữ chỗ theo đơn hàng và tồn khả dụng xuất kho.
             </p>
           </div>
         </div>
@@ -87,7 +87,7 @@ export const WarehouseClosingBalances: React.FC<WarehouseClosingBalancesProps> =
             type="button"
             className="flex items-center gap-1.5 px-3 py-1.5 bg-white hover:bg-slate-100 border border-slate-300 rounded-xl text-xs font-bold text-slate-700 shadow-2xs transition-all cursor-pointer"
           >
-            <span>{isExpanded ? 'Thu Gọn Ma Trận' : 'Chi Tiết Tồn Kho'}</span>
+            <span>{isExpanded ? 'Thu gọn' : 'Xem chi tiết'}</span>
             {isExpanded ? <ChevronUp className="w-4 h-4 text-slate-500" /> : <ChevronDown className="w-4 h-4 text-slate-500" />}
           </button>
         </div>
@@ -102,14 +102,14 @@ export const WarehouseClosingBalances: React.FC<WarehouseClosingBalancesProps> =
               <thead className="bg-slate-50 text-slate-700 font-bold uppercase sticky top-0 border-b border-slate-200 z-10">
                 <tr>
                   <th className="py-2.5 px-3">Chi Nhánh Kho</th>
-                  <th className="py-2.5 px-3">Mã SKU</th>
+                  <th className="py-2.5 px-3 whitespace-nowrap">Mã SKU</th>
                   <th className="py-2.5 px-3 min-w-[180px]">Tên Sản Phẩm</th>
                   <th className="py-2.5 px-3">Đơn Vị</th>
-                  <th className="py-2.5 px-3 text-right">Tồn Vật Lý (On-Hand)</th>
-                  <th className="py-2.5 px-3 text-right">Đã Giữ Cho Đơn (Reserved)</th>
-                  <th className="py-2.5 px-3 text-right">Hết Hạn / Khóa (Unavailable)</th>
-                  <th className="py-2.5 px-3 text-right">Khả Dụng Xuất (Available)</th>
-                  <th className="py-2.5 px-3 text-center">Trạng Thái Phân Bổ</th>
+                  <th className="py-2.5 px-3 text-right">Tồn Vật Lý</th>
+                  <th className="py-2.5 px-3 text-right">Đang Giữ Chỗ</th>
+                  <th className="py-2.5 px-3 text-right">Hết Hạn / Khóa</th>
+                  <th className="py-2.5 px-3 text-right">Khả Dụng Xuất</th>
+                  <th className="py-2.5 px-3 text-center">Trạng Thái</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100 text-slate-800 font-medium">

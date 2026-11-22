@@ -124,7 +124,7 @@ export const SmartAssistantPage: React.FC = () => {
   };
 
   return (
-    <div className="space-y-4 max-w-7xl mx-auto pb-6">
+    <div className="space-y-4 pb-6">
       {/* 1. Header component */}
       <SmartQueryHeader
         onClearHistory={handleClearHistory}

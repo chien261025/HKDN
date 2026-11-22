@@ -52,7 +52,7 @@ export const CategoryTable: React.FC<Props> = ({ categories, onStatusChange }) =
         <div>
           <h2 className="font-bold text-slate-900 text-base flex items-center gap-2">
             <Layers className="w-5 h-5 text-indigo-600" />
-            <span>Quản Lý Danh Mục Ngành Hàng (Master Data)</span>
+            <span>Quản Lý Danh Mục Ngành Hàng</span>
           </h2>
           <p className="text-xs text-slate-500 mt-0.5">
             Cấu hình danh mục phân loại hàng hóa kho với quy tắc bảo toàn tính toàn vẹn tham chiếu SKU

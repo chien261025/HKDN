@@ -104,6 +104,7 @@ export const AuditCountingModal: React.FC<AuditCountingModalProps> = ({
             selectedItemIndex={selectedItemIndex}
             countedBins={session.countedBins}
             totalBins={session.totalBins}
+            blindCount={session.blindCount}
             onSelectItem={(idx) => setSelectedItemIndex(idx)}
           />
 
@@ -169,7 +170,7 @@ export const AuditCountingModal: React.FC<AuditCountingModalProps> = ({
                       min={0}
                       value={countedQty}
                       onChange={(e) => setCountedQty(Math.max(0, parseInt(e.target.value) || 0))}
-                      className="flex-1 h-12 text-center text-2xl font-black font-mono border-2 border-slate-200 focus:border-emerald-500 rounded-xl focus:outline-none"
+                      className="flex-1 h-12 text-center text-2xl font-black font-mono border-2 border-slate-200 focus:border-blue-500 rounded-xl focus:outline-none"
                     />
                     <button
                       onClick={() => setCountedQty((q) => q + 1)}
@@ -177,6 +178,43 @@ export const AuditCountingModal: React.FC<AuditCountingModalProps> = ({
                     >
                       +
                     </button>
+                  </div>
+
+                  {/* Phím bấm cộng nhanh - Công thái học PDA */}
+                  <div className="flex items-center gap-1.5 flex-wrap pt-1">
+                    <span className="text-2xs text-slate-500 font-semibold mr-1">Cộng nhanh:</span>
+                    {[
+                      { label: '+1', val: 1 },
+                      { label: '+5', val: 5 },
+                      { label: '+10', val: 10 },
+                      { label: '+50', val: 50 },
+                    ].map((btn) => (
+                      <button
+                        key={btn.label}
+                        type="button"
+                        onClick={() => setCountedQty((q) => q + btn.val)}
+                        className="px-2.5 py-1 rounded-md bg-slate-100 hover:bg-blue-50 hover:text-blue-700 text-slate-700 font-mono font-bold text-xs border border-slate-200 transition-colors cursor-pointer"
+                      >
+                        {btn.label}
+                      </button>
+                    ))}
+                    <button
+                      type="button"
+                      onClick={() => setCountedQty(0)}
+                      className="px-2.5 py-1 rounded-md bg-slate-100 hover:bg-rose-50 hover:text-rose-700 text-slate-600 font-mono font-semibold text-xs border border-slate-200 transition-colors cursor-pointer ml-auto"
+                    >
+                      Về 0
+                    </button>
+                    {!session.blindCount && currentItem.systemQty !== null && (
+                      <button
+                        type="button"
+                        onClick={() => setCountedQty(currentItem.systemQty)}
+                        className="px-2.5 py-1 rounded-md bg-emerald-50 hover:bg-emerald-100 text-emerald-700 font-mono font-bold text-xs border border-emerald-200 transition-colors cursor-pointer"
+                        title="Gán nhanh bằng số dư hệ thống"
+                      >
+                        Khớp ({currentItem.systemQty})
+                      </button>
+                    )}
                   </div>
 
                   <div className="pt-2">

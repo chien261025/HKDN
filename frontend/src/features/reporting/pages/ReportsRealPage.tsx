@@ -70,7 +70,7 @@ export const ReportsRealPage: React.FC = () => {
   const completedCount = jobs.filter((job) => job.status === 'COMPLETED').length;
   const activeCount = jobs.filter((job) => job.status !== 'COMPLETED').length;
 
-  return <div className="space-y-5 max-w-7xl mx-auto pb-8">
+  return <div className="space-y-4 pb-8">
     <ReportsHeader completedJobsCount={completedCount} activeJobsCount={activeCount} reportPeriod={selectedMonth} onOpenAssistant={() => navigate('/smartquery')} onRefresh={loadJobs} />
     <ReportTemplateSelector onTriggerExport={handleTriggerExport} isProcessing={isProcessing} />
     <div className="flex items-center justify-end gap-3 bg-white border border-slate-200 rounded-xl px-4 py-3">

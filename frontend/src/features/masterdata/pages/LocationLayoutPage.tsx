@@ -201,7 +201,7 @@ export const LocationLayoutPage: React.FC = () => {
   };
 
   return (
-    <div className="space-y-4 max-w-[1600px] mx-auto pb-10">
+    <div className="space-y-4 pb-10">
       {/* 1. Header & Bộ Chọn Kho / Phân Khu / Trạng Thái / Tìm Kiếm */}
       <LayoutHeader
         currentWarehouse={currentWarehouse}

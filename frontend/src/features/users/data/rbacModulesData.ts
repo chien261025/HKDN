@@ -31,10 +31,10 @@ export const INITIAL_RBAC_MODULES: RbacModuleItem[] = [
   {
     id: 3,
     moduleId: 'USER_RBAC',
-    moduleName: 'Quản Lý Tài Khoản & Phân Quyền',
+    moduleName: 'Nhân Sự & Thiết Bị PDA',
     desktopRoute: '/users',
     adminAllowed: true,
-    managerAllowed: false,
+    managerAllowed: true,
     operatorAllowed: false,
     device: 'Desktop',
     description: 'Tạo tài khoản, phân quyền Role, khóa tài khoản, cấp lại mật khẩu',
@@ -132,7 +132,7 @@ export const INITIAL_RBAC_MODULES: RbacModuleItem[] = [
     moduleId: 'OPERATOR_PDA_PORTAL',
     moduleName: 'Portal Vận Hành Kho (Quét Barcode)',
     desktopRoute: '/operator',
-    adminAllowed: false,
+    adminAllowed: true,
     managerAllowed: false,
     operatorAllowed: true,
     device: 'Mobile',
@@ -151,7 +151,7 @@ export const INITIAL_RBAC_MODULES: RbacModuleItem[] = [
   },
 ];
 
-const RBAC_STORAGE_KEY = 'smart_wms_rbac_matrix';
+const RBAC_STORAGE_KEY = 'smart_wms_rbac_matrix_v5';
 
 export const getStoredRbacModules = (): RbacModuleItem[] => {
   try {
@@ -180,9 +180,6 @@ export const saveStoredRbacModules = (modules: RbacModuleItem[]): void => {
 export const isRouteAllowedForRole = (routePath: string, role?: string): boolean => {
   if (!role) return false;
   const cleanRole = role.toUpperCase();
-  if (cleanRole === 'ROLE_ADMIN' || cleanRole === 'ADMIN') {
-    return true; // Admin luôn có toàn quyền
-  }
 
   const modules = getStoredRbacModules();
   const targetModule = modules.find((m) => {
@@ -194,6 +191,10 @@ export const isRouteAllowedForRole = (routePath: string, role?: string): boolean
 
   if (!targetModule) {
     return true;
+  }
+
+  if (cleanRole.includes('ADMIN')) {
+    return targetModule.adminAllowed;
   }
 
   if (cleanRole.includes('MANAGER')) {

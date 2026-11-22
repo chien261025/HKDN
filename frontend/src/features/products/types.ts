@@ -14,6 +14,8 @@ export type StorageConditionType = 'AMBIENT' | 'COOL' | 'COLD' | 'SECURE';
 
 export type ProductBusinessStatus = 'ACTIVE' | 'SUSPENDED' | 'DISCONTINUED';
 
+export type ProductTrackingMethod = 'FEFO_BATCH' | 'SERIAL_IMEI' | 'STANDARD';
+
 export interface ProductItem {
   id: string;
   sku: string;
@@ -47,6 +49,7 @@ export interface ProductItem {
   isExpiryManaged?: boolean; // Có quản lý Hạn sử dụng (Shelf Life) hay không
   shelfLifeDays?: number; // Số ngày hạn sử dụng tiêu chuẩn (Master Data)
   outboundStrategy?: 'FEFO' | 'FIFO' | 'LIFO'; // Chiến lược xuất kho tự động
+  trackingMethod?: ProductTrackingMethod; // Phương thức định danh: FEFO_BATCH, SERIAL_IMEI hoặc STANDARD
 }
 
 export interface CategoryItem {

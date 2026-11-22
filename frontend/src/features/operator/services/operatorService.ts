@@ -28,8 +28,12 @@ export interface InboundOrderDto {
 export interface OutboundOrderItemDto {
   id: number;
   productId: number;
+  productSku?: string;
+  productName?: string;
   requestedQty: number;
   allocatedQty?: number;
+  pickedQty?: number;
+  allocations?: any[];
 }
 
 export interface OutboundOrderDto {
@@ -61,10 +65,13 @@ export interface PickListItemResponseDto {
   productSku?: string;
   productName?: string;
   productId?: number;
+  batchId?: number;
   batchNumber: string;
   expiryDate: string;
+  daysUntilExpiry?: number;
   locationId?: number;
   binBarcode: string;
+  zoneCode?: string;
   pickQty: number;
   picked?: boolean;
 }

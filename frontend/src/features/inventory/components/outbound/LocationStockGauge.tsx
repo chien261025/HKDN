@@ -34,7 +34,7 @@ export const LocationStockGauge: React.FC<LocationStockGaugeProps> = ({
       <div className="grid grid-cols-3 gap-3 text-center">
         {/* On-Hand */}
         <div className="bg-slate-50 py-3.5 px-3 rounded-xl border border-slate-200 space-y-1">
-          <span className="text-xs text-slate-600 block font-bold">Tồn Vật Lý (On-Hand)</span>
+          <span className="text-xs text-slate-600 block font-bold">Tồn Vật Lý</span>
           <span className="text-2xl font-black font-mono text-slate-900 block tracking-tight">
             {stats.onHand}
           </span>
@@ -48,19 +48,19 @@ export const LocationStockGauge: React.FC<LocationStockGaugeProps> = ({
               : 'bg-slate-50 border-slate-200'
             }`}
         >
-          <span className="text-xs text-amber-800 block font-bold">Đã Cấp Phát (Allocated)</span>
+          <span className="text-xs text-amber-800 block font-bold">Đang Giữ Cho Đơn</span>
           <span
             className={`text-2xl font-black font-mono block tracking-tight ${stats.reserved > 0 ? 'text-amber-700' : 'text-slate-400'
               }`}
           >
             {stats.reserved > 0 ? `+${stats.reserved}` : '0'}
           </span>
-          <span className="text-xs text-slate-500 font-sans block font-medium">Khóa giữ đơn SO</span>
+          <span className="text-xs text-slate-500 font-sans block font-medium">Khóa giữ theo đơn</span>
         </div>
 
         {/* Available */}
         <div className="bg-emerald-50 py-3.5 px-3 rounded-xl border border-emerald-200 space-y-1">
-          <span className="text-xs text-emerald-800 block font-bold">Khả Dụng (Available - ATP)</span>
+          <span className="text-xs text-emerald-800 block font-bold">Tồn Khả Dụng</span>
           <span className="text-2xl font-black font-mono text-emerald-700 block tracking-tight">
             {stats.available}
           </span>

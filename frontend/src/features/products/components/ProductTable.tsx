@@ -14,33 +14,68 @@ import {
   Ruler,
   Layers,
   Image as ImageIcon,
+  Download,
+  CheckSquare,
+  Square,
+  AlertTriangle,
+  RotateCcw,
 } from 'lucide-react';
 import { ProductItem } from '../types';
 import { ProductMobileCards } from './ProductMobileCards';
 import { getCategoryBadge, getZoneBadge } from '../utils/productBadges';
 import { Pagination } from '../../../components/common';
+import { canViewCostPrice, formatMaskedPrice } from '../../auth/utils/permissionUtils';
 
 const PAGE_SIZE = 10;
+
+const normalizeSearchText = (str?: string) =>
+  (str || '')
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .trim();
 
 interface ProductTableProps {
   products: ProductItem[];
   onPrintBarcode: (product: ProductItem) => void;
+  onPrintBatchBarcodes?: (products: ProductItem[]) => void;
   onEditProduct: (product: ProductItem) => void;
   onViewDetail?: (product: ProductItem) => void;
+  healthFilter?: string;
+  onHealthFilterChange?: (filter: string) => void;
 }
 
 export const ProductTable: React.FC<ProductTableProps> = ({
   products,
   onPrintBarcode,
+  onPrintBatchBarcodes,
   onEditProduct,
   onViewDetail,
+  healthFilter = 'ALL',
+  onHealthFilterChange,
 }) => {
   const [searchTerm, setSearchTerm] = useState('');
   const [categoryFilter, setCategoryFilter] = useState<string>('ALL');
-  const [stockHealthFilter, setStockHealthFilter] = useState<string>('ALL');
+  const [stockHealthFilter, setStockHealthFilter] = useState<string>(healthFilter);
   const [businessStatusFilter, setBusinessStatusFilter] = useState<string>('ALL');
   const [copiedBarcode, setCopiedBarcode] = useState<string | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [maskVersion, setMaskVersion] = useState(0);
+  const canSeePrice = canViewCostPrice();
+
+  useEffect(() => {
+    const handler = () => setMaskVersion((v) => v + 1);
+    window.addEventListener('smart_wms_price_mask_changed', handler);
+    return () => window.removeEventListener('smart_wms_price_mask_changed', handler);
+  }, []);
+
+  // Đồng bộ bộ lọc trạng thái tồn kho từ ngoài vào
+  useEffect(() => {
+    if (healthFilter) {
+      setStockHealthFilter(healthFilter);
+    }
+  }, [healthFilter]);
 
   const handleCopy = (code: string) => {
     navigator.clipboard.writeText(code);
@@ -49,22 +84,35 @@ export const ProductTable: React.FC<ProductTableProps> = ({
   };
 
   const filteredProducts = products.filter((p) => {
+    const rawQ = searchTerm.toLowerCase().trim();
+    const normQ = normalizeSearchText(searchTerm);
+
     const matchSearch =
-      p.sku.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      p.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      p.barcode.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      (p.brand && p.brand.toLowerCase().includes(searchTerm.toLowerCase())) ||
-      p.supplierName.toLowerCase().includes(searchTerm.toLowerCase());
+      !rawQ ||
+      p.sku.toLowerCase().includes(rawQ) ||
+      normalizeSearchText(p.sku).includes(normQ) ||
+      p.name.toLowerCase().includes(rawQ) ||
+      normalizeSearchText(p.name).includes(normQ) ||
+      p.barcode.toLowerCase().includes(rawQ) ||
+      normalizeSearchText(p.barcode).includes(normQ) ||
+      (p.brand && (p.brand.toLowerCase().includes(rawQ) || normalizeSearchText(p.brand).includes(normQ))) ||
+      (p.supplierName && (p.supplierName.toLowerCase().includes(rawQ) || normalizeSearchText(p.supplierName).includes(normQ))) ||
+      (p.storageZone && (p.storageZone.toLowerCase().includes(rawQ) || normalizeSearchText(p.storageZone).includes(normQ))) ||
+      (p.category && (p.category.toLowerCase().includes(rawQ) || normalizeSearchText(p.category).includes(normQ)));
 
     const matchCategory = categoryFilter === 'ALL' || p.category === categoryFilter;
 
     let matchHealth = true;
-    if (stockHealthFilter === 'CRITICAL') {
-      matchHealth = p.currentStock <= p.safetyStock;
+    if (stockHealthFilter === 'OUT_OF_STOCK') {
+      matchHealth = p.currentStock === 0;
+    } else if (stockHealthFilter === 'WARNING') {
+      matchHealth = p.currentStock <= p.reorderPoint && p.currentStock > 0;
+    } else if (stockHealthFilter === 'CRITICAL') {
+      matchHealth = p.currentStock <= p.safetyStock && p.currentStock > 0;
     } else if (stockHealthFilter === 'REORDER') {
       matchHealth = p.currentStock <= p.reorderPoint && p.currentStock > p.safetyStock;
     } else if (stockHealthFilter === 'NORMAL') {
-      matchHealth = p.currentStock > p.reorderPoint;
+      matchHealth = p.currentStock > p.safetyStock;
     }
 
     const matchBusiness =
@@ -76,6 +124,92 @@ export const ProductTable: React.FC<ProductTableProps> = ({
 
   const totalPages = Math.max(1, Math.ceil(filteredProducts.length / PAGE_SIZE));
   const visibleProducts = filteredProducts.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE);
+
+  // Checkbox helpers
+  const isAllVisibleSelected = visibleProducts.length > 0 && visibleProducts.every((p) => selectedIds.has(p.id));
+  const toggleSelectAllVisible = () => {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (isAllVisibleSelected) {
+        visibleProducts.forEach((p) => next.delete(p.id));
+      } else {
+        visibleProducts.forEach((p) => next.add(p.id));
+      }
+      return next;
+    });
+  };
+
+  const toggleSelectRow = (id: string) => {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
+
+  const selectedProducts = products.filter((p) => selectedIds.has(p.id));
+
+  const handleBatchPrint = () => {
+    if (selectedProducts.length === 0) return;
+    if (onPrintBatchBarcodes) {
+      onPrintBatchBarcodes(selectedProducts);
+    } else {
+      onPrintBarcode(selectedProducts[0]);
+    }
+  };
+
+  const handleExportSelectedCsv = () => {
+    const listToExport = selectedProducts.length > 0 ? selectedProducts : filteredProducts;
+    if (listToExport.length === 0) return;
+
+    const headers = [
+      'Mã SKU',
+      'Mã Barcode',
+      'Tên Sản Phẩm',
+      'Thương Hiệu',
+      'Đơn Vị Tính',
+      'Trọng Lượng (kg)',
+      'Giá Vốn (VND)',
+      'Giá Bán (VND)',
+      'Tồn Kho Thực Tế',
+      'Tồn An Toàn (Min)',
+      'Điểm Đặt Hàng (ROP)',
+      'Trị Giá Tồn Kho (VND)',
+      'Nhà Cung Cấp',
+      'Vùng Lưu Kho',
+      'Trạng Thái',
+    ];
+
+    const rows = listToExport.map((p) => [
+      `"${p.sku}"`,
+      `"${p.barcode}"`,
+      `"${(p.name || '').replace(/"/g, '""')}"`,
+      `"${(p.brand || '').replace(/"/g, '""')}"`,
+      `"${p.unit}"`,
+      p.weightKg || 1,
+      canSeePrice ? (p.purchasePrice || 0) : '"***"',
+      canSeePrice ? (p.sellingPrice || 0) : '"***"',
+      p.currentStock || 0,
+      p.safetyStock || 0,
+      p.reorderPoint || 0,
+      canSeePrice ? ((p.currentStock || 0) * (p.purchasePrice || 0)) : '"***"',
+      `"${(p.supplierName || '').replace(/"/g, '""')}"`,
+      `"${p.storageZone}"`,
+      `"${p.businessStatus || 'ACTIVE'}"`,
+    ]);
+
+    const csvContent = '\uFEFF' + [headers.join(','), ...rows.map((r) => r.join(','))].join('\r\n');
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.setAttribute('download', `WMS_Selected_Products_${new Date().toISOString().slice(0, 10)}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+  };
 
   useEffect(() => {
     setCurrentPage(1);
@@ -138,17 +272,57 @@ export const ProductTable: React.FC<ProductTableProps> = ({
             <ShieldAlert className="w-3.5 h-3.5 text-slate-500" />
             <select
               value={stockHealthFilter}
-              onChange={(e) => setStockHealthFilter(e.target.value)}
+              onChange={(e) => {
+                const nextVal = e.target.value;
+                setStockHealthFilter(nextVal);
+                if (onHealthFilterChange) onHealthFilterChange(nextVal);
+              }}
               className="bg-transparent text-slate-700 font-medium focus:outline-none cursor-pointer"
             >
               <option value="ALL">Tất cả mức tồn</option>
-              <option value="CRITICAL">Dưới Tồn An Toàn (Min)</option>
-              <option value="REORDER">Cần Đặt Thêm (ROP)</option>
-              <option value="NORMAL">Tồn Kho An Toàn</option>
+              <option value="NORMAL">Còn Hàng Ổn Định (&gt; Tối thiểu)</option>
+              <option value="WARNING">Sắp Hết / Cần Đặt (&le; Ngưỡng đặt)</option>
+              <option value="CRITICAL">Dưới Mức Tối Thiểu (&le; Tối thiểu)</option>
+              <option value="REORDER">Cần Đặt Thêm Hàng</option>
+              <option value="OUT_OF_STOCK">Đã Hết Hàng (Tồn = 0)</option>
             </select>
           </div>
         </div>
       </div>
+
+      {/* Bulk Action Bar khi chọn nhiều sản phẩm */}
+      {selectedIds.size > 0 && (
+        <div className="bg-gradient-to-r from-blue-700 to-indigo-700 text-white px-4 py-2.5 flex flex-wrap items-center justify-between gap-3 text-xs sm:text-sm animate-in fade-in">
+          <div className="flex items-center gap-2 font-bold">
+            <span className="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse" />
+            <span>Đã chọn: {selectedIds.size} mặt hàng</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={handleBatchPrint}
+              className="px-3.5 py-1.5 bg-white hover:bg-blue-50 text-blue-700 font-bold rounded-lg shadow-sm transition-all flex items-center gap-1.5 cursor-pointer text-xs"
+              title="In hàng loạt tem mã vạch cho các mặt hàng đã chọn"
+            >
+              <Printer className="w-3.5 h-3.5" />
+              <span>In Tem Mã Vạch ({selectedIds.size})</span>
+            </button>
+            <button
+              onClick={handleExportSelectedCsv}
+              className="px-3 py-1.5 bg-blue-800/80 hover:bg-blue-800 text-white font-semibold rounded-lg border border-blue-400/40 transition-colors flex items-center gap-1.5 cursor-pointer text-xs"
+              title="Xuất file Excel danh mục các sản phẩm đang được chọn"
+            >
+              <Download className="w-3.5 h-3.5" />
+              <span>Xuất Excel Đã Chọn</span>
+            </button>
+            <button
+              onClick={() => setSelectedIds(new Set())}
+              className="px-2.5 py-1.5 hover:bg-white/10 text-blue-100 rounded-lg transition-colors cursor-pointer text-xs font-medium"
+            >
+              Bỏ chọn tất cả
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Mobile Card Feed (< md) */}
       <div className="block md:hidden">
@@ -167,11 +341,20 @@ export const ProductTable: React.FC<ProductTableProps> = ({
         <table className="w-full text-left text-sm text-slate-700">
           <thead className="bg-slate-100 text-xs font-semibold text-slate-700 uppercase tracking-wider border-b border-slate-200">
             <tr>
-              <th className="py-3 px-3.5">Sản Phẩm & Định Danh</th>
-              <th className="py-3 px-3">Phân Loại, Vùng & FEFO</th>
-              <th className="py-3 px-3">Quy Cách & Thể Tích</th>
-              <th className="py-3 px-3">Giá Chuẩn & Giá Bán</th>
-              <th className="py-3 px-3 text-center">Tồn Cuối / Định Mức</th>
+              <th className="py-3 px-3 w-10 text-center">
+                <input
+                  type="checkbox"
+                  checked={isAllVisibleSelected}
+                  onChange={toggleSelectAllVisible}
+                  className="w-4 h-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500 cursor-pointer"
+                  title="Chọn tất cả sản phẩm trên trang này"
+                />
+              </th>
+              <th className="py-3 px-3.5">Sản Phẩm & Mã Hàng</th>
+              <th className="py-3 px-3">Phân Loại & Cách Quản Lý</th>
+              <th className="py-3 px-3">Quy Cách & Kích Thước</th>
+              <th className="py-3 px-3">Giá Nhập & Giá Bán</th>
+              <th className="py-3 px-3 text-center">Tồn Kho / Định Mức</th>
               <th className="py-3 px-3">Trạng Thái</th>
               <th className="py-3 px-3.5 text-right">Thao Tác</th>
             </tr>
@@ -179,8 +362,29 @@ export const ProductTable: React.FC<ProductTableProps> = ({
           <tbody className="divide-y divide-slate-100 font-sans">
             {filteredProducts.length === 0 ? (
               <tr>
-                <td colSpan={7} className="text-center py-10 text-slate-400 italic">
-                  Không tìm thấy mặt hàng nào phù hợp với bộ lọc tìm kiếm.
+                <td colSpan={8} className="py-14 px-4 text-center">
+                  <div className="w-16 h-16 mx-auto mb-3.5 rounded-2xl bg-slate-50 border border-slate-200 flex items-center justify-center text-slate-400 shadow-2xs">
+                    <Box className="w-8 h-8 stroke-[1.5] text-slate-400" />
+                  </div>
+                  <h4 className="text-sm sm:text-base font-bold text-slate-800">Không có dữ liệu mặt hàng phù hợp</h4>
+                  <p className="text-xs text-slate-500 mt-1 max-w-md mx-auto">
+                    Chưa có sản phẩm nào hoặc không có kết quả phù hợp với từ khóa và bộ lọc hiện tại.
+                  </p>
+                  {(searchTerm || categoryFilter !== 'ALL' || stockHealthFilter !== 'ALL' || businessStatusFilter !== 'ALL') && (
+                    <button
+                      onClick={() => {
+                        setSearchTerm('');
+                        setCategoryFilter('ALL');
+                        setStockHealthFilter('ALL');
+                        setBusinessStatusFilter('ALL');
+                        if (onHealthFilterChange) onHealthFilterChange('ALL');
+                      }}
+                      className="mt-4 inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-blue-50 text-blue-700 hover:bg-blue-100 border border-blue-200 text-xs font-semibold cursor-pointer transition-colors shadow-2xs"
+                    >
+                      <RotateCcw className="w-3.5 h-3.5" />
+                      <span>Xóa bộ lọc & Đặt lại</span>
+                    </button>
+                  )}
                 </td>
               </tr>
             ) : (
@@ -190,7 +394,16 @@ export const ProductTable: React.FC<ProductTableProps> = ({
                 const inventoryValue = p.currentStock * (p.purchasePrice || 0);
 
                 return (
-                  <tr key={p.id} className="hover:bg-slate-50/80 transition-colors">
+                  <tr key={p.id} className={`hover:bg-slate-50/80 transition-colors ${selectedIds.has(p.id) ? 'bg-blue-50/30' : ''}`}>
+                    {/* Cột 0: Checkbox */}
+                    <td className="py-3 px-3 text-center align-middle">
+                      <input
+                        type="checkbox"
+                        checked={selectedIds.has(p.id)}
+                        onChange={() => toggleSelectRow(p.id)}
+                        className="w-4 h-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500 cursor-pointer"
+                      />
+                    </td>
                     {/* Cột 1: Thumbnail & SKU & Tên */}
                     <td className="py-3 px-3.5 max-w-[260px]">
                       <div className="flex items-start gap-2.5">
@@ -252,13 +465,23 @@ export const ProductTable: React.FC<ProductTableProps> = ({
                       </div>
                     </td>
 
-                    {/* Cột 2: Phân loại & Vùng & NCC & FEFO */}
+                    {/* Cột 2: Phân loại & Vùng & NCC & Cách Quản Lý */}
                     <td className="py-3 px-3 space-y-1">
                       <div className="flex items-center gap-1.5 flex-wrap">
                         {getCategoryBadge(p.category)}
-                        <span className="text-[10px] px-1.5 py-0.2 rounded font-bold bg-indigo-50 text-indigo-700 border border-indigo-200">
-                          {p.outboundStrategy || (p.category === 'FOOD_BEVERAGE' ? 'FEFO' : 'FIFO')}
-                        </span>
+                        {p.trackingMethod === 'SERIAL_IMEI' ? (
+                          <span className="text-[10px] px-1.5 py-0.2 rounded font-bold bg-cyan-50 text-cyan-700 border border-cyan-200" title="Mặt hàng quản lý theo từng Serial / IMEI">
+                            Serial/IMEI
+                          </span>
+                        ) : p.trackingMethod === 'STANDARD' ? (
+                          <span className="text-[10px] px-1.5 py-0.2 rounded font-bold bg-slate-100 text-slate-700 border border-slate-200" title="Mặt hàng quản lý số lượng tiêu chuẩn">
+                            Tiêu Chuẩn
+                          </span>
+                        ) : (
+                          <span className="text-[10px] px-1.5 py-0.2 rounded font-bold bg-indigo-50 text-indigo-700 border border-indigo-200" title="Mặt hàng quản lý theo Lô và Hạn dùng">
+                            {p.outboundStrategy === 'FEFO' || p.category === 'FOOD_BEVERAGE' ? 'Theo Lô & HSD' : 'Nhập trước xuất trước'}
+                          </span>
+                        )}
                       </div>
                       <div>{getZoneBadge(p.storageZone)}</div>
                       <div className="text-[11px] text-slate-500 truncate max-w-[150px]" title={p.supplierName}>
@@ -266,7 +489,7 @@ export const ProductTable: React.FC<ProductTableProps> = ({
                       </div>
                     </td>
 
-                    {/* Cột 3: Quy cách, Trọng lượng & CBM */}
+                    {/* Cột 3: Quy cách, Trọng lượng & Kích thước */}
                     <td className="py-3 px-3 font-mono text-xs">
                       <div>
                         ĐVT: <span className="font-bold text-slate-900">{p.unit}</span>
@@ -280,24 +503,24 @@ export const ProductTable: React.FC<ProductTableProps> = ({
                       </div>
                     </td>
 
-                    {/* Cột 4: Đơn Giá Chuẩn / Giá Bán Tham Khảo */}
+                    {/* Cột 4: Đơn Giá Nhập / Giá Bán Tham Khảo */}
                     <td className="py-3 px-3 font-mono text-xs">
-                      <div className="flex items-center justify-between gap-2" title="Giá vốn chuẩn tham khảo trong Master Data">
-                        <span className="text-slate-400 text-[11px]">Giá chuẩn:</span>
+                      <div className="flex items-center justify-between gap-2" title="Giá nhập tham khảo">
+                        <span className="text-slate-400 text-[11px]">Giá nhập:</span>
                         <span className="font-bold text-emerald-700">
-                          {(p.purchasePrice || 0).toLocaleString()} ₫
+                          {formatMaskedPrice(p.purchasePrice, canSeePrice)}
                         </span>
                       </div>
                       <div className="flex items-center justify-between gap-2 mt-0.5">
                         <span className="text-slate-400 text-[11px]">Giá bán:</span>
                         <span className="font-bold text-blue-700">
-                          {(p.sellingPrice || 0).toLocaleString()} ₫
+                          {formatMaskedPrice(p.sellingPrice, canSeePrice)}
                         </span>
                       </div>
                       <div className="pt-1 mt-1 border-t border-slate-100 flex items-center justify-between gap-1 text-[11px]">
-                        <span className="text-slate-500">Trị giá tồn:</span>
+                        <span className="text-slate-500">Tổng giá trị:</span>
                         <span className="font-extrabold text-slate-900">
-                          {inventoryValue.toLocaleString()} ₫
+                          {formatMaskedPrice(inventoryValue, canSeePrice)}
                         </span>
                       </div>
                     </td>
@@ -338,9 +561,10 @@ export const ProductTable: React.FC<ProductTableProps> = ({
                           />
                         </div>
 
-                        <div className="flex justify-between w-24 text-[10px] font-mono text-slate-400 mt-0.5">
-                          <span>Min: {p.safetyStock}</span>
-                          <span>ROP: {p.reorderPoint}</span>
+                        <div className="flex items-center justify-center gap-1 text-[10px] font-mono text-slate-400 mt-0.5 whitespace-nowrap">
+                          <span title="Tồn kho tối thiểu">Tối thiểu: {p.safetyStock}</span>
+                          <span>•</span>
+                          <span title="Ngưỡng cần đặt hàng">Ngưỡng: {p.reorderPoint}</span>
                         </div>
                       </div>
                     </td>

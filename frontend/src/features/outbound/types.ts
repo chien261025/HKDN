@@ -28,6 +28,7 @@ export interface OutboundOrder {
   customerName: string;
   shippingAddress: string;
   orderDate: string;
+  rawCreatedAt?: string;
   requiredDate: string;
   status: OutboundStatus;
   items: OutboundItem[];

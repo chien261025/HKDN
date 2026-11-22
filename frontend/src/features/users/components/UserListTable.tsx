@@ -1,8 +1,9 @@
 import React, { useEffect, useState } from 'react';
-import { Search, Filter, Shield, Lock, Unlock, KeyRound, Pencil, ShieldCheck, Download, Clock, MapPin, CheckSquare, Square, Check, Beaker } from 'lucide-react';
+import { Search, Filter, Shield, Lock, Unlock, KeyRound, Pencil, ShieldCheck, Download, Clock, MapPin, CheckSquare, Square, Check, Beaker, X, Eye, Building2 } from 'lucide-react';
 import { UserAccount } from '../types';
 import { UserMobileCards } from './UserMobileCards';
 import { Pagination } from '../../../components/common';
+import { UserKpiFilter } from './UsersHeader';
 
 const PAGE_SIZE = 10;
 import { getRoleBadge, getStatusBadge } from '../utils/userBadges';
@@ -13,8 +14,12 @@ interface UserListTableProps {
   onResetPassword: (user: UserAccount) => void;
   onEditUser: (user: UserAccount) => void;
   onViewSecurityLog: (user: UserAccount) => void;
+  onViewDetail: (user: UserAccount) => void;
   onBulkStatus?: (selectedIds: string[], isActive: boolean) => Promise<void>;
   onOpenRbacMatrix?: () => void;
+  kpiFilter?: UserKpiFilter;
+  onClearKpiFilter?: () => void;
+  isAdmin?: boolean;
 }
 
 export const UserListTable: React.FC<UserListTableProps> = ({
@@ -23,12 +28,17 @@ export const UserListTable: React.FC<UserListTableProps> = ({
   onResetPassword,
   onEditUser,
   onViewSecurityLog,
+  onViewDetail,
   onBulkStatus,
   onOpenRbacMatrix,
+  kpiFilter = 'ALL',
+  onClearKpiFilter,
+  isAdmin = true,
 }) => {
   const [searchTerm, setSearchTerm] = useState('');
   const [roleFilter, setRoleFilter] = useState<string>('ALL');
   const [statusFilter, setStatusFilter] = useState<string>('ALL');
+  const [warehouseFilter, setWarehouseFilter] = useState<string>('ALL');
   const [hideTestAccounts, setHideTestAccounts] = useState<boolean>(true);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [isBulkLoading, setIsBulkLoading] = useState(false);
@@ -36,9 +46,43 @@ export const UserListTable: React.FC<UserListTableProps> = ({
 
   const testAccountCount = users.filter((u) => u.isTestAccount).length;
 
+  const getKpiFilterName = (filter: UserKpiFilter) => {
+    switch (filter) {
+      case 'MANAGEMENT':
+        return isAdmin ? 'Quản Trị & Điều Hành' : 'Cán Bộ Quản Lý Kho';
+      case 'OPERATOR':
+        return 'Nhân Viên Vận Hành';
+      case 'LOCKED':
+        return 'Tài Khoản Tạm Khóa';
+      default:
+        return 'Tất Cả Nhân Sự';
+    }
+  };
+
   const filteredUsers = users.filter((u) => {
     if (hideTestAccounts && u.isTestAccount) {
       return false;
+    }
+
+    // KPI Quick Filter from Top Banner
+    if (kpiFilter === 'MANAGEMENT') {
+      if (isAdmin) {
+        if (u.role !== 'ROLE_ADMIN' && u.role !== 'ROLE_WAREHOUSE_MANAGER' && u.role !== 'ROLE_MANAGER') {
+          return false;
+        }
+      } else {
+        if (u.role !== 'ROLE_WAREHOUSE_MANAGER' && u.role !== 'ROLE_MANAGER') {
+          return false;
+        }
+      }
+    } else if (kpiFilter === 'OPERATOR') {
+      if (u.role !== 'ROLE_OPERATOR') {
+        return false;
+      }
+    } else if (kpiFilter === 'LOCKED') {
+      if (u.status !== 'LOCKED' && u.status !== 'EXPIRED' && !u.isExpired) {
+        return false;
+      }
     }
 
     const term = searchTerm.toLowerCase();
@@ -58,12 +102,19 @@ export const UserListTable: React.FC<UserListTableProps> = ({
         ? u.isExpired
         : u.status === statusFilter;
 
-    return matchSearch && matchRole && matchStatus;
+    const matchWh =
+      warehouseFilter === 'ALL'
+        ? true
+        : (u.primaryWarehouse && u.primaryWarehouse.toLowerCase().includes(warehouseFilter.toLowerCase())) ||
+          (u.assignedWarehouse && u.assignedWarehouse.toLowerCase().includes(warehouseFilter.toLowerCase())) ||
+          (u.assignedWarehouses && u.assignedWarehouses.some((w) => w.toLowerCase().includes(warehouseFilter.toLowerCase())));
+
+    return matchSearch && matchRole && matchStatus && matchWh;
   });
   const totalPages = Math.max(1, Math.ceil(filteredUsers.length / PAGE_SIZE));
   const visibleUsers = filteredUsers.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE);
 
-  useEffect(() => setCurrentPage(1), [searchTerm, roleFilter, statusFilter, hideTestAccounts]);
+  useEffect(() => setCurrentPage(1), [searchTerm, roleFilter, statusFilter, warehouseFilter, hideTestAccounts, kpiFilter]);
   useEffect(() => setCurrentPage((page) => Math.min(page, totalPages)), [totalPages]);
 
   // Tài khoản có thể chọn (loại trừ root admin)
@@ -135,6 +186,28 @@ export const UserListTable: React.FC<UserListTableProps> = ({
 
   return (
     <div className="bg-white rounded-2xl border border-slate-200 shadow-xs overflow-hidden">
+      {/* Active KPI Quick Filter Banner */}
+      {kpiFilter && kpiFilter !== 'ALL' && (
+        <div className="p-3 bg-blue-50/90 border-b border-blue-200 flex items-center justify-between gap-3 text-xs animate-in slide-in-from-top-1">
+          <div className="flex items-center gap-2">
+            <Filter className="w-4 h-4 text-blue-600 shrink-0" />
+            <span className="text-blue-900 font-medium">
+              Đang lọc theo thẻ KPI: <strong className="font-bold text-blue-950">{getKpiFilterName(kpiFilter)}</strong> ({filteredUsers.length} tài khoản phù hợp)
+            </span>
+          </div>
+          {onClearKpiFilter && (
+            <button
+              type="button"
+              onClick={onClearKpiFilter}
+              className="px-2.5 py-1 bg-white hover:bg-blue-100 text-blue-700 rounded-lg text-xs font-semibold border border-blue-300 transition-colors flex items-center gap-1 cursor-pointer"
+            >
+              <X className="w-3.5 h-3.5" />
+              <span>Bỏ lọc</span>
+            </button>
+          )}
+        </div>
+      )}
+
       {/* Search & Filter Bar */}
       <div className="p-3 sm:p-4 border-b border-slate-200 flex flex-wrap items-center justify-between gap-3 bg-slate-50">
         <div className="relative flex-1 min-w-[200px] max-w-md">
@@ -174,9 +247,9 @@ export const UserListTable: React.FC<UserListTableProps> = ({
               className="bg-transparent text-xs text-slate-700 font-semibold focus:outline-none cursor-pointer"
             >
               <option value="ALL">Tất cả vai trò</option>
-              <option value="ROLE_ADMIN">Quản trị viên (Admin)</option>
-              <option value="ROLE_WAREHOUSE_MANAGER">Quản lý trưởng kho</option>
-              <option value="ROLE_OPERATOR">Thủ kho (Vận hành thực địa)</option>
+              <option value="ROLE_ADMIN">Quản trị viên hệ thống</option>
+              <option value="ROLE_WAREHOUSE_MANAGER">Trưởng kho / Quản lý</option>
+              <option value="ROLE_OPERATOR">Thủ kho / Vận hành</option>
             </select>
           </div>
 
@@ -194,15 +267,31 @@ export const UserListTable: React.FC<UserListTableProps> = ({
             </select>
           </div>
 
-          {/* RBAC Matrix Button */}
-          {onOpenRbacMatrix && (
+          {/* Warehouse Filter */}
+          <div className="flex items-center gap-1.5 bg-white border border-slate-200 rounded-xl px-2.5 py-1.5 shadow-2xs">
+            <Building2 className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+            <select
+              value={warehouseFilter}
+              onChange={(e) => setWarehouseFilter(e.target.value)}
+              className="bg-transparent text-xs text-slate-700 font-semibold focus:outline-none cursor-pointer"
+            >
+              <option value="ALL">Tất cả chi nhánh kho</option>
+              <option value="Tân Bình">Kho Tổng Tân Bình</option>
+              <option value="VSIP">Kho VSIP Bắc Ninh</option>
+              <option value="Miền Trung">Kho Vận Miền Trung</option>
+              <option value="Sóng Thần">Kho Sóng Thần</option>
+            </select>
+          </div>
+
+          {/* RBAC Matrix Button (Chỉ dành cho Quản trị viên IT) */}
+          {isAdmin && onOpenRbacMatrix && (
             <button
               onClick={onOpenRbacMatrix}
-              title="Mở bảng ma trận phân quyền chi tiết Role-Permission Matrix"
+              title="Mở bảng ma trận phân quyền chi tiết hệ thống"
               className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-indigo-50 hover:bg-indigo-100 border border-indigo-200 rounded-xl text-xs font-bold text-indigo-700 transition-colors shadow-2xs cursor-pointer"
             >
               <ShieldCheck className="w-3.5 h-3.5 text-indigo-600" />
-              <span>Ma Trận Quyền (RBAC)</span>
+              <span>Ma Trận Phân Quyền</span>
             </button>
           )}
 
@@ -218,8 +307,8 @@ export const UserListTable: React.FC<UserListTableProps> = ({
         </div>
       </div>
 
-      {/* Floating Bulk Action Bar (Hiển thị khi chọn ít nhất 1 tài khoản) */}
-      {selectedIds.size > 0 && (
+      {/* Floating Bulk Action Bar (Hiển thị khi Admin chọn ít nhất 1 tài khoản) */}
+      {isAdmin && selectedIds.size > 0 && (
         <div className="p-3 bg-indigo-50/90 border-b border-indigo-200 flex flex-wrap items-center justify-between gap-3 text-xs animate-in slide-in-from-top-2 duration-150">
           <div className="flex items-center gap-2">
             <span className="font-semibold text-indigo-950 flex items-center gap-1.5">
@@ -266,6 +355,8 @@ export const UserListTable: React.FC<UserListTableProps> = ({
           onResetPassword={onResetPassword}
           onEditUser={onEditUser}
           onViewSecurityLog={onViewSecurityLog}
+          onViewDetail={onViewDetail}
+          isAdmin={isAdmin}
         />
       </div>
 
@@ -274,16 +365,18 @@ export const UserListTable: React.FC<UserListTableProps> = ({
         <table className="w-full text-left text-sm text-slate-700">
           <thead className="bg-slate-100 text-xs font-semibold text-slate-700 uppercase tracking-wider border-b border-slate-200">
             <tr>
-              <th className="py-3 px-3 w-10 text-center">
-                <input
-                  type="checkbox"
-                  checked={allSelectableChosen}
-                  onChange={toggleSelectAll}
-                  disabled={selectableUsers.length === 0}
-                  className="rounded border-slate-300 text-indigo-600 focus:ring-indigo-500 cursor-pointer"
-                  title="Chọn tất cả nhân sự hiển thị"
-                />
-              </th>
+              {isAdmin && (
+                <th className="py-3 px-3 w-10 text-center">
+                  <input
+                    type="checkbox"
+                    checked={allSelectableChosen}
+                    onChange={toggleSelectAll}
+                    disabled={selectableUsers.length === 0}
+                    className="rounded border-slate-300 text-indigo-600 focus:ring-indigo-500 cursor-pointer"
+                    title="Chọn tất cả nhân sự hiển thị"
+                  />
+                </th>
+              )}
               <th className="py-3 px-4">Tài Khoản & Thông Tin</th>
               <th className="py-3 px-4">Vai Trò</th>
               <th className="py-3 px-4">Kho Phụ Trách</th>
@@ -295,7 +388,7 @@ export const UserListTable: React.FC<UserListTableProps> = ({
           <tbody className="divide-y divide-slate-100 font-sans">
             {filteredUsers.length === 0 ? (
               <tr>
-                <td colSpan={7} className="text-center py-10 text-slate-400 italic">
+                <td colSpan={isAdmin ? 7 : 6} className="text-center py-10 text-slate-400 italic">
                   Không tìm thấy nhân viên nào khớp với điều kiện lọc.
                 </td>
               </tr>
@@ -317,25 +410,43 @@ export const UserListTable: React.FC<UserListTableProps> = ({
                       isSelected ? 'bg-indigo-50/50 hover:bg-indigo-50' : 'hover:bg-slate-50'
                     }`}
                   >
-                    <td className="py-3.5 px-3 text-center">
-                      <input
-                        type="checkbox"
-                        checked={isSelected}
-                        onChange={() => toggleSelectOne(u.id)}
-                        disabled={isRootAdmin}
-                        className="rounded border-slate-300 text-indigo-600 focus:ring-indigo-500 cursor-pointer disabled:cursor-not-allowed disabled:opacity-40"
-                        title={isRootAdmin ? 'Không thể thao tác hàng loạt trên Quản trị viên tối cao' : 'Chọn nhân sự này'}
-                      />
-                    </td>
+                    {isAdmin && (
+                      <td className="py-3.5 px-3 text-center">
+                        <input
+                          type="checkbox"
+                          checked={isSelected}
+                          onChange={() => toggleSelectOne(u.id)}
+                          disabled={isRootAdmin}
+                          className="rounded border-slate-300 text-indigo-600 focus:ring-indigo-500 cursor-pointer disabled:cursor-not-allowed disabled:opacity-40"
+                          title={
+                            isRootAdmin
+                              ? 'Không thể thao tác hàng loạt trên Quản trị viên tối cao'
+                              : 'Chọn nhân sự này'
+                          }
+                        />
+                      </td>
+                    )}
 
                     <td className="py-3.5 px-4">
                       <div className="flex items-center gap-3">
-                        <div className="w-9 h-9 rounded-xl bg-indigo-50 border border-indigo-200 text-indigo-700 font-bold flex items-center justify-center text-xs shrink-0 shadow-2xs">
+                        <button
+                          type="button"
+                          onClick={() => onViewDetail(u)}
+                          className="w-9 h-9 rounded-xl bg-indigo-50 hover:bg-blue-100 border border-indigo-200 text-indigo-700 font-bold flex items-center justify-center text-xs shrink-0 shadow-2xs transition-colors cursor-pointer"
+                          title="Xem chi tiết hồ sơ nhân sự"
+                        >
                           {initials}
-                        </div>
+                        </button>
                         <div>
                           <div className="font-semibold text-slate-900 text-sm flex items-center gap-2">
-                            <span>{u.fullName}</span>
+                            <button
+                              type="button"
+                              onClick={() => onViewDetail(u)}
+                              className="font-bold text-slate-900 hover:text-blue-600 transition-colors text-left cursor-pointer"
+                              title="Xem chi tiết hồ sơ nhân sự"
+                            >
+                              {u.fullName}
+                            </button>
                             {/* Test account tag */}
                             {u.isTestAccount && (
                               <span className="inline-flex items-center gap-1 text-[10px] font-bold text-amber-800 bg-amber-50 border border-amber-300 px-2 py-0.5 rounded-full" title="Tài khoản phục vụ kiểm thử an ninh Brute-force">
@@ -398,59 +509,86 @@ export const UserListTable: React.FC<UserListTableProps> = ({
                       <div className="text-slate-400 mt-0.5">IP: {u.lastLoginIp}</div>
                     </td>
 
-                    <td className="py-3.5 px-4 text-center">{getStatusBadge(u.status)}</td>
+                    <td className="py-3.5 px-4 text-center">
+                      <div className="flex flex-col items-center gap-1">
+                        {getStatusBadge(u.status)}
+                        {u.status === 'LOCKED' && u.lockReason && (
+                          <button
+                            type="button"
+                            onClick={() => onViewDetail(u)}
+                            className="text-[11px] text-rose-700 bg-rose-50 hover:bg-rose-100 px-2 py-0.5 rounded-md border border-rose-200 max-w-[150px] truncate block cursor-pointer transition-colors text-center"
+                            title={`Lý do khóa: ${u.lockReason}\n(Bấm để xem chi tiết hồ sơ)`}
+                          >
+                            Lý do: {u.lockReason}
+                          </button>
+                        )}
+                      </div>
+                    </td>
 
                     <td className="py-3.5 px-4 text-right">
                       <div className="flex items-center justify-end gap-1.5">
                         <button
-                          onClick={() => onEditUser(u)}
-                          title="Chỉnh sửa thông tin nhân viên, vai trò & phân quyền kho"
-                          className="p-1.5 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 rounded-lg transition-colors border border-indigo-200 cursor-pointer"
+                          onClick={() => onViewDetail(u)}
+                          title="Xem chi tiết hồ sơ nhân sự & phân công kho"
+                          className="inline-flex items-center gap-1 px-2.5 py-1.5 bg-blue-50 hover:bg-blue-100 text-blue-700 rounded-lg transition-colors border border-blue-200 text-xs font-semibold cursor-pointer"
                         >
-                          <Pencil className="w-3.5 h-3.5" />
+                          <Eye className="w-3.5 h-3.5" />
+                          <span>Chi tiết</span>
                         </button>
-                        {isRootAdmin ? (
-                          <span
-                            title="Quản trị viên đổi mật khẩu tại trang Hồ sơ cá nhân"
-                            className="p-1.5 bg-slate-100 text-slate-400 rounded-lg border border-slate-200 cursor-not-allowed inline-flex"
-                          >
-                            <KeyRound className="w-3.5 h-3.5" />
-                          </span>
-                        ) : (
-                          <button
-                            onClick={() => onResetPassword(u)}
-                            title="Cấp lại mật khẩu mặc định (123456)"
-                            className="p-1.5 bg-amber-50 hover:bg-amber-100 text-amber-700 rounded-lg transition-colors border border-amber-200 cursor-pointer"
-                          >
-                            <KeyRound className="w-3.5 h-3.5" />
-                          </button>
-                        )}
                         <button
                           onClick={() => onViewSecurityLog(u)}
-                          title="Xem phiên thiết bị & nhật ký kiểm toán an ninh"
+                          title="Xem phiên thiết bị PDA & kiểm toán an ninh"
                           className="p-1.5 bg-sky-50 hover:bg-sky-100 text-sky-700 rounded-lg transition-colors border border-sky-200 cursor-pointer"
                         >
                           <ShieldCheck className="w-3.5 h-3.5" />
                         </button>
-                        {isRootAdmin ? (
-                          <span
-                            title="Tài khoản Quản trị viên tối cao (Bảo vệ không thể khóa)"
-                            className="p-1.5 bg-slate-100 text-slate-400 rounded-lg border border-slate-200 cursor-not-allowed inline-flex"
-                          >
-                            <Lock className="w-3.5 h-3.5" />
-                          </span>
-                        ) : (
-                          <button
-                            onClick={() => onToggleStatus(u)}
-                            title={u.status === 'ACTIVE' ? 'Khóa tài khoản nhân sự' : 'Mở khóa hoạt động'}
-                            className={`p-1.5 rounded-lg transition-colors border cursor-pointer ${
-                              u.status === 'ACTIVE'
-                                ? 'bg-rose-50 hover:bg-rose-100 text-rose-700 border-rose-200'
-                                : 'bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border-emerald-200'
-                            }`}
-                          >
-                            {u.status === 'ACTIVE' ? <Lock className="w-3.5 h-3.5" /> : <Unlock className="w-3.5 h-3.5" />}
-                          </button>
+
+                        {isAdmin && (
+                          <>
+                            <button
+                              onClick={() => onEditUser(u)}
+                              title="Chỉnh sửa thông tin nhân viên, vai trò & phân quyền kho"
+                              className="p-1.5 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 rounded-lg transition-colors border border-indigo-200 cursor-pointer"
+                            >
+                              <Pencil className="w-3.5 h-3.5" />
+                            </button>
+                            {isRootAdmin ? (
+                              <span
+                                title="Quản trị viên đổi mật khẩu tại trang Hồ sơ cá nhân"
+                                className="p-1.5 bg-slate-100 text-slate-400 rounded-lg border border-slate-200 cursor-not-allowed inline-flex"
+                              >
+                                <KeyRound className="w-3.5 h-3.5" />
+                              </span>
+                            ) : (
+                              <button
+                                onClick={() => onResetPassword(u)}
+                                title="Cấp lại mật khẩu mặc định (123456)"
+                                className="p-1.5 bg-amber-50 hover:bg-amber-100 text-amber-700 rounded-lg transition-colors border border-amber-200 cursor-pointer"
+                              >
+                                <KeyRound className="w-3.5 h-3.5" />
+                              </button>
+                            )}
+                            {isRootAdmin ? (
+                              <span
+                                title="Tài khoản Quản trị viên tối cao (Bảo vệ không thể khóa)"
+                                className="p-1.5 bg-slate-100 text-slate-400 rounded-lg border border-slate-200 cursor-not-allowed inline-flex"
+                              >
+                                <Lock className="w-3.5 h-3.5" />
+                              </span>
+                            ) : (
+                              <button
+                                onClick={() => onToggleStatus(u)}
+                                title={u.status === 'ACTIVE' ? 'Khóa tài khoản nhân sự' : 'Mở khóa hoạt động'}
+                                className={`p-1.5 rounded-lg transition-colors border cursor-pointer ${
+                                  u.status === 'ACTIVE'
+                                    ? 'bg-rose-50 hover:bg-rose-100 text-rose-700 border-rose-200'
+                                    : 'bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border-emerald-200'
+                                }`}
+                              >
+                                {u.status === 'ACTIVE' ? <Lock className="w-3.5 h-3.5" /> : <Unlock className="w-3.5 h-3.5" />}
+                              </button>
+                            )}
+                          </>
                         )}
                       </div>
                     </td>

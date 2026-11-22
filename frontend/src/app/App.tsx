@@ -18,7 +18,6 @@ import { STORAGE_KEYS } from '../constants';
 const AppContent: React.FC = () => {
   const [showScanner, setShowScanner] = useState(false);
   const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
-  const [currentTime, setCurrentTime] = useState(new Date().toLocaleTimeString('vi-VN'));
   const location = useLocation();
 
   // Trạng thái thu gọn/mở rộng thanh menu bên trái (lưu vào localStorage)
@@ -33,16 +32,24 @@ const AppContent: React.FC = () => {
   useEffect(() => {
     setIsMobileSidebarOpen(false);
 
+    let isVerifying = false;
     const verifySession = () => {
       const token = localStorage.getItem(STORAGE_KEYS.TOKEN);
-      if (token && location.pathname !== '/login') {
-        authService.checkSessionStatus().then((status) => {
-          if (!status.active) {
-            localStorage.removeItem(STORAGE_KEYS.TOKEN);
-            localStorage.removeItem(STORAGE_KEYS.SESSION);
-            window.location.href = '/login?expired=true';
-          }
-        }).catch(() => {});
+      if (token && location.pathname !== '/login' && !isVerifying) {
+        isVerifying = true;
+        authService
+          .checkSessionStatus()
+          .then((status) => {
+            if (!status.active) {
+              localStorage.removeItem(STORAGE_KEYS.TOKEN);
+              localStorage.removeItem(STORAGE_KEYS.SESSION);
+              window.location.href = '/login?expired=true';
+            }
+          })
+          .catch(() => {})
+          .finally(() => {
+            isVerifying = false;
+          });
       }
     };
 
@@ -57,8 +64,8 @@ const AppContent: React.FC = () => {
     };
     window.addEventListener('storage', handleStorageChange);
 
-    // Nhịp tim Heartbeat kiểm tra phiên thời gian thực mỗi 3 giây
-    const interval = setInterval(verifySession, 3000);
+    // Nhịp tim Heartbeat kiểm tra phiên thời gian thực định kỳ (mỗi 30s)
+    const interval = setInterval(verifySession, 30000);
 
     return () => {
       window.removeEventListener('focus', verifySession);
@@ -74,13 +81,6 @@ const AppContent: React.FC = () => {
       return next;
     });
   };
-
-  useEffect(() => {
-    const timer = setInterval(() => {
-      setCurrentTime(new Date().toLocaleTimeString('vi-VN'));
-    }, 1000);
-    return () => clearInterval(timer);
-  }, []);
 
   // 1. Màn hình công khai (/login): Bọc PublicOnlyRoute
   if (location.pathname === '/register') {
@@ -126,7 +126,7 @@ const AppContent: React.FC = () => {
   };
 
   return (
-    <div className="flex h-screen bg-slate-50 text-slate-900 font-sans overflow-hidden relative">
+    <div className="flex h-screen print:h-auto print:overflow-visible bg-slate-50 text-slate-900 font-sans overflow-hidden relative">
       {/* Sidebar Navigation */}
       <AppSidebar
         isSidebarCollapsed={isSidebarCollapsed}
@@ -135,11 +135,10 @@ const AppContent: React.FC = () => {
         onCloseMobile={() => setIsMobileSidebarOpen(false)}
         onOpenScanner={() => setShowScanner(true)}
         session={session}
-        currentTime={currentTime}
       />
 
       {/* Main Content Arena */}
-      <div className="flex-1 flex flex-col overflow-hidden relative z-10 bg-slate-50 min-w-0">
+      <div className="flex-1 flex flex-col overflow-hidden print:overflow-visible print:h-auto relative z-10 bg-[#F6F8FC] min-w-0">
         {/* Top Header Bar */}
         <AppHeader
           isSidebarCollapsed={isSidebarCollapsed}
@@ -151,7 +150,7 @@ const AppContent: React.FC = () => {
         />
 
         {/* Dynamic Route View */}
-        <main className="flex-1 overflow-y-auto p-3 sm:p-4 md:p-6 bg-slate-50 relative">
+        <main className="flex-1 overflow-y-auto print:overflow-visible print:h-auto print:p-0 p-4 sm:p-6 lg:p-8 bg-[#F6F8FC] relative">
           <AppRoutes onOpenScanner={() => setShowScanner(true)} />
         </main>
       </div>

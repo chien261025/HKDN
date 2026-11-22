@@ -21,7 +21,8 @@ export const OrderDispatchDrawer: React.FC<OrderDispatchDrawerProps> = ({
 }) => {
   if (!order) return null;
 
-  const isUrgent = order.daysRemaining < 30;
+  const isExpired = order.daysRemaining <= 0;
+  const isUrgent = !isExpired && order.daysRemaining < 30;
 
   return (
     <div className="fixed inset-y-0 right-0 w-full max-w-lg bg-white border-l border-slate-200 shadow-2xl z-50 flex flex-col animate-in slide-in-from-right duration-300">
@@ -106,13 +107,19 @@ export const OrderDispatchDrawer: React.FC<OrderDispatchDrawerProps> = ({
               </div>
             </div>
 
-            <div className={`text-right font-mono ${isUrgent ? 'text-rose-700' : 'text-slate-700'}`}>
-              <div className="text-sm font-bold">Còn {order.daysRemaining} ngày</div>
-              {isUrgent && (
-                <span className="text-[11px] font-bold uppercase tracking-wider text-rose-700 bg-rose-100 px-2 py-0.5 rounded border border-rose-300 flex items-center justify-end gap-1 mt-1 animate-pulse">
-                  <AlertTriangle className="w-3 h-3 text-rose-600" /> Cận Hạn Xuất Gấp
+            <div className={`text-right font-mono ${isExpired ? 'text-rose-700' : isUrgent ? 'text-amber-700' : 'text-slate-700'}`}>
+              <div className="text-sm font-bold">
+                {isExpired ? `Đã quá hạn ${Math.abs(order.daysRemaining)} ngày` : `Còn ${order.daysRemaining} ngày`}
+              </div>
+              {isExpired ? (
+                <span className="text-[11px] font-bold uppercase tracking-wider text-rose-800 bg-rose-100 px-2 py-0.5 rounded border border-rose-300 flex items-center justify-end gap-1 mt-1">
+                  <AlertTriangle className="w-3 h-3 text-rose-600" /> Đã Hết Hạn
                 </span>
-              )}
+              ) : isUrgent ? (
+                <span className="text-[11px] font-bold uppercase tracking-wider text-amber-700 bg-amber-100 px-2 py-0.5 rounded border border-amber-300 flex items-center justify-end gap-1 mt-1 animate-pulse">
+                  <AlertTriangle className="w-3 h-3 text-amber-600" /> Cận Hạn Xuất Gấp
+                </span>
+              ) : null}
             </div>
           </div>
 
@@ -219,7 +226,7 @@ export const OrderDispatchDrawer: React.FC<OrderDispatchDrawerProps> = ({
             className="w-full py-3.5 px-4 rounded-xl bg-amber-500 hover:bg-amber-600 text-white font-bold text-xs sm:text-sm uppercase tracking-wider flex items-center justify-center gap-2 shadow-md shadow-amber-200 transition-all cursor-pointer active:scale-[0.99]"
           >
             <Lock className="w-4 h-4 text-white stroke-[2.5]" />
-            <span>1. Khóa & Giữ Hàng Cho Đơn ({order.qty} SP)</span>
+            <span>Khóa & Giữ Hàng Cho Đơn ({order.qty} SP)</span>
           </button>
         )}
 
@@ -229,7 +236,7 @@ export const OrderDispatchDrawer: React.FC<OrderDispatchDrawerProps> = ({
             className="w-full py-3.5 px-4 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs sm:text-sm uppercase tracking-wider flex items-center justify-center gap-2 shadow-md shadow-emerald-200 transition-all cursor-pointer active:scale-[0.99]"
           >
             <Truck className="w-4 h-4 text-white stroke-[2.5]" />
-            <span>2. Xác Nhận Xuất Hàng Khỏi Kho</span>
+            <span>Xác Nhận Xuất Hàng Khỏi Kho</span>
           </button>
         )}
 

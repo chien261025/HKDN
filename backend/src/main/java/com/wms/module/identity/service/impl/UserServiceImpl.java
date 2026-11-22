@@ -423,7 +423,7 @@ public class UserServiceImpl implements UserService {
                 .name(p.getName())
                 .module(p.getModule())
                 .description(p.getDescription())
-                .adminAllowed(true) // Admin luôn có toàn quyền
+                .adminAllowed(adminPermIds.contains(p.getId()))
                 .managerAllowed(managerPermIds.contains(p.getId()))
                 .operatorAllowed(operatorPermIds.contains(p.getId()))
                 .build())

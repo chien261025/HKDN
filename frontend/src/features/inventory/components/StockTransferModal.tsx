@@ -9,6 +9,7 @@ interface StockTransferModalProps {
   isOpen: boolean;
   onClose: () => void;
   sourceItem: StockItem | null;
+  availableStocks?: StockItem[];
   onSuccess: () => void;
 }
 
@@ -16,8 +17,10 @@ export const StockTransferModal: React.FC<StockTransferModalProps> = ({
   isOpen,
   onClose,
   sourceItem,
+  availableStocks = [],
   onSuccess,
 }) => {
+  const [internalSourceItem, setInternalSourceItem] = useState<StockItem | null>(null);
   const [locations, setLocations] = useState<BinLocation[]>([]);
   const [targetLocationId, setTargetLocationId] = useState<number | ''>('');
   const [transferQty, setTransferQty] = useState<string>('1');
@@ -26,28 +29,35 @@ export const StockTransferModal: React.FC<StockTransferModalProps> = ({
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
+  const effectiveItem = sourceItem || internalSourceItem || (availableStocks.length > 0 ? availableStocks[0] : null);
+
   useEffect(() => {
     if (isOpen) {
+      if (!sourceItem && availableStocks.length > 0 && !internalSourceItem) {
+        setInternalSourceItem(availableStocks[0]);
+      }
       locationService.getLocations().then((locs) => {
         setLocations(locs);
+        const item = sourceItem || internalSourceItem || availableStocks[0];
         // Chọn ô đích hợp lệ đầu tiên khác ô nguồn trong cùng chi nhánh kho
-        const diff = locs.find((l) => l.barcode !== sourceItem?.locationBarcode && l.id !== sourceItem?.locationId && l.warehouseId === (sourceItem?.warehouseId || 1));
+        const diff = locs.find((l) => l.barcode !== item?.locationBarcode && l.id !== item?.locationId && l.warehouseId === (item?.warehouseId || 1));
         if (diff) setTargetLocationId(diff.id);
       });
       setTransferQty('1');
       setErrorMsg(null);
-      if (sourceItem?.isExpired) {
+      const curItem = sourceItem || internalSourceItem || availableStocks[0];
+      if (curItem?.isExpired) {
         setNotes('Chuyển vào khu cách ly / chờ tiêu hủy (Quarantine / Disposal)');
       } else {
         setNotes('Tái sắp xếp không gian kho (Consolidation)');
       }
     }
-  }, [isOpen, sourceItem]);
+  }, [isOpen, sourceItem, availableStocks]);
 
-  if (!isOpen || !sourceItem) return null;
+  if (!isOpen || !effectiveItem) return null;
 
-  const maxQty = sourceItem.isExpired ? sourceItem.onHandQty : sourceItem.availableQty;
-  const unitName = sourceItem.unit || 'Cái';
+  const maxQty = effectiveItem.isExpired ? effectiveItem.onHandQty : effectiveItem.availableQty;
+  const unitName = effectiveItem.unit || 'Cái';
   const selectedTargetLoc = locations.find((l) => l.id === Number(targetLocationId));
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -73,17 +83,17 @@ export const StockTransferModal: React.FC<StockTransferModalProps> = ({
       const finalNotes = customNotes.trim() ? `${notes}: ${customNotes.trim()}` : notes;
 
       // Tìm locationId của ô nguồn (fallback theo id hoặc tra barcode nếu locationId chưa có)
-      let fromLocId = sourceItem.locationId;
+      let fromLocId = effectiveItem.locationId;
       if (!fromLocId) {
-        const found = locations.find((l) => l.barcode === sourceItem.locationBarcode);
+        const found = locations.find((l) => l.barcode === effectiveItem.locationBarcode);
         fromLocId = found ? found.id : 5;
       }
 
       await inventoryService.transferStock({
-        productId: sourceItem.productId,
+        productId: effectiveItem.productId,
         fromLocationId: fromLocId,
         toLocationId: Number(targetLocationId),
-        batchId: sourceItem.batchId || 1,
+        batchId: effectiveItem.batchId || 1,
         quantity: qty,
         notes: finalNotes,
       });
@@ -128,34 +138,57 @@ export const StockTransferModal: React.FC<StockTransferModalProps> = ({
             </div>
           )}
 
-          {sourceItem.isExpired && (
+          {effectiveItem.isExpired && (
             <div className="p-3 rounded-xl bg-amber-50 border border-amber-200 text-amber-900 text-xs flex items-start gap-2">
               <AlertCircle className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
               <div>
-                <span className="font-bold">Lô hàng đã quá hạn sử dụng:</span> Cho phép điều chuyển toàn bộ số lượng vật lý (<strong>{sourceItem.onHandQty} {unitName}</strong>) từ ô lưu trữ sang ô kệ cách ly để chờ kiểm định hoặc tiêu hủy.
+                <span className="font-bold">Lô hàng đã quá hạn sử dụng:</span> Cho phép điều chuyển toàn bộ số lượng vật lý (<strong>{effectiveItem.onHandQty} {unitName}</strong>) từ ô lưu trữ sang ô kệ cách ly để chờ kiểm định hoặc tiêu hủy.
               </div>
             </div>
           )}
 
-          {/* Chi tiết mặt hàng nguồn */}
-          <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-200 space-y-2">
-            <div className="flex items-center justify-between">
-              <span className="font-semibold text-slate-900 text-sm">{sourceItem.name}</span>
-              <span className="font-mono text-2xs font-medium px-2 py-0.5 rounded-md bg-white text-slate-600 border border-slate-200">
-                {sourceItem.sku}
-              </span>
+          {/* Chọn hoặc hiển thị mặt hàng nguồn */}
+          {!sourceItem && availableStocks.length > 0 ? (
+            <div className="space-y-1.5">
+              <label className="font-bold text-slate-800 flex items-center gap-1">
+                <Package className="w-3.5 h-3.5 text-indigo-600" />
+                <span>Chọn Mặt Hàng & Ô Kệ Nguồn Cần Chuyển:</span>
+              </label>
+              <select
+                value={effectiveItem.id}
+                onChange={(e) => {
+                  const selected = availableStocks.find((s) => String(s.id) === e.target.value);
+                  if (selected) setInternalSourceItem(selected);
+                }}
+                className="w-full p-2.5 rounded-xl border border-slate-300 font-mono text-xs font-semibold focus:outline-none focus:border-indigo-600 bg-white"
+              >
+                {availableStocks.map((s) => (
+                  <option key={s.id} value={s.id}>
+                    {s.name} ({s.sku}) • Lô {s.batchNumber} • Ô: {s.locationBarcode} [Tồn: {s.availableQty} {s.unit || 'SP'}]
+                  </option>
+                ))}
+              </select>
             </div>
-            <div className="grid grid-cols-2 gap-2 text-slate-600 font-mono text-2xs pt-1.5 border-t border-slate-200/80">
-              <div>Số Lô: <strong className="text-slate-800 font-semibold">{sourceItem.batchNumber}</strong></div>
-              <div>Hạn dùng: <strong className={sourceItem.isExpired ? "text-rose-600 font-bold" : "text-slate-700 font-semibold"}>{sourceItem.expiryDate} {sourceItem.isExpired ? '(Đã hết hạn)' : ''}</strong></div>
-              <div className="flex items-center gap-1.5 col-span-2 whitespace-nowrap">
-                <MapPin className="w-3.5 h-3.5 text-slate-400" />
-                <span className="text-slate-500">Ô nguồn hiện tại: </span>
-                <strong className="text-slate-800 font-semibold">{sourceItem.locationBarcode}</strong>
-                <span className="text-slate-400">({sourceItem.isExpired ? `Tồn vật lý: ${maxQty} ${unitName}` : `Khả dụng: ${maxQty} ${unitName}`})</span>
+          ) : (
+            <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-200 space-y-2">
+              <div className="flex items-center justify-between">
+                <span className="font-semibold text-slate-900 text-sm">{effectiveItem.name}</span>
+                <span className="font-mono text-2xs font-medium px-2 py-0.5 rounded-md bg-white text-slate-600 border border-slate-200">
+                  {effectiveItem.sku}
+                </span>
+              </div>
+              <div className="grid grid-cols-2 gap-2 text-slate-600 font-mono text-2xs pt-1.5 border-t border-slate-200/80">
+                <div>Số Lô: <strong className="text-slate-800 font-semibold">{effectiveItem.batchNumber}</strong></div>
+                <div>Hạn dùng: <strong className={effectiveItem.isExpired ? "text-rose-600 font-bold" : "text-slate-700 font-semibold"}>{effectiveItem.expiryDate} {effectiveItem.isExpired ? '(Đã hết hạn)' : ''}</strong></div>
+                <div className="flex items-center gap-1.5 col-span-2 whitespace-nowrap">
+                  <MapPin className="w-3.5 h-3.5 text-slate-400" />
+                  <span className="text-slate-500">Ô nguồn hiện tại: </span>
+                  <strong className="text-slate-800 font-semibold">{effectiveItem.locationBarcode}</strong>
+                  <span className="text-slate-400">({effectiveItem.isExpired ? `Tồn vật lý: ${maxQty} ${unitName}` : `Khả dụng: ${maxQty} ${unitName}`})</span>
+                </div>
               </div>
             </div>
-          </div>
+          )}
 
           {/* Chọn ô đích */}
           <div className="space-y-1.5">
@@ -170,7 +203,7 @@ export const StockTransferModal: React.FC<StockTransferModalProps> = ({
               className="w-full p-2.5 rounded-xl border border-slate-300 font-mono text-xs font-semibold focus:outline-none focus:border-indigo-600 bg-white"
             >
               {locations
-                .filter((l) => l.barcode !== sourceItem.locationBarcode && l.id !== sourceItem.locationId && l.warehouseId === (sourceItem.warehouseId || 1))
+                .filter((l) => l.barcode !== effectiveItem.locationBarcode && l.id !== effectiveItem.locationId && l.warehouseId === (effectiveItem.warehouseId || 1))
                 .map((loc) => {
                   const capDesc = loc.status === 'EMPTY' ? 'Ô trống' : loc.qty ? `Đang có ${loc.qty} SP` : 'Sẵn sàng';
                   return (
@@ -232,11 +265,11 @@ export const StockTransferModal: React.FC<StockTransferModalProps> = ({
               onChange={(e) => setNotes(e.target.value)}
               className="w-full p-2.5 rounded-xl border border-slate-300 text-xs focus:outline-none focus:border-indigo-600 bg-white"
             >
-              <option value="Tái sắp xếp không gian kho (Consolidation)">Tái sắp xếp không gian kho (Consolidation)</option>
+              <option value="Tái sắp xếp không gian kho">Tái sắp xếp tối ưu diện tích kho</option>
               <option value="Hạ tải xuống tầng đáy S01 an toàn">Hạ tải xuống tầng đáy S01 an toàn</option>
-              <option value="Chuyển vào kho mát Zone B bảo quản">Chuyển vào kho mát Zone B bảo quản</option>
-              <option value="Gom hàng cận HSD gần cửa xuất (Picking)">Gom hàng cận HSD gần cửa xuất (Picking)</option>
-              <option value="Chuyển vào khu cách ly / chờ tiêu hủy (Quarantine / Disposal)">Chuyển vào khu cách ly / chờ tiêu hủy (Quarantine / Disposal)</option>
+              <option value="Chuyển vào kho mát bảo quản">Chuyển vào kho mát bảo quản</option>
+              <option value="Gom hàng cận HSD gần cửa xuất">Gom hàng cận HSD gần cửa xuất hàng</option>
+              <option value="Chuyển vào khu cách ly / chờ tiêu hủy">Chuyển vào khu cách ly / chờ tiêu hủy</option>
               <option value="Khác">Khác...</option>
             </select>
             {notes === 'Khác' && (

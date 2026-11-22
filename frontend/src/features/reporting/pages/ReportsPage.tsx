@@ -21,7 +21,7 @@ export const ReportsPage: React.FC = () => {
       createdAt: '15 phút trước',
       completedAt: '15 phút trước',
       fileSize: '4.2 MB',
-      requestedBy: 'Nguyễn Quản Trị (Admin)',
+      requestedBy: 'Nguyễn Quản Trị',
       downloadUrl: '#',
     },
     {
@@ -114,7 +114,7 @@ export const ReportsPage: React.FC = () => {
       progress: 25,
       totalRows: parseInt(template.estimatedRows.replace(/\D/g, '')) || 10000,
       createdAt: 'Vừa xong',
-      requestedBy: 'Nguyễn Quản Trị (Admin)',
+      requestedBy: 'Nguyễn Quản Trị',
     };
 
     setJobs((prev) => [newJob, ...prev]);
@@ -223,7 +223,7 @@ export const ReportsPage: React.FC = () => {
   const activeCount = jobs.filter((j) => j.status !== 'COMPLETED').length;
 
   return (
-    <div className="space-y-5 max-w-7xl mx-auto pb-8">
+    <div className="space-y-4 pb-8">
       {/* 1. Header Doanh Nghiệp Chuẩn */}
       <ReportsHeader
         completedJobsCount={completedCount}

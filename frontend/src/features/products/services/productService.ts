@@ -81,6 +81,7 @@ export const productService = {
             isExpiryManaged: p.isExpiryManaged !== undefined ? Boolean(p.isExpiryManaged) : categoryType === 'FOOD_BEVERAGE',
             shelfLifeDays: p.shelfLifeDays !== undefined ? Number(p.shelfLifeDays) : (p.sku === 'SKU-YOGURT-04' ? 45 : 365),
             outboundStrategy: p.outboundStrategy || (categoryType === 'FOOD_BEVERAGE' ? 'FEFO' : 'FIFO'),
+            trackingMethod: p.trackingMethod || (categoryType === 'ELECTRONICS' ? 'SERIAL_IMEI' : (p.isBatchManaged !== false && (categoryType === 'FOOD_BEVERAGE' || categoryType === 'PHARMACEUTICAL')) ? 'FEFO_BATCH' : 'STANDARD'),
           };
         }).filter((p: ProductItem) => !stockedOnly || p.currentStock > 0);
       }
@@ -142,6 +143,7 @@ export const productService = {
         sellingPrice: product.sellingPrice || 0,
         businessStatus: product.businessStatus || 'ACTIVE',
         categoryId: mapCategoryToId(product.category, product.storageZone),
+        trackingMethod: product.trackingMethod,
         isBatchManaged: product.isBatchManaged !== undefined ? product.isBatchManaged : true,
         isExpiryManaged: product.isExpiryManaged !== undefined ? product.isExpiryManaged : (product.category === 'FOOD_BEVERAGE'),
         shelfLifeDays: product.shelfLifeDays,
@@ -183,11 +185,29 @@ export const productService = {
         supplierCode: product.supplierCode || 'SUP-GENERAL',
         supplierName: product.supplierName || 'Đối Tác Phân Phối',
         status: 'ACTIVE',
+        trackingMethod: product.trackingMethod || (product.category === 'ELECTRONICS' ? 'SERIAL_IMEI' : product.isBatchManaged ? 'FEFO_BATCH' : 'STANDARD'),
       };
     } catch (err) {
       console.error('Could not save product to backend:', err);
       throw err;
     }
+  },
+
+  async batchCreateProducts(products: Partial<ProductItem>[]): Promise<{ created: ProductItem[]; errors: { sku: string; error: string }[] }> {
+    const created: ProductItem[] = [];
+    const errors: { sku: string; error: string }[] = [];
+    for (const p of products) {
+      try {
+        const item = await this.createProduct(p);
+        created.push(item);
+      } catch (err: any) {
+        errors.push({
+          sku: p.sku || 'UNKNOWN',
+          error: err?.response?.data?.message || err?.message || 'Lỗi khi lưu sản phẩm',
+        });
+      }
+    }
+    return { created, errors };
   },
 
   async getSuppliers(): Promise<SupplierItem[]> {
@@ -281,6 +301,7 @@ export const productService = {
         businessStatus: product.businessStatus,
         isActive: product.status !== 'INACTIVE',
         categoryId: mapCategoryToId(product.category, product.storageZone),
+        trackingMethod: product.trackingMethod,
         isBatchManaged: product.isBatchManaged !== undefined ? product.isBatchManaged : true,
         isExpiryManaged: product.isExpiryManaged !== undefined ? product.isExpiryManaged : (product.category === 'FOOD_BEVERAGE'),
         shelfLifeDays: product.shelfLifeDays,
@@ -316,6 +337,7 @@ export const productService = {
         purchasePrice: Number(saved?.purchasePrice || product.purchasePrice || 0),
         sellingPrice: Number(saved?.sellingPrice || product.sellingPrice || 0),
         businessStatus: saved?.businessStatus || product.businessStatus || 'ACTIVE',
+        trackingMethod: product.trackingMethod,
       } as ProductItem;
     } catch (err) {
       console.error('Could not update product on backend:', err);

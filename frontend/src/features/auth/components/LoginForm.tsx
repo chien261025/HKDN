@@ -114,6 +114,48 @@ export const LoginForm: React.FC<LoginFormProps> = ({
             </>
           )}
         </button>
+
+        {/* Quick RBAC Test Accounts */}
+        <div className="pt-3 border-t border-slate-100 space-y-2">
+          <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider block text-center">
+            Chọn nhanh vai trò đăng nhập:
+          </span>
+          <div className="grid grid-cols-3 gap-1.5 text-xs font-semibold">
+            <button
+              type="button"
+              onClick={() => {
+                onUsernameChange('operator01');
+                onPasswordChange('123456');
+              }}
+              className="py-2 px-1.5 bg-blue-50 hover:bg-blue-100 text-blue-700 rounded-xl border border-blue-200 text-center transition cursor-pointer flex flex-col items-center gap-0.5"
+            >
+              <span>👷 Thủ Kho</span>
+              <span className="text-[10px] font-mono text-blue-500 font-normal">operator01</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                onUsernameChange('manager01');
+                onPasswordChange('123456');
+              }}
+              className="py-2 px-1.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 rounded-xl border border-emerald-200 text-center transition cursor-pointer flex flex-col items-center gap-0.5"
+            >
+              <span>👔 Quản Lý</span>
+              <span className="text-[10px] font-mono text-emerald-500 font-normal">manager01</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                onUsernameChange('admin');
+                onPasswordChange('123456');
+              }}
+              className="py-2 px-1.5 bg-purple-50 hover:bg-purple-100 text-purple-700 rounded-xl border border-purple-200 text-center transition cursor-pointer flex flex-col items-center gap-0.5"
+            >
+              <span>👑 Quản Trị</span>
+              <span className="text-[10px] font-mono text-purple-500 font-normal">admin</span>
+            </button>
+          </div>
+        </div>
       </form>
     </div>
   );

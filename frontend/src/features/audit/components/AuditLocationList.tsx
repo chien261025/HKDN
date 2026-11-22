@@ -7,6 +7,7 @@ interface AuditLocationListProps {
   selectedItemIndex: number;
   countedBins: number;
   totalBins: number;
+  blindCount?: boolean;
   onSelectItem: (index: number) => void;
 }
 
@@ -15,6 +16,7 @@ export const AuditLocationList: React.FC<AuditLocationListProps> = ({
   selectedItemIndex,
   countedBins,
   totalBins,
+  blindCount,
   onSelectItem,
 }) => {
   return (
@@ -54,7 +56,11 @@ export const AuditLocationList: React.FC<AuditLocationListProps> = ({
 
               <div className="text-right">
                 {isCounted ? (
-                  itemDiff === 0 ? (
+                  blindCount ? (
+                    <span className="px-2 py-0.5 rounded bg-blue-100 text-blue-800 font-bold text-[10px]">
+                      Đã đếm ({it.countedQty})
+                    </span>
+                  ) : itemDiff === 0 ? (
                     <span className="px-2 py-0.5 rounded bg-emerald-100 text-emerald-700 font-bold text-[10px]">Khớp</span>
                   ) : (
                     <span className="px-2 py-0.5 rounded bg-rose-100 text-rose-700 font-bold text-[10px]">

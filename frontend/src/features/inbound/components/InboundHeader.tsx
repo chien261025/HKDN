@@ -59,10 +59,10 @@ export const InboundHeader: React.FC<InboundHeaderProps> = ({
           </div>
           <div>
             <h1 className="text-xl md:text-2xl font-extrabold text-slate-900 tracking-tight">
-              Quản Lý Đơn Nhập Kho (PO)
+              Quản Lý Đơn Nhập Kho
             </h1>
             <p className="text-xs sm:text-sm text-slate-600 font-medium mt-1">
-              Theo dõi kế hoạch nhà cung cấp, tiếp nhận xe tải dỡ hàng và xếp vào ô kệ an toàn
+              Theo dõi tiến độ giao hàng từ nhà cung cấp, tiếp nhận dỡ hàng và xếp vào ô kệ an toàn
             </p>
           </div>
         </div>
@@ -109,12 +109,12 @@ export const InboundHeader: React.FC<InboundHeaderProps> = ({
           className={`bg-white rounded-2xl p-4 sm:p-5 border border-slate-200/90 border-l-4 border-l-slate-700 shadow-xs hover:shadow-sm transition-all cursor-pointer select-none text-left ${
             activeStatus === 'ALL' ? 'ring-2 ring-slate-400 ring-offset-1 shadow-sm' : ''
           }`}
-          title="Bấm để xem tất cả đơn PO"
+          title="Bấm để xem tất cả đơn nhập kho"
         >
           <div className="flex items-start justify-between">
             <div>
               <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider block">
-                Tổng Kế Hoạch PO
+                Tổng Đơn Nhập Kho
               </span>
               <div className="text-2xl sm:text-3xl font-black text-slate-900 font-mono mt-1.5 tabular-nums">
                 {totalCount}
@@ -125,7 +125,7 @@ export const InboundHeader: React.FC<InboundHeaderProps> = ({
             </div>
           </div>
           <div className="mt-2 text-xs text-slate-600 font-medium">
-            Toàn bộ nhu cầu nhập hàng
+            Toàn bộ đơn nhập hàng
           </div>
         </div>
 
@@ -138,12 +138,12 @@ export const InboundHeader: React.FC<InboundHeaderProps> = ({
           className={`bg-white rounded-2xl p-4 sm:p-5 border border-slate-200/90 border-l-4 border-l-amber-500 shadow-xs hover:shadow-sm transition-all cursor-pointer select-none text-left ${
             activeStatus === 'PENDING' ? 'ring-2 ring-amber-400 ring-offset-1 shadow-sm' : ''
           }`}
-          title="Bấm để lọc đơn Chờ tiếp nhận"
+          title="Đơn chờ tiếp nhận"
         >
           <div className="flex items-start justify-between">
             <div>
               <span className="text-[11px] font-bold text-amber-700 uppercase tracking-wider block">
-                1. Chờ Tiếp Nhận (PO)
+                Chờ Tiếp Nhận
               </span>
               <div className="text-2xl sm:text-3xl font-black text-amber-600 font-sans mt-1.5 tabular-nums">
                 {pendingCount}
@@ -168,12 +168,12 @@ export const InboundHeader: React.FC<InboundHeaderProps> = ({
           className={`bg-white rounded-2xl p-4 sm:p-5 border border-slate-200/90 border-l-4 border-l-blue-600 shadow-xs hover:shadow-sm transition-all cursor-pointer select-none text-left ${
             activeStatus === 'RECEIVED' ? 'ring-2 ring-blue-400 ring-offset-1 shadow-sm' : ''
           }`}
-          title="Bấm để lọc đơn Tại khu đệm & QC"
+          title="Đơn tại khu đệm & kiểm hàng"
         >
           <div className="flex items-start justify-between">
             <div>
               <span className="text-[11px] font-bold text-blue-700 uppercase tracking-wider block">
-                2. Kiểm Đếm & QC (Đệm)
+                Khu Đệm & Kiểm Hàng
               </span>
               <div className="text-2xl sm:text-3xl font-black text-blue-600 font-sans mt-1.5 tabular-nums">
                 {receivedCount}
@@ -198,12 +198,12 @@ export const InboundHeader: React.FC<InboundHeaderProps> = ({
           className={`bg-white rounded-2xl p-4 sm:p-5 border border-slate-200/90 border-l-4 border-l-emerald-600 shadow-xs hover:shadow-sm transition-all cursor-pointer select-none text-left ${
             activeStatus === 'STOCKED' ? 'ring-2 ring-emerald-400 ring-offset-1 shadow-sm' : ''
           }`}
-          title="Bấm để lọc đơn Đã cất kệ xong"
+          title="Đơn đã hoàn tất nhập kho"
         >
           <div className="flex items-start justify-between">
             <div>
               <span className="text-[11px] font-bold text-emerald-700 uppercase tracking-wider block">
-                3. Đã Cất Kệ (Putaway)
+                Đã Hoàn Tất Nhập Kho
               </span>
               <div className="text-2xl sm:text-3xl font-black text-emerald-600 font-sans mt-1.5 tabular-nums">
                 {stockedCount}
@@ -215,7 +215,7 @@ export const InboundHeader: React.FC<InboundHeaderProps> = ({
           </div>
           <div className="mt-2 text-xs text-emerald-700 font-semibold flex items-center gap-1">
             <span>{totalCount > 0 ? Math.round((stockedCount / totalCount) * 100) : 0}%</span>
-            <span className="font-medium text-slate-500">• Đã ghi sổ Stock Ledger</span>
+            <span className="font-medium text-slate-500">• Đã cất kệ và ghi thẻ kho</span>
           </div>
         </div>
       </div>

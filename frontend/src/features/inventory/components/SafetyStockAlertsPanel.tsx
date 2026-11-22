@@ -16,7 +16,13 @@ import {
   ArrowRight,
   RefreshCw,
   Ban,
-  DollarSign
+  DollarSign,
+  Lock,
+  ShieldCheck,
+  ArrowRightLeft,
+  FileText,
+  Tag,
+  TrendingDown
 } from 'lucide-react';
 import {
   SafetyStockAlert,
@@ -37,6 +43,8 @@ interface SafetyStockAlertsPanelProps {
   isError?: boolean;
   onRetry?: () => void;
   onBatchQuarantined?: () => void;
+  onTransferItem?: (item: SlowMovingStockAlert) => void;
+  onViewLedgerItem?: (item: SlowMovingStockAlert) => void;
 }
 
 type AlertTab = 'safety' | 'expiring' | 'slow_moving';
@@ -50,6 +58,8 @@ export const SafetyStockAlertsPanel: React.FC<SafetyStockAlertsPanelProps> = ({
   isError = false,
   onRetry,
   onBatchQuarantined,
+  onTransferItem,
+  onViewLedgerItem,
 }) => {
   const [activeTab, setActiveTab] = useState<AlertTab>('safety');
   const [filterLevel, setFilterLevel] = useState<string>('ALL');
@@ -152,8 +162,8 @@ export const SafetyStockAlertsPanel: React.FC<SafetyStockAlertsPanelProps> = ({
     return (
       <div className="bg-white rounded-2xl border border-slate-200 p-12 text-center shadow-xs space-y-3">
         <RefreshCw className="w-8 h-8 text-blue-600 animate-spin mx-auto" />
-        <h4 className="font-bold text-slate-800 text-sm">Đang tính toán ma trận cảnh báo tồn kho...</h4>
-        <p className="text-xs text-slate-500">Phân tích tồn an toàn (ROP), hạn dùng (FEFO) và tốc độ luân chuyển theo thời gian thực.</p>
+        <h4 className="font-bold text-slate-800 text-sm">Đang tải dữ liệu cảnh báo tồn kho...</h4>
+        <p className="text-xs text-slate-500">Kiểm tra mức tồn an toàn, hạn sử dụng và tốc độ xuất nhập hàng.</p>
       </div>
     );
   }
@@ -216,7 +226,7 @@ export const SafetyStockAlertsPanel: React.FC<SafetyStockAlertsPanelProps> = ({
           <div>
             <div className="text-xs font-semibold text-slate-500 uppercase tracking-wider flex items-center gap-1.5">
               <ShieldAlert className="w-3.5 h-3.5 text-blue-600" />
-              <span>Sắp Hết Hàng (Min - ROP)</span>
+              <span>Sắp Hết Hàng</span>
             </div>
             <div className="text-2xl sm:text-3xl font-extrabold text-slate-900 font-mono mt-1 tabular-nums">
               {alerts.length} <span className="text-xs font-sans font-normal text-slate-500">mặt hàng</span>
@@ -244,7 +254,7 @@ export const SafetyStockAlertsPanel: React.FC<SafetyStockAlertsPanelProps> = ({
           <div>
             <div className="text-xs font-semibold text-slate-500 uppercase tracking-wider flex items-center gap-1.5">
               <Calendar className="w-3.5 h-3.5 text-rose-600" />
-              <span>Cận Date & Hết Hạn (FEFO)</span>
+              <span>Cận Hạn & Hết Hạn</span>
             </div>
             <div className="text-2xl sm:text-3xl font-extrabold text-rose-600 font-mono mt-1 tabular-nums">
               {expiringAlerts.length} <span className="text-xs font-sans font-normal text-slate-500">lô hàng</span>
@@ -258,7 +268,7 @@ export const SafetyStockAlertsPanel: React.FC<SafetyStockAlertsPanelProps> = ({
           </div>
         </div>
 
-        {/* Card 3: Hàng Tồn Lâu / Dead Stock */}
+        {/* Card 3: Phân Tích Tuổi Tồn Kho / Chậm Luân Chuyển */}
         <div
           role="button"
           tabIndex={0}
@@ -277,8 +287,8 @@ export const SafetyStockAlertsPanel: React.FC<SafetyStockAlertsPanelProps> = ({
             <div className="text-2xl sm:text-3xl font-extrabold text-amber-700 font-mono mt-1 tabular-nums">
               {slowMovingAlerts.length} <span className="text-xs font-sans font-normal text-slate-500">dòng tồn</span>
             </div>
-            <div className="text-xs text-amber-600 font-medium mt-1">
-              {deadStockCount} dòng tồn bất động &gt; 90 ngày
+            <div className="text-xs text-amber-700 font-medium mt-1">
+              {deadStockCount} dòng bất động &gt; 90 ngày
             </div>
           </div>
           <div className="w-11 h-11 rounded-xl bg-amber-50 text-amber-700 flex items-center justify-center border border-amber-200 shrink-0">
@@ -297,7 +307,7 @@ export const SafetyStockAlertsPanel: React.FC<SafetyStockAlertsPanelProps> = ({
               activeTab === 'safety' ? 'bg-blue-600 text-white shadow-xs' : 'text-slate-600 hover:text-slate-900'
             }`}
           >
-            1. Cảnh Báo Sắp Hết Hàng ({alerts.length})
+            Sắp Hết Hàng ({alerts.length})
           </button>
           <button
             onClick={() => setActiveTab('expiring')}
@@ -305,7 +315,7 @@ export const SafetyStockAlertsPanel: React.FC<SafetyStockAlertsPanelProps> = ({
               activeTab === 'expiring' ? 'bg-rose-600 text-white shadow-xs' : 'text-slate-600 hover:text-slate-900'
             }`}
           >
-            2. Cảnh Báo Cận Date & Hết Hạn ({expiringAlerts.length})
+            Cận Hạn & Hết Hạn ({expiringAlerts.length})
           </button>
           <button
             onClick={() => setActiveTab('slow_moving')}
@@ -313,7 +323,7 @@ export const SafetyStockAlertsPanel: React.FC<SafetyStockAlertsPanelProps> = ({
               activeTab === 'slow_moving' ? 'bg-amber-600 text-white shadow-xs' : 'text-slate-600 hover:text-slate-900'
             }`}
           >
-            3. Cảnh Báo Hàng Tồn Lâu ({slowMovingAlerts.length})
+            Chậm Luân Chuyển ({slowMovingAlerts.length})
           </button>
         </div>
 
@@ -339,11 +349,8 @@ export const SafetyStockAlertsPanel: React.FC<SafetyStockAlertsPanelProps> = ({
             <div>
               <h3 className="text-sm font-bold text-slate-900 tracking-tight flex items-center gap-2">
                 <ShieldAlert className="w-4 h-4 text-blue-600" />
-                <span>Danh Sách Mặt Hàng Dưới Định Mức An Toàn Hoặc Điểm Tái Đặt Hàng (ROP)</span>
+                <span>Danh Sách Mặt Hàng Dưới Mức Tồn An Toàn</span>
               </h3>
-              <p className="text-xs text-slate-500 mt-0.5">
-                Kiểm soát tự động: Khả dụng &le; Tồn an toàn (Cần mua gấp) hoặc Khả dụng &le; ROP (Lên kế hoạch nhập hàng)
-              </p>
             </div>
 
             {/* Filter Level Buttons */}
@@ -468,11 +475,8 @@ export const SafetyStockAlertsPanel: React.FC<SafetyStockAlertsPanelProps> = ({
             <div>
               <h3 className="text-sm font-bold text-slate-900 tracking-tight flex items-center gap-2">
                 <Calendar className="w-4 h-4 text-rose-600" />
-                <span>Kiểm Soát Lô Hàng Hết Hạn & Cận Date Theo Chiến Lược FEFO</span>
+                <span>Kiểm Soát Hạn Dùng Lô Hàng (FEFO)</span>
               </h3>
-              <p className="text-xs text-slate-500 mt-0.5">
-                Đồng bộ FEFO: Lô hết hạn phải phong tỏa cách ly ngay lập tức. Lô cận date (&le; 45 ngày) ưu tiên xuất sớm.
-              </p>
             </div>
 
             <div className="flex items-center gap-1.5 bg-white p-1 rounded-lg border border-slate-200 text-xs font-semibold">
@@ -507,20 +511,19 @@ export const SafetyStockAlertsPanel: React.FC<SafetyStockAlertsPanelProps> = ({
             <table className="w-full text-left text-xs sm:text-sm border-collapse">
               <thead>
                 <tr className="bg-slate-50 text-slate-500 font-semibold text-xs uppercase tracking-wider border-b border-slate-200">
-                  <th className="py-3 px-4 min-w-[200px]">Sản Phẩm & SKU</th>
-                  <th className="py-3 px-4 whitespace-nowrap">Số Lô (Batch)</th>
-                  <th className="py-3 px-4 whitespace-nowrap">Vị Trí Ô Kệ</th>
-                  <th className="py-3 px-4 whitespace-nowrap">Hạn Dùng (HSD)</th>
-                  <th className="py-3 px-4 text-center whitespace-nowrap">Thời Gian Còn Lại</th>
-                  <th className="py-3 px-4 text-center whitespace-nowrap">Tồn Thực Tế</th>
-                  <th className="py-3 px-4 whitespace-nowrap">Mức Độ Cảnh Báo</th>
-                  <th className="py-3 px-4 min-w-[260px]">Khuyến Nghị & Hành Động</th>
+                  <th className="py-3 px-3 min-w-[180px]">Sản Phẩm & SKU</th>
+                  <th className="py-3 px-3 whitespace-nowrap">Lô & Vị Trí Ô Kệ</th>
+                  <th className="py-3 px-3 whitespace-nowrap">Hạn Dùng (HSD)</th>
+                  <th className="py-3 px-3 text-center whitespace-nowrap">Thời Hạn</th>
+                  <th className="py-3 px-3 text-center whitespace-nowrap">Tồn Vật Lý</th>
+                  <th className="py-3 px-3 whitespace-nowrap">Trạng Thái</th>
+                  <th className="py-3 px-3 text-right whitespace-nowrap">Thao Tác</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100 text-slate-800">
                 {visibleExpiring.length === 0 ? (
                   <tr>
-                    <td colSpan={8} className="py-12 text-center text-slate-400">
+                    <td colSpan={7} className="py-12 text-center text-slate-400">
                       <CheckCircle2 className="w-8 h-8 mx-auto mb-2 text-emerald-500" />
                       <p className="font-semibold text-slate-700">Tất cả các lô hàng đều còn hạn sử dụng rất an toàn</p>
                     </td>
@@ -528,31 +531,33 @@ export const SafetyStockAlertsPanel: React.FC<SafetyStockAlertsPanelProps> = ({
                 ) : (
                   visibleExpiring.map((item) => {
                     const isExpired = item.daysRemaining < 0 || item.alertLevel === 'EXPIRED';
-                    const isQuarantined = item.batchStatus === 'QUARANTINED';
+                    const isQuarantined = item.batchStatus === 'QUARANTINE' || item.batchStatus === 'QUARANTINED';
 
                     return (
                       <tr key={`${item.productId}-${item.batchId}-${item.locationId}`} className="hover:bg-slate-50/70 transition-colors">
-                        <td className="py-3.5 px-4">
+                        <td className="py-3 px-3">
                           <div className="font-semibold text-slate-900 text-xs sm:text-sm">{item.productName}</div>
                           <div className="text-slate-500 font-mono text-xs mt-0.5">{item.sku}</div>
                         </td>
-                        <td className="py-3.5 px-4 whitespace-nowrap">
-                          <div className="font-mono font-bold text-xs text-slate-800">{item.batchNumber}</div>
-                          {isQuarantined && (
-                            <span className="text-[10px] font-bold px-1.5 py-0.2 rounded bg-purple-50 text-purple-700 border border-purple-200">
-                              ĐÃ CÁCH LY
+                        <td className="py-3 px-3 whitespace-nowrap">
+                          <div className="flex items-center gap-1.5">
+                            <span className="font-mono font-bold text-xs text-slate-800">{item.batchNumber}</span>
+                            {isQuarantined && (
+                              <span className="text-[10px] font-bold px-1.5 py-0.2 rounded bg-purple-50 text-purple-700 border border-purple-200">
+                                Cách ly
+                              </span>
+                            )}
+                          </div>
+                          <div className="mt-1">
+                            <span className="font-mono text-[11px] font-semibold px-1.5 py-0.5 rounded bg-slate-100 text-slate-700 border border-slate-200">
+                              {item.locationBarcode}
                             </span>
-                          )}
+                          </div>
                         </td>
-                        <td className="py-3.5 px-4 whitespace-nowrap">
-                          <span className="font-mono text-xs font-semibold px-2 py-0.5 rounded bg-slate-100 text-slate-700 border border-slate-200">
-                            {item.locationBarcode}
-                          </span>
-                        </td>
-                        <td className="py-3.5 px-4 whitespace-nowrap font-mono font-medium text-xs tabular-nums text-slate-700">
+                        <td className="py-3 px-3 whitespace-nowrap font-mono font-medium text-xs tabular-nums text-slate-700">
                           {item.expiryDate}
                         </td>
-                        <td className="py-3.5 px-4 text-center whitespace-nowrap">
+                        <td className="py-3 px-2.5 text-center whitespace-nowrap">
                           {isExpired ? (
                             <span className="font-mono font-extrabold text-xs text-rose-700 bg-rose-100 px-2 py-0.5 rounded border border-rose-300">
                               Quá hạn {Math.abs(item.daysRemaining)} ngày
@@ -567,45 +572,49 @@ export const SafetyStockAlertsPanel: React.FC<SafetyStockAlertsPanelProps> = ({
                             </span>
                           )}
                         </td>
-                        <td className="py-3.5 px-4 text-center font-bold text-slate-900 tabular-nums">
+                        <td className="py-3 px-2.5 text-center font-bold text-slate-900 tabular-nums">
                           {item.onHandQty.toLocaleString('vi-VN')} {item.unit}
                         </td>
-                        <td className="py-3.5 px-4 whitespace-nowrap">
-                          {isExpired ? (
-                            <span className="inline-flex items-center gap-1 text-2xs font-extrabold px-2.5 py-1 rounded-full bg-rose-600 text-white shadow-2xs">
+                        <td className="py-3 px-2.5 whitespace-nowrap">
+                          {isQuarantined ? (
+                            <span className="inline-flex items-center gap-1 text-2xs font-bold px-2 py-0.5 rounded-full bg-purple-50 text-purple-700 border border-purple-200">
+                              <ShieldCheck className="w-3 h-3 text-purple-600" /> ĐÃ CÁCH LY
+                            </span>
+                          ) : isExpired ? (
+                            <span className="inline-flex items-center gap-1 text-2xs font-extrabold px-2 py-0.5 rounded-full bg-rose-600 text-white shadow-2xs">
                               <AlertOctagon className="w-3 h-3" /> ĐÃ HẾT HẠN
                             </span>
                           ) : item.daysRemaining <= 15 ? (
-                            <span className="inline-flex items-center gap-1 text-2xs font-bold px-2.5 py-1 rounded-full bg-rose-50 text-rose-700 border border-rose-200">
+                            <span className="inline-flex items-center gap-1 text-2xs font-bold px-2 py-0.5 rounded-full bg-rose-50 text-rose-700 border border-rose-200">
                               <AlertTriangle className="w-3 h-3 text-rose-500" /> Cận Hạn Nguy Cấp
                             </span>
                           ) : (
-                            <span className="inline-flex items-center gap-1 text-2xs font-bold px-2.5 py-1 rounded-full bg-amber-50 text-amber-700 border border-amber-200">
+                            <span className="inline-flex items-center gap-1 text-2xs font-bold px-2 py-0.5 rounded-full bg-amber-50 text-amber-700 border border-amber-200">
                               <Clock className="w-3 h-3 text-amber-600" /> Sắp Hết Hạn
                             </span>
                           )}
                         </td>
-                        <td className="py-3.5 px-4">
-                          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-                            <span className="text-xs font-medium">
-                              {isExpired ? (
-                                <span className="text-rose-700 font-semibold">Cấm xuất FEFO. Cần tiêu hủy/cách ly ngay</span>
-                              ) : (
-                                <span className="text-amber-700">Ưu tiên cấp phát xuất hàng trước (FEFO)</span>
-                              )}
+                        <td className="py-3 px-3 text-right whitespace-nowrap">
+                          {isQuarantined ? (
+                            <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-slate-100 text-slate-600 border border-slate-200 text-xs font-semibold">
+                              <Lock className="w-3 h-3 text-slate-500" />
+                              <span>Đã Phong Tỏa</span>
                             </span>
-                            {!isQuarantined && isExpired && (
-                              <button
-                                onClick={() => handleQuarantine(item.batchId, item.batchNumber)}
-                                disabled={quarantiningBatchId === item.batchId}
-                                className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 font-bold text-xs transition-colors cursor-pointer shrink-0 disabled:opacity-50"
-                                title="Khóa ô kệ và chuyển trạng thái lô hàng thành Cách Ly"
-                              >
-                                <Ban className="w-3 h-3 text-rose-600" />
-                                <span>{quarantiningBatchId === item.batchId ? 'Đang khóa...' : 'Cách Ly Lô'}</span>
-                              </button>
-                            )}
-                          </div>
+                          ) : isExpired ? (
+                            <button
+                              onClick={() => handleQuarantine(item.batchId, item.batchNumber)}
+                              disabled={quarantiningBatchId === item.batchId}
+                              className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-rose-600 hover:bg-rose-700 text-white font-bold text-xs shadow-xs transition-colors cursor-pointer shrink-0 disabled:opacity-50"
+                              title="Khóa và cách ly lô hàng này khỏi luồng xuất kho"
+                            >
+                              <Ban className="w-3.5 h-3.5" />
+                              <span>{quarantiningBatchId === item.batchId ? 'Đang khóa...' : 'Cách Ly Lô'}</span>
+                            </button>
+                          ) : (
+                            <span className="inline-flex items-center gap-1 text-xs font-semibold text-emerald-800 bg-emerald-50 px-2 py-1 rounded-lg border border-emerald-200">
+                              Sẵn sàng xuất FEFO
+                            </span>
+                          )}
                         </td>
                       </tr>
                     );
@@ -617,53 +626,50 @@ export const SafetyStockAlertsPanel: React.FC<SafetyStockAlertsPanelProps> = ({
         </div>
       )}
 
-      {/* TAB 3: CẢNH BÁO HÀNG TỒN LÂU / CHẬM LUÂN CHUYỂN */}
+      {/* TAB 3: PHÂN TÍCH TUỔI HÀNG TỒN & CHẬM LUÂN CHUYỂN */}
       {activeTab === 'slow_moving' && (
         <div className="bg-white rounded-2xl border border-slate-200 shadow-xs overflow-hidden">
           <div className="p-4 border-b border-slate-200 bg-slate-50/80 flex flex-col md:flex-row md:items-center justify-between gap-3">
             <div>
               <h3 className="text-sm font-bold text-slate-900 tracking-tight flex items-center gap-2">
                 <Archive className="w-4 h-4 text-amber-600" />
-                <span>Theo Dõi Hàng Tồn Lâu & Chậm Luân Chuyển (Dead Stock & Slow Moving)</span>
+                <span>Phân Tích Tuổi Hàng Tồn Kho (Inventory Aging Analysis)</span>
               </h3>
-              <p className="text-xs text-slate-500 mt-0.5">
-                Tính toán chuẩn: Dựa trên lần xuất kho (OUTBOUND) thực tế, loại trừ điều chuyển nội bộ để tránh reset timer giả tạo.
-              </p>
             </div>
 
-            {/* Vốn chôn đọng Banner */}
-            <div className="flex items-center gap-3">
-              <div className="bg-amber-50 border border-amber-200 rounded-xl px-3 py-1.5 flex items-center gap-2 text-xs">
-                <DollarSign className="w-4 h-4 text-amber-700" />
-                <div>
-                  <span className="text-slate-500 font-medium block text-[10px]">Tổng Vốn Bị Chôn Đọng:</span>
-                  <span className="font-bold text-amber-800 font-mono text-sm">
+            {/* Vốn chôn đọng Banner & Lọc phân loại */}
+            <div className="flex items-center flex-wrap gap-2.5">
+              <div className="inline-flex items-center gap-2 bg-gradient-to-r from-amber-50 to-orange-50 border border-amber-200/80 rounded-xl px-3 py-1.5 shadow-2xs">
+                <DollarSign className="w-4 h-4 text-amber-600 shrink-0" />
+                <div className="text-left">
+                  <span className="text-slate-500 font-semibold block text-[10px] uppercase tracking-wider">Tổng Vốn Lưu Kho Bị Đọng:</span>
+                  <span className="font-extrabold text-amber-900 font-mono text-sm leading-tight">
                     {totalHoldingValue.toLocaleString('vi-VN')} đ
                   </span>
                 </div>
               </div>
 
-              <div className="flex items-center gap-1.5 bg-white p-1 rounded-lg border border-slate-200 text-xs font-semibold">
+              <div className="flex items-center gap-1 bg-white p-1 rounded-xl border border-slate-200 text-xs font-semibold shadow-2xs">
                 <button
                   onClick={() => setFilterLevel('ALL')}
-                  className={`px-2.5 py-1 rounded-md transition-colors cursor-pointer ${
-                    filterLevel === 'ALL' ? 'bg-amber-600 text-white' : 'text-slate-600 hover:text-slate-900'
+                  className={`px-2.5 py-1.5 rounded-lg transition-all cursor-pointer ${
+                    filterLevel === 'ALL' ? 'bg-slate-900 text-white shadow-xs' : 'text-slate-600 hover:text-slate-900'
                   }`}
                 >
                   Tất cả ({slowMovingAlerts.length})
                 </button>
                 <button
                   onClick={() => setFilterLevel('DEAD_STOCK')}
-                  className={`px-2.5 py-1 rounded-md transition-colors cursor-pointer ${
-                    filterLevel === 'DEAD_STOCK' ? 'bg-rose-600 text-white' : 'text-slate-600 hover:text-rose-700'
+                  className={`px-2.5 py-1.5 rounded-lg transition-all cursor-pointer ${
+                    filterLevel === 'DEAD_STOCK' ? 'bg-amber-600 text-white shadow-xs' : 'text-slate-600 hover:text-amber-700'
                   }`}
                 >
-                  Tồn chết &gt; 90 ngày ({deadStockCount})
+                  Bất động &gt; 90 ngày ({deadStockCount})
                 </button>
                 <button
                   onClick={() => setFilterLevel('SLOW_MOVING')}
-                  className={`px-2.5 py-1 rounded-md transition-colors cursor-pointer ${
-                    filterLevel === 'SLOW_MOVING' ? 'bg-amber-600 text-white' : 'text-slate-600 hover:text-amber-700'
+                  className={`px-2.5 py-1.5 rounded-lg transition-all cursor-pointer ${
+                    filterLevel === 'SLOW_MOVING' ? 'bg-slate-700 text-white shadow-xs' : 'text-slate-600 hover:text-slate-900'
                   }`}
                 >
                   Chậm luân chuyển ({slowCount})
@@ -676,21 +682,19 @@ export const SafetyStockAlertsPanel: React.FC<SafetyStockAlertsPanelProps> = ({
             <table className="w-full text-left text-xs sm:text-sm border-collapse">
               <thead>
                 <tr className="bg-slate-50 text-slate-500 font-semibold text-xs uppercase tracking-wider border-b border-slate-200">
-                  <th className="py-3 px-4 min-w-[200px]">Sản Phẩm & SKU</th>
-                  <th className="py-3 px-4 whitespace-nowrap">Số Lô (Batch)</th>
-                  <th className="py-3 px-4 whitespace-nowrap">Vị Trí Ô Kệ</th>
-                  <th className="py-3 px-4 text-center whitespace-nowrap">Số Ngày Lưu Kho</th>
-                  <th className="py-3 px-4 text-center whitespace-nowrap">Số Lượng Tồn</th>
-                  <th className="py-3 px-4 text-right whitespace-nowrap">Giá Vốn Nhập</th>
-                  <th className="py-3 px-4 text-right whitespace-nowrap">Vốn Ứ Đọng</th>
-                  <th className="py-3 px-4 whitespace-nowrap">Phân Loại Tồn Kho</th>
-                  <th className="py-3 px-4 min-w-[240px]">Đề Xuất Phương Án</th>
+                  <th className="py-3 px-3 min-w-[180px]">Sản Phẩm & SKU</th>
+                  <th className="py-3 px-3 whitespace-nowrap">Lô & Vị Trí Ô Kệ</th>
+                  <th className="py-3 px-3 text-center whitespace-nowrap">Tuổi Tồn Kho</th>
+                  <th className="py-3 px-3 text-center whitespace-nowrap">Số Lượng Tồn</th>
+                  <th className="py-3 px-3 text-right whitespace-nowrap">Vốn Ứ Đọng</th>
+                  <th className="py-3 px-3 whitespace-nowrap">Phân Loại & Khuyến Nghị</th>
+                  <th className="py-3 px-3 text-right whitespace-nowrap">Thao Tác</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100 text-slate-800">
                 {visibleSlow.length === 0 ? (
                   <tr>
-                    <td colSpan={9} className="py-12 text-center text-slate-400">
+                    <td colSpan={7} className="py-12 text-center text-slate-400">
                       <CheckCircle2 className="w-8 h-8 mx-auto mb-2 text-emerald-500" />
                       <p className="font-semibold text-slate-700">Hàng hóa trong kho có tốc độ luân chuyển rất tốt</p>
                     </td>
@@ -702,51 +706,79 @@ export const SafetyStockAlertsPanel: React.FC<SafetyStockAlertsPanelProps> = ({
 
                     return (
                       <tr key={`${item.productId}-${item.batchId}-${item.locationId}`} className="hover:bg-slate-50/70 transition-colors">
-                        <td className="py-3.5 px-4">
+                        <td className="py-3 px-3">
                           <div className="font-semibold text-slate-900 text-xs sm:text-sm">{item.productName}</div>
                           <div className="text-slate-500 font-mono text-xs mt-0.5">{item.sku} • {item.categoryName}</div>
                         </td>
-                        <td className="py-3.5 px-4 whitespace-nowrap font-mono font-bold text-xs text-slate-800">
-                          {item.batchNumber}
+                        <td className="py-3 px-3 whitespace-nowrap">
+                          <div className="font-mono font-bold text-xs text-slate-800">{item.batchNumber}</div>
+                          <div className="mt-1">
+                            <span className="font-mono text-[11px] font-semibold px-1.5 py-0.5 rounded bg-slate-100 text-slate-700 border border-slate-200">
+                              {item.locationBarcode}
+                            </span>
+                          </div>
                         </td>
-                        <td className="py-3.5 px-4 whitespace-nowrap">
-                          <span className="font-mono text-xs font-semibold px-2 py-0.5 rounded bg-slate-100 text-slate-700 border border-slate-200">
-                            {item.locationBarcode}
-                          </span>
-                        </td>
-                        <td className="py-3.5 px-4 text-center whitespace-nowrap">
-                          <span className={`font-mono font-extrabold text-xs px-2.5 py-0.5 rounded ${
+                        <td className="py-3 px-2.5 text-center whitespace-nowrap">
+                          <span className={`inline-flex items-center gap-1 font-mono font-bold text-xs px-2.5 py-0.5 rounded ${
                             isDeadStock
-                              ? 'text-rose-700 bg-rose-50 border border-rose-200'
-                              : 'text-amber-700 bg-amber-50 border border-amber-200'
+                              ? 'text-amber-900 bg-amber-50 border border-amber-200'
+                              : 'text-slate-700 bg-slate-100 border border-slate-200'
                           }`}>
+                            <Clock className="w-3 h-3 text-amber-600" />
                             {item.daysInStock} ngày
                           </span>
                         </td>
-                        <td className="py-3.5 px-4 text-center font-bold text-slate-900 tabular-nums">
+                        <td className="py-3 px-2.5 text-center font-bold text-slate-900 tabular-nums">
                           {item.onHandQty.toLocaleString('vi-VN')} {item.unit}
                         </td>
-                        <td className="py-3.5 px-4 text-right font-mono text-slate-600 text-xs tabular-nums">
-                          {item.purchasePrice ? `${item.purchasePrice.toLocaleString('vi-VN')} đ` : 'Chưa nhập'}
+                        <td className="py-3 px-2.5 text-right whitespace-nowrap">
+                          <div className="font-mono font-bold text-slate-900 text-xs tabular-nums">
+                            {holdingVal > 0 ? `${holdingVal.toLocaleString('vi-VN')} đ` : '0 đ'}
+                          </div>
+                          <div className="text-[10px] text-slate-400 font-mono mt-0.5">
+                            Giá vốn: {item.purchasePrice ? `${item.purchasePrice.toLocaleString('vi-VN')} đ` : 'Chưa có'}
+                          </div>
                         </td>
-                        <td className="py-3.5 px-4 text-right font-mono font-bold text-rose-700 text-xs tabular-nums">
-                          {holdingVal > 0 ? `${holdingVal.toLocaleString('vi-VN')} đ` : '0 đ'}
-                        </td>
-                        <td className="py-3.5 px-4 whitespace-nowrap">
+                        <td className="py-3 px-2.5 whitespace-nowrap">
                           {isDeadStock ? (
-                            <span className="inline-flex items-center gap-1 text-2xs font-extrabold px-2.5 py-1 rounded-full bg-rose-100 text-rose-800 border border-rose-300">
-                              <Archive className="w-3 h-3 text-rose-600" /> Tồn Chết (&gt; 90 ngày)
-                            </span>
+                            <div>
+                              <span className="inline-flex items-center gap-1 text-2xs font-bold px-2.5 py-0.5 rounded-full bg-amber-100 text-amber-900 border border-amber-300">
+                                <Archive className="w-3 h-3 text-amber-700" /> BẤT ĐỘNG (&gt; 90 NGÀY)
+                              </span>
+                              <div className="text-[11px] font-semibold text-amber-800 flex items-center gap-1 mt-1">
+                                <TrendingDown className="w-3 h-3 text-amber-600" /> Ưu tiên giải phóng hàng
+                              </div>
+                            </div>
                           ) : (
-                            <span className="inline-flex items-center gap-1 text-2xs font-bold px-2.5 py-1 rounded-full bg-amber-50 text-amber-700 border border-amber-200">
-                              <Clock className="w-3 h-3 text-amber-600" /> Chậm Luân Chuyển
-                            </span>
+                            <div>
+                              <span className="inline-flex items-center gap-1 text-2xs font-bold px-2.5 py-0.5 rounded-full bg-slate-100 text-slate-700 border border-slate-200">
+                                <Clock className="w-3 h-3 text-slate-500" /> CHẬM LUÂN CHUYỂN
+                              </span>
+                              <div className="text-[11px] font-semibold text-slate-600 flex items-center gap-1 mt-1">
+                                <Tag className="w-3 h-3 text-slate-500" /> Kích cầu / bán combo
+                              </div>
+                            </div>
                           )}
                         </td>
-                        <td className="py-3.5 px-4 text-xs font-medium text-slate-700">
-                          <span className={isDeadStock ? 'text-rose-800 font-semibold' : 'text-slate-700'}>
-                            {item.suggestedAction}
-                          </span>
+                        <td className="py-3 px-3 text-right whitespace-nowrap">
+                          <div className="flex items-center justify-end gap-1.5">
+                            <button
+                              onClick={() => onTransferItem?.(item)}
+                              className="px-2 py-1 rounded-lg text-xs font-semibold bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-200 transition-colors cursor-pointer inline-flex items-center gap-1"
+                              title="Điều chuyển lô hàng này sang ô kệ hoặc khu vực xả hàng"
+                            >
+                              <ArrowRightLeft className="w-3 h-3 text-blue-600" />
+                              <span>Chuyển Ô</span>
+                            </button>
+                            <button
+                              onClick={() => onViewLedgerItem?.(item)}
+                              className="px-2 py-1 rounded-lg text-xs font-semibold bg-slate-50 hover:bg-slate-100 text-slate-700 border border-slate-200 transition-colors cursor-pointer inline-flex items-center gap-1"
+                              title="Xem lịch sử xuất nhập thẻ kho"
+                            >
+                              <FileText className="w-3 h-3 text-slate-500" />
+                              <span>Thẻ Kho</span>
+                            </button>
+                          </div>
                         </td>
                       </tr>
                     );

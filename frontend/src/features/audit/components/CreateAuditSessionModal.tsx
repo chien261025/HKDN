@@ -34,7 +34,7 @@ export const CreateAuditSessionModal: React.FC<Props> = ({ onClose, onCreateSess
   const [selectedZone, setSelectedZone] = useState('ZONE_A');
   const [selectedBin, setSelectedBin] = useState('');
   const [selectedSku, setSelectedSku] = useState('');
-  const [notes, setNotes] = useState('Kiểm tra hàng cận hạn và hàng tồn lâu tại khu B');
+  const [notes, setNotes] = useState('');
   const [blindCount, setBlindCount] = useState(true);
   const [requireRecount, setRequireRecount] = useState(true);
   const [includeEmptyBins, setIncludeEmptyBins] = useState(false);
@@ -43,6 +43,15 @@ export const CreateAuditSessionModal: React.FC<Props> = ({ onClose, onCreateSess
   const [previewLoading, setPreviewLoading] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
+
+  // Lắng nghe phím ESC để đóng modal
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') onClose();
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [onClose]);
 
   // 1. Tải danh sách kho
   useEffect(() => {
@@ -152,11 +161,11 @@ export const CreateAuditSessionModal: React.FC<Props> = ({ onClose, onCreateSess
   const getTypeName = () => {
     switch (auditType) {
       case 'CYCLE_COUNT':
-        return 'Định kỳ (Cycle Count)';
+        return 'Kiểm kê định kỳ';
       case 'FULL_AUDIT':
-        return 'Toàn bộ (Full Count)';
+        return 'Kiểm kê toàn bộ';
       case 'SPOT_CHECK':
-        return 'Đột xuất (Spot Count)';
+        return 'Kiểm kê đột xuất';
     }
   };
 
@@ -243,9 +252,9 @@ export const CreateAuditSessionModal: React.FC<Props> = ({ onClose, onCreateSess
             <label className="block font-bold text-slate-700">Loại kiểm kê</label>
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
               {[
-                { id: 'CYCLE_COUNT', label: 'Kiểm kê định kỳ (Cycle Count)' },
-                { id: 'FULL_AUDIT', label: 'Kiểm kê toàn bộ (Full Count)' },
-                { id: 'SPOT_CHECK', label: 'Kiểm kê đột xuất (Spot Count)' },
+                { id: 'CYCLE_COUNT', label: 'Kiểm kê định kỳ' },
+                { id: 'FULL_AUDIT', label: 'Kiểm kê toàn bộ' },
+                { id: 'SPOT_CHECK', label: 'Kiểm kê đột xuất' },
               ].map((t) => (
                 <label
                   key={t.id}
@@ -373,7 +382,7 @@ export const CreateAuditSessionModal: React.FC<Props> = ({ onClose, onCreateSess
               type="text"
               value={notes}
               onChange={(e) => setNotes(e.target.value)}
-              placeholder="VD: Kiểm tra hàng cận hạn và hàng tồn lâu tại khu B"
+              placeholder="VD: Kiểm kê định kỳ chốt số dư cuối tháng / đánh giá sai lệch tồn kho..."
               className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 text-slate-900"
             />
           </div>
@@ -390,10 +399,10 @@ export const CreateAuditSessionModal: React.FC<Props> = ({ onClose, onCreateSess
               <div>
                 <span className="font-bold text-slate-900 text-xs flex items-center gap-1.5">
                   <EyeOff className="w-3.5 h-3.5 text-blue-600" />
-                  <span>Kiểm kê mù (Blind Count) – Không hiển thị số lượng hệ thống cho người đếm</span>
+                  <span>Kiểm kê mù – Không hiển thị trước số lượng hệ thống cho người đếm</span>
                 </span>
                 <p className="text-2xs text-slate-500">
-                  Nhân viên cầm PDA chỉ thấy vị trí và mặt hàng, buộc phải đếm thực tế thay vì nhập theo số có sẵn.
+                  Nhân viên cầm máy quét PDA chỉ thấy vị trí và mặt hàng, buộc phải đếm thực tế thay vì xác nhận số có sẵn.
                 </p>
               </div>
             </label>
@@ -411,7 +420,7 @@ export const CreateAuditSessionModal: React.FC<Props> = ({ onClose, onCreateSess
                   <span>Yêu cầu xác minh lại các dòng có chênh lệch trước khi ghi sổ cái</span>
                 </span>
                 <p className="text-2xs text-slate-500">
-                  Kích hoạt bước đếm lại vòng 2 và đối soát độc lập theo quy tắc Separation of Duties (SoD).
+                  Kích hoạt bước đếm lại vòng 2 và đối soát độc lập trước khi người có thẩm quyền phê duyệt.
                 </p>
               </div>
             </label>
@@ -429,7 +438,7 @@ export const CreateAuditSessionModal: React.FC<Props> = ({ onClose, onCreateSess
                   <span>Bao gồm cả các vị trí ô kệ đang trống (Khảo sát ô trống & hàng để nhầm)</span>
                 </span>
                 <p className="text-2xs text-slate-500">
-                  Cho phép ghi nhận phát hiện hàng tồn đặt nhầm tại các vị trí kệ chưa khai báo tồn (Unexpected Stock).
+                  Cho phép ghi nhận phát hiện hàng tồn đặt nhầm tại các vị trí kệ chưa khai báo tồn.
                 </p>
               </div>
             </label>

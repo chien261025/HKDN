@@ -40,6 +40,7 @@ export const inboundService = {
             supplierName: o.supplier?.name || `Nhà cung cấp #${o.supplierId}`,
             expectedDeliveryDate: o.createdAt ? new Date(o.createdAt).toISOString().split('T')[0] : '2026-09-25',
             createdAt: o.createdAt ? new Date(o.createdAt).toLocaleString('vi-VN') : '',
+            rawCreatedAt: o.createdAt || '',
             status: (o.status || 'PENDING') as InboundStatus,
             approvedBy: 'Trần Trưởng Kho',
             notes: o.notes || '',
@@ -103,9 +104,10 @@ export const inboundService = {
     };
   },
 
-  async receiveOrder(id: string, lines: ReceiptLine[]): Promise<void> {
+  async receiveOrder(id: string, lines: ReceiptLine[], notes?: string): Promise<void> {
     await apiClient.put(`/orders/inbound/${id}/receive`, {
       items: lines.map(line => ({ ...line, id: Number(line.id), expiryDate: line.expiryDate || null })),
+      notes: notes || undefined,
     });
   },
 

@@ -21,6 +21,9 @@ export interface UserAccount {
   lastLoginAt: string;
   lastLoginIp: string;
   createdAt: string;
+  lockReason?: string;
+  lockedAt?: string;
+  lockedBy?: string;
 }
 
 export interface BackendUserResponse {

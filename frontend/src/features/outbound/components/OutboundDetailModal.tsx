@@ -7,9 +7,10 @@ interface OutboundDetailModalProps {
   onClose: () => void;
   onOpenPickPath?: (order: OutboundOrder) => void;
   onCancelOrder?: (orderId: string) => void;
+  onOpenVoucher?: (order: OutboundOrder) => void;
 }
 
-export const OutboundDetailModal: React.FC<OutboundDetailModalProps> = ({ order, onClose, onOpenPickPath, onCancelOrder }) => {
+export const OutboundDetailModal: React.FC<OutboundDetailModalProps> = ({ order, onClose, onOpenPickPath, onCancelOrder, onOpenVoucher }) => {
   if (!order) return null;
 
   const isPending = order.status === 'PENDING';
@@ -157,11 +158,15 @@ export const OutboundDetailModal: React.FC<OutboundDetailModalProps> = ({ order,
         <div className="p-4 sm:p-5 border-t border-slate-200 flex items-center justify-between bg-slate-50 flex-wrap gap-2">
           <div className="flex items-center gap-2">
             <button
-              onClick={() => alert(`In phiếu nhặt hàng & xuất kho cho đơn: ${order.soCode}`)}
+              onClick={() => {
+                if (onOpenVoucher) {
+                  onOpenVoucher(order);
+                }
+              }}
               className="flex items-center gap-2 px-3.5 py-2 bg-white hover:bg-slate-100 text-slate-800 border border-slate-300 rounded-xl text-xs font-bold transition-colors cursor-pointer shadow-xs"
             >
               <Printer className="w-4 h-4 text-slate-600" />
-              <span>In Phiếu Nhặt Hàng</span>
+              <span>In Phiếu Xuất Kho & Nhặt Hàng (A4)</span>
             </button>
 
             {onOpenPickPath && (isAllocated || isPicking) && (
@@ -179,10 +184,8 @@ export const OutboundDetailModal: React.FC<OutboundDetailModalProps> = ({ order,
             {onCancelOrder && (isPending || isAllocated || isPicking) && (
               <button
                 onClick={() => {
-                  if (confirm(`Bạn có chắc chắn muốn hủy đơn xuất ${order.soCode}? Toàn bộ số lượng hàng đã giữ trước sẽ được giải phóng lập tức.`)) {
-                    onCancelOrder(order.id);
-                    onClose();
-                  }
+                  onCancelOrder(order.id);
+                  onClose();
                 }}
                 className="px-4 py-2 bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 rounded-xl text-xs font-bold transition-colors cursor-pointer"
               >

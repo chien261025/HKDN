@@ -1,4 +1,7 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
+import { useSearchParams } from 'react-router-dom';
+import { AlertTriangle } from 'lucide-react';
+import { useNotifications } from '../../notifications/context/NotificationContext';
 import { OutboundHeader, OutboundFilterStatus } from '../components/OutboundHeader';
 import { OutboundOrderTable } from '../components/OutboundOrderTable';
 import { CreateOutboundModal } from '../components/CreateOutboundModal';
@@ -6,7 +9,6 @@ import { OutboundDetailModal } from '../components/OutboundDetailModal';
 import { PickPathVisualizerModal } from '../components/PickPathVisualizerModal';
 import { PickingExecutionModal } from '../components/PickingExecutionModal';
 import { OutboundVoucherModal } from '../components/OutboundVoucherModal';
-import { RaceConditionSimulatorModal } from '../components/RaceConditionSimulatorModal';
 import { StockLedgerModal, LedgerEntryData } from '../../inventory/components/StockLedgerModal';
 import { OutboundOrder, OutboundStock } from '../types';
 import { outboundService } from '../services/outboundService';
@@ -30,8 +32,33 @@ export const OutboundOrdersPage: React.FC = () => {
   const [pickPathOrder, setPickPathOrder] = useState<OutboundOrder | null>(null);
   const [pickingModalOrder, setPickingModalOrder] = useState<OutboundOrder | null>(null);
   const [voucherModalOrder, setVoucherModalOrder] = useState<OutboundOrder | null>(null);
-  const [isConcurrencyModalOpen, setIsConcurrencyModalOpen] = useState(false);
   const [selectedLedgerEntry, setSelectedLedgerEntry] = useState<LedgerEntryData | null>(null);
+  const [orderToCancel, setOrderToCancel] = useState<OutboundOrder | null>(null);
+  const { addToast } = useNotifications();
+  const [searchParams] = useSearchParams();
+  const urlSoCode = searchParams.get('soCode');
+  const urlAction = searchParams.get('action');
+
+  useEffect(() => {
+    if (searchParams.get('create') === 'true') {
+      setIsCreateModalOpen(true);
+    }
+  }, [searchParams]);
+
+  useEffect(() => {
+    if (urlSoCode && orders.length > 0) {
+      const match = orders.find(
+        (o) => o.soCode === urlSoCode || o.id === urlSoCode || o.soCode.includes(urlSoCode)
+      );
+      if (match) {
+        if (urlAction === 'picking' || match.status === 'ALLOCATED' || match.status === 'PICKING') {
+          setPickingModalOrder(match);
+        } else {
+          setSelectedOrder(match);
+        }
+      }
+    }
+  }, [urlSoCode, urlAction, orders]);
 
   const fetchOrders = useCallback(async (whId?: string | number) => {
     const targetWh = whId !== undefined ? whId : selectedWarehouse;
@@ -133,14 +160,39 @@ export const OutboundOrdersPage: React.FC = () => {
     setError('');
     setMessage('');
     try {
+      const match = orders.find((o) => o.id === orderId);
+      const code = match?.soCode || orderId;
       await outboundService.cancelOrder(orderId);
       await fetchOrders();
       setMessage('Đã hủy đơn xuất kho thành công và giải phóng toàn bộ số lượng hàng đã giữ trước.');
+      addToast({
+        type: 'success',
+        title: 'Hủy Đơn Thành Công',
+        message: `Đơn xuất ${code} đã được hủy và giải phóng toàn bộ số lượng hàng đã giữ trước.`,
+        duration: 5000,
+      });
     } catch (err: any) {
-      setError(err.response?.data?.message || 'Hủy đơn thất bại.');
+      const msg = err.response?.data?.message || 'Hủy đơn thất bại.';
+      setError(msg);
+      addToast({
+        type: 'danger',
+        title: 'Hủy Đơn Thất Bại',
+        message: msg,
+        duration: 7000,
+      });
     } finally {
       busy.current = false;
       setProcessing(false);
+      setOrderToCancel(null);
+    }
+  };
+
+  const requestCancelOrder = (orderId: string) => {
+    const match = orders.find((o) => o.id === orderId);
+    if (match) {
+      setOrderToCancel(match);
+    } else {
+      handleCancelOrder(orderId);
     }
   };
 
@@ -174,7 +226,7 @@ export const OutboundOrdersPage: React.FC = () => {
   };
 
   return (
-    <div className="space-y-5 max-w-7xl mx-auto pb-8">
+    <div className="space-y-4 pb-8">
       {/* Header & KPI Summary Cards */}
       <OutboundHeader
         orders={orders}
@@ -202,11 +254,10 @@ export const OutboundOrdersPage: React.FC = () => {
         onSelectOrder={(order) => setSelectedOrder(order)}
         onAllocateAndLock={handleAllocateAndLock}
         onDispatchOrder={handleDispatchOrder}
-        onCancelOrder={handleCancelOrder}
+        onCancelOrder={requestCancelOrder}
         onOpenPickPath={(order) => setPickPathOrder(order)}
         onStartPicking={(order) => setPickingModalOrder(order)}
         onOpenVoucher={(order) => setVoucherModalOrder(order)}
-        onOpenConcurrencyTest={() => setIsConcurrencyModalOpen(true)}
         onOpenOrderLedger={handleOpenOrderLedger}
       />
 
@@ -224,7 +275,11 @@ export const OutboundOrdersPage: React.FC = () => {
         <OutboundDetailModal
           order={selectedOrder}
           onClose={() => setSelectedOrder(null)}
-          onCancelOrder={handleCancelOrder}
+          onCancelOrder={requestCancelOrder}
+          onOpenVoucher={(order) => {
+            setSelectedOrder(null);
+            setVoucherModalOrder(order);
+          }}
           onOpenPickPath={(order) => {
             setSelectedOrder(null);
             setPickPathOrder(order);
@@ -254,12 +309,6 @@ export const OutboundOrdersPage: React.FC = () => {
         />
       )}
 
-      {/* Live Concurrency & Race Condition Simulator Modal */}
-      <RaceConditionSimulatorModal
-        isOpen={isConcurrencyModalOpen}
-        onClose={() => setIsConcurrencyModalOpen(false)}
-      />
-
       {/* Stock Ledger Immutable Voucher Modal */}
       {selectedLedgerEntry && (
         <StockLedgerModal
@@ -275,6 +324,44 @@ export const OutboundOrdersPage: React.FC = () => {
           onClose={() => setPickPathOrder(null)}
           order={pickPathOrder}
         />
+      )}
+
+      {/* Custom In-App Modal Xác Nhận Hủy Đơn */}
+      {orderToCancel && (
+        <div className="fixed inset-0 z-70 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4 animate-in fade-in">
+          <div className="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl border border-rose-100 text-center space-y-4 animate-in zoom-in-95">
+            <div className="w-14 h-14 bg-rose-50 text-rose-600 rounded-2xl flex items-center justify-center mx-auto border border-rose-200 shadow-xs">
+              <AlertTriangle className="w-7 h-7" />
+            </div>
+            <div>
+              <h3 className="text-base font-bold text-slate-900">
+                Xác Nhận Hủy Đơn Xuất Kho
+              </h3>
+              <p className="text-xs text-slate-600 mt-2.5 leading-relaxed font-medium">
+                Bạn có chắc chắn muốn hủy đơn xuất <strong className="text-slate-900 font-mono font-bold bg-slate-100 px-1.5 py-0.5 rounded border border-slate-200">{orderToCancel.soCode}</strong>?
+                <br />
+                Hệ thống sẽ lập tức giải phóng toàn bộ số lượng hàng đã giữ trước (Reserved Stock) để trả về kho tự do.
+              </p>
+            </div>
+            <div className="flex items-center gap-3 pt-2">
+              <button
+                type="button"
+                onClick={() => setOrderToCancel(null)}
+                className="flex-1 py-2.5 px-4 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-bold transition shadow-xs cursor-pointer"
+              >
+                Giữ Lại Đơn
+              </button>
+              <button
+                type="button"
+                disabled={processing}
+                onClick={() => handleCancelOrder(orderToCancel.id)}
+                className="flex-1 py-2.5 px-4 bg-rose-600 hover:bg-rose-700 text-white rounded-xl text-xs font-bold transition shadow-xs cursor-pointer"
+              >
+                {processing ? 'Đang Hủy...' : 'Xác Nhận Hủy'}
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );

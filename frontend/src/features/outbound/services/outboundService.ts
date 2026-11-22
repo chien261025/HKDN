@@ -18,9 +18,9 @@ export const cleanOutboundText = (str: string = ''): string => {
     return 'Thế Giới Di Động Hoàng Hoa Thám';
   }
   if (str.includes('Bách Hóa') || str.includes('BÃ¡ch') || str.includes('Trường Chinh')) {
-    return 'Bách Hóa Xanh Trường Chinh';
+    return str.includes('Dĩ An') || str.includes('DÄ©') ? 'Chuỗi Bách Hóa Xanh Dĩ An' : 'Bách Hóa Xanh Trường Chinh';
   }
-  if (str.includes('Điện Máy') || str.includes('Miền Đông')) {
+  if (str.includes('Điện Máy') || str.includes('Miền Đông') || str.includes('MÃ¡y') || str.includes('Äiá»‡n') || str.includes('ÄÃ´ng') || str.includes('Chuá»—i')) {
     return 'Chuỗi Điện Máy Xanh Miền Đông';
   }
   return str;
@@ -56,6 +56,7 @@ export const outboundService = {
           customerName: cleanOutboundText(o.customerName || 'Khách Hàng Doanh Nghiệp'),
           shippingAddress: 'Kho Phân Phối Trung Tâm',
           orderDate: o.createdAt ? new Date(o.createdAt).toLocaleString('vi-VN') : '',
+          rawCreatedAt: o.createdAt || '',
           requiredDate: '2026-11-30 18:00',
           status: (o.status || 'PENDING') as OutboundStatus,
           priority: 'HIGH' as const,

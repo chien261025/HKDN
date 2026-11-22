@@ -21,6 +21,7 @@ import {
   SupplierItem,
   StorageConditionType,
   ProductBusinessStatus,
+  ProductTrackingMethod,
 } from '../types';
 import { Modal, Button, InputField, SelectField } from '../../../components/common';
 import { ProductImageUploader } from './ProductImageUploader';
@@ -74,7 +75,8 @@ export const EditProductModal: React.FC<EditProductModalProps> = ({
   const [businessStatus, setBusinessStatus] = useState<ProductBusinessStatus>('ACTIVE');
   const [status, setStatus] = useState<ProductItem['status']>('ACTIVE');
 
-  // Master Data Policies: Lô, Hạn Sử Dụng & Xuất Kho
+  // Master Data Policies: Phương thức định danh, Lô, Hạn Sử Dụng & Xuất Kho
+  const [trackingMethod, setTrackingMethod] = useState<ProductTrackingMethod>('FEFO_BATCH');
   const [isBatchManaged, setIsBatchManaged] = useState<boolean>(true);
   const [isExpiryManaged, setIsExpiryManaged] = useState<boolean>(true);
   const [shelfLifeDays, setShelfLifeDays] = useState<number>(45);
@@ -105,6 +107,14 @@ export const EditProductModal: React.FC<EditProductModalProps> = ({
       setBusinessStatus(product.businessStatus || 'ACTIVE');
       setStatus(product.status || 'ACTIVE');
 
+      setTrackingMethod(
+        product.trackingMethod ||
+          (product.category === 'ELECTRONICS'
+            ? 'SERIAL_IMEI'
+            : product.isBatchManaged !== false
+            ? 'FEFO_BATCH'
+            : 'STANDARD')
+      );
       setIsBatchManaged(product.isBatchManaged !== false);
       setIsExpiryManaged(product.isExpiryManaged !== false);
       setShelfLifeDays(product.shelfLifeDays || (product.category === 'FOOD_BEVERAGE' ? 45 : 365));
@@ -161,6 +171,7 @@ export const EditProductModal: React.FC<EditProductModalProps> = ({
       purchasePrice: Number(purchasePrice) || 0,
       sellingPrice: Number(sellingPrice) || 0,
       businessStatus,
+      trackingMethod,
       isBatchManaged,
       isExpiryManaged,
       shelfLifeDays: isExpiryManaged ? Number(shelfLifeDays) || 30 : 0,
@@ -203,7 +214,7 @@ export const EditProductModal: React.FC<EditProductModalProps> = ({
             }`}
           >
             <Tag className="w-3.5 h-3.5" />
-            <span>1. Định Danh & Thuộc Tính</span>
+            <span>Thông Tin Cơ Bản</span>
           </button>
 
           <button
@@ -216,7 +227,7 @@ export const EditProductModal: React.FC<EditProductModalProps> = ({
             }`}
           >
             <Ruler className="w-3.5 h-3.5" />
-            <span>2. Quy Cách, Trọng Lượng & Kệ</span>
+            <span>Quy Cách & Lưu Kho</span>
           </button>
 
           <button
@@ -229,7 +240,7 @@ export const EditProductModal: React.FC<EditProductModalProps> = ({
             }`}
           >
             <DollarSign className="w-3.5 h-3.5" />
-            <span>3. Giá Tiền, Tồn Kho & Trạng Thái</span>
+            <span>Giá Tiền & Tồn Kho</span>
           </button>
         </div>
 
@@ -239,27 +250,27 @@ export const EditProductModal: React.FC<EditProductModalProps> = ({
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               {/* Mã SKU (Khóa) */}
               <InputField
-                label="Mã SKU (Khóa định danh duy nhất)"
+                label="Mã Sản Phẩm (Mã SKU)"
                 value={sku}
                 disabled
-                helperText="Mã SKU do hệ thống quản trị, không thể sửa sau khi khởi tạo"
+                helperText="Mã sản phẩm cố định, không thể chỉnh sửa."
               />
 
               {/* Mã Barcode */}
               <InputField
-                label="Mã Vạch Barcode (GS1 / EAN-13)"
+                label="Mã Vạch (Barcode)"
                 value={barcode}
                 onChange={(e) => setBarcode(e.target.value)}
-                helperText="* Mã sinh nội bộ có số kiểm tra Check Digit chuẩn GS1 EAN-13 để máy quét PDA nhận diện chính xác."
+                helperText="* Mã vạch dùng để máy quét PDA nhận diện nhanh khi nhập xuất kho."
                 action={
                   <button
                     type="button"
                     onClick={handleAutoBarcode}
                     className="text-xs text-blue-600 hover:text-blue-800 font-semibold flex items-center gap-1 cursor-pointer"
-                    title="Sinh mã 13 số với số kiểm tra Check Digit Modulo 10 đúng chuẩn EAN-13"
+                    title="Tạo mã vạch ngẫu nhiên"
                   >
                     <Sparkles className="w-3 h-3" />
-                    <span>Gợi ý mã EAN-13 nội bộ</span>
+                    <span>Tạo mã vạch ngẫu nhiên</span>
                   </button>
                 }
               />
@@ -267,7 +278,7 @@ export const EditProductModal: React.FC<EditProductModalProps> = ({
               {/* Tên sản phẩm */}
               <div className="md:col-span-2">
                 <InputField
-                  label="Tên Hàng Hóa / Sản Phẩm"
+                  label="Tên Sản Phẩm"
                   required
                   value={name}
                   onChange={(e) => setName(e.target.value)}
@@ -276,7 +287,7 @@ export const EditProductModal: React.FC<EditProductModalProps> = ({
 
               {/* Ngành hàng */}
               <SelectField
-                label="Ngành Hàng (Category)"
+                label="Ngành Hàng"
                 value={category}
                 onChange={(e) => setCategory(e.target.value as ProductCategory)}
                 options={[
@@ -345,7 +356,7 @@ export const EditProductModal: React.FC<EditProductModalProps> = ({
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               {/* Đơn vị tính */}
               <SelectField
-                label="Đơn Vị Tính (Unit)"
+                label="Đơn Vị Tính"
                 value={unit}
                 onChange={(e) => setUnit(e.target.value)}
                 options={[
@@ -356,16 +367,16 @@ export const EditProductModal: React.FC<EditProductModalProps> = ({
                   { value: 'Gói', label: 'Gói (Pack)' },
                   { value: 'Túi', label: 'Túi (Pouch)' },
                   { value: 'Lốc', label: 'Lốc (Multipack)' },
-                  { value: 'Chiếc', label: 'Chiếc / Cái (Piece)' },
+                  { value: 'Chiếc', label: 'Chiếc / Cái' },
                   { value: 'Pallet', label: 'Pallet' },
-                  { value: 'Bao', label: 'Bao (Bag 25-50kg)' },
-                  { value: 'Cuộn', label: 'Cuộn (Roll)' },
+                  { value: 'Bao', label: 'Bao (25-50kg)' },
+                  { value: 'Cuộn', label: 'Cuộn' },
                 ]}
               />
 
               {/* Trọng lượng */}
               <InputField
-                label="Trọng Lượng Quy Cách (kg/đơn vị)"
+                label="Trọng Lượng (kg/đơn vị)"
                 type="number"
                 step="0.01"
                 min="0.01"
@@ -436,68 +447,216 @@ export const EditProductModal: React.FC<EditProductModalProps> = ({
                 ]}
               />
 
-              {/* Chính Sách Quản Lý Lô, Hạn Dùng & Chiến Lược Xuất Kho */}
-              <div className="md:col-span-2 bg-indigo-50/60 p-3.5 rounded-xl border border-indigo-100 space-y-3">
-                <div className="flex items-center justify-between text-xs font-bold text-slate-800">
-                  <span className="flex items-center gap-1.5 text-indigo-900">
-                    <ShieldAlert className="w-4 h-4 text-indigo-600" />
-                    Chính Sách Quản Lý Lô (Batch) & Hạn Sử Dụng (FEFO)
+              {/* Chế độ định danh & Quản lý tồn kho (Tracking Method) */}
+              <div className="md:col-span-2 space-y-2">
+                <label className="block text-xs font-bold text-slate-800 flex items-center justify-between">
+                  <span className="flex items-center gap-1.5">
+                    <Layers className="w-4 h-4 text-blue-600" />
+                    <span>Phương Thức Quản Lý & Định Danh (Tracking Method)</span>
                   </span>
-                  <span className="text-[11px] text-indigo-700 bg-indigo-100 px-2 py-0.5 rounded-full font-semibold">
-                    Cấu hình Master Data
+                  <span className="text-[11px] font-normal text-slate-500">
+                    * Quyết định quy trình quét mã PDA & kiểm soát lô tại Dock Nhập/Xuất
                   </span>
-                </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-3 pt-1">
-                  <div className="flex items-center gap-2">
-                    <input
-                      id="edit-is-batch-managed"
-                      type="checkbox"
-                      checked={isBatchManaged}
-                      onChange={(e) => setIsBatchManaged(e.target.checked)}
-                      className="w-4 h-4 text-blue-600 rounded border-slate-300 focus:ring-blue-500 cursor-pointer"
-                    />
-                    <label htmlFor="edit-is-batch-managed" className="text-xs font-semibold text-slate-700 cursor-pointer">
-                      Bắt buộc theo dõi theo Lô (Batch/Lot Number)
-                    </label>
+                </label>
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
+                  {/* Option 1: FEFO_BATCH */}
+                  <div
+                    onClick={() => {
+                      setTrackingMethod('FEFO_BATCH');
+                      setIsBatchManaged(true);
+                      setIsExpiryManaged(true);
+                      setOutboundStrategy('FEFO');
+                      if (shelfLifeDays <= 0) setShelfLifeDays(45);
+                    }}
+                    className={`p-3 rounded-xl border text-left cursor-pointer transition-all flex flex-col justify-between ${
+                      trackingMethod === 'FEFO_BATCH'
+                        ? 'border-indigo-600 bg-indigo-50/70 ring-2 ring-indigo-500/30'
+                        : 'border-slate-200 bg-white hover:bg-slate-50'
+                    }`}
+                  >
+                    <div className="flex items-center justify-between mb-1">
+                      <span className="font-bold text-xs text-indigo-950 flex items-center gap-1.5">
+                        <span className="w-2 h-2 rounded-full bg-indigo-600" />
+                        FEFO & Quản Lý Lô
+                      </span>
+                      {trackingMethod === 'FEFO_BATCH' && (
+                        <CheckCircle2 className="w-3.5 h-3.5 text-indigo-600" />
+                      )}
+                    </div>
+                    <p className="text-[11px] text-slate-500 leading-snug">
+                      Bắt buộc số Lô (Batch) & Hạn dùng (EXP). Tự động xuất hàng cận hạn trước.
+                    </p>
+                    <span className="mt-2 text-[10px] font-semibold text-indigo-700 bg-indigo-100/70 px-1.5 py-0.5 rounded w-fit">
+                      F&B / Dược phẩm / Mỹ phẩm
+                    </span>
                   </div>
 
-                  <div className="flex items-center gap-2">
-                    <input
-                      id="edit-is-expiry-managed"
-                      type="checkbox"
-                      checked={isExpiryManaged}
-                      onChange={(e) => setIsExpiryManaged(e.target.checked)}
-                      className="w-4 h-4 text-blue-600 rounded border-slate-300 focus:ring-blue-500 cursor-pointer"
-                    />
-                    <label htmlFor="edit-is-expiry-managed" className="text-xs font-semibold text-slate-700 cursor-pointer">
-                      Theo dõi Ngày sản xuất & Hạn sử dụng (Shelf Life)
-                    </label>
+                  {/* Option 2: SERIAL_IMEI */}
+                  <div
+                    onClick={() => {
+                      setTrackingMethod('SERIAL_IMEI');
+                      setIsBatchManaged(false);
+                      setIsExpiryManaged(false);
+                      setOutboundStrategy('FIFO');
+                    }}
+                    className={`p-3 rounded-xl border text-left cursor-pointer transition-all flex flex-col justify-between ${
+                      trackingMethod === 'SERIAL_IMEI'
+                        ? 'border-cyan-600 bg-cyan-50/70 ring-2 ring-cyan-500/30'
+                        : 'border-slate-200 bg-white hover:bg-slate-50'
+                    }`}
+                  >
+                    <div className="flex items-center justify-between mb-1">
+                      <span className="font-bold text-xs text-cyan-950 flex items-center gap-1.5">
+                        <span className="w-2 h-2 rounded-full bg-cyan-600" />
+                        Serial / IMEI Đơn Chiếc
+                      </span>
+                      {trackingMethod === 'SERIAL_IMEI' && (
+                        <CheckCircle2 className="w-3.5 h-3.5 text-cyan-600" />
+                      )}
+                    </div>
+                    <p className="text-[11px] text-slate-500 leading-snug">
+                      Mỗi đơn vị có 1 Serial/IMEI độc nhất. Quét đối soát từng máy khi Pick & Pack.
+                    </p>
+                    <span className="mt-2 text-[10px] font-semibold text-cyan-700 bg-cyan-100/70 px-1.5 py-0.5 rounded w-fit">
+                      Điện máy / Thiết bị / Phone
+                    </span>
                   </div>
 
-                  {isExpiryManaged && (
-                    <InputField
-                      label="Hạn Sử Dụng Tiêu Chuẩn (Số Ngày)"
-                      type="number"
-                      min="1"
-                      value={shelfLifeDays}
-                      onChange={(e) => setShelfLifeDays(parseInt(e.target.value, 10) || 0)}
-                      helperText="VD: 45 ngày (sữa chua), 180 ngày (sữa tươi), 365 ngày (lon)"
-                    />
-                  )}
-
-                  <SelectField
-                    label="Chiến Lược Xuất Kho Tự Động"
-                    value={outboundStrategy}
-                    onChange={(e) => setOutboundStrategy(e.target.value as any)}
-                    options={[
-                      { value: 'FEFO', label: 'FEFO - Hết hạn trước xuất trước (F&B / Dược phẩm)' },
-                      { value: 'FIFO', label: 'FIFO - Nhập trước xuất trước (Thiết bị / Hóa phẩm)' },
-                      { value: 'LIFO', label: 'LIFO - Nhập sau xuất trước' },
-                    ]}
-                  />
+                  {/* Option 3: STANDARD */}
+                  <div
+                    onClick={() => {
+                      setTrackingMethod('STANDARD');
+                      setIsBatchManaged(false);
+                      setIsExpiryManaged(false);
+                      setOutboundStrategy('FIFO');
+                    }}
+                    className={`p-3 rounded-xl border text-left cursor-pointer transition-all flex flex-col justify-between ${
+                      trackingMethod === 'STANDARD'
+                        ? 'border-slate-700 bg-slate-100 ring-2 ring-slate-400/30'
+                        : 'border-slate-200 bg-white hover:bg-slate-50'
+                    }`}
+                  >
+                    <div className="flex items-center justify-between mb-1">
+                      <span className="font-bold text-xs text-slate-900 flex items-center gap-1.5">
+                        <span className="w-2 h-2 rounded-full bg-slate-600" />
+                        Hàng Tiêu Chuẩn (FIFO)
+                      </span>
+                      {trackingMethod === 'STANDARD' && (
+                        <CheckCircle2 className="w-3.5 h-3.5 text-slate-800" />
+                      )}
+                    </div>
+                    <p className="text-[11px] text-slate-500 leading-snug">
+                      Theo dõi số lượng tồn kho thuần túy. Xuất kho theo thứ tự ngày nhập.
+                    </p>
+                    <span className="mt-2 text-[10px] font-semibold text-slate-700 bg-slate-200/70 px-1.5 py-0.5 rounded w-fit">
+                      Vật tư / Gia dụng / Phụ kiện
+                    </span>
+                  </div>
                 </div>
               </div>
+
+              {/* Chính Sách Chi Tiết Theo Tracking Method */}
+              {trackingMethod === 'FEFO_BATCH' && (
+                <div className="md:col-span-2 bg-indigo-50/60 p-3.5 rounded-xl border border-indigo-100 space-y-3">
+                  <div className="flex items-center justify-between text-xs font-bold text-slate-800">
+                    <span className="flex items-center gap-1.5 text-indigo-900">
+                      <ShieldAlert className="w-4 h-4 text-indigo-600" />
+                      Chính Sách Quản Lý Lô (Batch) & Hạn Sử Dụng (FEFO)
+                    </span>
+                    <span className="text-[11px] text-indigo-700 bg-indigo-100 px-2 py-0.5 rounded-full font-semibold">
+                      FEFO Rules
+                    </span>
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3 pt-1">
+                    <div className="flex items-center gap-2">
+                      <input
+                        id="edit-is-batch-managed"
+                        type="checkbox"
+                        checked={isBatchManaged}
+                        onChange={(e) => setIsBatchManaged(e.target.checked)}
+                        className="w-4 h-4 text-blue-600 rounded border-slate-300 focus:ring-blue-500 cursor-pointer"
+                      />
+                      <label htmlFor="edit-is-batch-managed" className="text-xs font-semibold text-slate-700 cursor-pointer">
+                        Bắt buộc theo dõi theo Lô (Batch/Lot Number)
+                      </label>
+                    </div>
+
+                    <div className="flex items-center gap-2">
+                      <input
+                        id="edit-is-expiry-managed"
+                        type="checkbox"
+                        checked={isExpiryManaged}
+                        onChange={(e) => setIsExpiryManaged(e.target.checked)}
+                        className="w-4 h-4 text-blue-600 rounded border-slate-300 focus:ring-blue-500 cursor-pointer"
+                      />
+                      <label htmlFor="edit-is-expiry-managed" className="text-xs font-semibold text-slate-700 cursor-pointer">
+                        Theo dõi Ngày sản xuất & Hạn sử dụng (Shelf Life)
+                      </label>
+                    </div>
+
+                    {isExpiryManaged && (
+                      <InputField
+                        label="Hạn Sử Dụng Tiêu Chuẩn (Số Ngày)"
+                        type="number"
+                        min="1"
+                        value={shelfLifeDays}
+                        onChange={(e) => setShelfLifeDays(parseInt(e.target.value, 10) || 0)}
+                        helperText="VD: 45 ngày (sữa chua), 180 ngày (sữa tươi), 365 ngày (lon)"
+                      />
+                    )}
+
+                    <SelectField
+                      label="Chiến Lược Xuất Kho Tự Động"
+                      value={outboundStrategy}
+                      onChange={(e) => setOutboundStrategy(e.target.value as any)}
+                      options={[
+                        { value: 'FEFO', label: 'FEFO - Hết hạn trước xuất trước (Chuẩn F&B / Dược phẩm)' },
+                        { value: 'FIFO', label: 'FIFO - Nhập trước xuất trước' },
+                        { value: 'LIFO', label: 'LIFO - Nhập sau xuất trước' },
+                      ]}
+                    />
+                  </div>
+                </div>
+              )}
+
+              {trackingMethod === 'SERIAL_IMEI' && (
+                <div className="md:col-span-2 bg-cyan-50/70 p-3.5 rounded-xl border border-cyan-200 space-y-2">
+                  <div className="flex items-center justify-between text-xs font-bold text-cyan-950">
+                    <span className="flex items-center gap-1.5">
+                      <Sparkles className="w-4 h-4 text-cyan-600" />
+                      Quản Lý Theo Mã Serial / IMEI Từng Chiếc
+                    </span>
+                    <span className="text-[11px] text-cyan-700 bg-cyan-100 px-2 py-0.5 rounded-full font-semibold">
+                      Thiết Bị Điện Tử & Máy Móc
+                    </span>
+                  </div>
+                  <p className="text-xs text-slate-600 leading-relaxed">
+                    Dành cho sản phẩm công nghệ, máy móc. Khi nhập hoặc xuất kho, nhân viên sẽ dùng máy PDA quét từng mã Serial/IMEI để theo dõi bảo hành và nguồn gốc.
+                  </p>
+                  <div className="flex items-center gap-6 pt-1 text-xs text-slate-700 font-medium">
+                    <div>Thứ tự xuất: <strong className="text-cyan-800">Nhập trước xuất trước (FIFO)</strong></div>
+                    <div>Thao tác quét: <strong className="text-cyan-800">Quét mã khi Nhập & Xuất kho</strong></div>
+                  </div>
+                </div>
+              )}
+
+              {trackingMethod === 'STANDARD' && (
+                <div className="md:col-span-2 bg-slate-100/80 p-3.5 rounded-xl border border-slate-200 space-y-2">
+                  <div className="flex items-center justify-between text-xs font-bold text-slate-800">
+                    <span className="flex items-center gap-1.5">
+                      <Package className="w-4 h-4 text-slate-600" />
+                      Quản Lý Theo Số Lượng Tiêu Chuẩn
+                    </span>
+                    <span className="text-[11px] text-slate-700 bg-slate-200 px-2 py-0.5 rounded-full font-semibold">
+                      Số Lượng Thông Thường
+                    </span>
+                  </div>
+                  <p className="text-xs text-slate-600 leading-relaxed">
+                    Sản phẩm được theo dõi số lượng tồn kho theo từng vị trí ô kệ. Xuất kho tự động theo thứ tự nhập trước xuất trước (FIFO), phù hợp cho hàng gia dụng, phụ kiện.
+                  </p>
+                </div>
+              )}
             </div>
           </div>
         )}
@@ -506,21 +665,21 @@ export const EditProductModal: React.FC<EditProductModalProps> = ({
         {activeTab === 'FINANCE' && (
           <div className="space-y-4">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {/* Giá Nhập Chuẩn (Cost Price) */}
+              {/* Giá Nhập Chuẩn */}
               <InputField
-                label="Giá Vốn / Giá Nhập Chuẩn Tham Khảo (VNĐ)"
+                label="Giá Nhập Tham Khảo (VNĐ)"
                 type="number"
                 step="1000"
                 min="0"
                 value={purchasePrice}
                 onChange={(e) => setPurchasePrice(parseFloat(e.target.value) || 0)}
-                helperText="* Giá tham khảo Master Data. Giá mua thực tế ghi nhận trên từng đơn PO/GRN."
+                helperText="* Giá mua thực tế sẽ được ghi nhận theo từng hóa đơn nhập kho."
                 icon={<DollarSign className="w-3.5 h-3.5 text-emerald-600" />}
               />
 
-              {/* Giá Bán / Xuất (Selling Price) */}
+              {/* Giá Bán */}
               <InputField
-                label="Giá Bán / Giá Xuất Đề Xuất (VNĐ)"
+                label="Giá Bán Đề Xuất (VNĐ)"
                 type="number"
                 step="1000"
                 min="0"
@@ -530,13 +689,13 @@ export const EditProductModal: React.FC<EditProductModalProps> = ({
               />
 
               <div className="md:col-span-2 p-3 bg-emerald-50 rounded-xl border border-emerald-200 text-xs text-emerald-800 flex items-center justify-between font-mono">
-                <span>Chênh lệch giá xuất / nhập chuẩn: <b>{(sellingPrice - purchasePrice).toLocaleString()} ₫</b></span>
-                <span>Tỷ suất lợi nhuận biên: <b>{profitMarginPct}%</b></span>
+                <span>Chênh lệch dự kiến: <b>{(sellingPrice - purchasePrice).toLocaleString()} ₫</b></span>
+                <span>Tỷ suất lợi nhuận: <b>{profitMarginPct}%</b></span>
               </div>
 
-              {/* Định mức tồn an toàn (Safety Stock) */}
+              {/* Định mức tồn an toàn */}
               <InputField
-                label="Tồn Kho Tối Thiểu / An Toàn (Safety Stock)"
+                label="Tồn Kho Tối Thiểu (Cảnh báo)"
                 type="number"
                 min="0"
                 value={safetyStock}
@@ -544,9 +703,9 @@ export const EditProductModal: React.FC<EditProductModalProps> = ({
                 icon={<ShieldAlert className="w-3.5 h-3.5 text-rose-500" />}
               />
 
-              {/* Điểm đặt hàng lại (ROP) */}
+              {/* Điểm đặt hàng lại */}
               <InputField
-                label="Điểm Đặt Hàng Lại (ROP - Reorder Point)"
+                label="Ngưỡng Cần Nhập Thêm (Đặt hàng)"
                 type="number"
                 min="1"
                 value={reorderPoint}
@@ -554,9 +713,9 @@ export const EditProductModal: React.FC<EditProductModalProps> = ({
                 icon={<AlertTriangle className="w-3.5 h-3.5 text-amber-500" />}
               />
 
-              {/* Tồn tối đa (Max Stock) */}
+              {/* Tồn tối đa */}
               <InputField
-                label="Tồn Kho Tối Đa (Max Capacity Level)"
+                label="Mức Tồn Kho Tối Đa"
                 type="number"
                 min="10"
                 value={maxStock}
@@ -566,13 +725,13 @@ export const EditProductModal: React.FC<EditProductModalProps> = ({
 
               {/* Trạng thái kinh doanh */}
               <SelectField
-                label="Trạng Thái Kinh Doanh (Product Lifecycle)"
+                label="Trạng Thái Kinh Doanh"
                 value={businessStatus}
                 onChange={(e) => setBusinessStatus(e.target.value as ProductBusinessStatus)}
                 options={[
-                  { value: 'ACTIVE', label: 'ACTIVE - Đang kinh doanh & nhập xuất bình thường' },
-                  { value: 'SUSPENDED', label: 'SUSPENDED - Tạm ngưng nhập hàng mới' },
-                  { value: 'DISCONTINUED', label: 'DISCONTINUED - Ngừng kinh doanh (Xả hết tồn kho)' },
+                  { value: 'ACTIVE', label: 'Đang kinh doanh (Nhập xuất bình thường)' },
+                  { value: 'SUSPENDED', label: 'Tạm ngưng nhập hàng' },
+                  { value: 'DISCONTINUED', label: 'Ngừng kinh doanh' },
                 ]}
               />
 

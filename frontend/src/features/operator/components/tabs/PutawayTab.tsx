@@ -8,18 +8,21 @@ interface PutawayTabProps {
   onOpenScanner: () => void;
   scannedCode?: string | null;
   onClearScannedCode?: () => void;
+  isCompact?: boolean;
 }
 
 export const PutawayTab: React.FC<PutawayTabProps> = ({
   onOpenScanner,
   scannedCode,
   onClearScannedCode,
+  isCompact,
 }) => {
   const [loading, setLoading] = useState(false);
   const [activeTask, setActiveTask] = useState<ActivePutawayTask | null>(null);
   const [scannedBin, setScannedBin] = useState('');
   const [feedback, setFeedback] = useState<{ msg: string; type: 'success' | 'error' } | null>(null);
   const [stagingQueue, setStagingQueue] = useState<ActivePutawayTask[]>([]);
+  const [placedQty, setPlacedQty] = useState<number>(0);
 
   const fetchReceivedOrders = useCallback(async () => {
     setLoading(true);
@@ -91,16 +94,21 @@ export const PutawayTab: React.FC<PutawayTabProps> = ({
     setLoading(true);
     setFeedback(null);
     try {
-      if (!task.preferredZone || !task.weightKg) throw new Error('Thiếu phân khu hoặc trọng lượng trong danh mục sản phẩm.');
-      const loc = await operatorService.suggestPutawayLocation(task.warehouseId, task.preferredZone, task.weightKg);
+      if (!task.preferredZone) throw new Error('Thiếu phân khu lưu trữ trong danh mục sản phẩm.');
+      // Chuẩn hóa tải trọng kiểm tra: 1 ô kệ hoặc pallet tiêu chuẩn chứa tối đa 500kg
+      const targetWeight = Math.min(task.weightKg || 500, 500);
+      const loc = await operatorService.suggestPutawayLocation(task.warehouseId, task.preferredZone, targetWeight);
       soundEffects.playSuccessBeep();
+      // Mặc định đề xuất cất đợt 1 pallet / 1 ô (tối đa 50-200 hoặc toàn bộ nếu nhỏ)
+      const defaultPlaced = task.qty > 50 ? 50 : task.qty;
+      setPlacedQty(defaultPlaced);
       setActiveTask({
         ...task,
         suggestedLocation: loc,
         status: 'SUGGESTED',
       });
       setFeedback({
-        msg: `Chỉ định vị trí: Ô ${loc.binBarcode} (${loc.zoneCode} - Tầng ${loc.shelf}) đáp ứng đủ tải trọng ${task.weightKg}kg.`,
+        msg: `Chỉ định vị trí: Ô ${loc.binBarcode} (${loc.zoneCode} - Tầng ${loc.shelf}) cho đợt cất kiện hàng.`,
         type: 'success',
       });
       // Tự động cuộn lên đầu để thủ kho nhìn thấy ngay ô kệ được chỉ định
@@ -124,6 +132,33 @@ export const PutawayTab: React.FC<PutawayTabProps> = ({
     }
   };
 
+  const handleRequestAlternate = async () => {
+    if (!activeTask) return;
+    setLoading(true);
+    try {
+      const targetWeight = Math.min(activeTask.weightKg || 500, 500);
+      const loc = await operatorService.suggestPutawayLocation(
+        activeTask.warehouseId,
+        activeTask.preferredZone,
+        targetWeight
+      );
+      setActiveTask((prev) => prev ? { ...prev, suggestedLocation: loc } : null);
+      soundEffects.playSuccessBeep();
+      setFeedback({
+        msg: `Đã đổi sang vị trí dự phòng: Ô ${loc.binBarcode} (Tầng ${loc.shelf}).`,
+        type: 'success',
+      });
+    } catch (err: any) {
+      soundEffects.playErrorBuzz();
+      setFeedback({
+        msg: 'Không tìm thấy vị trí dự phòng khác: ' + (err.response?.data?.message || err.message),
+        type: 'error',
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const handleConfirmPlacement = async () => {
     if (!activeTask || !activeTask.suggestedLocation) return;
     const targetBarcode = activeTask.suggestedLocation.binBarcode;
@@ -137,6 +172,9 @@ export const PutawayTab: React.FC<PutawayTabProps> = ({
       return;
     }
 
+    const quantityToPlace = placedQty > 0 ? Math.min(placedQty, activeTask.qty) : activeTask.qty;
+    const isPartial = quantityToPlace < activeTask.qty;
+
     if (activeTask.orderId && activeTask.productId && activeTask.suggestedLocation) {
       try {
         await operatorService.executePutaway({
@@ -144,7 +182,7 @@ export const PutawayTab: React.FC<PutawayTabProps> = ({
           orderItemId: activeTask.orderItemId,
           productId: activeTask.productId,
           locationId: activeTask.suggestedLocation.id,
-          quantity: activeTask.qty,
+          quantity: quantityToPlace,
           expectedStockedQty: activeTask.stockedQty,
           batchNumber: activeTask.batchNumber,
           expiryDate: activeTask.expiryDate,
@@ -157,17 +195,40 @@ export const PutawayTab: React.FC<PutawayTabProps> = ({
       }
     } else return;
 
-    setStagingQueue((prev) =>
-      prev.map((t) => (t.id === activeTask.id ? { ...t, status: 'COMPLETED' } : t))
-    );
     soundEffects.playCompleteChime();
-    setFeedback({
-      msg: `Thành công: Đã cất ${activeTask.qty} ${activeTask.unit || 'kiện'} ${activeTask.productName} vào ô ${targetBarcode} an toàn!`,
-      type: 'success',
-    });
-    setActiveTask(null);
-    setScannedBin('');
-    setTimeout(() => setFeedback(null), 4000);
+
+    if (isPartial) {
+      const remainingQty = activeTask.qty - quantityToPlace;
+      const updatedTask: ActivePutawayTask = {
+        ...activeTask,
+        qty: remainingQty,
+        stockedQty: activeTask.stockedQty + quantityToPlace,
+        weightKg: Math.round((activeTask.weightKg / activeTask.qty) * remainingQty),
+        status: 'PENDING',
+        suggestedLocation: undefined,
+      };
+
+      setStagingQueue((prev) =>
+        prev.map((t) => (t.id === activeTask.id ? updatedTask : t))
+      );
+      setFeedback({
+        msg: `Đã cất ${quantityToPlace} ${activeTask.unit || 'thùng'} vào ô ${targetBarcode}! Còn lại ${remainingQty} ${activeTask.unit || 'thùng'} - Đang tìm ô kệ tiếp theo...`,
+        type: 'success',
+      });
+      setScannedBin('');
+      setTimeout(() => handleRequestSuggestion(updatedTask), 800);
+    } else {
+      setStagingQueue((prev) =>
+        prev.map((t) => (t.id === activeTask.id ? { ...t, status: 'COMPLETED' } : t))
+      );
+      setFeedback({
+        msg: `Thành công: Đã hoàn tất cất toàn bộ ${quantityToPlace} ${activeTask.unit || 'thùng'} ${activeTask.productName} vào ô ${targetBarcode}!`,
+        type: 'success',
+      });
+      setActiveTask(null);
+      setScannedBin('');
+      setTimeout(() => setFeedback(null), 4000);
+    }
   };
 
   const pendingQueue = stagingQueue.filter((t) => t.status !== 'COMPLETED');
@@ -183,9 +244,8 @@ export const PutawayTab: React.FC<PutawayTabProps> = ({
           </div>
           <div>
             <h2 className="text-xs font-bold text-slate-900 uppercase tracking-wider">
-              2. Cất Hàng Lên Ô Kệ (Put-Away)
+              Cất Hàng Lên Ô Kệ (Put-Away)
             </h2>
-            <p className="text-xs text-slate-500 font-medium">Chỉ định ô kệ theo tải trọng & phân khu chuyên biệt</p>
           </div>
         </div>
         <div className="flex items-center gap-2">
@@ -227,7 +287,10 @@ export const PutawayTab: React.FC<PutawayTabProps> = ({
           activeTask={activeTask}
           scannedBin={scannedBin}
           onChangeScannedBin={setScannedBin}
+          placedQty={placedQty}
+          onChangePlacedQty={setPlacedQty}
           onOpenScanner={onOpenScanner}
+          onRequestAlternate={handleRequestAlternate}
           onCancel={() => setActiveTask(null)}
           onConfirm={handleConfirmPlacement}
         />
@@ -241,59 +304,61 @@ export const PutawayTab: React.FC<PutawayTabProps> = ({
           </span>
         </div>
 
-        {pendingQueue.length === 0 && completedQueue.length === 0 && (
+        {pendingQueue.length === 0 && completedQueue.length === 0 ? (
           <div className="p-8 text-center bg-white rounded-2xl border border-dashed border-slate-300 space-y-2">
             <div className="w-12 h-12 rounded-2xl bg-indigo-50 text-indigo-600 mx-auto flex items-center justify-center">
               <Layers className="w-6 h-6" />
             </div>
             <p className="text-sm font-bold text-slate-800">Khu đệm Staging đang trống</p>
             <p className="text-xs text-slate-500 max-w-xs mx-auto">
-              Chưa có kiện hàng nào chờ cất kệ. Hãy tiếp nhận đơn hàng PO tại Tab 1 (Nhận PO) để bắt đầu chu trình cất kệ.
+              Chưa có kiện hàng nào chờ cất kệ tại khu đệm Staging.
             </p>
           </div>
-        )}
-
-        {pendingQueue.map((task) => (
-          <div
-            key={task.id}
-            className="bg-white rounded-2xl p-4 border border-slate-200 shadow-xs hover:border-indigo-300 transition-all space-y-3"
-          >
-            <div className="flex items-start justify-between">
-              <div className="space-y-1.5 flex-1 pr-2">
-                <div className="flex items-center gap-2">
-                  <span className="font-mono text-2xs font-extrabold px-2 py-0.5 rounded bg-slate-100 text-slate-800 border border-slate-200">
-                    {task.orderCode || 'ĐƠN PO'}
-                  </span>
-                  <span className="px-2 py-0.5 rounded-full text-2xs font-bold bg-indigo-50 text-indigo-700 border border-indigo-200">
-                    {task.preferredZone === 'ZONE_B' ? 'Khu B • Hàng Mát & Đồ Uống' : 'Khu A • Hàng Tiêu Dùng & Hóa Mỹ Phẩm'}
-                  </span>
+        ) : (
+          <div className={`grid grid-cols-1 ${isCompact ? '' : 'md:grid-cols-2'} gap-3`}>
+            {pendingQueue.map((task) => (
+              <div
+                key={task.id}
+                className="bg-white rounded-2xl p-4 border border-slate-200 shadow-xs hover:border-indigo-300 transition-all space-y-3"
+              >
+                <div className="flex items-start justify-between">
+                  <div className="space-y-1.5 flex-1 pr-2">
+                    <div className="flex items-center gap-2">
+                      <span className="font-mono text-2xs font-extrabold px-2 py-0.5 rounded bg-slate-100 text-slate-800 border border-slate-200">
+                        {task.orderCode || 'ĐƠN PO'}
+                      </span>
+                      <span className="px-2 py-0.5 rounded-full text-2xs font-bold bg-indigo-50 text-indigo-700 border border-indigo-200">
+                        {task.preferredZone === 'ZONE_B' ? 'Khu B • Hàng Mát & Đồ Uống' : 'Khu A • Hàng Tiêu Dùng & Hóa Mỹ Phẩm'}
+                      </span>
+                    </div>
+                    <div className="font-bold text-slate-900 text-sm leading-snug">{task.productName}</div>
+                    <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-slate-600 font-mono pt-0.5">
+                      <span>SKU: <strong className="text-slate-800">{task.sku}</strong></span>
+                      <span>• Số lượng: <strong className="text-indigo-700">{task.qty} {task.unit}</strong></span>
+                      <span>• Trọng tải: <strong>{task.weightKg}kg</strong></span>
+                      {task.batchNumber && <span>• Lô: <strong>{task.batchNumber}</strong></span>}
+                      {task.expiryDate && (
+                        <span>• HSD: <strong>{new Date(task.expiryDate).toLocaleDateString('vi-VN')}</strong></span>
+                      )}
+                    </div>
+                  </div>
                 </div>
-                <div className="font-bold text-slate-900 text-sm leading-snug">{task.productName}</div>
-                <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-slate-600 font-mono pt-0.5">
-                  <span>SKU: <strong className="text-slate-800">{task.sku}</strong></span>
-                  <span>• Số lượng: <strong className="text-indigo-700">{task.qty} {task.unit}</strong></span>
-                  <span>• Trọng tải: <strong>{task.weightKg}kg</strong></span>
-                  {task.batchNumber && <span>• Lô: <strong>{task.batchNumber}</strong></span>}
-                  {task.expiryDate && (
-                    <span>• HSD: <strong>{new Date(task.expiryDate).toLocaleDateString('vi-VN')}</strong></span>
-                  )}
+
+                <div className="flex items-center justify-end pt-2 border-t border-slate-100">
+                  <button
+                    type="button"
+                    disabled={loading}
+                    onClick={() => handleRequestSuggestion(task)}
+                    className="flex items-center gap-2 px-4 py-2 bg-indigo-600 hover:bg-indigo-700 active:bg-indigo-800 text-white rounded-xl text-xs font-bold shadow-sm transition-all cursor-pointer"
+                  >
+                    <ArrowRight className="w-4 h-4" />
+                    <span>Gợi Ý Vị Trí Cất Tối Ưu</span>
+                  </button>
                 </div>
               </div>
-            </div>
-
-            <div className="flex items-center justify-end pt-2 border-t border-slate-100">
-              <button
-                type="button"
-                disabled={loading}
-                onClick={() => handleRequestSuggestion(task)}
-                className="flex items-center gap-2 px-4 py-2 bg-indigo-600 hover:bg-indigo-700 active:bg-indigo-800 text-white rounded-xl text-xs font-bold shadow-sm transition-all cursor-pointer"
-              >
-                <ArrowRight className="w-4 h-4" />
-                <span>Gợi Ý Vị Trí Cất Tối Ưu</span>
-              </button>
-            </div>
+            ))}
           </div>
-        ))}
+        )}
 
         {completedQueue.length > 0 && (
           <div className="pt-2">

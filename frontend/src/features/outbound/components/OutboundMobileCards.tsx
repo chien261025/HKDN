@@ -175,11 +175,7 @@ export const OutboundMobileCards: React.FC<OutboundMobileCardsProps> = ({
               </button>
               {(isPending || isAllocated) && (
                 <button
-                  onClick={() => {
-                    if (confirm(`Bạn có chắc chắn muốn hủy đơn xuất ${order.soCode}? Hệ thống sẽ giải phóng toàn bộ số lượng hàng đã giữ trước (Reserved Stock).`)) {
-                      onCancelOrder(order.id);
-                    }
-                  }}
+                  onClick={() => onCancelOrder(order.id)}
                   className="py-2 px-2.5 bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 rounded-lg text-xs font-semibold shadow-2xs transition-colors flex items-center justify-center gap-1 cursor-pointer"
                 >
                   <span>Hủy</span>

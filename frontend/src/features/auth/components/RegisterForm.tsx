@@ -99,19 +99,19 @@ export const RegisterForm: React.FC<RegisterFormProps> = ({
         </div>
       </div>
 
-      {/* Vai trò RBAC */}
+      {/* Vai trò */}
       <div>
         <label className="block text-slate-800 font-semibold mb-1">
-          Vai trò công tác (RBAC)
+          Vai trò công tác
         </label>
         <select
           value={role}
           onChange={(e) => onRoleChange(e.target.value as any)}
           className="w-full px-3 py-2 bg-white border border-slate-300 rounded-xl text-slate-900 focus:outline-none focus:border-indigo-600 transition-all text-sm font-medium cursor-pointer"
         >
-          <option value="ROLE_OPERATOR">Thủ Kho (PDA Mobile / Barcode)</option>
-          <option value="ROLE_WAREHOUSE_MANAGER">Trưởng Kho (Quản lý điều hành)</option>
-          <option value="ROLE_ADMIN">Quản Trị Viên (Toàn quyền Admin)</option>
+          <option value="ROLE_OPERATOR">Thủ Kho / Vận Hành Hiện Trường</option>
+          <option value="ROLE_WAREHOUSE_MANAGER">Trưởng Kho / Quản Lý Chi Nhánh</option>
+          <option value="ROLE_ADMIN">Quản Trị Viên Hệ Thống</option>
         </select>
       </div>
 

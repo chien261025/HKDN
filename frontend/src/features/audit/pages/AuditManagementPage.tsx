@@ -1,25 +1,86 @@
 import React, { useState, useEffect } from 'react';
-import { AuditHeader } from '../components/AuditHeader';
+import { useSearchParams } from 'react-router-dom';
+import { AuditHeader, AuditFilterStatus } from '../components/AuditHeader';
 import { AuditSessionsList } from '../components/AuditSessionsList';
 import { CreateAuditSessionModal } from '../components/CreateAuditSessionModal';
 import { AuditDiscrepancyModal } from '../components/AuditDiscrepancyModal';
 import { AuditCountingModal } from '../components/AuditCountingModal';
 import { AuditSession, CreateAuditPayload } from '../types';
 import { auditService } from '../services/auditService';
+import { warehouseService } from '../../masterdata/services/warehouseService';
+import { useNotifications } from '../../notifications/context/NotificationContext';
 
 export const AuditManagementPage: React.FC = () => {
+  const { addToast } = useNotifications();
+  const [searchParams] = useSearchParams();
   const [sessions, setSessions] = useState<AuditSession[]>([]);
+  const [selectedWarehouse, setSelectedWarehouse] = useState<string>(() => warehouseService.getActiveWarehouseId() || 'ALL');
+  const [statusFilter, setStatusFilter] = useState<AuditFilterStatus>('ALL');
+  const [loading, setLoading] = useState(false);
+  const [lastUpdated, setLastUpdated] = useState<string>(() => new Date().toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' }));
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+
+  useEffect(() => {
+    if (searchParams.get('create') === 'true') {
+      setIsCreateModalOpen(true);
+    }
+  }, [searchParams]);
+
   const [selectedSession, setSelectedSession] = useState<AuditSession | null>(null);
   const [countingSession, setCountingSession] = useState<AuditSession | null>(null);
 
-  const fetchSessions = async () => {
-    const data = await auditService.getAuditSessions();
-    setSessions(data);
+  const urlAuditCode = searchParams.get('auditCode') || searchParams.get('adjCode');
+  useEffect(() => {
+    if (urlAuditCode && sessions.length > 0) {
+      const match = sessions.find(
+        (s) =>
+          s.auditCode === urlAuditCode ||
+          s.adjustmentCode === urlAuditCode ||
+          urlAuditCode.includes(s.auditCode) ||
+          (s.adjustmentCode && urlAuditCode.includes(s.adjustmentCode))
+      );
+      if (match) {
+        setSelectedSession(match);
+      }
+    }
+  }, [urlAuditCode, sessions]);
+
+  const fetchSessions = async (whIdStr = selectedWarehouse) => {
+    setLoading(true);
+    try {
+      const match = String(whIdStr).match(/\d+/);
+      const targetWhId = whIdStr === 'ALL' ? undefined : (match ? Number(match[0]) : undefined);
+      const data = await auditService.getAuditSessions(targetWhId);
+      setSessions(data);
+      setLastUpdated(new Date().toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' }));
+    } catch (err) {
+      console.error('Lỗi tải danh sách đợt kiểm kê:', err);
+    } finally {
+      setLoading(false);
+    }
   };
 
+  const handleWarehouseChange = (whIdStr: string) => {
+    setSelectedWarehouse(whIdStr);
+    warehouseService.setActiveWarehouseId(whIdStr);
+    window.dispatchEvent(new CustomEvent('smart_wms_warehouse_changed', { detail: whIdStr }));
+    fetchSessions(whIdStr);
+  };
+
+  // Lắng nghe sự kiện đổi kho từ Global Header
   useEffect(() => {
-    fetchSessions();
+    const handleWhChange = (e: any) => {
+      const newWh = e.detail || warehouseService.getActiveWarehouseId() || 'ALL';
+      setSelectedWarehouse(newWh);
+      fetchSessions(newWh);
+    };
+
+    window.addEventListener('smart_wms_warehouse_changed', handleWhChange);
+    return () => window.removeEventListener('smart_wms_warehouse_changed', handleWhChange);
+  }, []);
+
+  useEffect(() => {
+    fetchSessions(selectedWarehouse);
   }, []);
 
   const handleCreateSession = async (payload: CreateAuditPayload) => {
@@ -55,10 +116,21 @@ export const AuditManagementPage: React.FC = () => {
         );
       }
 
-      alert(res.message || 'Đã phê duyệt phiếu Cân Đối Kho thành công! Hệ thống đã tự động ghi nhận bút toán ADJUSTMENT vào Sổ Cái Bất Biến (stock_ledger).');
+      addToast({
+        type: 'success',
+        title: 'Phê Duyệt Cân Đối Thành Công',
+        message: res.message || 'Hệ thống đã tự động ghi nhận bút toán ADJUSTMENT vào Sổ Cái Bất Biến (stock_ledger).',
+        duration: 6000,
+      });
     } catch (err: any) {
       const msg = err.response?.data?.message || 'Không thể phê duyệt cân đối đợt kiểm kê.';
-      alert(msg);
+      addToast({
+        type: 'warning',
+        title: 'Cảnh Báo Phân Tách Nhiệm Vụ (SoD)',
+        message: msg,
+        duration: 9000,
+      });
+      throw err;
     }
   };
 
@@ -70,18 +142,27 @@ export const AuditManagementPage: React.FC = () => {
   };
 
   return (
-    <div className="space-y-5 max-w-7xl mx-auto pb-8">
-      {/* Header with Enterprise KPI Cards */}
+    <div className="space-y-4 pb-8">
+      {/* Header with Enterprise Interactive KPI Cards & Dynamic Unified Warehouse Scope */}
       <AuditHeader
         sessions={sessions}
         onOpenCreateModal={() => setIsCreateModalOpen(true)}
+        selectedWarehouse={selectedWarehouse}
+        onWarehouseChange={handleWarehouseChange}
+        activeStatus={statusFilter}
+        onStatusChange={(st) => setStatusFilter(st)}
+        onRefresh={() => fetchSessions(selectedWarehouse)}
+        loading={loading}
+        lastUpdated={lastUpdated}
       />
 
-      {/* Sessions Table */}
+      {/* Sessions Table with Synchronized Status Filter Tabs & Search */}
       <AuditSessionsList
         sessions={sessions}
         onSelectSession={(session) => setSelectedSession(session)}
         onOpenCountingModal={(session) => setCountingSession(session)}
+        statusFilter={statusFilter}
+        onStatusFilterChange={(st) => setStatusFilter(st)}
       />
 
       {/* Create Modal */}

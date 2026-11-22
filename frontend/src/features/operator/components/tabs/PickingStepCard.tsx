@@ -23,7 +23,7 @@ export const PickingStepCard: React.FC<PickingStepCardProps> = ({
     >
       <div className="flex items-center justify-between pb-2 border-b border-slate-100 text-xs">
         <span className="font-mono font-bold text-amber-800">
-          Bước {step.stepOrder || index + 1}: Di chuyển đến ô
+          Vị Trí Lấy Hàng
         </span>
         <span className="text-xs font-mono text-slate-500 font-medium">
           Lấy: <strong className="text-indigo-700 text-sm font-bold">{step.pickQty}</strong> cái
@@ -32,14 +32,14 @@ export const PickingStepCard: React.FC<PickingStepCardProps> = ({
 
       <div className="mt-3 p-3 rounded-xl bg-slate-50 border border-slate-200 flex items-center justify-between">
         <div>
-          <div className="text-2xs font-mono text-slate-500 uppercase">Vị trí ô kệ:</div>
+          <div className="text-2xs font-mono text-slate-500 uppercase">Mã ô kệ:</div>
           <div className="font-mono text-sm font-black text-indigo-700 flex items-center gap-1.5 mt-0.5">
             <MapPin className="w-4 h-4 text-indigo-600" />
             {step.binBarcode}
           </div>
         </div>
         <div className="text-right">
-          <div className="text-2xs font-mono text-slate-500 uppercase">Hạn dùng (Cận date trước):</div>
+          <div className="text-2xs font-mono text-slate-500 uppercase">Hạn dùng (FEFO):</div>
           <div className="text-xs font-mono font-bold text-rose-700 flex items-center gap-1 mt-0.5">
             <Calendar className="w-3.5 h-3.5" />
             {step.expiryDate}
@@ -67,7 +67,7 @@ export const PickingStepCard: React.FC<PickingStepCardProps> = ({
             className="w-full py-2 bg-amber-500 hover:bg-amber-600 text-slate-950 font-bold rounded-xl text-xs flex items-center justify-center gap-2 shadow-sm transition-all cursor-pointer"
           >
             <ScanLine className="w-4 h-4" />
-            <span>Xác Nhận Đã Lấy Xong Bước {index + 1}</span>
+            <span>Xác Nhận Lấy Hàng</span>
           </button>
         )}
       </div>

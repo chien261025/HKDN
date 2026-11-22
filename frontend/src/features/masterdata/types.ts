@@ -22,6 +22,9 @@ export interface BinLocation {
   temperature?: string;
 }
 
+export type WarehouseRegion = 'NORTH' | 'CENTRAL_VN' | 'SOUTH' | 'MEKONG';
+export type WarehouseType = 'CENTRAL' | 'DISTRIBUTION' | 'HUB' | 'COLD_STORAGE';
+
 export interface WarehouseItem {
   id: string | number;
   code: string;
@@ -29,9 +32,20 @@ export interface WarehouseItem {
   shortName?: string;
   address?: string;
   contactPhone?: string;
-  type?: 'HUB' | 'DISTRIBUTION' | 'CENTRAL' | 'COLD_STORAGE';
+  type?: WarehouseType;
+  region?: WarehouseRegion;
+  managerId?: string | number;
+  managerUsername?: string;
+  managerName?: string;
+  managerPhone?: string;
   capacityPallets?: number;
+  currentOccupancy?: number;
   totalZones?: number;
+  zonesList?: string[];
+  areaM2?: number;
+  dockCount?: number;
+  temperatureRange?: string;
+  trustedIps?: string;
   isActive: boolean;
   createdAt?: string;
 }

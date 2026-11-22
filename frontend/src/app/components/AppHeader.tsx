@@ -14,11 +14,14 @@ import {
   Check,
   Building2,
   Plus,
+  Clock,
 } from 'lucide-react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { AuthSession } from '../../features/auth/types';
 import { NotificationCenterDropdown } from '../../features/notifications/components/NotificationCenterDropdown';
 import { warehouseService, DEFAULT_WAREHOUSES } from '../../features/masterdata/services/warehouseService';
+import { warehouseShiftService } from '../../features/masterdata/services/warehouseShiftService';
+import { WarehouseShiftModal } from '../../features/masterdata/components/WarehouseShiftModal';
 
 interface AppHeaderProps {
   isSidebarCollapsed: boolean;
@@ -47,7 +50,50 @@ export const AppHeader: React.FC<AppHeaderProps> = ({
     return localStorage.getItem('smart_wms_active_warehouse') || 'ALL';
   });
   const [isWarehouseOpen, setIsWarehouseOpen] = useState(false);
+  const [isShiftModalOpen, setIsShiftModalOpen] = useState(false);
+  const currentShift = warehouseShiftService.getCurrentShift();
   const warehouseRef = useRef<HTMLDivElement>(null);
+  const searchInputRef = useRef<HTMLInputElement>(null);
+  const [globalSearch, setGlobalSearch] = useState('');
+
+  // Hỗ trợ phím tắt Ctrl+K để focus nhanh vào thanh tìm kiếm
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k') {
+        e.preventDefault();
+        searchInputRef.current?.focus();
+        searchInputRef.current?.select();
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, []);
+
+  const handleGlobalSearchChange = (val: string) => {
+    setGlobalSearch(val);
+    window.dispatchEvent(new CustomEvent('smart_wms_global_search', { detail: val }));
+  };
+
+  const handleGlobalSearchKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Enter') {
+      window.dispatchEvent(new CustomEvent('smart_wms_global_search', { detail: globalSearch }));
+      const pagesWithOwnSearch = ['/inbound', '/outbound', '/inventory', '/products', '/users', '/audit', '/staging'];
+      const hasOwnSearch = pagesWithOwnSearch.some((p) => location.pathname.startsWith(p));
+      if (!hasOwnSearch) {
+        navigate('/inventory');
+      }
+    }
+  };
+
+  useEffect(() => {
+    const handleSync = (e: any) => {
+      if (typeof e.detail === 'string' && e.detail !== globalSearch) {
+        setGlobalSearch(e.detail);
+      }
+    };
+    window.addEventListener('smart_wms_sync_search_input', handleSync);
+    return () => window.removeEventListener('smart_wms_sync_search_input', handleSync);
+  }, [globalSearch]);
 
   useEffect(() => {
     const loadWarehouses = async () => {
@@ -88,9 +134,11 @@ export const AppHeader: React.FC<AppHeaderProps> = ({
 
   const activeWarehouse = warehouseList.find((w) => w.id === selectedWarehouseId || w.code === selectedWarehouseId) || warehouseList[0];
 
+  const isSuperAdmin = session.role === 'ROLE_ADMIN';
+
   const routeTitles: Record<string, string> = {
-    '/': 'Trung Tâm Điều Hành',
-    '/users': 'Tài Khoản & Phân Quyền',
+    '/': isSuperAdmin ? 'Tổng Quan Quản Trị' : 'Trung Tâm Điều Hành',
+    '/users': isSuperAdmin ? 'Tài Khoản & Phân Quyền' : 'Đội Ngũ Nhân Sự Kho',
     '/products': 'Sản Phẩm & Nhà Cung Cấp',
     '/warehouses': 'Chi Nhánh Kho Hàng',
     '/inbound': 'Quản Lý Nhập Kho (PO)',
@@ -157,24 +205,51 @@ export const AppHeader: React.FC<AppHeaderProps> = ({
         </div>
       </div>
 
-      {/* Search Bar - hidden on mobile to avoid overflow */}
+      {/* Search Bar - Global Synchronized with Ctrl+K */}
       <div className="hidden lg:flex items-center gap-3 flex-1 max-w-md">
         <div className="relative w-full">
           <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
           <input
+            ref={searchInputRef}
             type="text"
+            value={globalSearch}
+            onChange={(e) => handleGlobalSearchChange(e.target.value)}
+            onKeyDown={handleGlobalSearchKeyDown}
             placeholder="Tìm nhanh SKU, mã vạch, ô kệ..."
             className="w-full pl-9 pr-14 py-2 bg-slate-50 hover:bg-slate-100/70 focus:bg-white border border-slate-200 rounded-xl text-sm text-slate-800 placeholder-slate-400 focus:outline-none focus:border-blue-600 focus:ring-3 focus:ring-blue-50 transition-all font-normal"
           />
-          <div className="absolute right-2.5 top-1/2 -translate-y-1/2 flex items-center gap-1 text-[11px] font-semibold text-slate-400 bg-white px-1.5 py-0.5 rounded border border-slate-200 shadow-2xs">
-            <span>Ctrl</span>
-            <span>K</span>
-          </div>
+          {globalSearch ? (
+            <button
+              onClick={() => handleGlobalSearchChange('')}
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 p-1 text-xs cursor-pointer"
+              title="Xóa tìm kiếm"
+            >
+              ✕
+            </button>
+          ) : (
+            <div className="absolute right-2.5 top-1/2 -translate-y-1/2 flex items-center gap-1 text-[11px] font-semibold text-slate-400 bg-white px-1.5 py-0.5 rounded border border-slate-200 shadow-2xs">
+              <span>Ctrl</span>
+              <span>K</span>
+            </div>
+          )}
         </div>
       </div>
 
       {/* Right User Profile, Warehouse Selector & Notifications */}
       <div className="flex items-center gap-1.5 sm:gap-3 shrink-0">
+        {/* Nút Xem Ca Trực & Sổ Giao Ban Ca */}
+        <button
+          type="button"
+          onClick={() => setIsShiftModalOpen(true)}
+          className="hidden md:flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-xl border border-slate-200 bg-slate-50 hover:bg-slate-100 text-slate-800 text-xs font-semibold shadow-2xs transition-all cursor-pointer"
+          title="Xem thông tin ca trực và sổ giao ban ca kho"
+        >
+          <Clock className="w-3.5 h-3.5 text-blue-600 shrink-0" />
+          <span className="font-bold text-slate-900">{currentShift.name}</span>
+          <span className="text-slate-400 font-mono text-[11px]">({currentShift.startTime}-{currentShift.endTime})</span>
+          <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse ml-0.5"></span>
+        </button>
+
         {/* Warehouse Branch Selector (Bộ Chọn Chi Nhánh Kho Hàng) */}
         <div ref={warehouseRef} className="relative">
           <button
@@ -269,6 +344,14 @@ export const AppHeader: React.FC<AppHeaderProps> = ({
           </button>
         </div>
       </div>
+
+      {/* Sổ Ca Làm Việc & Bàn Giao Ca Kho Bãi Modal */}
+      <WarehouseShiftModal
+        isOpen={isShiftModalOpen}
+        onClose={() => setIsShiftModalOpen(false)}
+        activeWarehouseName={activeWarehouse.name}
+        activeWarehouseId={activeWarehouse.code || activeWarehouse.id}
+      />
     </header>
   );
 };

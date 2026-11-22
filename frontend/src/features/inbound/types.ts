@@ -29,6 +29,7 @@ export interface InboundOrder {
   supplierCode: string;
   expectedDeliveryDate: string;
   createdAt: string;
+  rawCreatedAt?: string;
   status: InboundStatus;
   items: InboundOrderItem[];
   totalValue?: number;

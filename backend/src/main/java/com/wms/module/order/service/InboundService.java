@@ -206,6 +206,12 @@ public class InboundService {
             item.setStatus(item.getRemainingQty() == 0 ? "COMPLETED" : "RECEIVED");
         }
         order.setStatus(order.getItems().stream().allMatch(i -> i.getRemainingQty() == 0) ? "CLOSED_NO_STOCK" : "RECEIVED");
+        if (request.notes() != null && !request.notes().isBlank()) {
+            String currentNotes = order.getNotes();
+            order.setNotes(currentNotes == null || currentNotes.isBlank()
+                    ? request.notes()
+                    : currentNotes + " | " + request.notes());
+        }
         order.setUpdatedAt(Instant.now());
         return inboundOrderRepository.save(order);
     }
@@ -225,11 +231,18 @@ public class InboundService {
             throw new BusinessException(ErrorCode.NOT_FOUND, "Không tìm thấy ô kệ nào trong phân khu: " + preferredZone);
         }
 
-        boolean isHeavyItem = itemTotalWeightKg.compareTo(BigDecimal.valueOf(100.0)) > 0;
+        // Tải trọng kiểm tra mỗi ô kệ được chuẩn hóa theo chuẩn Pallet/Kiện (tối đa 500 kg / ô kệ)
+        BigDecimal targetWeight = itemTotalWeightKg != null ? itemTotalWeightKg : BigDecimal.ZERO;
+        if (targetWeight.compareTo(BigDecimal.valueOf(500.0)) > 0) {
+            targetWeight = BigDecimal.valueOf(500.0);
+        }
+
+        final BigDecimal effectiveWeight = targetWeight;
+        boolean isHeavyItem = effectiveWeight.compareTo(BigDecimal.valueOf(100.0)) > 0;
 
         return availableLocations.stream()
                 .filter(Location::getIsActive)
-                .filter(loc -> loc.getMaxWeightKg().compareTo(itemTotalWeightKg) >= 0)
+                .filter(loc -> loc.getMaxWeightKg().compareTo(effectiveWeight) >= 0)
                 .sorted((l1, l2) -> {
                     if (isHeavyItem) {
                         boolean l1IsBottom = "S01".equalsIgnoreCase(l1.getShelf());
@@ -243,7 +256,7 @@ public class InboundService {
                 })
                 .findFirst()
                 .orElseThrow(() -> new BusinessException(ErrorCode.LOCATION_FULL, 
-                        "Khu vực " + preferredZone + " không còn ô kệ nào đủ tải trọng " + itemTotalWeightKg + "kg"));
+                        "Khu vực " + preferredZone + " không còn ô kệ nào đủ tải trọng " + effectiveWeight + "kg"));
     }
 
     @Transactional

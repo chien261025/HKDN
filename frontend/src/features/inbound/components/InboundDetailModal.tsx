@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { X, Building2, Calendar, CheckCircle2, Clock, Truck, Layers, Printer, MapPin, DollarSign, ShieldCheck } from 'lucide-react';
+import { X, Building2, Calendar, Printer, MapPin, DollarSign, ShieldCheck } from 'lucide-react';
 import { InboundOrder, remainingToStock } from '../types';
 import { Pagination } from '../../../components/common';
 
@@ -8,9 +8,10 @@ const PAGE_SIZE = 10;
 interface InboundDetailModalProps {
   order: InboundOrder | null;
   onClose: () => void;
+  onPrintVoucher?: (order: InboundOrder) => void;
 }
 
-export const InboundDetailModal: React.FC<InboundDetailModalProps> = ({ order, onClose }) => {
+export const InboundDetailModal: React.FC<InboundDetailModalProps> = ({ order, onClose, onPrintVoucher }) => {
   const [currentPage, setCurrentPage] = useState(1);
   useEffect(() => {
     if (order) setCurrentPage(1);
@@ -86,54 +87,6 @@ export const InboundDetailModal: React.FC<InboundDetailModalProps> = ({ order, o
               <span className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider block">Hạn Giao Hàng</span>
               <div className="font-bold text-slate-800 text-sm mt-1 font-mono">
                 {order.expectedDeliveryDate}
-              </div>
-            </div>
-          </div>
-
-          {/* Timeline 3 bước */}
-          <div className="p-4 rounded-xl bg-slate-50 border border-slate-200">
-            <div className="text-xs font-bold text-slate-700 uppercase font-mono mb-3">
-              Tiến Độ Vận Hành Thực Địa (Workflow 3 Bước)
-            </div>
-
-            <div className="grid grid-cols-3 gap-3 text-center text-xs">
-              {/* Bước 1 */}
-              <div className="p-3 rounded-xl bg-white border border-emerald-300 text-emerald-900 space-y-1 shadow-xs">
-                <div className="flex items-center justify-center gap-1.5 font-bold text-sm">
-                  <CheckCircle2 className="w-4 h-4 text-emerald-600" />
-                  <span>1. Phát Hành PO</span>
-                </div>
-                <div className="text-xs text-slate-600 font-mono">Đơn giá mua & Đặt hàng</div>
-              </div>
-
-              {/* Bước 2 */}
-              <div
-                className={`p-3 rounded-xl border space-y-1 ${
-                  isReceived || isStocked
-                    ? 'bg-white border-indigo-300 text-indigo-900 shadow-xs'
-                    : 'bg-slate-100 border-slate-200 text-slate-500'
-                }`}
-              >
-                <div className="flex items-center justify-center gap-1.5 font-bold text-sm">
-                  <Truck className="w-4 h-4 text-indigo-600" />
-                  <span>2. Khu Đệm (Staging)</span>
-                </div>
-                <div className="text-xs text-slate-600 font-mono">Quét mã kiểm đếm & tạo lô</div>
-              </div>
-
-              {/* Bước 3 */}
-              <div
-                className={`p-3 rounded-xl border space-y-1 ${
-                  isStocked
-                    ? 'bg-white border-emerald-300 text-emerald-900 shadow-xs'
-                    : 'bg-slate-100 border-slate-200 text-slate-500'
-                }`}
-              >
-                <div className="flex items-center justify-center gap-1.5 font-bold text-sm">
-                  <Layers className="w-4 h-4 text-emerald-600" />
-                  <span>3. Cất Lên Kệ (Put-away)</span>
-                </div>
-                <div className="text-xs text-slate-600 font-mono">Ghi sổ cái Stock Ledger</div>
               </div>
             </div>
           </div>
@@ -226,11 +179,15 @@ export const InboundDetailModal: React.FC<InboundDetailModalProps> = ({ order, o
         {/* Modal Footer */}
         <div className="p-4 sm:p-5 border-t border-slate-200 flex items-center justify-between bg-slate-50">
           <button
-            onClick={() => alert(`In phiếu nhập kho cho đơn: ${order.poCode}`)}
+            onClick={() => {
+              if (onPrintVoucher) {
+                onPrintVoucher(order);
+              }
+            }}
             className="flex items-center gap-2 px-4 py-2 bg-white hover:bg-slate-100 text-slate-800 border border-slate-300 rounded-xl text-sm font-bold transition-colors cursor-pointer shadow-xs"
           >
             <Printer className="w-4 h-4 text-slate-600" />
-            <span>In Phiếu Nhập Kho</span>
+            <span>In Phiếu Nhập Kho (A4)</span>
           </button>
 
           <button

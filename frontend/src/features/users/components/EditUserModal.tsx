@@ -8,6 +8,7 @@ interface EditUserModalProps {
   onClose: () => void;
   user: UserAccount | null;
   onUpdateUser: (userId: string, payload: UpdateUserPayload) => Promise<void>;
+  isAdmin?: boolean;
 }
 
 export const EditUserModal: React.FC<EditUserModalProps> = ({
@@ -15,6 +16,7 @@ export const EditUserModal: React.FC<EditUserModalProps> = ({
   onClose,
   user,
   onUpdateUser,
+  isAdmin = true,
 }) => {
   const [fullName, setFullName] = useState('');
   const [email, setEmail] = useState('');
@@ -219,22 +221,31 @@ export const EditUserModal: React.FC<EditUserModalProps> = ({
                 <Shield className="w-4 h-4 text-indigo-600" />
                 <span>Vai Trò Hệ Thống:</span>
               </span>
-              {isRootAdmin && (
+              {isRootAdmin ? (
                 <span className="text-2xs font-bold text-purple-700 bg-purple-50 px-2 py-0.5 rounded-full border border-purple-200">
                   Quản Trị Viên Gốc
                 </span>
-              )}
+              ) : !isAdmin ? (
+                <span className="text-2xs font-bold text-amber-700 bg-amber-50 px-2 py-0.5 rounded-full border border-amber-200">
+                  🔒 Cố định (Chỉ IT Admin thay đổi)
+                </span>
+              ) : null}
             </label>
             <select
               value={role}
-              disabled={isRootAdmin}
+              disabled={isRootAdmin || !isAdmin}
               onChange={(e) => setRole(e.target.value as UserRole)}
-              className="w-full px-3.5 py-2.5 bg-white border border-slate-300 rounded-xl focus:outline-none focus:border-indigo-600 focus:ring-2 focus:ring-indigo-100 font-medium disabled:bg-slate-100 cursor-pointer"
+              className="w-full px-3.5 py-2.5 bg-white border border-slate-300 rounded-xl focus:outline-none focus:border-indigo-600 focus:ring-2 focus:ring-indigo-100 font-medium disabled:bg-slate-100 disabled:cursor-not-allowed cursor-pointer"
             >
               <option value="ROLE_OPERATOR">Thủ kho (Vận hành thực địa PDA)</option>
               <option value="ROLE_WAREHOUSE_MANAGER">Quản lý trưởng kho (Điều hành chi nhánh)</option>
               <option value="ROLE_ADMIN">Quản trị viên (Toàn quyền hệ thống)</option>
             </select>
+            {!isAdmin && (
+              <p className="text-[11px] text-slate-500">
+                Theo nguyên tắc SoD, Quản lý kho không có thẩm quyền thăng cấp hoặc thay đổi vai trò tài khoản.
+              </p>
+            )}
           </div>
 
           {/* Multi-Warehouse Access Selector */}

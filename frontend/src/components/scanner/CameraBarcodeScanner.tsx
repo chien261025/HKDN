@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Html5Qrcode, CameraDevice } from 'html5-qrcode';
-import { ScanLine, Check, Upload, AlertCircle, Volume2, VolumeX, SwitchCamera, Barcode } from 'lucide-react';
+import { ScanLine, Check, Upload, AlertCircle, Volume2, VolumeX, SwitchCamera, Barcode, Sparkles } from 'lucide-react';
 import { playScanSuccessBeep } from './scannerAudio';
 
 interface Props {
@@ -101,8 +101,7 @@ export const CameraBarcodeScanner: React.FC<Props> = ({ onScanSuccess, onClose }
               <ScanLine className="w-5 h-5" />
             </span>
             <div>
-              <h3 className="font-extrabold text-slate-900 text-base tracking-tight">Quét Mã Vạch (Barcode / QR)</h3>
-              <p className="text-xs text-slate-500 font-medium">Chuẩn 1D Barcode (EAN, Code 128) & 2D QR Code</p>
+              <h3 className="font-extrabold text-slate-900 text-base tracking-tight">Quét Mã Vạch / QR Code</h3>
             </div>
           </div>
           <div className="flex items-center gap-1.5">
@@ -142,40 +141,44 @@ export const CameraBarcodeScanner: React.FC<Props> = ({ onScanSuccess, onClose }
           <div className="p-4 rounded-2xl bg-amber-50 border border-amber-300 text-xs text-amber-900 space-y-2.5">
             <div className="flex items-center gap-2 font-bold text-sm text-amber-800">
               <AlertCircle className="w-4 h-4 text-amber-600 shrink-0" />
-              <span>Không Thể Bật Camera</span>
+              <span>Không Thể Bật Camera Trực Tiếp</span>
             </div>
             <p className="text-xs text-slate-700 font-medium">{cameraError}</p>
-            <div className="pt-2 border-t border-amber-200 flex flex-col gap-2">
-              <input type="file" ref={fileInputRef} accept="image/*" onChange={handleScanFile} className="hidden" />
-              <button
-                onClick={() => fileInputRef.current?.click()}
-                className="w-full py-2 px-3 bg-white hover:bg-slate-50 text-indigo-700 border border-indigo-300 rounded-xl font-bold flex items-center justify-center gap-2 shadow-xs cursor-pointer"
-              >
-                <Upload className="w-4 h-4" />
-                <span>Tải File Ảnh Mã Vạch Để Nhận Diện</span>
-              </button>
-            </div>
           </div>
         ) : (
           <div className="space-y-2">
-            <div className="relative overflow-hidden rounded-2xl border-2 border-indigo-500 scanner-viewport-dark min-h-[230px] shadow-inner">
+            <div className="relative overflow-hidden rounded-2xl border-2 border-indigo-500 scanner-viewport-dark min-h-[220px] shadow-inner">
               <div className="scanner-laser-line" />
               <div id="camera-reader" className="w-full h-full" />
             </div>
-            <div className="flex items-center justify-between text-2xs font-mono text-slate-500 px-1">
-              <span className="flex items-center gap-1.5 text-emerald-600 font-bold">
-                <span className="w-2 h-2 rounded-full bg-emerald-500 animate-ping" /> Đang quét...
+            <div className="flex items-center justify-between text-2xs font-mono text-slate-500 px-1 gap-2">
+              <span className="flex items-center gap-1.5 text-emerald-600 font-bold whitespace-nowrap shrink-0">
+                <span className="w-2 h-2 rounded-full bg-emerald-500 animate-ping" /> Camera đang mở...
               </span>
-              <span>Căn chỉnh mã vạch vào giữa khung đỏ</span>
+              <span className="truncate text-right">Căn chỉnh mã vạch vào giữa tia đỏ</span>
             </div>
           </div>
         )}
+
+        {/* Nút Tải Ảnh Mã Vạch */}
+        <div className="pt-0.5">
+          <input type="file" ref={fileInputRef} accept="image/*" onChange={handleScanFile} className="hidden" />
+          <button
+            type="button"
+            onClick={() => fileInputRef.current?.click()}
+            className="w-full py-2 px-3 bg-slate-50 hover:bg-indigo-50 hover:text-indigo-800 text-slate-700 border border-slate-300 hover:border-indigo-300 rounded-xl font-bold text-xs flex items-center justify-center gap-2 shadow-2xs transition cursor-pointer"
+          >
+            <Upload className="w-4 h-4 text-indigo-600" />
+            <span>Tải Ảnh Mã Vạch</span>
+          </button>
+        </div>
+
         <div id="file-scanner-temp" className="hidden" />
 
         {/* Manual Barcode / Keystroke Fallback Entry */}
         <form onSubmit={handleManualSubmit} className="space-y-1.5 pt-1">
           <label className="block text-xs font-bold text-slate-700">
-            Nhập mã vạch thủ công (hoặc súng quét Barcode):
+            Mã Barcode / SKU:
           </label>
           <div className="flex gap-2">
             <div className="relative flex-1">
@@ -198,6 +201,35 @@ export const CameraBarcodeScanner: React.FC<Props> = ({ onScanSuccess, onClose }
             </button>
           </div>
         </form>
+
+        {/* Quick Reference Barcode Chips */}
+        <div className="pt-2 border-t border-slate-100 space-y-1.5">
+          <div className="flex items-center justify-between text-2xs font-extrabold text-slate-500 uppercase tracking-wider">
+            <span className="flex items-center gap-1 text-indigo-600">
+              <Barcode className="w-3.5 h-3.5 text-indigo-600" /> Mã Vạch Thao Tác Nhanh:
+            </span>
+          </div>
+          <div className="grid grid-cols-2 gap-1.5">
+            {[
+              { label: 'Đơn PO-2026-234', code: 'PO-2026-234' },
+              { label: 'Đơn SO-2026-884', code: 'SO-2026-884' },
+              { label: 'Sữa Vinamilk 1L', code: 'SKU-MILK-100' },
+              { label: 'Trà xanh TH TEA', code: 'SKU-TEA-TH' },
+              { label: 'Ô Kệ B06 (Tầng 2)', code: 'WH01-ZB-B01-R01-S02-B06' },
+              { label: 'Ô Kệ A01 (Tầng 1)', code: 'WH01-ZA-A01-R01-S01-B01' },
+            ].map((item) => (
+              <button
+                key={item.code}
+                type="button"
+                onClick={() => handleTriggerSuccess(item.code)}
+                className="px-2.5 py-1.5 bg-slate-50 hover:bg-indigo-50 hover:text-indigo-700 hover:border-indigo-300 border border-slate-200 rounded-xl text-left text-2xs transition-all cursor-pointer flex flex-col"
+              >
+                <span className="font-bold text-slate-800 truncate">{item.label}</span>
+                <span className="font-mono text-slate-400 text-3xs truncate">{item.code}</span>
+              </button>
+            ))}
+          </div>
+        </div>
 
         {/* Footer */}
         <div className="pt-2 border-t border-slate-100">

@@ -13,6 +13,7 @@ import {
   Archive,
   ArrowRight,
   Info,
+  Check,
 } from 'lucide-react';
 import { InboundOrder, ReceiptLine } from '../types';
 
@@ -30,17 +31,26 @@ export const QC_REJECT_REASONS = [
 interface ReceiveQcModalProps {
   order: Pick<InboundOrder, 'id' | 'items' | 'poCode' | 'supplierName'> & { warehouseId?: number };
   onClose: () => void;
-  onConfirmReceive: (orderId: string, itemUpdates: ReceiptLine[]) => Promise<void>;
+  onConfirmReceive: (orderId: string, itemUpdates: ReceiptLine[], notes?: string) => Promise<void>;
 }
 
 export const ReceiveQcModal: React.FC<ReceiveQcModalProps> = ({ order, onClose, onConfirmReceive }) => {
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const generateDefaultLot = (sku: string) => {
+  const getPoSuffix = (poCode?: string) => {
+    if (!poCode) return 'PO';
+    const parts = poCode.split('-');
+    const last = parts[parts.length - 1];
+    if (last && last.length >= 2) return last.toUpperCase();
+    return poCode.replace(/[^a-zA-Z0-9]/g, '').slice(-4).toUpperCase();
+  };
+
+  const generatePoLot = (lineIndex: number, subSuffix?: string) => {
     const datePart = new Date().toISOString().slice(2, 10).replace(/-/g, '');
-    const cleanSku = (sku || 'SKU').replace(/[^a-zA-Z0-9]/g, '').slice(-4).toUpperCase();
-    return `LOT-${datePart}-${cleanSku || '001'}`;
+    const poSuffix = getPoSuffix(order.poCode);
+    const lineStr = String(lineIndex + 1).padStart(2, '0');
+    return `LOT-${datePart}-${poSuffix}-${lineStr}${subSuffix || ''}`;
   };
 
   const getDefaultExpiry = () => {
@@ -49,75 +59,190 @@ export const ReceiveQcModal: React.FC<ReceiveQcModalProps> = ({ order, onClose, 
     return d.toISOString().split('T')[0];
   };
 
+  // Khởi tạo: Mặc định số lượng thực nhận bằng số lượng kế hoạch PO (hoặc số đã nhận nếu có).
+  // Thủ kho chỉ cần điều chỉnh nếu thực tế nhận thiếu hoặc phát hiện hàng lỗi QC.
   const [itemStates, setItemStates] = useState(() =>
-    order.items.map((item) => ({
-      id: item.id,
-      sku: item.sku,
-      productName: item.productName,
-      unit: item.unit,
-      expectedQty: item.expectedQty,
-      receivedQty: item.receivedQty > 0 ? item.receivedQty : item.expectedQty,
-      batchNumber: item.batchNumber || generateDefaultLot(item.sku),
-      expiryDate: item.expiryDate || getDefaultExpiry(),
-      rejectedQty: item.rejectedQty || 0,
-      rejectReason: 'BAO_BI_RACH_MOP',
-      qcNotes: '',
-    }))
+    order.items.map((item, index) => {
+      const initReceived = item.receivedQty > 0 ? item.receivedQty : (item.expectedQty || 0);
+      return {
+        id: String(item.id),
+        sku: item.sku,
+        productName: item.productName,
+        unit: item.unit || 'Đơn vị',
+        expectedQty: item.expectedQty || 0,
+        receivedQty: initReceived,
+        batchNumber: item.batchNumber || generatePoLot(index),
+        expiryDate: item.expiryDate || getDefaultExpiry(),
+        rejectedQty: item.rejectedQty || 0,
+        rejectReason: 'BAO_BI_RACH_MOP',
+        qcNotes: '',
+      };
+    })
   );
 
-  const handleQtyChange = (id: string, qty: number) => {
+  // Đồng bộ lại chỉ khi người dùng đổi sang một đơn PO hoàn toàn khác
+  const orderIdRef = React.useRef(order?.id);
+  React.useEffect(() => {
+    if (order?.id && order.id !== orderIdRef.current) {
+      orderIdRef.current = order.id;
+      setItemStates(
+        order.items.map((item, index) => {
+          const initReceived = item.receivedQty > 0 ? item.receivedQty : (item.expectedQty || 0);
+          return {
+            id: String(item.id),
+            sku: item.sku,
+            productName: item.productName,
+            unit: item.unit || 'Đơn vị',
+            expectedQty: item.expectedQty || 0,
+            receivedQty: initReceived,
+            batchNumber: item.batchNumber || generatePoLot(index),
+            expiryDate: item.expiryDate || getDefaultExpiry(),
+            rejectedQty: item.rejectedQty || 0,
+            rejectReason: 'BAO_BI_RACH_MOP',
+            qcNotes: '',
+          };
+        })
+      );
+    }
+  }, [order?.id]);
+
+  const handleQtyChange = (id: string | number, qty: number) => {
+    const validQty = Math.max(0, isNaN(qty) ? 0 : qty);
+    setError(null);
     setItemStates((prev) =>
-      prev.map((it) => (it.id === id ? { ...it, receivedQty: Math.max(0, qty) } : it))
+      prev.map((it) => {
+        if (String(it.id) === String(id)) {
+          const clampedRejected = Math.min(it.rejectedQty, validQty);
+          return { ...it, receivedQty: validQty, rejectedQty: clampedRejected };
+        }
+        return it;
+      })
     );
   };
 
-  const handleBatchChange = (id: string, batchNumber: string) => {
+  const handleBatchChange = (id: string | number, batchNumber: string) => {
     setItemStates((prev) =>
-      prev.map((it) => (it.id === id ? { ...it, batchNumber } : it))
+      prev.map((it) => (String(it.id) === String(id) ? { ...it, batchNumber } : it))
     );
   };
 
-  const handleExpiryChange = (id: string, expiryDate: string) => {
+  const handleExpiryChange = (id: string | number, expiryDate: string) => {
     setItemStates((prev) =>
-      prev.map((it) => (it.id === id ? { ...it, expiryDate } : it))
+      prev.map((it) => (String(it.id) === String(id) ? { ...it, expiryDate } : it))
     );
   };
 
-  const handleQcChange = (id: string, rejectedQty: number) => {
+  const handleQcChange = (id: string | number, rejectedQty: number) => {
+    const val = Math.max(0, isNaN(rejectedQty) ? 0 : rejectedQty);
+    setError(null);
+    setItemStates((prev) =>
+      prev.map((it) => {
+        if (String(it.id) === String(id)) {
+          // Nếu số lượng lỗi vượt số thực nhận hiện tại, tự động nâng số thực nhận tương ứng
+          const newReceived = Math.max(it.receivedQty, val);
+          return {
+            ...it,
+            receivedQty: newReceived,
+            rejectedQty: val,
+          };
+        }
+        return it;
+      })
+    );
+  };
+
+  const handleReasonChange = (id: string | number, rejectReason: string) => {
+    setItemStates((prev) =>
+      prev.map((it) => (String(it.id) === String(id) ? { ...it, rejectReason } : it))
+    );
+  };
+
+  const handleNotesChange = (id: string | number, qcNotes: string) => {
+    setItemStates((prev) =>
+      prev.map((it) => (String(it.id) === String(id) ? { ...it, qcNotes } : it))
+    );
+  };
+
+  const handleAutoGenerateLot = (id: string | number, lineIndex: number) => {
+    setItemStates((prev) =>
+      prev.map((it) => {
+        if (String(it.id) !== String(id)) return it;
+        const base = generatePoLot(lineIndex);
+        let nextSuffix = 'A';
+        if (it.batchNumber.startsWith(base)) {
+          const currentSuffix = it.batchNumber.slice(base.length);
+          if (!currentSuffix) {
+            nextSuffix = 'A';
+          } else {
+            const nextCharCode = currentSuffix.charCodeAt(0) + 1;
+            nextSuffix = nextCharCode <= 90 ? String.fromCharCode(nextCharCode) : '';
+          }
+        }
+        return { ...it, batchNumber: `${base}${nextSuffix}` };
+      })
+    );
+  };
+
+  const handleAcceptExpected = (id: string | number, expectedQty: number) => {
+    setError(null);
     setItemStates((prev) =>
       prev.map((it) =>
-        it.id === id
-          ? {
-              ...it,
-              rejectedQty: Math.max(0, Math.min(it.receivedQty, rejectedQty)),
-            }
+        String(it.id) === String(id)
+          ? { ...it, receivedQty: expectedQty, rejectedQty: 0 }
           : it
       )
     );
   };
 
-  const handleReasonChange = (id: string, rejectReason: string) => {
-    setItemStates((prev) =>
-      prev.map((it) => (it.id === id ? { ...it, rejectReason } : it))
-    );
-  };
-
-  const handleAutoGenerateLot = (id: string, sku: string) => {
-    const newLot = generateDefaultLot(sku);
-    handleBatchChange(id, newLot);
-  };
-
-  // Tổng hợp số liệu tức thì
+  // Đơn vị tính đồng bộ chuẩn
+  const primaryUnit = order.items[0]?.unit || 'sản phẩm';
   const totalExpected = itemStates.reduce((sum, it) => sum + it.expectedQty, 0);
   const totalReceived = itemStates.reduce((sum, it) => sum + it.receivedQty, 0);
   const totalRejected = itemStates.reduce((sum, it) => sum + it.rejectedQty, 0);
   const totalPassed = totalReceived - totalRejected;
+  const hasOverTolerance = itemStates.some((it) => it.receivedQty > Math.floor(it.expectedQty * 1.10));
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (totalReceived === 0) {
+      setError('Vui lòng quét hoặc nhập số lượng thực nhận trước khi xác nhận vào khu đệm.');
+      return;
+    }
+
+    // 1. Kiểm tra dung sai giao nhận (+10%) theo chuẩn doanh nghiệp
+    for (const it of itemStates) {
+      const maxAllowed = Math.floor(it.expectedQty * 1.10);
+      if (it.receivedQty > maxAllowed) {
+        setError(
+          `Mặt hàng "${it.productName}" có số thực nhận (${it.receivedQty} ${it.unit}) vượt quá dung sai giao nhận tối đa cho phép (+10% = tối đa ${maxAllowed} ${it.unit}). Vui lòng điều chỉnh lại số lượng đếm thực tế!`
+        );
+        return;
+      }
+    }
+
+    // 2. Kiểm tra nếu có mặt hàng chọn "Lý do khác" mà chưa ghi rõ diễn giải/biên bản
+    const missingOtherNote = itemStates.find(
+      (it) => it.rejectedQty > 0 && it.rejectReason === 'KHAC' && !it.qcNotes.trim()
+    );
+    if (missingOtherNote) {
+      setError(
+        `Vui lòng ghi rõ nội dung biên bản giám định hoặc lý do thực tế cho mặt hàng "${missingOtherNote.productName}" khi phân loại "Lý do khác".`
+      );
+      return;
+    }
+
     setSubmitting(true);
     setError(null);
     try {
+      const qcNotesSummary = itemStates
+        .filter((it) => it.rejectedQty > 0)
+        .map((it) => {
+          const reasonObj = QC_REJECT_REASONS.find((r) => r.code === it.rejectReason);
+          const reasonLabel = reasonObj?.label || it.rejectReason;
+          return `${it.sku}: ${it.rejectedQty} ${it.unit} lỗi [${reasonLabel}]${it.qcNotes ? ' (Ghi chú: ' + it.qcNotes.trim() + ')' : ''}`;
+        })
+        .join('; ');
+
       await onConfirmReceive(
         order.id,
         itemStates.map((it) => ({
@@ -126,7 +251,8 @@ export const ReceiveQcModal: React.FC<ReceiveQcModalProps> = ({ order, onClose, 
           rejectedQty: it.rejectedQty,
           batchNumber: it.batchNumber,
           expiryDate: it.expiryDate,
-        }))
+        })),
+        qcNotesSummary || undefined
       );
       onClose();
     } catch (err: any) {
@@ -137,18 +263,18 @@ export const ReceiveQcModal: React.FC<ReceiveQcModalProps> = ({ order, onClose, 
   };
 
   return (
-    <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4 z-50 animate-in fade-in duration-200">
-      <div className="bg-white rounded-3xl max-w-5xl w-full border border-slate-200 shadow-2xl overflow-hidden text-slate-900 flex flex-col max-h-[92vh]">
+    <div className="fixed inset-0 bg-slate-900/70 backdrop-blur-sm flex items-center justify-center p-0 md:p-4 z-50 animate-in fade-in duration-200">
+      <div className="bg-white rounded-none md:rounded-3xl max-w-5xl w-full border-0 md:border md:border-slate-200 shadow-2xl overflow-hidden text-slate-900 flex flex-col h-full md:max-h-[92vh]">
         {/* Modal Header */}
-        <div className="p-5 border-b border-slate-200 flex items-center justify-between bg-slate-50">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-2xl bg-blue-600 text-white flex items-center justify-center shadow-sm shadow-blue-200">
+        <div className="p-3.5 sm:p-5 border-b border-slate-200 flex items-center justify-between bg-slate-50 shrink-0">
+          <div className="flex items-center gap-3 min-w-0">
+            <div className="w-10 h-10 rounded-2xl bg-blue-600 text-white flex items-center justify-center shadow-sm shadow-blue-200 shrink-0">
               <Truck className="w-5 h-5" />
             </div>
-            <div>
-              <div className="flex items-center gap-2">
-                <h3 className="font-bold text-base text-slate-900">
-                  Tiếp Nhận & Kiểm Định Chất Lượng (Receiving & QC)
+            <div className="min-w-0">
+              <div className="flex items-center gap-2 flex-wrap">
+                <h3 className="font-extrabold text-sm sm:text-base text-slate-900 truncate">
+                  Tiếp Nhận & Kiểm Định (Receiving & QC)
                 </h3>
                 <span className="text-xs font-bold px-2 py-0.5 rounded bg-blue-50 text-blue-700 border border-blue-200 font-mono">
                   {order.poCode}
@@ -159,19 +285,22 @@ export const ReceiveQcModal: React.FC<ReceiveQcModalProps> = ({ order, onClose, 
                   </span>
                 )}
               </div>
-              <p className="text-xs text-slate-600 font-medium mt-0.5">
+              <p className="text-xs text-slate-600 font-medium truncate mt-0.5">
                 Nhà cung ứng: <strong className="text-slate-800">{order.supplierName}</strong>
               </p>
             </div>
           </div>
 
-          <button onClick={onClose} className="p-1.5 rounded-lg text-slate-400 hover:text-slate-700 cursor-pointer">
+          <button
+            onClick={onClose}
+            className="p-2 rounded-xl text-slate-400 hover:text-slate-700 hover:bg-slate-200/60 transition-colors cursor-pointer shrink-0"
+          >
             <X className="w-5 h-5" />
           </button>
         </div>
 
         {/* Modal Body */}
-        <form onSubmit={handleSubmit} className="p-6 space-y-4 overflow-y-auto text-sm flex-1">
+        <form onSubmit={handleSubmit} className="p-3 sm:p-6 space-y-4 overflow-y-auto text-sm flex-1">
           {error && (
             <div role="alert" className="p-3 rounded-xl bg-red-50 border border-red-200 text-red-700 text-xs flex items-center gap-2 font-medium">
               <AlertTriangle className="w-4 h-4 shrink-0" />
@@ -179,49 +308,247 @@ export const ReceiveQcModal: React.FC<ReceiveQcModalProps> = ({ order, onClose, 
             </div>
           )}
 
-          {/* Quick QC Metrics Cards */}
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-            <div className="p-3 rounded-xl bg-slate-50 border border-slate-200">
-              <span className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider block">Kế Hoạch PO</span>
-              <div className="font-black text-slate-800 text-base mt-0.5 font-mono">
-                {totalExpected} <span className="text-xs font-normal text-slate-500">kiện</span>
+          {/* Quick QC Metrics Cards (Đơn vị tính đồng bộ theo SKU) */}
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-3">
+            <div className="p-2.5 sm:p-3 rounded-xl bg-slate-50 border border-slate-200">
+              <span className="text-[10px] sm:text-[11px] font-semibold text-slate-500 uppercase tracking-wider block">
+                Kế Hoạch PO
+              </span>
+              <div className="font-black text-slate-800 text-sm sm:text-base mt-0.5 font-mono">
+                {totalExpected} <span className="text-2xs sm:text-xs font-normal text-slate-500">{primaryUnit}</span>
               </div>
             </div>
 
-            <div className="p-3 rounded-xl bg-blue-50 border border-blue-200">
-              <span className="text-[11px] font-semibold text-blue-700 uppercase tracking-wider block">Thực Nhận Tại Cổng</span>
-              <div className="font-black text-blue-900 text-base mt-0.5 font-mono flex items-center gap-1.5">
+            <div className="p-2.5 sm:p-3 rounded-xl bg-blue-50 border border-blue-200">
+              <span className="text-[10px] sm:text-[11px] font-semibold text-blue-700 uppercase tracking-wider block">
+                Thực Nhận Tại Cổng
+              </span>
+              <div className="font-black text-blue-900 text-sm sm:text-base mt-0.5 font-mono flex items-center gap-1">
                 <span>{totalReceived}</span>
-                {totalReceived !== totalExpected && (
-                  <span className="text-[10px] font-bold px-1.5 py-0.2 rounded bg-white text-blue-800 border border-blue-200">
+                {totalReceived > 0 && totalReceived !== totalExpected && (
+                  <span className="text-[10px] font-bold px-1 rounded bg-white text-blue-800 border border-blue-200">
                     {totalReceived > totalExpected ? `+${totalReceived - totalExpected}` : `-${totalExpected - totalReceived}`}
                   </span>
                 )}
               </div>
             </div>
 
-            <div className="p-3 rounded-xl bg-emerald-50 border border-emerald-200">
-              <span className="text-[11px] font-semibold text-emerald-700 uppercase tracking-wider block">Đạt Tiêu Chuẩn QC</span>
-              <div className="font-black text-emerald-800 text-base mt-0.5 font-mono">
-                {totalPassed} <span className="text-xs font-normal text-emerald-600">vào đệm</span>
+            <div className="p-2.5 sm:p-3 rounded-xl bg-emerald-50 border border-emerald-200">
+              <span className="text-[10px] sm:text-[11px] font-semibold text-emerald-700 uppercase tracking-wider block">
+                Đạt Chuẩn QC
+              </span>
+              <div className="font-black text-emerald-800 text-sm sm:text-base mt-0.5 font-mono">
+                {totalPassed} <span className="text-2xs sm:text-xs font-normal text-emerald-600">đạt chuẩn</span>
               </div>
             </div>
 
-            <div className={`p-3 rounded-xl border ${totalRejected > 0 ? 'bg-rose-50 border-rose-200' : 'bg-slate-50 border-slate-200'}`}>
-              <span className={`text-[11px] font-semibold uppercase tracking-wider block ${totalRejected > 0 ? 'text-rose-700' : 'text-slate-500'}`}>
-                Hàng Lỗi / Cách Ly
+            <div className={`p-2.5 sm:p-3 rounded-xl border ${totalRejected > 0 ? 'bg-rose-50 border-rose-200' : 'bg-slate-50 border-slate-200'}`}>
+              <span className={`text-[10px] sm:text-[11px] font-semibold uppercase tracking-wider block ${totalRejected > 0 ? 'text-rose-700' : 'text-slate-500'}`}>
+                Hàng Lỗi Kiểm Định
               </span>
-              <div className={`font-black text-base mt-0.5 font-mono ${totalRejected > 0 ? 'text-rose-700' : 'text-slate-400'}`}>
-                {totalRejected} <span className="text-xs font-normal">{totalRejected > 0 ? 'chờ xử lý' : 'không có'}</span>
+              <div className={`font-black text-sm sm:text-base mt-0.5 font-mono ${totalRejected > 0 ? 'text-rose-700' : 'text-slate-400'}`}>
+                {totalRejected} <span className="text-2xs sm:text-xs font-normal">{totalRejected > 0 ? 'lỗi' : '0'}</span>
               </div>
             </div>
           </div>
 
-          {/* Table Items */}
-          <div className="space-y-2">
+          {/* =========================================================
+              MOBILE / PDA CARD VIEW (Tối ưu vuốt chạm cho màn hình nhỏ)
+              ========================================================= */}
+          <div className="block md:hidden space-y-3">
+            <div className="flex items-center justify-between text-xs text-slate-600 font-bold px-1">
+              <span>DANH SÁCH MẶT HÀNG ({itemStates.length})</span>
+              <span className="text-2xs font-normal text-slate-500">Nhập đếm thực tế hoặc nhận đủ</span>
+            </div>
+
+            {itemStates.map((it, idx) => {
+              const passedQty = it.receivedQty - it.rejectedQty;
+              return (
+                <div key={it.id} className="p-3.5 rounded-2xl border border-slate-200 bg-white shadow-xs space-y-3">
+                  {/* SKU & Product Name */}
+                  <div className="flex items-start justify-between gap-2">
+                    <div>
+                      <div className="font-extrabold text-slate-900 text-xs">{it.productName}</div>
+                      <div className="flex items-center gap-2 mt-0.5">
+                        <span className="text-2xs font-mono font-bold text-slate-500 bg-slate-100 px-1.5 py-0.5 rounded">
+                          {it.sku}
+                        </span>
+                        <span className="text-2xs font-bold text-blue-700 bg-blue-50 px-1.5 py-0.5 rounded">
+                          ĐVT: {it.unit}
+                        </span>
+                      </div>
+                    </div>
+                    <div className="text-right shrink-0">
+                      <span className="text-2xs text-slate-400 block font-bold uppercase">Kế hoạch PO</span>
+                      <strong className="text-xs font-mono text-slate-800">
+                        {it.expectedQty} {it.unit}
+                      </strong>
+                    </div>
+                  </div>
+
+                  {/* Nhập số lượng thực nhận */}
+                  <div className="p-2.5 bg-slate-50 rounded-xl border border-slate-200 space-y-1.5">
+                    <div className="flex items-center justify-between">
+                      <label className="text-2xs font-extrabold uppercase text-slate-700 tracking-wider">
+                        Số Lượng Thực Nhận ({it.unit}):
+                      </label>
+                      <button
+                        type="button"
+                        onClick={() => handleAcceptExpected(it.id, it.expectedQty)}
+                        className="text-2xs font-bold text-blue-600 hover:text-blue-800 cursor-pointer flex items-center gap-0.5"
+                      >
+                        <Check className="w-3 h-3" /> Nhận đủ ({it.expectedQty})
+                      </button>
+                    </div>
+
+                    <div className="flex items-center gap-1.5">
+                      <input
+                        type="number"
+                        min={0}
+                        value={it.receivedQty === 0 ? '' : it.receivedQty}
+                        onFocus={(e) => e.target.select()}
+                        onChange={(e) => {
+                          const val = e.target.value === '' ? 0 : parseInt(e.target.value, 10);
+                          handleQtyChange(it.id, isNaN(val) ? 0 : val);
+                        }}
+                        placeholder="0"
+                        className="w-full px-3 py-2 bg-white border border-slate-300 rounded-xl font-bold font-mono text-base text-center text-slate-900 focus:outline-none focus:border-blue-600"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => handleQtyChange(it.id, it.receivedQty + 1)}
+                        className="px-3 py-2 bg-slate-200 hover:bg-slate-300 text-slate-800 font-bold rounded-xl text-xs cursor-pointer"
+                      >
+                        +1
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => handleQtyChange(it.id, it.receivedQty + 10)}
+                        className="px-3 py-2 bg-slate-200 hover:bg-slate-300 text-slate-800 font-bold rounded-xl text-xs cursor-pointer"
+                      >
+                        +10
+                      </button>
+                    </div>
+
+                    {it.receivedQty > Math.floor(it.expectedQty * 1.10) && (
+                      <div className="text-2xs text-rose-600 font-bold bg-rose-50 p-1.5 rounded-lg border border-rose-200 mt-1">
+                        ⚠️ Vượt dung sai giao nhận (+10% = tối đa {Math.floor(it.expectedQty * 1.10)} {it.unit})
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Khai báo Lô (Batch) & HSD */}
+                  <div className="grid grid-cols-2 gap-2 text-xs">
+                    <div>
+                      <div className="flex items-center justify-between mb-1">
+                        <label className="text-3xs font-extrabold uppercase text-slate-500">Mã Lô (Batch):</label>
+                        <button
+                          type="button"
+                          onClick={() => handleAutoGenerateLot(it.id, idx)}
+                          className="text-3xs text-blue-600 font-bold cursor-pointer"
+                        >
+                          Tạo mã
+                        </button>
+                      </div>
+                      <input
+                        type="text"
+                        value={it.batchNumber}
+                        onChange={(e) => handleBatchChange(it.id, e.target.value)}
+                        className="w-full px-2 py-1.5 bg-white border border-slate-300 rounded-lg text-xs font-mono font-bold text-slate-800 focus:outline-none focus:border-blue-500"
+                      />
+                    </div>
+                    <div>
+                      <label className="text-3xs font-extrabold uppercase text-slate-500 block mb-1">Hạn Dùng (FEFO):</label>
+                      <input
+                        type="date"
+                        value={it.expiryDate}
+                        onChange={(e) => handleExpiryChange(it.id, e.target.value)}
+                        className="w-full px-2 py-1.5 bg-white border border-slate-300 rounded-lg text-xs font-mono text-slate-800 focus:outline-none focus:border-blue-500"
+                      />
+                    </div>
+                  </div>
+
+                  {/* Kiểm định QC */}
+                  <div className="p-2.5 bg-slate-50 rounded-xl border border-slate-200 flex items-center justify-between gap-3 text-xs">
+                    <div className="flex items-center gap-2">
+                      <ShieldCheck className="w-4 h-4 text-emerald-600 shrink-0" />
+                      <div>
+                        <span className="text-3xs font-bold uppercase text-slate-500 block">Đạt Chuẩn QC</span>
+                        <strong className="text-sm font-mono text-emerald-700 font-extrabold">{passedQty} {it.unit}</strong>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-1.5">
+                      <span className="text-3xs font-bold uppercase text-rose-600">Lỗi QC:</span>
+                      <input
+                        type="number"
+                        min={0}
+                        max={Math.max(it.receivedQty, it.expectedQty)}
+                        value={it.rejectedQty === 0 ? '' : it.rejectedQty}
+                        onFocus={(e) => e.target.select()}
+                        onChange={(e) => {
+                          const val = e.target.value === '' ? 0 : parseInt(e.target.value, 10);
+                          handleQcChange(it.id, isNaN(val) ? 0 : val);
+                        }}
+                        placeholder="0"
+                        className={`w-16 px-1.5 py-1 text-center font-bold font-mono rounded-lg border text-xs ${
+                          it.rejectedQty > 0 ? 'bg-rose-50 border-rose-400 text-rose-700' : 'bg-white border-slate-300 text-slate-700'
+                        }`}
+                      />
+                    </div>
+                  </div>
+
+                  {/* Lý do từ chối nếu có hàng lỗi */}
+                  {it.rejectedQty > 0 && (
+                    <div className="p-2.5 bg-rose-50 rounded-xl border border-rose-200 space-y-2">
+                      <div className="flex items-center justify-between">
+                        <span className="text-3xs font-bold uppercase text-rose-800 block">
+                          Phân loại lỗi {it.rejectedQty} {it.unit}:
+                        </span>
+                        {it.rejectReason === 'KHAC' && (
+                          <span className="text-3xs text-amber-700 font-bold bg-amber-100 px-1.5 py-0.5 rounded">
+                            Bắt buộc ghi chú
+                          </span>
+                        )}
+                      </div>
+                      <select
+                        value={it.rejectReason}
+                        onChange={(e) => handleReasonChange(it.id, e.target.value)}
+                        className="w-full p-2 bg-white border border-rose-300 text-rose-900 rounded-lg text-xs font-semibold focus:outline-none"
+                      >
+                        {QC_REJECT_REASONS.map((r) => (
+                          <option key={r.code} value={r.code}>{r.label}</option>
+                        ))}
+                      </select>
+                      <div>
+                        <input
+                          type="text"
+                          value={it.qcNotes}
+                          onChange={(e) => handleNotesChange(it.id, e.target.value)}
+                          placeholder={
+                            it.rejectReason === 'KHAC'
+                              ? 'Ghi rõ lý do khác / Số biên bản giám định...'
+                              : 'Ghi chú biên bản / số tem niêm phong (tùy chọn)...'
+                          }
+                          className={`w-full px-2.5 py-1.5 rounded-lg text-xs bg-white border outline-none font-medium transition-colors ${
+                            it.rejectReason === 'KHAC' && !it.qcNotes.trim()
+                              ? 'border-amber-400 focus:ring-2 focus:ring-amber-200 text-slate-900 placeholder:text-amber-600'
+                              : 'border-slate-300 focus:border-rose-400 focus:ring-2 focus:ring-rose-200 text-slate-800'
+                          }`}
+                        />
+                      </div>
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+
+          {/* =========================================================
+              DESKTOP TABLE VIEW (Giữ nguyên khi thao tác trên máy tính PC)
+              ========================================================= */}
+          <div className="hidden md:block space-y-2">
             <div className="flex items-center justify-between">
-              <span className="font-bold text-slate-800 text-sm">Danh Sách Mặt Hàng Tiếp Nhận Tại Khu Đệm:</span>
-              <span className="text-xs text-slate-500 font-medium">Đối soát số lượng đặt vs thực nhận & giám định lô</span>
+              <span className="font-bold text-slate-800 text-sm">Danh Sách Mặt Hàng Tiếp Nhận:</span>
             </div>
 
             <div className="rounded-2xl border border-slate-300 overflow-hidden bg-white shadow-xs">
@@ -230,14 +557,14 @@ export const ReceiveQcModal: React.FC<ReceiveQcModalProps> = ({ order, onClose, 
                   <tr>
                     <th className="py-3 px-3">Mặt Hàng (SKU)</th>
                     <th className="py-3 px-2 text-center">SL Đặt (PO)</th>
-                    <th className="py-3 px-2 text-center w-28">SL Thực Nhận</th>
+                    <th className="py-3 px-2 text-center w-36">SL Thực Nhận</th>
                     <th className="py-3 px-3 min-w-[170px]">Mã Lô (Batch/Lot)</th>
                     <th className="py-3 px-3 min-w-[140px]">Hạn Dùng (FEFO)</th>
                     <th className="py-3 px-3 text-center min-w-[130px]">SL Lỗi / Đạt QC</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-200 text-slate-800">
-                  {itemStates.map((it) => {
+                  {itemStates.map((it, idx) => {
                     const isDiff = it.receivedQty !== it.expectedQty;
                     const passedQty = it.receivedQty - it.rejectedQty;
                     return (
@@ -245,28 +572,46 @@ export const ReceiveQcModal: React.FC<ReceiveQcModalProps> = ({ order, onClose, 
                         <tr className="hover:bg-slate-50/80 transition-colors">
                           <td className="py-3 px-3">
                             <div className="font-bold text-slate-900 text-xs">{it.productName}</div>
-                            <div className="text-[11px] text-slate-500 font-mono mt-0.5">{it.sku}</div>
+                            <div className="text-[11px] text-slate-500 font-mono mt-0.5">{it.sku} • {it.unit}</div>
                           </td>
 
-                          <td className="py-3 px-2 text-center font-bold text-slate-700">
+                          <td className="py-3 px-2 text-center font-bold text-slate-700 font-mono">
                             {it.expectedQty} {it.unit}
                           </td>
 
                           <td className="py-3 px-2 text-center">
-                            <input
-                              type="number"
-                              min="0"
-                              value={it.receivedQty}
-                              onChange={(e) => handleQtyChange(it.id, Number(e.target.value))}
-                              className={`w-22 px-2 py-1 text-center font-bold text-xs rounded-lg border outline-none transition-all ${
-                                isDiff
-                                  ? 'border-amber-400 bg-amber-50 text-amber-900 focus:ring-2 focus:ring-amber-300'
-                                  : 'border-slate-300 bg-white text-slate-900 focus:ring-2 focus:ring-blue-200'
-                              }`}
-                            />
-                            {isDiff && (
-                              <span className="block text-[10px] text-amber-700 font-medium mt-0.5">
-                                {it.receivedQty < it.expectedQty ? `Thiếu ${it.expectedQty - it.receivedQty}` : `Thừa +${it.receivedQty - it.expectedQty}`}
+                            <div className="flex items-center justify-center gap-1.5">
+                              <input
+                                aria-label={`Số lượng thực nhận ${it.sku}`}
+                                type="number"
+                                min={0}
+                                value={it.receivedQty === 0 ? '' : it.receivedQty}
+                                onFocus={(e) => e.target.select()}
+                                onChange={(e) => {
+                                  const val = e.target.value === '' ? 0 : parseInt(e.target.value, 10);
+                                  handleQtyChange(it.id, isNaN(val) ? 0 : val);
+                                }}
+                                placeholder="0"
+                                className={`w-28 rounded-lg border py-1.5 px-2 text-center font-bold text-xs font-mono focus:ring-2 focus:ring-blue-200 outline-none ${
+                                  it.receivedQty > Math.floor(it.expectedQty * 1.10)
+                                    ? 'border-rose-500 bg-rose-50 text-rose-900'
+                                    : isDiff
+                                    ? 'border-amber-400 bg-amber-50 text-amber-900'
+                                    : 'border-slate-300 bg-white text-slate-900'
+                                }`}
+                              />
+                              <button
+                                type="button"
+                                onClick={() => handleAcceptExpected(it.id, it.expectedQty)}
+                                className="px-2 py-1 bg-blue-50 text-blue-700 hover:bg-blue-100 border border-blue-200 rounded-lg text-2xs font-bold transition-colors cursor-pointer shrink-0"
+                                title="Nhận đủ theo PO"
+                              >
+                                Nhận Đủ
+                              </button>
+                            </div>
+                            {it.receivedQty > Math.floor(it.expectedQty * 1.10) && (
+                              <span className="text-[10px] text-rose-600 font-bold block mt-1">
+                                Vượt dung sai (+10% = tối đa {Math.floor(it.expectedQty * 1.10)})
                               </span>
                             )}
                           </td>
@@ -274,19 +619,17 @@ export const ReceiveQcModal: React.FC<ReceiveQcModalProps> = ({ order, onClose, 
                           <td className="py-3 px-3">
                             <div className="flex items-center gap-1">
                               <input
+                                aria-label={`Mã lô ${it.sku}`}
                                 type="text"
-                                required={it.receivedQty > it.rejectedQty}
-                                maxLength={100}
                                 value={it.batchNumber}
                                 onChange={(e) => handleBatchChange(it.id, e.target.value)}
-                                className="w-full px-2 py-1 font-mono text-xs text-indigo-700 font-bold bg-indigo-50/50 rounded-lg border border-indigo-200 focus:ring-2 focus:ring-indigo-200 outline-none"
-                                placeholder="Nhập mã lô..."
+                                className="w-full px-2 py-1 text-xs font-mono font-bold text-slate-800 rounded-lg border border-slate-300 focus:ring-2 focus:ring-blue-200 outline-none"
                               />
                               <button
                                 type="button"
-                                onClick={() => handleAutoGenerateLot(it.id, it.sku)}
-                                title="Tự động sinh mã lô theo ngày"
-                                className="p-1 rounded-md text-indigo-600 hover:bg-indigo-100 cursor-pointer"
+                                onClick={() => handleAutoGenerateLot(it.id, idx)}
+                                className="p-1 rounded-lg text-slate-400 hover:text-blue-600 hover:bg-blue-50"
+                                title="Tự động sinh mã lô"
                               >
                                 <Sparkles className="w-3.5 h-3.5" />
                               </button>
@@ -295,8 +638,8 @@ export const ReceiveQcModal: React.FC<ReceiveQcModalProps> = ({ order, onClose, 
 
                           <td className="py-3 px-3">
                             <input
+                              aria-label={`Hạn sử dụng ${it.sku}`}
                               type="date"
-                              required={it.receivedQty > it.rejectedQty}
                               value={it.expiryDate}
                               onChange={(e) => handleExpiryChange(it.id, e.target.value)}
                               className="w-full px-2 py-1 text-xs text-slate-800 font-medium rounded-lg border border-slate-300 focus:ring-2 focus:ring-blue-200 outline-none"
@@ -304,33 +647,37 @@ export const ReceiveQcModal: React.FC<ReceiveQcModalProps> = ({ order, onClose, 
                           </td>
 
                           <td className="py-3 px-3 text-center">
-                            <div className="flex items-center justify-center gap-1.5">
+                            <div className="flex items-center justify-center gap-2">
                               <div className="text-right">
-                                <span className="text-[10px] text-slate-400 block">Lỗi QC:</span>
+                                <span className="text-[10px] text-slate-500 font-semibold block mb-0.5">Lỗi QC:</span>
                                 <input
                                   aria-label={`Số lượng lỗi ${it.sku}`}
                                   type="number"
                                   min={0}
-                                  max={it.receivedQty}
-                                  value={it.rejectedQty}
-                                  onChange={(e) => handleQcChange(it.id, Number(e.target.value))}
-                                  className={`w-14 rounded-lg border py-0.5 px-1 text-center font-bold text-xs ${
-                                    it.rejectedQty > 0 ? 'border-rose-400 bg-rose-50 text-rose-700' : 'border-slate-300'
+                                  max={Math.max(it.receivedQty, it.expectedQty)}
+                                  value={it.rejectedQty === 0 ? '' : it.rejectedQty}
+                                  onFocus={(e) => e.target.select()}
+                                  onChange={(e) => {
+                                    const val = e.target.value === '' ? 0 : parseInt(e.target.value, 10);
+                                    handleQcChange(it.id, isNaN(val) ? 0 : val);
+                                  }}
+                                  placeholder="0"
+                                  className={`w-16 rounded-lg border py-1 px-1.5 text-center font-bold text-xs font-mono outline-none focus:ring-2 focus:ring-rose-200 ${
+                                    it.rejectedQty > 0 ? 'border-rose-400 bg-rose-50 text-rose-700' : 'border-slate-300 bg-white text-slate-700'
                                   }`}
                                 />
                               </div>
-                              <div className="text-left pl-1 border-l border-slate-200">
-                                <span className="text-[10px] text-slate-400 block">Đạt QC:</span>
-                                <span className="font-bold text-emerald-700 text-xs font-mono">{passedQty}</span>
+                              <div className="text-left pl-2 border-l border-slate-200">
+                                <span className="text-[10px] text-emerald-600 font-semibold block mb-0.5">Đạt QC:</span>
+                                <span className="font-extrabold text-emerald-700 text-xs font-mono">{passedQty}</span>
                               </div>
                             </div>
                           </td>
                         </tr>
 
-                        {/* Sub-panel for QC rejection reasons when rejectedQty > 0 */}
                         {it.rejectedQty > 0 && (
                           <tr className="bg-rose-50/50">
-                            <td colSpan={6} className="py-2 px-3 border-b border-rose-100">
+                            <td colSpan={6} className="py-2.5 px-3 border-b border-rose-100">
                               <div className="flex items-center gap-3 text-xs">
                                 <div className="flex items-center gap-1.5 text-rose-700 font-bold shrink-0">
                                   <AlertOctagon className="w-3.5 h-3.5" />
@@ -339,17 +686,29 @@ export const ReceiveQcModal: React.FC<ReceiveQcModalProps> = ({ order, onClose, 
                                 <select
                                   value={it.rejectReason}
                                   onChange={(e) => handleReasonChange(it.id, e.target.value)}
-                                  className="p-1 rounded-lg bg-white border border-rose-300 text-rose-900 text-xs font-medium focus:outline-none focus:ring-2 focus:ring-rose-200 flex-1 max-w-md"
+                                  className="p-1.5 rounded-lg bg-white border border-rose-300 text-rose-900 text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-rose-200 w-80 shrink-0"
                                 >
                                   {QC_REJECT_REASONS.map((r) => (
-                                    <option key={r.code} value={r.code}>
-                                      {r.label}
-                                    </option>
+                                    <option key={r.code} value={r.code}>{r.label}</option>
                                   ))}
                                 </select>
-                                <span className="text-[11px] text-rose-600 italic">
-                                  (Số lượng lỗi sẽ chuyển sang Khu Cách Ly / Trả hàng NCC, không được phép cất lên kệ)
-                                </span>
+                                <div className="flex-1 min-w-[220px]">
+                                  <input
+                                    type="text"
+                                    value={it.qcNotes}
+                                    onChange={(e) => handleNotesChange(it.id, e.target.value)}
+                                    placeholder={
+                                      it.rejectReason === 'KHAC'
+                                        ? 'Ghi rõ lý do khác / Số biên bản giám định hiện trường...'
+                                        : 'Ghi chú biên bản giám định / số tem niêm phong (tùy chọn)...'
+                                    }
+                                    className={`w-full px-2.5 py-1.5 rounded-lg text-xs bg-white border outline-none font-medium transition-colors ${
+                                      it.rejectReason === 'KHAC' && !it.qcNotes.trim()
+                                        ? 'border-amber-400 focus:ring-2 focus:ring-amber-200 text-slate-900 placeholder:text-amber-600 font-semibold'
+                                        : 'border-slate-300 focus:border-rose-400 focus:ring-2 focus:ring-rose-200 text-slate-800'
+                                    }`}
+                                  />
+                                </div>
                               </div>
                             </td>
                           </tr>
@@ -362,32 +721,40 @@ export const ReceiveQcModal: React.FC<ReceiveQcModalProps> = ({ order, onClose, 
             </div>
           </div>
 
-          {/* Modal Footer */}
-          <div className="pt-3 border-t border-slate-200 flex items-center justify-between">
-            <div className="text-xs text-slate-500">
-              Tổng số lượng sẽ vào Khu Đệm: <strong className="text-emerald-700 font-bold font-mono">{totalPassed}</strong> kiện hàng đạt chuẩn
+          {/* Sticky Bottom Footer (Chiều cao 48-52px chạm 1 tay) */}
+          <div className="pt-3 border-t border-slate-200 flex flex-col sm:flex-row items-center justify-between gap-3 shrink-0 pb-1">
+            <div className="text-xs font-semibold text-slate-700 flex items-center gap-1.5 font-mono">
+              <span>Đạt chuẩn QC:</span>
+              <span className="text-emerald-700 font-extrabold text-sm">{totalPassed}</span>
+              <span className="text-slate-500 font-normal">{primaryUnit}</span>
+              {totalRejected > 0 && (
+                <span className="text-rose-600 font-bold text-xs ml-2">
+                  • Hàng không đạt: {totalRejected} {primaryUnit}
+                </span>
+              )}
             </div>
 
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-2.5 w-full sm:w-auto">
               <button
                 type="button"
                 onClick={onClose}
                 disabled={submitting}
-                className="px-4 py-2 border border-slate-300 text-slate-700 rounded-xl text-xs font-bold hover:bg-slate-50 transition-colors cursor-pointer"
+                className="flex-1 sm:flex-none h-12 px-5 border border-slate-300 text-slate-700 rounded-xl text-xs font-bold hover:bg-slate-50 transition-colors cursor-pointer"
               >
                 Hủy Bỏ
               </button>
               <button
                 type="submit"
-                disabled={submitting || totalReceived === 0}
-                className="px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold transition-all shadow-md shadow-blue-200 cursor-pointer flex items-center gap-2"
+                disabled={submitting || totalReceived === 0 || hasOverTolerance}
+                className="flex-2 sm:flex-none h-12 px-6 bg-blue-600 hover:bg-blue-700 disabled:bg-slate-300 disabled:cursor-not-allowed text-white rounded-xl text-xs font-bold transition-all shadow-md shadow-blue-200 cursor-pointer flex items-center justify-center gap-2"
+                title={hasOverTolerance ? 'Số thực nhận vượt quá dung sai cho phép (+10%). Vui lòng điều chỉnh lại.' : undefined}
               >
                 {submitting ? (
                   <span>Đang xử lý tiếp nhận...</span>
                 ) : (
                   <>
                     <CheckCircle2 className="w-4 h-4" />
-                    <span>Xác Nhận Tiếp Nhận Vào Khu Đệm</span>
+                    <span>Xác Nhận Tiếp Nhận ({totalPassed} {primaryUnit})</span>
                   </>
                 )}
               </button>

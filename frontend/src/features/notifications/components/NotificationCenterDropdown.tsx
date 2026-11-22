@@ -53,9 +53,22 @@ export const NotificationCenterDropdown: React.FC = () => {
     if (!notification.read) {
       markAsRead(notification.id);
     }
-    if (notification.link) {
-      navigate(notification.link);
-      setIsOpen(false);
+    setIsOpen(false);
+
+    let targetLink = notification.link || '';
+    const refCode = notification.referenceCode || '';
+
+    // Tự động phân giải link chi tiết mở trực tiếp modal tương ứng
+    if (refCode) {
+      if (notification.type?.includes('OUTBOUND') || targetLink.includes('/outbound') || refCode.startsWith('SO-')) {
+        targetLink = `/outbound?soCode=${encodeURIComponent(refCode)}`;
+      } else if (notification.type?.includes('AUDIT') || targetLink.includes('/audit') || refCode.startsWith('AUD-') || refCode.startsWith('ADJ-')) {
+        targetLink = `/audit?auditCode=${encodeURIComponent(refCode)}`;
+      }
+    }
+
+    if (targetLink) {
+      navigate(targetLink);
     }
   };
 
