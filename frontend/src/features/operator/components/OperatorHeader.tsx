@@ -140,8 +140,8 @@ export const OperatorHeader: React.FC<OperatorHeaderProps> = ({
           </div>
         </div>
 
-        {/* Center: Global Barcode Scanner Bar (Desktop / Tablet) */}
-        <div className="hidden lg:flex items-center gap-2 flex-1 max-w-md mx-2">
+        {/* Center: Global Barcode Scanner Bar */}
+        <div className="flex items-center gap-2 flex-1 max-w-md mx-2">
           <div className="relative flex-1">
             <Barcode className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
             <input

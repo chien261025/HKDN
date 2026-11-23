@@ -14,6 +14,9 @@ import {
   ArrowRight,
   ShieldCheck,
   Check,
+  User,
+  UserCheck,
+  Lock,
 } from 'lucide-react';
 import { OutboundOrder } from '../types';
 import { printHtmlDocument } from '../../../services/printService';
@@ -108,8 +111,37 @@ export const PickingExecutionModal: React.FC<PickingExecutionModalProps> = ({
     return list;
   }, [order]);
 
+  // Lấy thông tin tài khoản đang đăng nhập từ session để ràng buộc danh tính người nhặt
+  const sessionUser = useMemo(() => {
+    try {
+      const raw = localStorage.getItem('smart_wms_session');
+      if (raw) return JSON.parse(raw);
+    } catch (e) {}
+    return null;
+  }, []);
+
+  const isOperator = sessionUser?.role === 'ROLE_OPERATOR';
+  const isManager = sessionUser?.role === 'ROLE_WAREHOUSE_MANAGER' || sessionUser?.role === 'ROLE_ADMIN';
+
+  // Danh mục nhân sự kho khả dụng khi Quản lý phân công điều phối
+  const availablePickers = [
+    { id: 'operator01', name: 'Lê Thủ Kho (Mã NV: OP-01, Trực ca PDA)' },
+    { id: 'op_tuan', name: 'Nguyễn Văn Tuấn (Mã NV: WH-88, Kỹ thuật viên Kho)' },
+    { id: 'op_hai', name: 'Nguyễn Văn Hải (Mã NV: OP-02, Xe nâng Reach Truck)' },
+    { id: 'manager01', name: 'Trần Trưởng Kho (Mã NV: MGR-01, Điều phối trực tiếp)' },
+  ];
+
+  const defaultPicker = useMemo(() => {
+    if (sessionUser?.fullName) {
+      const roleLabel = isOperator ? 'Thủ kho quét mã' : 'Trưởng kho điều phối';
+      const userCode = (sessionUser.username || 'WH').toUpperCase();
+      return `${sessionUser.fullName} (Mã NV: ${userCode} - ${roleLabel})`;
+    }
+    return 'Lê Thủ Kho (Mã NV: OP-01, Trực ca PDA)';
+  }, [sessionUser, isOperator]);
+
   const [lines, setLines] = useState<FlattenedPickLine[]>(initialLines);
-  const [pickerName, setPickerName] = useState('Nguyễn Văn Tuấn (Kỹ thuật viên Kho)');
+  const [pickerName, setPickerName] = useState(defaultPicker);
   const [notes, setNotes] = useState('');
   const [submitting, setSubmitting] = useState(false);
 
@@ -486,29 +518,79 @@ export const PickingExecutionModal: React.FC<PickingExecutionModalProps> = ({
           {/* Form Thông Tin Người Lấy Hàng & Ghi Chú */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2 print:hidden">
             <div>
-              <label className="text-[11px] font-bold text-slate-600 uppercase tracking-wider block mb-1">
-                Nhân viên nhặt hàng (Picker):
-              </label>
-              <input
-                type="text"
-                value={pickerName}
-                onChange={(e) => setPickerName(e.target.value)}
-                disabled={isReadOnly}
-                className="w-full text-xs font-semibold px-3 py-2 rounded-xl border border-slate-300 focus:outline-none focus:ring-2 focus:ring-blue-500"
-              />
+              <div className="flex items-center justify-between mb-1">
+                <label className="text-[11px] font-bold text-slate-700 uppercase tracking-wider flex items-center gap-1.5">
+                  <User className="w-3.5 h-3.5 text-blue-600" />
+                  <span>Nhân viên nhặt hàng (Picker):</span>
+                </label>
+                {isOperator ? (
+                  <span className="inline-flex items-center gap-1 text-[10px] font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200">
+                    <ShieldCheck className="w-3 h-3 text-emerald-600" />
+                    Đã xác thực danh tính PDA
+                  </span>
+                ) : (
+                  <span className="inline-flex items-center gap-1 text-[10px] font-bold text-indigo-700 bg-indigo-50 px-2 py-0.5 rounded-full border border-indigo-200">
+                    <UserCheck className="w-3 h-3 text-indigo-600" />
+                    Trưởng kho điều phối
+                  </span>
+                )}
+              </div>
+
+              {isOperator ? (
+                // Nếu là Thủ kho (Operator): KHÓA CỨNG, tự động gắn tên phiên làm việc, chống gian lận KPI
+                <div className="relative">
+                  <input
+                    type="text"
+                    value={pickerName}
+                    readOnly
+                    disabled
+                    aria-label="Nhân viên nhặt hàng"
+                    className="w-full text-xs font-bold text-slate-800 bg-slate-100/90 px-3 py-2.5 rounded-xl border border-slate-300 cursor-not-allowed select-none shadow-2xs"
+                  />
+                  <div className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 flex items-center gap-1 text-[10px] font-semibold">
+                    <Lock className="w-3 h-3" />
+                    <span>Ràng buộc phiên</span>
+                  </div>
+                </div>
+              ) : (
+                // Nếu là Quản lý (Manager/Admin): Cho phép chọn phân công đích danh nhân sự trong ca trực
+                <select
+                  value={pickerName}
+                  onChange={(e) => setPickerName(e.target.value)}
+                  disabled={isReadOnly || submitting}
+                  aria-label="Nhân viên nhặt hàng"
+                  className="w-full text-xs font-semibold px-3 py-2.5 rounded-xl border border-slate-300 bg-white text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500 shadow-2xs"
+                >
+                  <option value={defaultPicker}>★ Mặc định: {defaultPicker}</option>
+                  {availablePickers.map((p) => (
+                    <option key={p.id} value={p.name}>
+                      👤 {p.name}
+                    </option>
+                  ))}
+                </select>
+              )}
+              <p className="text-[10px] text-slate-500 mt-1 italic">
+                {isOperator
+                  ? '* Danh tính tự động gắn với mã đăng nhập PDA của bạn để phục vụ KPI và giải trình trách nhiệm.'
+                  : '* Quản lý có quyền chỉ định hoặc phân công nhân viên lái xe nâng / thủ kho thực tế.'}
+              </p>
             </div>
+
             <div>
-              <label className="text-[11px] font-bold text-slate-600 uppercase tracking-wider block mb-1">
-                Ghi chú tình trạng gom hàng:
+              <label className="text-[11px] font-bold text-slate-700 uppercase tracking-wider block mb-1">
+                Ghi chú tình trạng gom hàng (Pallet / Seal):
               </label>
               <input
                 type="text"
                 value={notes}
                 onChange={(e) => setNotes(e.target.value)}
                 placeholder="Ví dụ: Đã gom đủ vào pallet xuất số 02, tem niêm phong đạt chuẩn"
-                disabled={isReadOnly}
-                className="w-full text-xs px-3 py-2 rounded-xl border border-slate-300 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                disabled={isReadOnly || submitting}
+                className="w-full text-xs px-3 py-2.5 rounded-xl border border-slate-300 bg-white text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500 shadow-2xs"
               />
+              <p className="text-[10px] text-slate-500 mt-1 italic">
+                * Ghi chú mã pallet trung chuyển hoặc ghi chú niêm phong trước khi xuất ra Dock.
+              </p>
             </div>
           </div>
 

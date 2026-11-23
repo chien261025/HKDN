@@ -1,5 +1,5 @@
 import React from 'react';
-import { Printer, X, FileText, CheckCircle2, Building2, Truck, ShieldCheck, MapPin, Calendar, User, Package } from 'lucide-react';
+import { Printer, X, FileText, CheckCircle2, Building2, Truck, ShieldCheck, MapPin, Calendar, User, Package, RotateCcw } from 'lucide-react';
 import { OutboundOrder } from '../types';
 import { printHtmlDocument } from '../../../services/printService';
 import { getWarehouseDisplayName, getWarehouseDisplayAddress } from '../../masterdata/services/warehouseService';
@@ -30,12 +30,29 @@ const getEstimatedPrice = (sku?: string): number => {
 };
 
 export const OutboundVoucherModal: React.FC<OutboundVoucherModalProps> = ({ order, onClose }) => {
+  const isRTV = order.soCode?.startsWith('RTV-') || order.notes?.toLowerCase().includes('xuất trả') || order.notes?.toLowerCase().includes('rtv');
   const totalRequested = order.items.reduce((sum, it) => sum + it.requestedQty, 0);
   const totalAllocated = order.items.reduce((sum, it) => sum + (it.allocatedQty || 0), 0);
   const totalPicked = order.items.reduce((sum, it) => sum + (it.pickedQty || it.allocatedQty || 0), 0);
 
   const warehouseName = getWarehouseDisplayName(order.warehouseId);
   const warehouseAddress = getWarehouseDisplayAddress(order.warehouseId) || 'Khu công nghiệp logistics tập trung';
+
+  // Trích xuất thông tin vận chuyển, biển số xe và nhân viên lấy hàng từ ghi chú hoặc cấu hình đơn
+  const carrierParsed = React.useMemo(() => {
+    const m = (order.notes || '').match(/\[Vận chuyển:\s*([^|\]]+)/);
+    return m ? m[1].trim() : (order.dispatchCarrier || 'Đội xe nội bộ WMS Logistics');
+  }, [order]);
+
+  const vehiclePlateParsed = React.useMemo(() => {
+    const m = (order.notes || '').match(/Biển số:\s*([^\]]+)/);
+    return m ? m[1].trim() : (order.warehouseId === 2 ? '99C-338.21' : '51C-892.44');
+  }, [order]);
+
+  const pickerParsed = React.useMemo(() => {
+    const m = (order.notes || '').match(/\[Thủ kho nhặt:\s*([^\]]+)/);
+    return m ? m[1].trim() : 'Nguyễn Văn Tuấn (Kỹ thuật viên Kho)';
+  }, [order]);
 
   // Tính tổng giá trị ước tính
   const totalValue = order.items.reduce((sum, it) => {
@@ -75,8 +92,12 @@ export const OutboundVoucherModal: React.FC<OutboundVoucherModalProps> = ({ orde
         <div style="font-size: 10.5px; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; color: #475569;">CỘNG HÒA XÃ HỘI CHỦ NGHĨA VIỆT NAM</div>
         <div style="font-size: 10px; font-style: italic; color: #64748b; margin-bottom: 4px;">Độc lập - Tự do - Hạnh phúc</div>
         <div style="font-size: 11px; font-weight: 800; color: #2563eb; text-transform: uppercase;">HỆ THỐNG QUẢN LÝ KHO THÔNG MINH - SMART WMS LOGISTICS ENTERPRISE</div>
-        <div style="font-size: 20px; font-weight: 900; text-transform: uppercase; margin-top: 4px; color: #0f172a;">PHIẾU XUẤT KHO KIÊM BIÊN BẢN BÀN GIAO VẬN TẢI</div>
-        <div style="font-size: 11px; font-style: italic; color: #64748b;">(GOODS ISSUE NOTE & DELIVERY RECEIPT - GIN)</div>
+        <div style="font-size: 20px; font-weight: 900; text-transform: uppercase; margin-top: 4px; color: #0f172a;">
+          ${isRTV ? 'PHIẾU XUẤT TRẢ HÀNG NHÀ CUNG CẤP KIÊM BIÊN BẢN BÀN GIAO' : 'PHIẾU XUẤT KHO KIÊM BIÊN BẢN BÀN GIAO VẬN TẢI'}
+        </div>
+        <div style="font-size: 11px; font-style: italic; color: #64748b;">
+          ${isRTV ? '(RETURN TO VENDOR DELIVERY NOTE - RTV GIN)' : '(GOODS ISSUE NOTE & DELIVERY RECEIPT - GIN)'}
+        </div>
         <div style="font-size: 11px; color: #334155; margin-top: 4px;">
           Số Phiếu: <strong style="font-family: monospace; color: #1d4ed8;">GIN-${order.soCode}</strong> • Ngày lập: <strong>${new Date().toLocaleDateString('vi-VN')}</strong>
         </div>
@@ -86,13 +107,13 @@ export const OutboundVoucherModal: React.FC<OutboundVoucherModalProps> = ({ orde
         <div>
           <div class="meta-item"><span class="meta-label">Đơn vị xuất kho:</span> <span class="meta-value">${warehouseName}</span></div>
           <div class="meta-item"><span class="meta-label">Địa chỉ kho:</span> <span class="meta-value">${warehouseAddress}</span></div>
-          <div class="meta-item"><span class="meta-label">Thủ kho phụ trách:</span> <span class="meta-value">Nguyễn Văn Tuấn (Mã NV: WH-88)</span></div>
-          <div class="meta-item"><span class="meta-label">Căn cứ đơn hàng:</span> <span class="meta-value" style="font-family: monospace; color: #4338ca;">SO Code: ${order.soCode}</span></div>
+          <div class="meta-item"><span class="meta-label">Thủ kho nhặt hàng:</span> <span class="meta-value">${pickerParsed}</span></div>
+          <div class="meta-item"><span class="meta-label">Căn cứ đơn hàng:</span> <span class="meta-value" style="font-family: monospace; color: #4338ca;">${isRTV ? 'RTV Code' : 'SO Code'}: ${order.soCode}</span></div>
         </div>
         <div>
-          <div class="meta-item"><span class="meta-label">Đơn vị nhận hàng:</span> <span class="meta-value">${order.customerName}</span></div>
+          <div class="meta-item"><span class="meta-label">${isRTV ? 'Nhà cung cấp tiếp nhận:' : 'Đơn vị nhận hàng:'}</span> <span class="meta-value">${order.customerName}</span></div>
           <div class="meta-item"><span class="meta-label">Địa chỉ giao:</span> <span class="meta-value">${order.shippingAddress || 'Kho Phân Phối Trung Tâm'}</span></div>
-          <div class="meta-item"><span class="meta-label">Đơn vị vận chuyển:</span> <span class="meta-value">${order.dispatchCarrier || 'Đội xe nội bộ WMS Logistics'}</span></div>
+          <div class="meta-item"><span class="meta-label">Đơn vị vận chuyển:</span> <span class="meta-value">${carrierParsed} (Biển số: ${vehiclePlateParsed})</span></div>
           <div class="meta-item"><span class="meta-label">Thời gian xuất kho:</span> <span class="meta-value">${order.requiredDate || '2026-11-30 18:00'}</span></div>
         </div>
       </div>
@@ -129,8 +150,8 @@ export const OutboundVoucherModal: React.FC<OutboundVoucherModalProps> = ({ orde
 
       <div class="notice-box">
         <div style="font-weight: 700; color: #1e293b; margin-bottom: 2px;">Ghi chú & Cam kết trách nhiệm giao nhận:</div>
-        <div>- Hàng hóa xuất kho nguyên đai nguyên kiện, tem niêm phong đạt chuẩn kiểm định QC, đúng hạn sử dụng (FEFO).</div>
-        <div>- Đại diện lái xe và khách hàng có trách nhiệm đồng kiểm số lượng thực tế trước khi xe rời bãi xuất hàng.</div>
+        <div>${isRTV ? '- Hàng hóa xuất trả nhà cung cấp theo biên bản kiểm định chất lượng (QC) không đạt yêu cầu / bao bì hư hỏng.' : '- Hàng hóa xuất kho nguyên đai nguyên kiện, tem niêm phong đạt chuẩn kiểm định QC, đúng hạn sử dụng (FEFO).'}</div>
+        <div>${isRTV ? '- Đại diện Nhà cung cấp và lái xe đã đồng kiểm số lượng thực tế trước khi xe rời bãi xuất hàng.' : '- Đại diện lái xe và khách hàng có trách nhiệm đồng kiểm số lượng thực tế trước khi xe rời bãi xuất hàng.'}</div>
       </div>
 
       <div style="display: grid; grid-template-columns: 1fr 1fr 1fr 1fr; gap: 10px; text-align: center; margin-top: 24px; page-break-inside: avoid;">
@@ -150,7 +171,7 @@ export const OutboundVoucherModal: React.FC<OutboundVoucherModalProps> = ({ orde
           <div class="sign-space"></div>
         </div>
         <div>
-          <div class="sign-title">Đại Diện Khách Hàng</div>
+          <div class="sign-title">${isRTV ? 'Đại Diện Nhà Cung Cấp' : 'Đại Diện Khách Hàng'}</div>
           <div class="sign-sub">(Ký, ghi rõ họ tên)</div>
           <div class="sign-space"></div>
         </div>
@@ -166,15 +187,15 @@ export const OutboundVoucherModal: React.FC<OutboundVoucherModalProps> = ({ orde
         {/* Header Bar */}
         <div className="p-4 sm:p-5 border-b border-slate-200 flex items-center justify-between bg-slate-50/90 shrink-0">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-blue-600 text-white flex items-center justify-center shadow-md shadow-blue-200">
-              <FileText className="w-5 h-5" />
+            <div className={`w-10 h-10 rounded-xl ${isRTV ? 'bg-purple-600 shadow-purple-200' : 'bg-blue-600 shadow-blue-200'} text-white flex items-center justify-center shadow-md`}>
+              {isRTV ? <RotateCcw className="w-5 h-5" /> : <FileText className="w-5 h-5" />}
             </div>
             <div>
               <h3 className="font-extrabold text-base sm:text-lg text-slate-900">
-                Phiếu Xuất Kho & Biên Bản Bàn Giao Vận Tải (GIN)
+                {isRTV ? 'Phiếu Xuất Trả Nhà Cung Cấp & Biên Bản Bàn Giao (RTV GIN)' : 'Phiếu Xuất Kho & Biên Bản Bàn Giao Vận Tải (GIN)'}
               </h3>
               <p className="text-xs text-slate-500">
-                Mã SO: <strong className="font-mono text-blue-700">{order.soCode}</strong> • {warehouseName}
+                {isRTV ? 'Mã RTV: ' : 'Mã SO: '}<strong className={`font-mono ${isRTV ? 'text-purple-700' : 'text-blue-700'}`}>{order.soCode}</strong> • {warehouseName}
               </p>
             </div>
           </div>
@@ -182,7 +203,7 @@ export const OutboundVoucherModal: React.FC<OutboundVoucherModalProps> = ({ orde
           <div className="flex items-center gap-2">
             <button
               onClick={handlePrintGIN}
-              className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold transition-all shadow-xs cursor-pointer"
+              className={`inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl ${isRTV ? 'bg-purple-600 hover:bg-purple-700' : 'bg-blue-600 hover:bg-blue-700'} text-white text-xs font-bold transition-all shadow-xs cursor-pointer`}
             >
               <Printer className="w-3.5 h-3.5" />
               <span>In Phiếu A4</span>
@@ -210,10 +231,10 @@ export const OutboundVoucherModal: React.FC<OutboundVoucherModalProps> = ({ orde
               HỆ THỐNG QUẢN LÝ KHO THÔNG MINH - SMART WMS LOGISTICS ENTERPRISE
             </div>
             <h1 className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight uppercase pt-1">
-              PHIẾU XUẤT KHO KIÊM BIÊN BẢN BÀN GIAO VẬN TẢI
+              {isRTV ? 'PHIẾU XUẤT TRẢ NHÀ CUNG CẤP KIÊM BIÊN BẢN BÀN GIAO' : 'PHIẾU XUẤT KHO KIÊM BIÊN BẢN BÀN GIAO VẬN TẢI'}
             </h1>
             <div className="text-xs text-slate-500 italic">
-              (GOODS ISSUE NOTE & DELIVERY RECEIPT - GIN)
+              {isRTV ? '(RETURN TO VENDOR DELIVERY NOTE - RTV GIN)' : '(GOODS ISSUE NOTE & DELIVERY RECEIPT - GIN)'}
             </div>
             <div className="text-xs text-slate-700 font-medium pt-1">
               Số chứng từ: <strong className="font-mono text-blue-800">GIN-{order.soCode}</strong> • Ngày lập: {order.orderDate || new Date().toLocaleDateString('vi-VN')}
@@ -232,18 +253,21 @@ export const OutboundVoucherModal: React.FC<OutboundVoucherModalProps> = ({ orde
               <div className="text-slate-600 font-mono text-[11px]">
                 Mã định danh kho: <strong>WH-0{order.warehouseId || 1}</strong>
               </div>
+              <div className="text-slate-600 text-[11px] pt-0.5">
+                Thủ kho nhặt: <strong>{pickerParsed}</strong>
+              </div>
             </div>
 
             <div className="space-y-1.5 border-t sm:border-t-0 sm:border-l border-slate-200 pt-2 sm:pt-0 sm:pl-4">
-              <div className="flex items-center gap-1.5 text-blue-800 font-bold uppercase tracking-wider text-[11px]">
+              <div className={`flex items-center gap-1.5 ${isRTV ? 'text-purple-800' : 'text-blue-800'} font-bold uppercase tracking-wider text-[11px]`}>
                 <Truck className="w-3.5 h-3.5" />
-                <span>ĐƠN VỊ TIẾP NHẬN & VẬN TẢI:</span>
+                <span>{isRTV ? 'NHÀ CUNG CẤP TIẾP NHẬN:' : 'ĐƠN VỊ TIẾP NHẬN & VẬN TẢI:'}</span>
               </div>
               <div className="font-bold text-slate-900 text-xs sm:text-sm">{order.customerName}</div>
               <div className="text-slate-600">Địa chỉ nhận: {order.shippingAddress || 'Kho Phân Phối Chuỗi Hệ Thống'}</div>
-              <div className="text-slate-600 flex items-center gap-3">
-                <span>Đội xe: <strong>{order.dispatchCarrier || 'WMS Express Logistics'}</strong></span>
-                <span>Biển số: <strong className="font-mono text-slate-900">51C-892.44</strong></span>
+              <div className="text-slate-600 flex items-center gap-3 flex-wrap">
+                <span>Đội xe: <strong>{carrierParsed}</strong></span>
+                <span>Biển số: <strong className="font-mono text-slate-900">{vehiclePlateParsed}</strong></span>
               </div>
             </div>
           </div>
@@ -385,10 +409,10 @@ export const OutboundVoucherModal: React.FC<OutboundVoucherModalProps> = ({ orde
             </div>
 
             <div className="space-y-1">
-              <p className="font-bold text-slate-900 uppercase">Đại Diện Khách Hàng</p>
+              <p className="font-bold text-slate-900 uppercase">{isRTV ? 'Đại Diện Nhà Cung Cấp' : 'Đại Diện Khách Hàng'}</p>
               <p className="text-[10px] text-slate-500 italic">(Ký, đóng dấu nếu có)</p>
               <div className="h-16 flex items-end justify-center font-semibold text-slate-800 text-[11px]">
-                Đại diện nhận hàng
+                {isRTV ? 'Đại diện NCC tiếp nhận' : 'Đại diện nhận hàng'}
               </div>
             </div>
           </div>

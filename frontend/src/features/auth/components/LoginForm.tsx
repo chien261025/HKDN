@@ -136,7 +136,7 @@ export const LoginForm: React.FC<LoginFormProps> = ({
               type="button"
               onClick={() => {
                 onUsernameChange('manager01');
-                onPasswordChange('123456');
+                onPasswordChange('1234567');
               }}
               className="py-2 px-1.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 rounded-xl border border-emerald-200 text-center transition cursor-pointer flex flex-col items-center gap-0.5"
             >

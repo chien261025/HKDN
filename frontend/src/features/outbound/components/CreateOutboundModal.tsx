@@ -28,6 +28,8 @@ export const CreateOutboundModal: React.FC<Props> = ({ initialWarehouseId, onClo
   const [partners, setPartners] = useState<Pick<SupplierItem, 'id' | 'code' | 'name'>[]>([]);
   const [partnerId, setPartnerId] = useState('');
   const partner = partners.find(p => p.id === partnerId);
+  const [carrier, setCarrier] = useState('Đội xe nội bộ WMS Logistics');
+  const [vehiclePlate, setVehiclePlate] = useState(() => (warehouseId === 2 ? '99C-338.21' : '51C-892.44'));
   const [notes, setNotes] = useState('');
   const [requiredDate, setRequiredDate] = useState(() => {
     const d = new Date();
@@ -54,7 +56,11 @@ export const CreateOutboundModal: React.FC<Props> = ({ initialWarehouseId, onClo
       ]);
       setStock(data);
       setPartners(recipients);
-      const suitable = recipients.filter(p => orderType === 'RTV' ? !p.code?.startsWith('CUST-') : p.code?.startsWith('CUST-'));
+      const hasCust = recipients.some(item => item.code?.startsWith('CUST-'));
+      const suitable = recipients.filter(p => {
+        if (orderType === 'RTV') return !p.code?.startsWith('CUST-');
+        return hasCust ? (p.code?.startsWith('CUST-') || !p.code?.startsWith('SUP-')) : true;
+      });
       if (suitable.length > 0) {
         setPartnerId(suitable[0].id);
       } else if (recipients.length > 0) {
@@ -73,11 +79,12 @@ export const CreateOutboundModal: React.FC<Props> = ({ initialWarehouseId, onClo
     loadDataForWarehouse(warehouseId);
   }, [warehouseId]);
 
+  const hasCust = partners.some(item => item.code?.startsWith('CUST-'));
   const filteredPartners = partners.filter(p => {
     if (orderType === 'RTV') {
       return !p.code?.startsWith('CUST-');
     }
-    return p.code?.startsWith('CUST-') || !p.code?.startsWith('SUP-');
+    return hasCust ? (p.code?.startsWith('CUST-') || !p.code?.startsWith('SUP-')) : true;
   });
 
   const products = stock.filter(p => p.warehouseId === warehouseId && p.availableQty > 0);
@@ -96,6 +103,9 @@ export const CreateOutboundModal: React.FC<Props> = ({ initialWarehouseId, onClo
         : (warehouseId === 2 ? 'SO-BN-2026' : 'SO-2026');
       const soCode = `${prefix}-${Math.floor(100 + Math.random() * 900)}`;
 
+      const baseNote = notes || (orderType === 'RTV' ? 'Xuất trả hàng lỗi QC / bao bì móp méo theo biên bản tiếp nhận đơn PO' : '');
+      const fullNotes = `[Vận chuyển: ${carrier} | Biển số: ${vehiclePlate}] ${baseNote}`.trim();
+
       await onCreateOrder({
         id: '',
         soCode,
@@ -107,7 +117,8 @@ export const CreateOutboundModal: React.FC<Props> = ({ initialWarehouseId, onClo
         requiredDate,
         priority: 'NORMAL',
         status: 'PENDING',
-        notes: notes || (orderType === 'RTV' ? 'Xuất trả hàng lỗi QC / bao bì móp méo theo biên bản tiếp nhận đơn PO' : ''),
+        dispatchCarrier: carrier,
+        notes: fullNotes,
         items: items.map((i, index) => {
           const p = products.find(p => p.productId === i.productId)!;
           return {
@@ -167,7 +178,7 @@ export const CreateOutboundModal: React.FC<Props> = ({ initialWarehouseId, onClo
               type="button"
               onClick={() => {
                 setOrderType('SO');
-                const firstCust = partners.find(p => p.code?.startsWith('CUST-'));
+                const firstCust = partners.find(p => p.code?.startsWith('CUST-')) || partners[0];
                 if (firstCust) setPartnerId(firstCust.id);
               }}
               className={`flex-1 py-2 px-3 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
@@ -262,18 +273,63 @@ export const CreateOutboundModal: React.FC<Props> = ({ initialWarehouseId, onClo
             </div>
           </div>
 
-          <div>
-            <label className="space-y-1 text-xs font-bold text-slate-700 block mb-1">
-              Thời Hạn Giao Hàng Dự Kiến:
-            </label>
-            <input
-              type="text"
-              value={requiredDate}
-              onChange={e => setRequiredDate(e.target.value)}
-              className={inputClass}
-              placeholder="YYYY-MM-DD HH:mm (Ví dụ: 2026-11-30 18:00)"
-              required
-            />
+          <div className="grid gap-4 sm:grid-cols-2">
+            <div>
+              <label className="space-y-1 text-xs font-bold text-slate-700 block mb-1">
+                Thời Hạn Giao Hàng Dự Kiến:
+              </label>
+              <input
+                type="text"
+                value={requiredDate}
+                onChange={e => setRequiredDate(e.target.value)}
+                className={inputClass}
+                placeholder="YYYY-MM-DD HH:mm (Ví dụ: 2026-11-30 18:00)"
+                required
+              />
+            </div>
+            <div>
+              <label className="space-y-1 text-xs font-bold text-slate-700 block mb-1">
+                Đơn Vị Vận Chuyển (Carrier):
+              </label>
+              <select
+                className={inputClass}
+                value={carrier}
+                onChange={e => setCarrier(e.target.value)}
+              >
+                <option value="Đội xe nội bộ WMS Logistics">🚚 Đội xe nội bộ WMS Logistics</option>
+                <option value="Viettel Post Logistics">📦 Viettel Post Logistics</option>
+                <option value="Giao Hàng Tiết Kiệm (GHTK)">⚡ Giao Hàng Tiết Kiệm (GHTK)</option>
+                <option value="J&T Express Logistics">🚛 J&T Express Logistics</option>
+                <option value="Khách hàng tự điều xe lấy">🏢 Khách hàng tự điều xe đến nhận</option>
+              </select>
+            </div>
+          </div>
+
+          <div className="grid gap-4 sm:grid-cols-2">
+            <div>
+              <label className="space-y-1 text-xs font-bold text-slate-700 block mb-1">
+                Biển Số Xe / Lái Xe Bàn Giao:
+              </label>
+              <input
+                type="text"
+                value={vehiclePlate}
+                onChange={e => setVehiclePlate(e.target.value)}
+                className={inputClass}
+                placeholder="Ví dụ: 51C-892.44 - Lái xe Nguyễn Văn An"
+              />
+            </div>
+            <div>
+              <label className="space-y-1 text-xs font-bold text-slate-700 block mb-1">
+                Ghi Chú Vận Hành:
+              </label>
+              <input
+                type="text"
+                value={notes}
+                onChange={e => setNotes(e.target.value)}
+                className={inputClass}
+                placeholder="Ghi chú đơn hàng (nếu có)..."
+              />
+            </div>
           </div>
 
           <div className="space-y-2 pt-2">

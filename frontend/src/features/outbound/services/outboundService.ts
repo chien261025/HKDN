@@ -61,7 +61,10 @@ export const outboundService = {
           status: (o.status || 'PENDING') as OutboundStatus,
           priority: 'HIGH' as const,
           lockId: o.status === 'ALLOCATED' ? `LOCK-FEFO-${o.id}` : undefined,
-          dispatchCarrier: 'Đội xe nội bộ WMS Logistics',
+          dispatchCarrier: (() => {
+            const m = (o.notes || '').match(/\[Vận chuyển:\s*([^|\]]+)/);
+            return m ? m[1].trim() : 'Đội xe nội bộ WMS Logistics';
+          })(),
           notes: o.notes || '',
           items: (o.items && o.items.length > 0)
             ? o.items.map((i: any) => ({

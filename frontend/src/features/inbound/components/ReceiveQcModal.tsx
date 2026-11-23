@@ -18,6 +18,7 @@ import {
 import { InboundOrder, ReceiptLine } from '../types';
 
 export const QC_REJECT_REASONS = [
+  { code: 'VUOT_DUNG_SAI_PO', label: 'Vượt dung sai hợp đồng PO (+10%) / Trả lại xe tại cổng' },
   { code: 'BAO_BI_RACH_MOP', label: 'Bao bì rách, bẹp, móp méo do vận chuyển' },
   { code: 'CAN_DATE_HET_HAN', label: 'Cận hạn sử dụng / Không đạt tiêu chuẩn hạn dùng (FEFO)' },
   { code: 'SAI_QUY_CACH', label: 'Sai tem nhãn, barcode hoặc sai phân loại SKU' },
@@ -59,11 +60,27 @@ export const ReceiveQcModal: React.FC<ReceiveQcModalProps> = ({ order, onClose, 
     return d.toISOString().split('T')[0];
   };
 
-  // Khởi tạo: Mặc định số lượng thực nhận bằng số lượng kế hoạch PO (hoặc số đã nhận nếu có).
+  const getNextBatchSuffix = (currentBatchNumber?: string, stockedQty?: number) => {
+    if (!stockedQty || stockedQty <= 0) return '-01';
+    if (currentBatchNumber) {
+      const match = currentBatchNumber.match(/-(\d{2})$/);
+      if (match) {
+        const nextNum = parseInt(match[1], 10) + 1;
+        return `-${String(nextNum).padStart(2, '0')}`;
+      }
+    }
+    return '-02';
+  };
+
+  // Khởi tạo: Mặc định số lượng thực nhận bằng số lượng kế hoạch PO (hoặc số lượng giao bù nếu đơn đã cất 1 phần).
   // Thủ kho chỉ cần điều chỉnh nếu thực tế nhận thiếu hoặc phát hiện hàng lỗi QC.
   const [itemStates, setItemStates] = useState(() =>
     order.items.map((item, index) => {
-      const initReceived = item.receivedQty > 0 ? item.receivedQty : (item.expectedQty || 0);
+      const unstockedRemaining = Math.max(0, (item.expectedQty || 0) - (item.stockedQty || 0));
+      const initReceived = (item.stockedQty && item.stockedQty > 0)
+        ? unstockedRemaining
+        : (item.receivedQty > 0 ? item.receivedQty : (item.expectedQty || 0));
+      const lotSuffix = getNextBatchSuffix(item.batchNumber, item.stockedQty);
       return {
         id: String(item.id),
         sku: item.sku,
@@ -71,9 +88,9 @@ export const ReceiveQcModal: React.FC<ReceiveQcModalProps> = ({ order, onClose, 
         unit: item.unit || 'Đơn vị',
         expectedQty: item.expectedQty || 0,
         receivedQty: initReceived,
-        batchNumber: item.batchNumber || generatePoLot(index),
+        batchNumber: (item.stockedQty && item.stockedQty > 0) ? generatePoLot(index, lotSuffix) : (item.batchNumber || generatePoLot(index)),
         expiryDate: item.expiryDate || getDefaultExpiry(),
-        rejectedQty: item.rejectedQty || 0,
+        rejectedQty: 0,
         rejectReason: 'BAO_BI_RACH_MOP',
         qcNotes: '',
       };
@@ -87,7 +104,11 @@ export const ReceiveQcModal: React.FC<ReceiveQcModalProps> = ({ order, onClose, 
       orderIdRef.current = order.id;
       setItemStates(
         order.items.map((item, index) => {
-          const initReceived = item.receivedQty > 0 ? item.receivedQty : (item.expectedQty || 0);
+          const unstockedRemaining = Math.max(0, (item.expectedQty || 0) - (item.stockedQty || 0));
+          const initReceived = (item.stockedQty && item.stockedQty > 0)
+            ? unstockedRemaining
+            : (item.receivedQty > 0 ? item.receivedQty : (item.expectedQty || 0));
+          const lotSuffix = getNextBatchSuffix(item.batchNumber, item.stockedQty);
           return {
             id: String(item.id),
             sku: item.sku,
@@ -95,9 +116,9 @@ export const ReceiveQcModal: React.FC<ReceiveQcModalProps> = ({ order, onClose, 
             unit: item.unit || 'Đơn vị',
             expectedQty: item.expectedQty || 0,
             receivedQty: initReceived,
-            batchNumber: item.batchNumber || generatePoLot(index),
+            batchNumber: (item.stockedQty && item.stockedQty > 0) ? generatePoLot(index, lotSuffix) : (item.batchNumber || generatePoLot(index)),
             expiryDate: item.expiryDate || getDefaultExpiry(),
-            rejectedQty: item.rejectedQty || 0,
+            rejectedQty: 0,
             rejectReason: 'BAO_BI_RACH_MOP',
             qcNotes: '',
           };
@@ -200,7 +221,7 @@ export const ReceiveQcModal: React.FC<ReceiveQcModalProps> = ({ order, onClose, 
   const totalReceived = itemStates.reduce((sum, it) => sum + it.receivedQty, 0);
   const totalRejected = itemStates.reduce((sum, it) => sum + it.rejectedQty, 0);
   const totalPassed = totalReceived - totalRejected;
-  const hasOverTolerance = itemStates.some((it) => it.receivedQty > Math.floor(it.expectedQty * 1.10));
+  const hasOverTolerance = itemStates.some((it) => (it.receivedQty - it.rejectedQty) > Math.floor(it.expectedQty * 1.10));
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -212,9 +233,10 @@ export const ReceiveQcModal: React.FC<ReceiveQcModalProps> = ({ order, onClose, 
     // 1. Kiểm tra dung sai giao nhận (+10%) theo chuẩn doanh nghiệp
     for (const it of itemStates) {
       const maxAllowed = Math.floor(it.expectedQty * 1.10);
-      if (it.receivedQty > maxAllowed) {
+      const netQty = it.receivedQty - it.rejectedQty;
+      if (netQty > maxAllowed) {
         setError(
-          `Mặt hàng "${it.productName}" có số thực nhận (${it.receivedQty} ${it.unit}) vượt quá dung sai giao nhận tối đa cho phép (+10% = tối đa ${maxAllowed} ${it.unit}). Vui lòng điều chỉnh lại số lượng đếm thực tế!`
+          `Mặt hàng "${it.productName}" có số lượng đạt chuẩn (${netQty} ${it.unit}) vượt quá dung sai giao nhận tối đa cho phép (+10% = tối đa ${maxAllowed} ${it.unit}). Vui lòng điều chỉnh hoặc nhập số lượng từ chối trả lại xe!`
         );
         return;
       }
@@ -430,10 +452,24 @@ export const ReceiveQcModal: React.FC<ReceiveQcModalProps> = ({ order, onClose, 
                       </button>
                     </div>
 
-                    {it.receivedQty > Math.floor(it.expectedQty * 1.10) && (
-                      <div className="text-2xs text-rose-600 font-bold bg-rose-50 p-1.5 rounded-lg border border-rose-200 mt-1">
-                        ⚠️ Vượt dung sai giao nhận (+10% = tối đa {Math.floor(it.expectedQty * 1.10)} {it.unit})
+                    {it.receivedQty > it.expectedQty && it.receivedQty <= Math.floor(it.expectedQty * 1.10) && (
+                      <div className="text-2xs text-emerald-700 font-bold bg-emerald-50 p-1.5 rounded-lg border border-emerald-200 mt-1 flex items-center gap-1">
+                        <Check className="w-3 h-3 text-emerald-600 shrink-0" />
+                        <span>Dôi dư hợp lệ (+{it.receivedQty - it.expectedQty} {it.unit} trong dung sai cho phép +10%)</span>
                       </div>
+                    )}
+
+                    {it.receivedQty > Math.floor(it.expectedQty * 1.10) && (
+                      (it.receivedQty - it.rejectedQty) > Math.floor(it.expectedQty * 1.10) ? (
+                        <div className="text-2xs text-rose-600 font-bold bg-rose-50 p-1.5 rounded-lg border border-rose-200 mt-1">
+                          ⚠️ Vượt dung sai giao nhận (+10% = tối đa {Math.floor(it.expectedQty * 1.10)} {it.unit}). Cần từ chối trả xe {it.receivedQty - Math.floor(it.expectedQty * 1.10)} {it.unit} hoặc điều chỉnh lại!
+                        </div>
+                      ) : (
+                        <div className="text-2xs text-blue-700 font-bold bg-blue-50 p-1.5 rounded-lg border border-blue-200 mt-1 flex items-center gap-1">
+                          <Check className="w-3 h-3 text-blue-600 shrink-0" />
+                          <span>Đã ghi nhận trả lại xe {it.rejectedQty} {it.unit} (Kho thực nhận: {it.receivedQty - it.rejectedQty}/{Math.floor(it.expectedQty * 1.10)} {it.unit} hợp lệ)</span>
+                        </div>
+                      )
                     )}
                   </div>
 
@@ -593,7 +629,7 @@ export const ReceiveQcModal: React.FC<ReceiveQcModalProps> = ({ order, onClose, 
                                 }}
                                 placeholder="0"
                                 className={`w-28 rounded-lg border py-1.5 px-2 text-center font-bold text-xs font-mono focus:ring-2 focus:ring-blue-200 outline-none ${
-                                  it.receivedQty > Math.floor(it.expectedQty * 1.10)
+                                  (it.receivedQty - it.rejectedQty) > Math.floor(it.expectedQty * 1.10)
                                     ? 'border-rose-500 bg-rose-50 text-rose-900'
                                     : isDiff
                                     ? 'border-amber-400 bg-amber-50 text-amber-900'
@@ -610,9 +646,15 @@ export const ReceiveQcModal: React.FC<ReceiveQcModalProps> = ({ order, onClose, 
                               </button>
                             </div>
                             {it.receivedQty > Math.floor(it.expectedQty * 1.10) && (
-                              <span className="text-[10px] text-rose-600 font-bold block mt-1">
-                                Vượt dung sai (+10% = tối đa {Math.floor(it.expectedQty * 1.10)})
-                              </span>
+                              (it.receivedQty - it.rejectedQty) > Math.floor(it.expectedQty * 1.10) ? (
+                                <span className="text-[10px] text-rose-600 font-bold block mt-1">
+                                  Vượt dung sai (+10% = tối đa {Math.floor(it.expectedQty * 1.10)}). Cần trả xe {it.receivedQty - Math.floor(it.expectedQty * 1.10)} {it.unit}
+                                </span>
+                              ) : (
+                                <span className="text-[10px] text-blue-700 font-bold block mt-1">
+                                  ✓ Đã trừ {it.rejectedQty} {it.unit} trả xe (Kho nhận: {it.receivedQty - it.rejectedQty} {it.unit})
+                                </span>
+                              )
                             )}
                           </td>
 

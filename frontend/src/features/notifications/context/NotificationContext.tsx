@@ -104,6 +104,9 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
 
   // Khởi tạo tải dữ liệu và lắng nghe SSE Real-time
   useEffect(() => {
+    const token = localStorage.getItem('smart_wms_token');
+    if (!token) return;
+
     refreshNotifications();
 
     const unsubscribe = notificationService.createNotificationStream((msg) => {

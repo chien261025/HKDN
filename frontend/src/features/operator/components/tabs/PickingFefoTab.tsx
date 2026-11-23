@@ -111,8 +111,11 @@ export const PickingFefoTab: React.FC<PickingFefoTabProps> = ({
 
   useEffect(() => {
     if (scannedCode) {
+      const code = scannedCode;
+      onClearScannedCode?.();
+
       const matchedIdx = pickSteps.findIndex(
-        (s) => !s.picked && (s.binBarcode === scannedCode || s.productSku === scannedCode)
+        (s) => !s.picked && (s.binBarcode === code || s.productSku === code)
       );
 
       if (matchedIdx !== -1) {
@@ -121,17 +124,16 @@ export const PickingFefoTab: React.FC<PickingFefoTabProps> = ({
         updated[matchedIdx].picked = true;
         setPickSteps(updated);
         setNotice({
-          msg: `[PDA] Quét khớp ô ${scannedCode}! Đã xác nhận nhặt ${updated[matchedIdx].pickQty} sản phẩm.`,
+          msg: `[PDA] Quét khớp ô ${code}! Đã xác nhận nhặt ${updated[matchedIdx].pickQty} sản phẩm.`,
           type: 'success',
         });
       } else {
         soundEffects.playErrorBuzz();
         setNotice({
-          msg: `[PDA] Đã quét mã: ${scannedCode}. Không khớp với ô kệ hoặc sản phẩm của bước cần nhặt.`,
+          msg: `[PDA] Đã quét mã: ${code}. Không khớp với ô kệ hoặc sản phẩm của bước cần nhặt.`,
           type: 'error',
         });
       }
-      onClearScannedCode?.();
     }
   }, [scannedCode, pickSteps, onClearScannedCode]);
 

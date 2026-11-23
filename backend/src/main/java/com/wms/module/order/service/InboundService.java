@@ -157,9 +157,11 @@ public class InboundService {
         InboundOrder order = inboundOrderRepository.findForUpdate(id)
                 .orElseThrow(() -> new BusinessException(ErrorCode.NOT_FOUND, "Không tìm thấy đơn nhập: " + id));
 
-        if (!"PENDING".equals(order.getStatus())) {
-            throw new BusinessException(ErrorCode.BAD_REQUEST, "Chỉ được tiếp nhận đơn đang chờ");
+        if (!"PENDING".equalsIgnoreCase(order.getStatus()) && !"PARTIALLY_STOCKED".equalsIgnoreCase(order.getStatus())) {
+            throw new BusinessException(ErrorCode.BAD_REQUEST, "Chỉ được tiếp nhận đơn đang chờ hoặc đơn đang giao dở dang (PARTIALLY_STOCKED)");
         }
+
+        boolean isAdditionalBatch = "PARTIALLY_STOCKED".equalsIgnoreCase(order.getStatus());
 
         var lines = new java.util.HashMap<Long, ReceiveInboundRequest.Line>();
         for (var line : request.items()) {
@@ -175,11 +177,15 @@ public class InboundService {
             if (line == null || line.rejectedQty() > line.receivedQty()) {
                 throw new BusinessException(ErrorCode.BAD_REQUEST, "Dòng hàng hoặc số lượng lỗi không hợp lệ");
             }
+            int newTotalReceived = isAdditionalBatch ? (item.getReceivedQty() + line.receivedQty()) : line.receivedQty();
+            int newTotalRejected = isAdditionalBatch ? (item.getRejectedQty() + line.rejectedQty()) : line.rejectedQty();
+
             var tolerance = item.getOverDeliveryTolerancePct();
             var max = BigDecimal.valueOf(item.getExpectedQty()).multiply(BigDecimal.ONE.add(
                     tolerance == null ? BigDecimal.ZERO : tolerance.movePointLeft(2)));
-            if (BigDecimal.valueOf(line.receivedQty()).compareTo(max) > 0) {
-                throw new BusinessException(ErrorCode.BAD_REQUEST, "Số thực nhận vượt dung sai của đơn");
+            int netAccepted = newTotalReceived - newTotalRejected;
+            if (BigDecimal.valueOf(netAccepted).compareTo(max) > 0) {
+                throw new BusinessException(ErrorCode.BAD_REQUEST, "Số thực nhận đạt chuẩn (" + netAccepted + ") vượt dung sai của đơn");
             }
             if (line.receivedQty() > line.rejectedQty()) {
                 if (line.batchNumber() == null || line.batchNumber().isBlank()) {
@@ -195,8 +201,8 @@ public class InboundService {
                     }
                 }
             }
-            item.setReceivedQty(line.receivedQty());
-            item.setRejectedQty(line.rejectedQty());
+            item.setReceivedQty(newTotalReceived);
+            item.setRejectedQty(newTotalRejected);
             item.setBatchNumber(line.batchNumber() == null ? null : line.batchNumber().trim());
             item.setExpiryDate(line.expiryDate());
             if (item.getRemainingQty() > 0) {
@@ -276,10 +282,10 @@ public class InboundService {
                     "Product " + request.getProductId() + " does not belong to inbound order " + order.getOrderCode());
         }
 
-        if ("STOCKED".equalsIgnoreCase(order.getStatus())) {
-            throw new BusinessException(ErrorCode.BAD_REQUEST, "Đơn nhập kho " + order.getOrderCode() + " đã hoàn tất cất hàng (STOCKED) trước đó!");
+        if ("STOCKED".equalsIgnoreCase(order.getStatus()) || "SHORT_CLOSED".equalsIgnoreCase(order.getStatus())) {
+            throw new BusinessException(ErrorCode.BAD_REQUEST, "Đơn nhập kho " + order.getOrderCode() + " đã hoàn tất cất hàng hoặc đã đóng trước đó!");
         }
-        if (!"RECEIVED".equalsIgnoreCase(order.getStatus())) {
+        if (!"RECEIVED".equalsIgnoreCase(order.getStatus()) && !"PARTIALLY_STOCKED".equalsIgnoreCase(order.getStatus())) {
             throw new BusinessException(ErrorCode.BAD_REQUEST, "Đơn nhập chưa được tiếp nhận: " + order.getOrderCode());
         }
 
@@ -354,7 +360,12 @@ public class InboundService {
         targetItem.setStockedQty(targetItem.getStockedQty() + request.getQuantity());
         targetItem.setStatus(targetItem.getRemainingQty() == 0 ? "COMPLETED" : "PARTIAL");
         if (order.getItems().stream().allMatch(item -> item.getRemainingQty() == 0)) {
-            order.setStatus("STOCKED");
+            boolean allExpectedStocked = order.getItems().stream().allMatch(item -> item.getStockedQty() >= item.getExpectedQty());
+            if (allExpectedStocked) {
+                order.setStatus("STOCKED");
+            } else {
+                order.setStatus("PARTIALLY_STOCKED");
+            }
         }
 
         order.setUpdatedAt(Instant.now());
@@ -379,7 +390,7 @@ public class InboundService {
         InboundOrder order = inboundOrderRepository.findForUpdate(id)
                 .orElseThrow(() -> new BusinessException(ErrorCode.NOT_FOUND, "Không tìm thấy đơn nhập: " + id));
 
-        if ("STOCKED".equalsIgnoreCase(order.getStatus()) || "CANCELLED".equalsIgnoreCase(order.getStatus())) {
+        if ("STOCKED".equalsIgnoreCase(order.getStatus()) || "CANCELLED".equalsIgnoreCase(order.getStatus()) || "SHORT_CLOSED".equalsIgnoreCase(order.getStatus())) {
             throw new BusinessException(ErrorCode.BAD_REQUEST, "Đơn đã kết thúc trước đó");
         }
 
@@ -393,8 +404,8 @@ public class InboundService {
             }
         }
 
-        order.setStatus(anyStocked ? "STOCKED" : "CANCELLED");
-        order.setNotes((order.getNotes() != null ? order.getNotes() + " | " : "") + "Đóng đơn tại cổng/khu đệm: " + reason);
+        order.setStatus(anyStocked ? "SHORT_CLOSED" : "CANCELLED");
+        order.setNotes((order.getNotes() != null ? order.getNotes() + " | " : "") + "Đóng non PO (Short-Close): " + reason);
         order.setUpdatedAt(Instant.now());
         return inboundOrderRepository.save(order);
     }

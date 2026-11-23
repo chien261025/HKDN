@@ -205,7 +205,7 @@ CREATE TABLE IF NOT EXISTS wms_inbound_order_item (
     CONSTRAINT fk_inbound_item_order FOREIGN KEY (inbound_order_id) REFERENCES wms_inbound_order(id) ON DELETE CASCADE,
     CONSTRAINT fk_inbound_item_product FOREIGN KEY (product_id) REFERENCES wms_product(id) ON DELETE RESTRICT,
     CONSTRAINT fk_inbound_item_batch FOREIGN KEY (product_batch_id) REFERENCES wms_product_batch(id) ON DELETE SET NULL,
-    CONSTRAINT chk_inbound_item_over_delivery CHECK (received_qty <= expected_qty * (1 + (over_delivery_tolerance_pct / 100.0)))
+    CONSTRAINT chk_inbound_item_over_delivery CHECK ((received_qty - rejected_qty) <= expected_qty * (1 + (over_delivery_tolerance_pct / 100.0)))
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- 8. BẢNG QUẢN LÝ ĐƠN HÀNG XUẤT KHO, PHÂN BỔ FEFO & GIỮ CHỖ TỒN KHO (OUTBOUND DOMAIN)

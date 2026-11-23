@@ -292,23 +292,78 @@ public class OutboundService {
         order.setStatus("PICKING");
         order.setUpdatedAt(Instant.now());
 
+        // Ghi nhận danh tính nhân viên nhặt hàng và ghi chú gom hàng vào lịch sử đơn xuất (Audit Trail)
+        if (request != null) {
+            StringBuilder auditTrail = new StringBuilder();
+            if (request.getPickerName() != null && !request.getPickerName().isBlank()) {
+                auditTrail.append("[Thủ kho nhặt: ").append(request.getPickerName().trim()).append("]");
+            }
+            if (request.getNotes() != null && !request.getNotes().isBlank()) {
+                if (auditTrail.length() > 0) auditTrail.append(" ");
+                auditTrail.append("[Ghi chú gom hàng: ").append(request.getNotes().trim()).append("]");
+            }
+            if (auditTrail.length() > 0) {
+                String existing = order.getNotes();
+                if (existing != null && !existing.isBlank()) {
+                    if (!existing.contains("[Thủ kho nhặt:")) {
+                        order.setNotes(existing + " | " + auditTrail);
+                    }
+                } else {
+                    order.setNotes(auditTrail.toString());
+                }
+            }
+        }
+
+        // Tạo map số lượng thực nhặt từ request nếu người vận hành điều chỉnh (Short-picking)
+        Map<Long, Integer> itemPickedMap = new HashMap<>();
+        if (request != null && request.getItems() != null) {
+            for (ConfirmPickingRequest.ItemPickingRequest ipr : request.getItems()) {
+                if (ipr.getOrderItemId() != null && ipr.getPickedQty() != null) {
+                    itemPickedMap.put(ipr.getOrderItemId(), Math.max(0, ipr.getPickedQty()));
+                }
+            }
+        }
+
         if (order.getItems() != null) {
             for (OutboundOrderItem item : order.getItems()) {
                 List<PickAllocation> allocations = pickAllocationRepository.findByOutboundOrderItemId(item.getId());
+                int requestedItemPickQty = itemPickedMap.getOrDefault(item.getId(), item.getAllocatedQty());
                 int totalItemPicked = 0;
+
                 if (allocations != null) {
+                    int remainingToPickForAllocations = requestedItemPickQty;
                     for (PickAllocation alloc : allocations) {
                         if (!"CANCELLED".equals(alloc.getStatus())) {
-                            int pickQty = alloc.getAllocatedQty();
+                            int allocatedQty = alloc.getAllocatedQty();
+                            int actualPickQty = Math.min(allocatedQty, remainingToPickForAllocations);
+
+                            // Nếu nhặt ít hơn phân bổ ban đầu (Short-picking do hàng lỗi/thiếu kệ), giải phóng phần dôi dư an toàn
+                            if (actualPickQty < allocatedQty) {
+                                int unpickedDiff = allocatedQty - actualPickQty;
+                                try {
+                                    inventoryLockService.releaseStock(
+                                            alloc.getProductId(),
+                                            alloc.getLocationId(),
+                                            alloc.getBatchId(),
+                                            unpickedDiff
+                                    );
+                                } catch (Exception ex) {
+                                    log.warn("Không thể giải phóng tồn dư do short-picking cho allocation {}: {}", alloc.getId(), ex.getMessage());
+                                }
+                                alloc.setAllocatedQty(actualPickQty);
+                            }
+
                             alloc.setStatus("PICKING");
-                            alloc.setPickedQty(pickQty);
+                            alloc.setPickedQty(actualPickQty);
                             alloc.setPickedAt(Instant.now());
                             pickAllocationRepository.save(alloc);
-                            totalItemPicked += pickQty;
+                            totalItemPicked += actualPickQty;
+                            remainingToPickForAllocations -= actualPickQty;
                         }
                     }
                 }
-                item.setPickedQty(totalItemPicked > 0 ? totalItemPicked : item.getAllocatedQty());
+                item.setAllocatedQty(totalItemPicked);
+                item.setPickedQty(totalItemPicked);
                 item.setStatus("PICKING");
             }
         }
@@ -342,16 +397,21 @@ public class OutboundService {
         // A direct dispatch uses the same warehouse-scoped FEFO allocation in this transaction.
         if ("PENDING".equals(order.getStatus())) allocateOutboundOrderFefo(id);
         Long currentUserId = com.wms.module.identity.util.SecurityUtils.getCurrentUserIdOrDefault(userRepository, 1L);
+        boolean isRtv = order.getOrderCode() != null && order.getOrderCode().startsWith("RTV-");
+
         for (OutboundOrderItem item : order.getItems()) {
             List<PickAllocation> allocations = pickAllocationRepository.findByOutboundOrderItemId(item.getId());
             int allocated = allocations.stream().filter(a -> !"CANCELLED".equals(a.getStatus()))
                     .mapToInt(PickAllocation::getAllocatedQty).sum();
-            if (item.getRequestedQty() <= 0 || allocated != item.getRequestedQty()) {
-                throw new BusinessException(ErrorCode.INSUFFICIENT_STOCK, "Phân bổ không khớp số lượng cần xuất!");
+            if (allocated <= 0) {
+                throw new BusinessException(ErrorCode.INSUFFICIENT_STOCK, "Đơn hàng chưa có phân bổ hợp lệ để xuất!");
             }
+            int totalPickedForItem = 0;
             for (PickAllocation alloc : allocations) {
                 if ("CANCELLED".equals(alloc.getStatus())) continue;
-                int deduct = alloc.getAllocatedQty();
+                int deduct = alloc.getPickedQty() > 0 ? alloc.getPickedQty() : alloc.getAllocatedQty();
+                if (deduct <= 0) continue;
+
                 Inventory inv = inventoryRepository.findByProductLocationAndBatchForUpdate(
                         alloc.getProductId(), alloc.getLocationId(), alloc.getBatchId())
                         .orElseThrow(() -> new BusinessException(ErrorCode.INSUFFICIENT_STOCK, "Không tìm thấy tồn kho đã phân bổ!"));
@@ -366,27 +426,37 @@ public class OutboundService {
                 inv.setReservedQty(inv.getReservedQty() - deduct);
                 inv.setLastUpdatedAt(Instant.now());
                 inventoryRepository.saveAndFlush(inv);
+
+                String ledgerNote = isRtv
+                        ? "Xuất trả hàng nhà cung cấp (RTV): " + order.getOrderCode()
+                        : "Xuất kho bán hàng (SO): " + order.getOrderCode();
+
                 stockLedgerRepository.save(StockLedger.builder()
                         .transactionType("OUTBOUND").referenceCode(order.getOrderCode())
                         .locationId(inv.getLocationId()).productId(inv.getProductId()).batchId(inv.getBatchId())
                         .qtyChange(-deduct).balanceAfter(inv.getOnHandQty()).performedBy(currentUserId)
-                        .notes("Xuất kho đơn SO: " + order.getOrderCode()).createdAt(Instant.now()).build());
+                        .notes(ledgerNote).createdAt(Instant.now()).build());
                 alloc.setStatus("PICKED");
                 alloc.setPickedQty(deduct);
                 alloc.setPickedAt(Instant.now());
                 pickAllocationRepository.save(alloc);
+                totalPickedForItem += deduct;
             }
-            item.setAllocatedQty(item.getRequestedQty());
-            item.setPickedQty(item.getRequestedQty());
+            item.setAllocatedQty(totalPickedForItem);
+            item.setPickedQty(totalPickedForItem);
             item.setStatus("SHIPPED");
         }
         order.setStatus("DISPATCHED");
         order.setUpdatedAt(Instant.now());
         OutboundOrder saved = outboundOrderRepository.save(order);
         if (notificationService != null) {
+            String notifTitle = isRtv ? "Xuất Trả Hàng (RTV) " + order.getOrderCode() : "Xuất Kho " + order.getOrderCode();
+            String notifMsg = isRtv
+                    ? "Đã hoàn tất xuất trả hàng lỗi/QC cho nhà cung cấp và ghi sổ cái Stock Ledger."
+                    : "Đã xuất đủ hàng và cập nhật tồn cuối kho.";
             notificationService.broadcast(NotificationMessage.builder()
-                    .type("OUTBOUND_ORDER_DISPATCHED").title("Xuất Kho " + order.getOrderCode())
-                    .message("Đã xuất đủ hàng và cập nhật tồn cuối kho.").severity("SUCCESS")
+                    .type("OUTBOUND_ORDER_DISPATCHED").title(notifTitle)
+                    .message(notifMsg).severity("SUCCESS")
                     .referenceCode(order.getOrderCode()).link("/outbound").build());
         }
         return toResponse(saved);
@@ -404,6 +474,8 @@ public class OutboundService {
         if ("CANCELLED".equalsIgnoreCase(order.getStatus())) {
             throw new BusinessException(ErrorCode.BAD_REQUEST, "Đơn xuất đã ở trạng thái hủy trước đó!");
         }
+
+        boolean wasPicking = "PICKING".equalsIgnoreCase(order.getStatus());
 
         // Nếu đơn đã phân bổ (ALLOCATED hoặc PICKING), giải phóng số lượng đã giữ trong Inventory
         if (order.getItems() != null) {
@@ -423,13 +495,21 @@ public class OutboundService {
                                 log.warn("Không thể giải phóng tồn kho cho allocation {}: {}", alloc.getId(), ex.getMessage());
                             }
                             alloc.setStatus("CANCELLED");
+                            alloc.setPickedQty(0);
                             pickAllocationRepository.save(alloc);
                         }
                     }
                 }
                 item.setAllocatedQty(0);
+                item.setPickedQty(0);
                 item.setStatus("CANCELLED");
             }
+        }
+
+        if (wasPicking) {
+            String putbackNote = "[YÊU CẦU TRẢ HÀNG VỀ KỆ - PUTBACK]: Đơn bị hủy khi đang lấy hàng (PICKING). Thủ kho cần chuyển hoàn hàng từ khu đệm Dock về lại các ô kệ ban đầu theo bảng kê.";
+            String existingNotes = order.getNotes();
+            order.setNotes(existingNotes != null && !existingNotes.isBlank() ? existingNotes + " | " + putbackNote : putbackNote);
         }
 
         order.setStatus("CANCELLED");
@@ -437,11 +517,19 @@ public class OutboundService {
         OutboundOrder saved = outboundOrderRepository.save(order);
 
         if (notificationService != null) {
+            String title = wasPicking
+                    ? "Cảnh Báo Hủy Đơn Đang Lấy (Cần Putback): " + order.getOrderCode()
+                    : "Hủy Đơn Xuất Kho " + order.getOrderCode();
+            String message = wasPicking
+                    ? "Đơn xuất " + order.getOrderCode() + " bị hủy khi đang gom hàng. Thủ kho BẮT BUỘC trả hàng từ khu đệm Dock về lại các ô kệ ban đầu."
+                    : "Đơn xuất " + order.getOrderCode() + " đã được hủy thành công và giải phóng toàn bộ số lượng hàng giữ trước (Reserved).";
+            String severity = wasPicking ? "ERROR" : "WARNING";
+
             notificationService.broadcast(NotificationMessage.builder()
                     .type("OUTBOUND_ORDER_CANCELLED")
-                    .title("Hủy Đơn Xuất Kho " + order.getOrderCode())
-                    .message("Đơn xuất " + order.getOrderCode() + " đã được hủy thành công và giải phóng toàn bộ số lượng hàng giữ trước (Reserved).")
-                    .severity("WARNING")
+                    .title(title)
+                    .message(message)
+                    .severity(severity)
                     .referenceCode(order.getOrderCode())
                     .link("/outbound")
                     .build());

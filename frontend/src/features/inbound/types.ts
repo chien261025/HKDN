@@ -1,4 +1,4 @@
-export type InboundStatus = 'PENDING' | 'RECEIVED' | 'STOCKED' | 'CLOSED_NO_STOCK' | 'CANCELLED';
+export type InboundStatus = 'PENDING' | 'RECEIVED' | 'STOCKED' | 'CLOSED_NO_STOCK' | 'CANCELLED' | 'PARTIALLY_STOCKED' | 'SHORT_CLOSED';
 
 export interface InboundOrderItem {
   id: string;

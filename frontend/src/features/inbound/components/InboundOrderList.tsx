@@ -192,6 +192,8 @@ export const InboundOrderList: React.FC<InboundOrderListProps> = ({
     const isReceived = order.status === 'RECEIVED';
     const isStocked = order.status === 'STOCKED';
     const isClosedNoStock = order.status === 'CLOSED_NO_STOCK';
+    const isPartiallyStocked = order.status === 'PARTIALLY_STOCKED';
+    const isShortClosed = order.status === 'SHORT_CLOSED';
     const unitLabel = getOrderUnitLabel(order);
 
     if (isClosedNoStock) {
@@ -201,6 +203,29 @@ export const InboundOrderList: React.FC<InboundOrderListProps> = ({
         percent: 100,
         barColor: 'bg-slate-400',
         textColor: 'text-slate-600',
+      };
+    }
+
+    if (isShortClosed) {
+      const qc = getOrderQcMetrics(order);
+      return {
+        stage: 'Đóng non PO (Short-Close)',
+        subText: `Đã cất ${qc.totalStocked}/${qc.totalExpected} ${unitLabel} · Hủy phần thiếu`,
+        percent: 100,
+        barColor: 'bg-slate-500',
+        textColor: 'text-slate-700',
+      };
+    }
+
+    if (isPartiallyStocked) {
+      const qc = getOrderQcMetrics(order);
+      const pct = Math.min(99, Math.round((qc.totalStocked / qc.totalExpected) * 100));
+      return {
+        stage: 'Đã cất 1 phần · Chờ đợt tiếp',
+        subText: `Đã cất ${qc.totalStocked}/${qc.totalExpected} ${unitLabel} · Còn thiếu ${qc.totalExpected - qc.totalStocked} ${unitLabel}`,
+        percent: pct,
+        barColor: 'bg-amber-500',
+        textColor: 'text-amber-800',
       };
     }
 
@@ -218,11 +243,15 @@ export const InboundOrderList: React.FC<InboundOrderListProps> = ({
     const targetStock = Math.max(0, qc.totalReceived - qc.totalRejected);
 
     if (isStocked) {
+      const isOverDelivered = qc.totalStocked > qc.totalExpected;
+      const overDiff = qc.totalStocked - qc.totalExpected;
       return {
         stage: 'Đã cất kệ & ghi sổ',
-        subText: qc.totalRejected > 0
-          ? `Đã cất ${qc.totalStocked}/${qc.totalExpected} ${unitLabel} (Loại ${qc.totalRejected} lỗi QC)`
-          : `Đã cất ${qc.totalStocked}/${qc.totalExpected} ${unitLabel} (Hoàn tất 100%)`,
+        subText: isOverDelivered
+          ? `Đã cất ${qc.totalStocked}/${qc.totalExpected} ${unitLabel} (+${overDiff} dôi dư trong dung sai)`
+          : qc.totalRejected > 0
+            ? `Đã cất ${qc.totalStocked}/${qc.totalExpected} ${unitLabel} (Loại ${qc.totalRejected} lỗi QC)`
+            : `Đã cất ${qc.totalStocked}/${qc.totalExpected} ${unitLabel} (Hoàn tất 100%)`,
         percent: 100,
         barColor: 'bg-emerald-500',
         textColor: 'text-emerald-700',
@@ -733,7 +762,7 @@ export const InboundOrderList: React.FC<InboundOrderListProps> = ({
                           <span className="text-slate-400 italic text-[11px]">Chờ xe tải đến</span>
                         ) : qc.totalRejected > 0 ? (
                           <span className="inline-flex items-center gap-1 text-[11px] font-bold px-2 py-0.5 rounded-full bg-rose-50 text-rose-700 border border-rose-200">
-                            <AlertOctagon className="w-3 h-3 text-rose-600" /> QC: Lỗi {qc.totalRejected} {unitLabel}
+                            <AlertOctagon className="w-3 h-3 text-rose-600" /> {order.notes?.includes('vượt dung sai') || order.notes?.includes('Vượt dung sai') ? `Trả xe: ${qc.totalRejected}` : `QC: Lỗi ${qc.totalRejected}`} {unitLabel}
                           </span>
                         ) : qc.totalReceived < qc.totalExpected ? (
                           <span className="inline-flex items-center gap-1 text-[11px] font-bold px-2 py-0.5 rounded-full bg-amber-50 text-amber-700 border border-amber-200">
@@ -771,7 +800,21 @@ export const InboundOrderList: React.FC<InboundOrderListProps> = ({
                       </td>
 
                       <td className="py-3.5 px-3 text-xs whitespace-nowrap">
-                        {order.status === 'CLOSED_NO_STOCK' && <span className="text-amber-700">Đóng · Không có hàng đạt QC</span>}
+                        {order.status === 'CLOSED_NO_STOCK' && (
+                          <span className="inline-flex items-center gap-1.5 text-xs font-bold text-rose-800 bg-rose-50 px-2.5 py-1 rounded-lg border border-rose-300">
+                            <Ban className="w-3.5 h-3.5 text-rose-600" /> TỪ CHỐI CỔNG (ZERO STOCK)
+                          </span>
+                        )}
+                        {order.status === 'SHORT_CLOSED' && (
+                          <span className="inline-flex items-center gap-1.5 text-xs font-bold text-slate-700 bg-slate-100 px-2.5 py-1 rounded-lg border border-slate-300">
+                            <Ban className="w-3.5 h-3.5 text-slate-500" /> ĐÓNG NON (SHORT-CLOSE)
+                          </span>
+                        )}
+                        {order.status === 'PARTIALLY_STOCKED' && (
+                          <span className="inline-flex items-center gap-1.5 text-xs font-bold text-amber-800 bg-amber-50 px-2.5 py-1 rounded-lg border border-amber-300">
+                            <Clock className="w-3.5 h-3.5 text-amber-600" /> ĐÃ CẤT KỆ 1 PHẦN
+                          </span>
+                        )}
                         {isPending && (
                           <span className="inline-flex items-center gap-1.5 text-xs font-bold text-amber-700 bg-amber-50 px-2.5 py-1 rounded-lg border border-amber-200">
                             <span className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse"></span>
@@ -803,6 +846,31 @@ export const InboundOrderList: React.FC<InboundOrderListProps> = ({
                               <Truck className="w-3.5 h-3.5 shrink-0" />
                               <span>Nhận Vào Đệm</span>
                             </button>
+                          )}
+                          {order.status === 'PARTIALLY_STOCKED' && (
+                            <>
+                              <button
+                                onClick={() => onReceiveClick(order)}
+                                disabled={busyOrderId === order.id}
+                                className="px-2.5 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-xs font-semibold transition-colors cursor-pointer flex items-center gap-1 shadow-xs whitespace-nowrap shrink-0"
+                                title="Nhà cung cấp chở xe tiếp theo tới giao bù"
+                              >
+                                <Truck className="w-3.5 h-3.5 shrink-0" />
+                                <span>Nhận Đợt Tiếp</span>
+                              </button>
+
+                              {onCloseOrder && (
+                                <button
+                                  onClick={() => onCloseOrder(order)}
+                                  disabled={busyOrderId === order.id}
+                                  className="px-2 py-1.5 bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-300 rounded-lg text-xs font-semibold transition-colors cursor-pointer flex items-center gap-1 shadow-2xs whitespace-nowrap shrink-0"
+                                  title="Đóng non PO nếu nhà cung cấp hủy giao bù"
+                                >
+                                  <Ban className="w-3.5 h-3.5 shrink-0 text-rose-600" />
+                                  <span>Đóng Non PO</span>
+                                </button>
+                              )}
+                            </>
                           )}
                           {isReceived && (
                             <>

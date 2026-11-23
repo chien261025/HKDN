@@ -21,7 +21,10 @@ export const InboundVoucherModal: React.FC<InboundVoucherModalProps> = ({ order,
   const totalReceived = order.items.reduce((sum, it) => sum + (it.receivedQty || 0), 0);
   const totalRejected = order.items.reduce((sum, it) => sum + (it.rejectedQty || 0), 0);
   const totalStocked = order.items.reduce((sum, it) => sum + (it.stockedQty || 0), 0);
-  const totalVal = order.totalValue || order.items.reduce((sum, it) => sum + ((it.expectedQty || 0) * (it.unitPrice || 0)), 0);
+  const totalVal = order.totalValue || order.items.reduce((sum, it) => {
+    const billableQty = (it.stockedQty || 0) > 0 ? it.stockedQty : Math.max(0, (it.receivedQty || 0) - (it.rejectedQty || 0));
+    return sum + (billableQty * (it.unitPrice || 0));
+  }, 0);
 
   const warehouseName = getWarehouseDisplayName(order.warehouseId);
 
@@ -94,7 +97,17 @@ export const InboundVoucherModal: React.FC<InboundVoucherModalProps> = ({ order,
             <div>
               <span className="text-slate-500 block text-[11px]">Trạng Thái Hiện Tại:</span>
               <span className="inline-block mt-0.5 font-bold text-xs uppercase px-2 py-0.5 rounded bg-white border border-slate-200">
-                {order.status === 'STOCKED' ? 'Đã Cất Kệ Xong' : order.status === 'RECEIVED' ? 'Đã Kiểm Đếm (Khu Đệm)' : 'Chờ Xe Tải Đến'}
+                {order.status === 'STOCKED'
+                  ? 'Đã Cất Kệ Xong'
+                  : order.status === 'SHORT_CLOSED'
+                  ? 'Đóng Non PO (Short-Close)'
+                  : order.status === 'CLOSED_NO_STOCK'
+                  ? 'Từ Chối Cổng & Trả Hàng (Zero Stock)'
+                  : order.status === 'PARTIALLY_STOCKED'
+                  ? 'Đã Cất Kệ 1 Phần'
+                  : order.status === 'RECEIVED'
+                  ? 'Đã Kiểm Đếm (Khu Đệm)'
+                  : 'Chờ Xe Tải Đến'}
               </span>
             </div>
           </div>
@@ -117,16 +130,17 @@ export const InboundVoucherModal: React.FC<InboundVoucherModalProps> = ({ order,
                     <th className="py-2.5 px-3 min-w-[200px]">Mặt Hàng & SKU</th>
                     <th className="py-2.5 px-3 text-center whitespace-nowrap">ĐVT</th>
                     <th className="py-2.5 px-3 text-center whitespace-nowrap">Số Lượng Đặt</th>
-                    <th className="py-2.5 px-3 text-center whitespace-nowrap">Thực Nhận</th>
-                    <th className="py-2.5 px-3 text-center whitespace-nowrap">Hàng Lỗi QC</th>
-                    <th className="py-2.5 px-3 text-center whitespace-nowrap">Đã Cất Kệ</th>
+                    <th className="py-2.5 px-3 text-center whitespace-nowrap">Giao Tại Cổng</th>
+                    <th className="py-2.5 px-3 text-center whitespace-nowrap">Từ Chối / Trả Xe</th>
+                    <th className="py-2.5 px-3 text-center whitespace-nowrap">Thực Nhập Kho</th>
                     <th className="py-2.5 px-3 text-right whitespace-nowrap min-w-[110px]">Đơn Giá Nhập</th>
                     <th className="py-2.5 px-3 text-right whitespace-nowrap min-w-[125px]">Thành Tiền</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100 font-medium text-slate-800">
                   {order.items.map((it, idx) => {
-                    const itemTotal = (it.expectedQty || 0) * (it.unitPrice || 0);
+                    const billableQty = (it.stockedQty || 0) > 0 ? it.stockedQty : Math.max(0, (it.receivedQty || 0) - (it.rejectedQty || 0));
+                    const itemTotal = billableQty * (it.unitPrice || 0);
                     return (
                       <tr key={it.id || idx} className="hover:bg-slate-50/80">
                         <td className="py-2.5 px-3 text-center text-slate-500 font-mono whitespace-nowrap">{idx + 1}</td>
@@ -147,7 +161,7 @@ export const InboundVoucherModal: React.FC<InboundVoucherModalProps> = ({ order,
                         </td>
                         <td className="py-2.5 px-3 text-center tabular-nums whitespace-nowrap">
                           {(it.rejectedQty || 0) > 0 ? (
-                            <span className="font-bold text-rose-700 bg-rose-50 px-1.5 py-0.5 rounded border border-rose-200">
+                            <span className="font-bold text-rose-700 bg-rose-50 px-1.5 py-0.5 rounded border border-rose-200" title="Từ chối nhận tại cổng trả lại xe">
                               {it.rejectedQty}
                             </span>
                           ) : (
@@ -196,8 +210,14 @@ export const InboundVoucherModal: React.FC<InboundVoucherModalProps> = ({ order,
                 <span>Kết luận kiểm định chất lượng (QC Conclusion):</span>
               </strong>
               <p className="text-blue-950 leading-relaxed">
-                {totalRejected > 0
-                  ? `Phát hiện ${totalRejected} sản phẩm không đạt chuẩn chất lượng / bao bì móp méo. Đã lập biên bản giữ lại tại khu cách ly kiểm định.`
+                {order.status === 'CLOSED_NO_STOCK' || (totalRejected === totalReceived && totalReceived > 0)
+                  ? `Toàn bộ ${totalRejected} kiện hàng không đạt tiêu chuẩn tiếp nhận (ẩm mốc, hư hỏng vật lý hoặc sai lệch hợp đồng). Bộ phận QC đã lập biên bản từ chối tiếp nhận toàn bộ (Zero Stock) và bàn giao trả lại xe cho tài xế chở về NCC. Đơn hàng kết thúc đóng, không phát sinh công nợ (0 VNĐ).`
+                  : order.status === 'SHORT_CLOSED'
+                  ? `Nhà cung cấp xác nhận không giao bù phần còn thiếu. Kho đã hoàn tất thủ tục Đóng non PO (Short-Close) và chốt số lượng thực nhập ${totalStocked} sản phẩm để đối soát công nợ.`
+                  : totalRejected > 0
+                  ? order.notes && (order.notes.includes('VUOT_DUNG_SAI_PO') || order.notes.includes('vượt dung sai') || order.notes.includes('Vượt dung sai'))
+                    ? `Phát hiện ${totalRejected} sản phẩm vượt dung sai hợp đồng PO (+10%). Kho đã lập biên bản từ chối tiếp nhận và bàn giao trả lại xe cho tài xế chở về ngay tại cổng kiểm soát. Số lượng đạt chuẩn ${totalStocked || (totalReceived - totalRejected)} sản phẩm được chấp thuận nhập kho.`
+                    : `Phát hiện ${totalRejected} sản phẩm không đạt chuẩn chất lượng / bao bì móp méo. Đã lập biên bản giữ lại tại khu cách ly kiểm định hoặc trả về nhà cung cấp.`
                   : totalReceived === totalExpected && totalExpected > 0
                   ? 'Hàng hóa nguyên đai nguyên kiện, tem nhãn đầy đủ, đạt 100% tiêu chuẩn nhập kho an toàn.'
                   : 'Đang theo dõi tiếp nhận theo kế hoạch giao hàng.'}
@@ -209,11 +229,11 @@ export const InboundVoucherModal: React.FC<InboundVoucherModalProps> = ({ order,
           <div className="pt-4 border-t-2 border-slate-900 print:pt-2 print:mt-2">
             <div className="grid grid-cols-4 gap-3 text-center text-xs print:text-[10px]">
               <div className="space-y-0.5">
-                <span className="font-bold text-slate-900 block">Đại Diện Giao Hàng</span>
-                <span className="text-[10px] text-slate-400 block italic">(Ký, ghi rõ họ tên)</span>
+                <span className="font-bold text-slate-900 block">Đại Diện Giao Hàng (Lái Xe)</span>
+                <span className="text-[10px] text-slate-400 block italic">(Ký nhận đủ / nhận hàng trả về)</span>
                 <div className="h-12 print:h-12 flex items-end justify-center">
-                  <span className="text-slate-400 border-t border-dashed border-slate-400 pt-1 w-24 text-[10px]">
-                    (Ký nhận)
+                  <span className="font-bold text-slate-800 border-t border-dashed border-slate-400 pt-1 w-28 text-[10px]">
+                    Nguyễn Văn Lái Xe
                   </span>
                 </div>
               </div>

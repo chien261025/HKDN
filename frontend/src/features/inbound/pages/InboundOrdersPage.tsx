@@ -135,13 +135,19 @@ export const InboundOrdersPage: React.FC = () => {
   };
 
   const handleCloseOrder = async (order: InboundOrder) => {
+    const isPartial = order.status === 'PARTIALLY_STOCKED';
     const confirmed = window.confirm(
-      `Xác nhận đóng đơn ${order.poCode} và hủy/từ chối nhận phần hàng thừa chưa cất kệ do vượt sức chứa kho?`
+      isPartial
+        ? `Xác nhận ĐÓNG NON PO ${order.poCode}? Toàn bộ số lượng còn thiếu sẽ bị hủy bỏ và không thể tiếp nhận thêm.`
+        : `Xác nhận đóng đơn ${order.poCode} và hủy/từ chối nhận phần hàng thừa chưa cất kệ do vượt sức chứa kho?`
     );
     if (!confirmed) return;
     setBusyOrderId(order.id);
     try {
-      await inboundService.closeOrder(order.id, 'Vượt quá sức chứa kho / Đặt nhầm');
+      await inboundService.closeOrder(
+        order.id,
+        isPartial ? 'Đóng non PO (Short-Close): Nhà cung cấp hủy phần thiếu không giao bù' : 'Vượt quá sức chứa kho / Đặt nhầm'
+      );
       await loadOrders();
     } catch (err: any) {
       setError(err.response?.data?.message || err.message || 'Lỗi khi đóng đơn');

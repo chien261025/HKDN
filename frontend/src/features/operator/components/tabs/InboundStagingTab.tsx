@@ -147,13 +147,13 @@ export const InboundStagingTab: React.FC<InboundStagingTabProps> = ({
     }
   };
 
-  const pendingCount = useMemo(() => orders.filter((o) => o.status === 'PENDING').length, [orders]);
+  const pendingCount = useMemo(() => orders.filter((o) => o.status === 'PENDING' || o.status === 'PARTIALLY_STOCKED').length, [orders]);
   const receivedCount = useMemo(() => orders.filter((o) => o.status === 'RECEIVED').length, [orders]);
 
   const filteredOrders = useMemo(() => {
     return orders
       .filter((o) => {
-        if (statusFilter === 'PENDING') return o.status === 'PENDING';
+        if (statusFilter === 'PENDING') return o.status === 'PENDING' || o.status === 'PARTIALLY_STOCKED';
         if (statusFilter === 'RECEIVED') return o.status === 'RECEIVED';
         return true;
       })
@@ -357,13 +357,14 @@ export const InboundStagingTab: React.FC<InboundStagingTabProps> = ({
           <div className={`grid grid-cols-1 ${isCompact ? '' : 'md:grid-cols-2'} gap-3`}>
             {filteredOrders.map((order) => {
             const isPending = order.status === 'PENDING';
+            const isPartiallyStocked = order.status === 'PARTIALLY_STOCKED';
             const totalUnits = (order.items || []).reduce((sum, it) => sum + (it.expectedQty || 0), 0);
             const supplierName = order.supplier?.name || (order as any).supplierName || 'Nhà Cung Cấp Chuẩn';
 
             return (
               <div
                 key={order.id}
-                className={`bg-white rounded-2xl p-4 border transition-all space-y-3 shadow-xs ${isPending
+                className={`bg-white rounded-2xl p-4 border transition-all space-y-3 shadow-xs ${isPending || isPartiallyStocked
                     ? 'border-slate-200 hover:border-blue-400 hover:shadow-sm'
                     : 'border-blue-200 bg-blue-50/15'
                   }`}
@@ -375,12 +376,15 @@ export const InboundStagingTab: React.FC<InboundStagingTabProps> = ({
                         {order.orderCode}
                       </span>
                       <span
-                        className={`px-2 py-0.5 rounded-full text-[10px] font-bold border ${isPending
+                        className={`px-2 py-0.5 rounded-full text-[10px] font-bold border ${
+                          isPartiallyStocked
+                            ? 'bg-amber-100 text-amber-800 border-amber-300'
+                            : isPending
                             ? 'bg-amber-50 text-amber-700 border-amber-200'
                             : 'bg-blue-50 text-blue-700 border-blue-200'
                           }`}
                       >
-                        {isPending ? 'CHỜ TIẾP NHẬN' : 'TẠI KHU ĐỆM'}
+                        {isPartiallyStocked ? 'CẤT 1 PHẦN · GIAO BÙ' : isPending ? 'CHỜ TIẾP NHẬN' : 'TẠI KHU ĐỆM'}
                       </span>
                       {order.warehouseId === 2 && (
                         <span className="text-[10px] font-semibold px-1.5 py-0.2 rounded bg-purple-50 text-purple-700 border border-purple-200">
@@ -438,7 +442,7 @@ export const InboundStagingTab: React.FC<InboundStagingTabProps> = ({
                     Dock Tiếp Nhận #01
                   </span>
 
-                  {isPending ? (
+                  {isPending || isPartiallyStocked ? (
                     <button
                       type="button"
                       disabled={receivingId === order.id}
@@ -450,7 +454,7 @@ export const InboundStagingTab: React.FC<InboundStagingTabProps> = ({
                       ) : (
                         <CheckCircle2 className="w-3.5 h-3.5" />
                       )}
-                      <span>Kiểm đếm và nhận hàng</span>
+                      <span>{isPartiallyStocked ? 'Tiếp nhận đợt tiếp theo' : 'Kiểm đếm và nhận hàng'}</span>
                     </button>
                   ) : (
                     <span className="inline-flex items-center gap-1 text-xs font-bold text-emerald-700 bg-emerald-50 px-3 py-1.5 rounded-xl border border-emerald-200">

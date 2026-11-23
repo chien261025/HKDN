@@ -38,6 +38,7 @@ public class OutboundOrder {
     @Builder.Default
     private Long createdBy = 1L;
 
+    @Column(columnDefinition = "TEXT")
     private String notes;
 
     @Column(name = "created_at")

@@ -7,6 +7,8 @@ export const notificationService = {
    */
   async getRecentNotifications(): Promise<NotificationMessage[]> {
     try {
+      const token = localStorage.getItem('smart_wms_token');
+      if (!token) return [];
       const res = await apiClient.get<{ success: boolean; data: NotificationMessage[] }>('/notifications/recent');
       return res.data.data || [];
     } catch (err) {

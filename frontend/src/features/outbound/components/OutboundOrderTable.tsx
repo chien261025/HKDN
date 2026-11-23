@@ -18,6 +18,7 @@ import {
   Zap,
   Layers,
   X,
+  RotateCcw,
 } from 'lucide-react';
 import { OutboundOrder } from '../types';
 import { OutboundMobileCards } from './OutboundMobileCards';
@@ -618,11 +619,15 @@ export const OutboundOrderTable: React.FC<OutboundOrderTableProps> = ({
                             {onOpenVoucher && (
                               <button
                                 onClick={() => onOpenVoucher(order)}
-                                className="inline-flex items-center gap-1 px-2.5 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-xs font-bold transition-colors cursor-pointer shadow-xs"
-                                title="In phiếu xuất kho kiêm biên bản bàn giao vận chuyển chuẩn A4"
+                                className={`inline-flex items-center gap-1 px-2.5 py-1.5 ${
+                                  order.soCode.startsWith('RTV-')
+                                    ? 'bg-purple-600 hover:bg-purple-700'
+                                    : 'bg-blue-600 hover:bg-blue-700'
+                                } text-white rounded-lg text-xs font-bold transition-colors cursor-pointer shadow-xs`}
+                                title={order.soCode.startsWith('RTV-') ? "In phiếu xuất trả nhà cung cấp kiêm biên bản bàn giao chuẩn A4" : "In phiếu xuất kho kiêm biên bản bàn giao vận chuyển chuẩn A4"}
                               >
-                                <FileText className="w-3.5 h-3.5" />
-                                <span>Phiếu Xuất (GIN)</span>
+                                {order.soCode.startsWith('RTV-') ? <RotateCcw className="w-3.5 h-3.5" /> : <FileText className="w-3.5 h-3.5" />}
+                                <span>{order.soCode.startsWith('RTV-') ? 'Phiếu Trả (RTV)' : 'Phiếu Xuất (GIN)'}</span>
                               </button>
                             )}
                             {onOpenOrderLedger && (

@@ -342,6 +342,17 @@ export const OutboundOrdersPage: React.FC = () => {
                 <br />
                 Hệ thống sẽ lập tức giải phóng toàn bộ số lượng hàng đã giữ trước (Reserved Stock) để trả về kho tự do.
               </p>
+              {orderToCancel.status === 'PICKING' && (
+                <div className="mt-3 p-3 rounded-xl bg-amber-50 border border-amber-300 text-left text-xs text-amber-900 space-y-1">
+                  <div className="font-bold flex items-center gap-1.5 text-amber-800">
+                    <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0" />
+                    <span>CẢNH BÁO QUAN TRỌNG (PUTBACK REQUIRED)</span>
+                  </div>
+                  <p className="text-[11px] leading-relaxed text-amber-800">
+                    Đơn hàng đang ở trạng thái <strong>ĐANG LẤY HÀNG (PICKING)</strong>. Hàng hóa đã rời ô kệ và tập kết tại khu đệm xuất (Dock Outbound). Sau khi hủy đơn, thủ kho <strong>BẮT BUỘC</strong> phải chuyển hoàn pallet về lại đúng các ô kệ ban đầu!
+                  </p>
+                </div>
+              )}
             </div>
             <div className="flex items-center gap-3 pt-2">
               <button

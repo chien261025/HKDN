@@ -27,7 +27,8 @@ apiClient.interceptors.request.use(
 apiClient.interceptors.response.use(
   (response) => response,
   (error) => {
-    if (error.response?.status === 401) {
+    const hadAuthHeader = !!error.config?.headers?.Authorization;
+    if (error.response?.status === 401 && hadAuthHeader) {
       console.warn('[AUTH] Phiên đăng nhập đã hết hạn hoặc không hợp lệ.');
       localStorage.removeItem(STORAGE_KEYS.TOKEN);
       localStorage.removeItem(STORAGE_KEYS.SESSION);

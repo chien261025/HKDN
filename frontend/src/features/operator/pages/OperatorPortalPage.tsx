@@ -87,6 +87,10 @@ export const OperatorPortalPage: React.FC = () => {
     ]);
   };
 
+  const handleClearScannedCode = React.useCallback(() => {
+    setScannedCode(null);
+  }, []);
+
   const handleOpenScanner = (targetField?: 'FROM' | 'TO') => {
     setActiveScanTarget(targetField || null);
     setShowScanner(true);
@@ -279,7 +283,7 @@ export const OperatorPortalPage: React.FC = () => {
               <PickingFefoTab
                 onOpenScanner={() => handleOpenScanner()}
                 scannedCode={scannedCode}
-                onClearScannedCode={() => setScannedCode(null)}
+                onClearScannedCode={handleClearScannedCode}
                 isCompact={isCompact}
               />
             )}
