@@ -529,7 +529,7 @@ export const OutboundOrderTable: React.FC<OutboundOrderTableProps> = ({
                             <button
                               onClick={() => onAllocateAndLock(order.id)}
                               className="px-2.5 py-1.5 bg-amber-500 hover:bg-amber-600 text-white rounded-lg text-xs font-bold transition-colors flex items-center gap-1 cursor-pointer shadow-xs"
-                              title="Tự động tìm lô cận date và khóa giữ tồn kho (Reservation)"
+                              title="Tự động tìm lô cận hạn và khóa giữ tồn kho (Reservation)"
                             >
                               <Lock className="w-3.5 h-3.5" />
                               <span>Phân Bổ Lô</span>
@@ -585,10 +585,10 @@ export const OutboundOrderTable: React.FC<OutboundOrderTableProps> = ({
                             <button
                               onClick={() => onDispatchOrder(order.id)}
                               className="px-2.5 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-bold transition-colors flex items-center gap-1 cursor-pointer shadow-xs"
-                              title="Bàn giao xe tải và chính thức trừ tồn kho On-hand & ghi Stock Ledger"
+                              title="Xuất kho bàn giao xe tải và cập nhật tồn kho thực tế"
                             >
                               <Truck className="w-3.5 h-3.5" />
-                              <span>Xuất Kho & Giao Xe</span>
+                              <span>Xuất Kho &amp; Giao Xe</span>
                             </button>
                             {onStartPicking && (
                               <button
@@ -627,17 +627,17 @@ export const OutboundOrderTable: React.FC<OutboundOrderTableProps> = ({
                                 title={order.soCode.startsWith('RTV-') ? "In phiếu xuất trả nhà cung cấp kiêm biên bản bàn giao chuẩn A4" : "In phiếu xuất kho kiêm biên bản bàn giao vận chuyển chuẩn A4"}
                               >
                                 {order.soCode.startsWith('RTV-') ? <RotateCcw className="w-3.5 h-3.5" /> : <FileText className="w-3.5 h-3.5" />}
-                                <span>{order.soCode.startsWith('RTV-') ? 'Phiếu Trả (RTV)' : 'Phiếu Xuất (GIN)'}</span>
+                                <span>{order.soCode.startsWith('RTV-') ? 'Phiếu Xuất Trả' : 'Phiếu Xuất Kho'}</span>
                               </button>
                             )}
                             {onOpenOrderLedger && (
                               <button
                                 onClick={() => onOpenOrderLedger(order.soCode)}
                                 className="inline-flex items-center gap-1 px-2.5 py-1.5 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200 rounded-lg text-xs font-bold transition-colors cursor-pointer shadow-2xs"
-                                title="Tra cứu bút toán ghi sổ cái bất biến Stock Ledger"
+                                title="Xem lịch sử ghi thẻ kho của đơn này"
                               >
                                 <Layers className="w-3.5 h-3.5 text-indigo-600" />
-                                <span>Sổ Cái</span>
+                                <span>Thẻ Kho</span>
                               </button>
                             )}
                             <button

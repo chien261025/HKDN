@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { Printer, X, FileText, CheckCircle2, Building2, Truck, ShieldCheck, MapPin, Calendar, User, Package, RotateCcw } from 'lucide-react';
 import { OutboundOrder } from '../types';
 import { printHtmlDocument } from '../../../services/printService';
@@ -181,8 +181,23 @@ export const OutboundVoucherModal: React.FC<OutboundVoucherModalProps> = ({ orde
     printHtmlDocument(`Phieu-Xuat-Kho-GIN-${order.soCode}`, bodyHtml);
   };
 
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        onClose();
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [onClose]);
+
   return (
-    <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4 z-50 animate-in fade-in duration-150">
+    <div
+      role="dialog"
+      aria-modal="true"
+      aria-label="Phiếu Xuất Kho Kiêm Biên Bản Bàn Giao Vận Tải (GIN)"
+      className="fixed inset-0 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4 z-50 animate-in fade-in duration-150"
+    >
       <div className="bg-white rounded-2xl max-w-4xl w-full border border-slate-200 shadow-2xl overflow-hidden text-slate-900 relative max-h-[92vh] flex flex-col">
         {/* Header Bar */}
         <div className="p-4 sm:p-5 border-b border-slate-200 flex items-center justify-between bg-slate-50/90 shrink-0">
@@ -192,7 +207,7 @@ export const OutboundVoucherModal: React.FC<OutboundVoucherModalProps> = ({ orde
             </div>
             <div>
               <h3 className="font-extrabold text-base sm:text-lg text-slate-900">
-                {isRTV ? 'Phiếu Xuất Trả Nhà Cung Cấp & Biên Bản Bàn Giao (RTV GIN)' : 'Phiếu Xuất Kho & Biên Bản Bàn Giao Vận Tải (GIN)'}
+                {isRTV ? 'Phiếu Xuất Trả Nhà Cung Cấp & Bàn Giao' : 'Phiếu Xuất Kho & Biên Bản Bàn Giao'}
               </h3>
               <p className="text-xs text-slate-500">
                 {isRTV ? 'Mã RTV: ' : 'Mã SO: '}<strong className={`font-mono ${isRTV ? 'text-purple-700' : 'text-blue-700'}`}>{order.soCode}</strong> • {warehouseName}
@@ -218,7 +233,7 @@ export const OutboundVoucherModal: React.FC<OutboundVoucherModalProps> = ({ orde
         </div>
 
         {/* Modal Printable Content */}
-        <div className="p-6 sm:p-8 space-y-6 overflow-y-auto grow print:max-h-none print:overflow-visible">
+        <div id="outbound-voucher-scroll-body" className="p-6 sm:p-8 space-y-6 overflow-y-auto grow print:max-h-none print:overflow-visible">
           {/* Header Tiêu Ngữ Chuẩn Doanh Nghiệp */}
           <div className="text-center space-y-1 pb-4 border-b border-slate-200">
             <div className="text-[11px] font-semibold text-slate-500 uppercase tracking-widest">
@@ -234,7 +249,7 @@ export const OutboundVoucherModal: React.FC<OutboundVoucherModalProps> = ({ orde
               {isRTV ? 'PHIẾU XUẤT TRẢ NHÀ CUNG CẤP KIÊM BIÊN BẢN BÀN GIAO' : 'PHIẾU XUẤT KHO KIÊM BIÊN BẢN BÀN GIAO VẬN TẢI'}
             </h1>
             <div className="text-xs text-slate-500 italic">
-              {isRTV ? '(RETURN TO VENDOR DELIVERY NOTE - RTV GIN)' : '(GOODS ISSUE NOTE & DELIVERY RECEIPT - GIN)'}
+              {isRTV ? 'Chứng từ xuất trả nhà cung cấp' : 'Chứng từ xuất kho và bàn giao hàng hóa'}
             </div>
             <div className="text-xs text-slate-700 font-medium pt-1">
               Số chứng từ: <strong className="font-mono text-blue-800">GIN-{order.soCode}</strong> • Ngày lập: {order.orderDate || new Date().toLocaleDateString('vi-VN')}

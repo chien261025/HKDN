@@ -118,7 +118,7 @@ export const OutboundDetailModal: React.FC<OutboundDetailModalProps> = ({ order,
                                 </span>
                                 <span className="text-rose-700 font-semibold flex items-center gap-1 bg-white px-2 py-0.5 rounded border border-rose-200">
                                   <Calendar className="w-3.5 h-3.5" />
-                                  HSD: {alloc.expiryDate} {alloc.isNearestExpiry && '(Cận Date Nhất)'}
+                                  HSD: {alloc.expiryDate} {alloc.isNearestExpiry && '(Cận Hạn Nhất)'}
                                 </span>
                               </div>
 
@@ -135,7 +135,7 @@ export const OutboundDetailModal: React.FC<OutboundDetailModalProps> = ({ order,
                         </div>
                       ) : (
                         <div className="p-3 bg-amber-50/60 rounded-lg border border-amber-200 text-xs text-amber-800 flex items-center justify-between">
-                          <span>Chưa phân bổ lô. Nhấn "Phân Bổ Lô" để hệ thống tự động tìm vị trí và lô cận date.</span>
+                          <span>Chưa phân bổ lô. Nhấn "Phân Bổ Lô" để hệ thống tự động tìm vị trí và lô cận hạn.</span>
                           <span className="font-bold text-amber-700 text-xs">Chờ Phân Bổ</span>
                         </div>
                       )}

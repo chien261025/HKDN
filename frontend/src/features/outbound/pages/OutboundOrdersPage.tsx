@@ -144,7 +144,7 @@ export const OutboundOrdersPage: React.FC = () => {
     try {
       await outboundService.confirmPicking(orderId, payload);
       await fetchOrders();
-      setMessage('Xác nhận lấy hàng thành công. Hàng hóa đã được gom đủ tại khu vực xuất (Dock Outbound).');
+      setMessage('Xác nhận lấy hàng thành công. Hàng hóa đã được gom đủ tại khu vực cửa xuất hàng.');
     } catch (err: any) {
       setError(err.response?.data?.message || 'Xác nhận lấy hàng thất bại.');
     } finally {
@@ -197,6 +197,7 @@ export const OutboundOrdersPage: React.FC = () => {
   };
 
   const handleOpenOrderLedger = async (soCode: string) => {
+    setVoucherModalOrder(null);
     try {
       const entries = await inventoryService.getLedgerByReference(soCode);
       if (entries && entries.length > 0) {
@@ -340,16 +341,16 @@ export const OutboundOrdersPage: React.FC = () => {
               <p className="text-xs text-slate-600 mt-2.5 leading-relaxed font-medium">
                 Bạn có chắc chắn muốn hủy đơn xuất <strong className="text-slate-900 font-mono font-bold bg-slate-100 px-1.5 py-0.5 rounded border border-slate-200">{orderToCancel.soCode}</strong>?
                 <br />
-                Hệ thống sẽ lập tức giải phóng toàn bộ số lượng hàng đã giữ trước (Reserved Stock) để trả về kho tự do.
+                Hệ thống sẽ giải phóng toàn bộ số lượng hàng đã giữ cho đơn này để sẵn sàng xuất cho đơn khác.
               </p>
               {orderToCancel.status === 'PICKING' && (
                 <div className="mt-3 p-3 rounded-xl bg-amber-50 border border-amber-300 text-left text-xs text-amber-900 space-y-1">
                   <div className="font-bold flex items-center gap-1.5 text-amber-800">
                     <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0" />
-                    <span>CẢNH BÁO QUAN TRỌNG (PUTBACK REQUIRED)</span>
+                    <span>Lưu ý hoàn hàng về kệ</span>
                   </div>
                   <p className="text-[11px] leading-relaxed text-amber-800">
-                    Đơn hàng đang ở trạng thái <strong>ĐANG LẤY HÀNG (PICKING)</strong>. Hàng hóa đã rời ô kệ và tập kết tại khu đệm xuất (Dock Outbound). Sau khi hủy đơn, thủ kho <strong>BẮT BUỘC</strong> phải chuyển hoàn pallet về lại đúng các ô kệ ban đầu!
+                    Đơn đang ở trạng thái Đang lấy hàng. Sau khi hủy đơn, cần trả lại hàng về đúng ô kệ ban đầu.
                   </p>
                 </div>
               )}

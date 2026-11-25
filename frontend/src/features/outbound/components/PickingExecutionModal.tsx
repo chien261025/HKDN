@@ -311,7 +311,7 @@ export const PickingExecutionModal: React.FC<PickingExecutionModalProps> = ({
             <div>
               <div className="flex items-center gap-2">
                 <h3 className="font-extrabold text-base sm:text-lg text-slate-900">
-                  Xác Nhận Lấy Hàng Theo Lộ Trình (Picking Slip & Execution)
+                  Phiếu Lấy Hàng Theo Lộ Trình
                 </h3>
                 <span className="text-xs font-mono font-bold px-2 py-0.5 rounded bg-blue-50 text-blue-700 border border-blue-200">
                   {order.soCode}
@@ -362,7 +362,7 @@ export const PickingExecutionModal: React.FC<PickingExecutionModalProps> = ({
             <div className="flex items-center gap-4 w-full sm:w-auto">
               <div className="text-center sm:text-left">
                 <span className="text-[11px] font-bold text-amber-800 uppercase tracking-wider block">
-                  Tiến Độ Lấy Hàng (Picking Progress)
+                  Tiến Độ Lấy Hàng
                 </span>
                 <div className="flex items-baseline gap-2 mt-0.5">
                   <span className="text-2xl font-black text-amber-900 font-mono tabular-nums">
@@ -521,7 +521,7 @@ export const PickingExecutionModal: React.FC<PickingExecutionModalProps> = ({
               <div className="flex items-center justify-between mb-1">
                 <label className="text-[11px] font-bold text-slate-700 uppercase tracking-wider flex items-center gap-1.5">
                   <User className="w-3.5 h-3.5 text-blue-600" />
-                  <span>Nhân viên nhặt hàng (Picker):</span>
+                  <span>Nhân viên lấy hàng:</span>
                 </label>
                 {isOperator ? (
                   <span className="inline-flex items-center gap-1 text-[10px] font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200">
@@ -569,10 +569,10 @@ export const PickingExecutionModal: React.FC<PickingExecutionModalProps> = ({
                   ))}
                 </select>
               )}
-              <p className="text-[10px] text-slate-500 mt-1 italic">
+              <p className="text-[10px] text-slate-500 mt-1">
                 {isOperator
-                  ? '* Danh tính tự động gắn với mã đăng nhập PDA của bạn để phục vụ KPI và giải trình trách nhiệm.'
-                  : '* Quản lý có quyền chỉ định hoặc phân công nhân viên lái xe nâng / thủ kho thực tế.'}
+                  ? 'Tự động gắn với tài khoản đang đăng nhập.'
+                  : 'Chọn nhân viên kho thực hiện lấy hàng cho đơn này.'}
               </p>
             </div>
 
@@ -589,7 +589,7 @@ export const PickingExecutionModal: React.FC<PickingExecutionModalProps> = ({
                 className="w-full text-xs px-3 py-2.5 rounded-xl border border-slate-300 bg-white text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500 shadow-2xs"
               />
               <p className="text-[10px] text-slate-500 mt-1 italic">
-                * Ghi chú mã pallet trung chuyển hoặc ghi chú niêm phong trước khi xuất ra Dock.
+                * Ghi chú mã pallet trung chuyển hoặc ghi chú niêm phong trước khi xuất ra cửa giao nhận.
               </p>
             </div>
           </div>

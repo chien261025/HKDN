@@ -35,7 +35,7 @@ export const OutboundHeader: React.FC<OutboundHeaderProps> = ({
               Quản Lý Đơn Xuất Kho
             </h1>
             <p className="text-xs sm:text-sm text-slate-600 font-medium mt-1">
-              Phân bổ tự động lô cận hạn (FEFO), khóa giữ tồn an toàn và tối ưu hóa đường đi lấy hàng
+              Phân bổ tự động lô cận hạn, giữ hàng theo đơn và điều phối lấy hàng xuất kho
             </p>
           </div>
         </div>

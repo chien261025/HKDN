@@ -1,7 +1,9 @@
-import React, { useState, useEffect, useMemo } from 'react';
-import { X, Navigation, CheckCircle2, ArrowRight, Printer, Smartphone, TrendingUp, Route, Timer, Footprints, Play, Pause, RotateCcw } from 'lucide-react';
+import React, { useState, useMemo } from 'react';
+import { createPortal } from 'react-dom';
+import { X, Navigation, ArrowRight, Printer, Route, Timer, Footprints } from 'lucide-react';
 import { OutboundOrder } from '../types';
 import { WarehouseFloorMapSvg, PickWaypoint } from './WarehouseFloorMapSvg';
+import { calculateDijkstraShortestRoute } from '../utils/warehouseRoutingEngine';
 import { printHtmlDocument } from '../../../services/printService';
 import { getWarehouseDisplayName } from '../../masterdata/services/warehouseService';
 
@@ -54,55 +56,52 @@ export const PickPathVisualizerModal: React.FC<PickPathVisualizerModalProps> = (
   onClose,
   order,
 }) => {
-  const [isOptimal, setIsOptimal] = useState(true);
   const [activeStep, setActiveStep] = useState(0);
-  const [isPlaying, setIsPlaying] = useState(false);
-  const [pdaSynced, setPdaSynced] = useState(false);
 
-  // ✅ Dùng dữ liệu thật từ order.items[].allocations thay vì hardcode
+  // Dùng dữ liệu thật từ order.items[].allocations (kể cả bin nằm ngoài 4 dãy A01-B02)
   const realWaypoints: PickWaypoint[] = useMemo(() => {
     if (!order?.items?.length) return [];
 
     const wps: PickWaypoint[] = [];
-    let step = 1;
-
     order.items.forEach((item) => {
       const unit = item.unit || getOrderUnitLabel(item.sku, item.productName);
       const allocations = item.allocations || [];
       allocations.forEach((alloc) => {
         const parsed = parseBarcode(alloc.locationBarcode);
-        if (!parsed) return;
-
-        const svgPos = AISLE_SVG_MAP[parsed.aisle];
-        if (!svgPos) return;
-
-        const svgY = SHELF_Y_MAP[parsed.shelf] ?? 269;
+        const aisleKey = parsed?.aisle || 'A01';
+        const svgPos = AISLE_SVG_MAP[aisleKey] || {
+          x: 195 + ((wps.length % 4) * 180),
+          zoneLabel: aisleKey.startsWith('B') ? 'Zone B' : aisleKey.startsWith('C') ? 'Zone C' : 'Zone A',
+          zoneClass: (aisleKey.startsWith('B') ? 'B' : 'A') as 'A' | 'B',
+        };
+        const svgY = (parsed && SHELF_Y_MAP[parsed.shelf]) ?? 269;
         const zoneLabel = svgPos.zoneLabel;
-        const rackLabel = `Dãy ${parsed.aisle} • Kệ ${parsed.rack}`;
-        const shelfLabel = `Tầng ${parsed.shelf} • Ô ${parsed.bin}`;
+        const rackLabel = parsed ? `Dãy ${parsed.aisle} • Kệ ${parsed.rack}` : alloc.locationBarcode;
+        const shelfLabel = parsed ? `Tầng ${parsed.shelf} • Ô ${parsed.bin}` : 'Vị trí kệ';
 
         wps.push({
-          id: `wp-${step}`,
-          stepNumber: step,
+          id: `wp-${wps.length + 1}`,
+          stepNumber: wps.length + 1,
           productName: item.productName,
           sku: item.sku,
           locationBarcode: alloc.locationBarcode,
           qty: alloc.qtyAllocated,
           unit,
-          batchNumber: alloc.batchNumber || 'LOT-2026-FEFO',
-          expiryDate: alloc.expiryDate || '31/12/2027',
+          batchNumber: alloc.batchNumber || '—',
+          expiryDate: alloc.expiryDate || '—',
           x: svgPos.x,
           y: svgY,
           zone: zoneLabel,
           rack: rackLabel,
           shelf: shelfLabel,
-          rackKey: parsed.aisle,
+          rackKey: aisleKey,
         });
-        step++;
       });
     });
 
-    return wps;
+    return wps
+      .sort((a, b) => a.locationBarcode.localeCompare(b.locationBarcode))
+      .map((wp, idx) => ({ ...wp, id: `wp-${idx + 1}`, stepNumber: idx + 1 }));
   }, [order]);
 
   // Fallback: nếu chưa ALLOCATED (không có allocations) thì dùng items trực tiếp
@@ -137,31 +136,23 @@ export const PickPathVisualizerModal: React.FC<PickPathVisualizerModalProps> = (
 
   const defaultWaypoints = realWaypoints.length > 0 ? realWaypoints : fallbackWaypoints;
 
-  // Auto-play mô phỏng bước đi của thủ kho theo chu trình: Dock 01 -> Waypoints -> Bàn QC -> Dock 01
-  useEffect(() => {
-    if (!isPlaying) return;
-    const totalSteps = defaultWaypoints.length + 1;
-    const timer = setInterval(() => {
-      setActiveStep((prev) => (prev >= totalSteps ? 0 : prev + 1));
-    }, 1500);
-    return () => clearInterval(timer);
-  }, [isPlaying, defaultWaypoints.length]);
+  // Tính toán lộ trình theo thứ tự vị trí
+  const routeInfo = useMemo(() => {
+    if (!defaultWaypoints.length) return null;
+    const rawStops = defaultWaypoints.map((w) => ({ x: w.x, y: w.y, qty: w.qty }));
+    return calculateDijkstraShortestRoute(rawStops);
+  }, [defaultWaypoints]);
 
   if (!isOpen || !order) return null;
 
   const stopCount = defaultWaypoints.length;
-  // Ước tính khoảng cách & thời gian theo số điểm dừng thực tế
-  const distance = isOptimal ? Math.round(stopCount * 18 + 20) : Math.round(stopCount * 42 + 30);
-  const estTime = isOptimal
-    ? `${((stopCount * 18 + 20) / 50).toFixed(1)} phút`
-    : `${((stopCount * 42 + 30) / 50).toFixed(1)} phút`;
+  const distance = routeInfo ? routeInfo.totalDistanceMeters : 0;
+  const travelSec = routeInfo ? routeInfo.travelTimeSeconds : 0;
+  const pickSec = routeInfo ? routeInfo.pickTimeSeconds : 0;
+  const estTime = routeInfo ? `${routeInfo.totalTimeMinutes} phút` : '0 phút';
+  const algoName = 'Thứ tự lấy hàng tối ưu theo dãy kệ';
 
   const warehouseName = getWarehouseDisplayName(order.warehouseId);
-
-  const handleSyncToPda = () => {
-    setPdaSynced(true);
-    setTimeout(() => setPdaSynced(false), 3500);
-  };
 
   const handlePrintRoute = () => {
     const routeRows = defaultWaypoints
@@ -223,7 +214,7 @@ export const PickPathVisualizerModal: React.FC<PickPathVisualizerModalProps> = (
           </div>
           <div style="font-family: monospace; font-size: 8.5px; font-weight: bold; letter-spacing: 1.5px; color: #475569;">*${order.soCode}*</div>
           <div style="margin-top: 3px;">
-            <span class="badge">${isOptimal ? 'S-SHAPE TSP (TỐI ƯU)' : 'LỐI ĐI TỰ DO'}</span>
+            <span class="badge">${algoName.toUpperCase()}</span>
           </div>
         </div>
       </div>
@@ -235,8 +226,8 @@ export const PickPathVisualizerModal: React.FC<PickPathVisualizerModalProps> = (
           <div class="meta-item"><span class="meta-label">Cửa xuất phát (Start):</span> <span class="meta-value" style="color: #1d4ed8;">CỬA DOCK 01 (Khu Nhận Thiết Bị)</span></div>
         </div>
         <div>
-          <div class="meta-item"><span class="meta-label">Điểm kết thúc (Finish):</span> <span class="meta-value" style="color: #047857;">BÀN ĐÓNG GÓI & KIỂM ĐỊNH QC</span></div>
-          <div class="meta-item"><span class="meta-label">Tổng cự ly di chuyển:</span> <span class="meta-value">${distance} mét</span> • Ước tính: <span class="meta-value">${estTime}</span></div>
+          <div class="meta-item"><span class="meta-label">Điểm kết thúc:</span> <span class="meta-value" style="color: #047857;">KHU ĐÓNG GÓI &amp; KIỂM HÀNG</span></div>
+          <div class="meta-item"><span class="meta-label">Tổng cự ly di chuyển:</span> <span class="meta-value">${distance} mét</span> • Ước tính: <span class="meta-value">${estTime}</span> (${travelSec}s di chuyển + ${pickSec}s thao tác)</div>
           <div class="meta-item"><span class="meta-label">Quy mô nhặt hàng:</span> <span class="meta-value">${stopCount} điểm dừng lấy hàng</span></div>
         </div>
       </div>
@@ -261,7 +252,7 @@ export const PickPathVisualizerModal: React.FC<PickPathVisualizerModalProps> = (
           <tr style="background-color: #eff6ff;">
             <td class="text-center font-mono font-bold" style="color: #2563eb;">0</td>
             <td class="font-mono font-bold" style="color: #1e40af;">WH01-DOCK-01</td>
-            <td>Cửa Dock Tiếp Nhận #01</td>
+            <td>Cửa Tiếp Nhận #01</td>
             <td style="color: #475569; font-style: italic;">Nhận xe nâng / xe kéo & pallet xuất rỗng</td>
             <td class="text-right font-mono">-</td>
             <td class="text-center font-mono" style="color: #94a3b8;">[ &nbsp;&nbsp; ]</td>
@@ -270,8 +261,8 @@ export const PickPathVisualizerModal: React.FC<PickPathVisualizerModalProps> = (
           <tr style="background-color: #f0fdf4;">
             <td class="text-center font-mono font-bold" style="color: #059669;">#${defaultWaypoints.length + 1}</td>
             <td class="font-mono font-bold" style="color: #065f46;">WH01-QC-DESK</td>
-            <td>Bàn Đóng Gói & QC Kiểm Hàng</td>
-            <td style="color: #475569; font-style: italic;">Bàn giao toàn bộ pallet đã nhặt để kiểm đếm & dán tem GIN</td>
+            <td>Khu Đóng Gói &amp; Kiểm Hàng</td>
+            <td style="color: #475569; font-style: italic;">Bàn giao toàn bộ pallet đã lấy để kiểm đếm và đóng gói xuất kho</td>
             <td class="text-right font-mono">-</td>
             <td class="text-center font-mono" style="color: #94a3b8;">[ &nbsp;&nbsp; ]</td>
           </tr>
@@ -292,7 +283,7 @@ export const PickPathVisualizerModal: React.FC<PickPathVisualizerModalProps> = (
           <div style="font-size: 10px; color: #94a3b8; font-style: italic;">Họ tên: .......................................</div>
         </div>
         <div>
-          <div class="sign-title">Nhân Viên Nhặt Hàng PDA</div>
+          <div class="sign-title">Nhân Viên Lấy Hàng</div>
           <div class="sign-sub">(Ký, ghi rõ họ tên)</div>
           <div style="height: 48px; border-bottom: 1px dashed #cbd5e1; margin-bottom: 4px;"></div>
           <div style="font-size: 10px; color: #94a3b8; font-style: italic;">Họ tên: .......................................</div>
@@ -309,9 +300,9 @@ export const PickPathVisualizerModal: React.FC<PickPathVisualizerModalProps> = (
     printHtmlDocument(`Phieu-Lo-Trinh-${order.soCode}`, bodyHtml);
   };
 
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4 bg-slate-950/80 backdrop-blur-md animate-in fade-in duration-200">
-      <div className="bg-white rounded-2xl w-full max-w-[1400px] shadow-2xl border border-slate-200 overflow-hidden flex flex-col max-h-[95vh]">
+  return createPortal(
+    <div className="fixed inset-0 z-[999] flex items-center justify-center p-4 bg-slate-950/85 backdrop-blur-md animate-in fade-in duration-200">
+      <div className="bg-white rounded-2xl w-full max-w-6xl shadow-2xl border border-slate-200 overflow-hidden flex flex-col max-h-[94vh]">
         {/* Header */}
         <div className="p-4 sm:p-5 border-b border-slate-200 flex items-center justify-between bg-slate-50/90">
           <div className="flex items-center gap-3">
@@ -338,14 +329,16 @@ export const PickPathVisualizerModal: React.FC<PickPathVisualizerModalProps> = (
         </div>
 
         {/* KPI Metrics Dashboard Bar (Hidden on Print) */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 p-3.5 bg-slate-100/90 border-b border-slate-200 text-xs print:hidden">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-3 p-3.5 bg-slate-100/90 border-b border-slate-200 text-xs print:hidden">
           <div className="bg-white p-3 rounded-xl border border-slate-200 shadow-xs">
             <span className="text-slate-500 flex items-center gap-1.5 font-medium">
-              <Footprints className="w-4 h-4 text-indigo-600" /> Quãng đường di chuyển
+              <Footprints className="w-4 h-4 text-indigo-600" /> Quãng đường dự kiến
             </span>
             <div className="flex items-baseline gap-2 mt-1">
               <span className="text-lg font-extrabold text-slate-900 tabular-nums">{distance} mét</span>
-              {/* {isOptimal && <span className="text-xs font-bold text-emerald-700 bg-emerald-100 px-2 py-0.5 rounded-full">-94m (-56%)</span>} */}
+              <span className="text-[10px] font-mono text-emerald-700 bg-emerald-50 px-1.5 py-0.5 rounded border border-emerald-200 font-bold">
+                {stopCount} điểm lấy
+              </span>
             </div>
           </div>
 
@@ -355,38 +348,15 @@ export const PickPathVisualizerModal: React.FC<PickPathVisualizerModalProps> = (
             </span>
             <div className="flex items-baseline gap-2 mt-1">
               <span className="text-lg font-extrabold text-slate-900 tabular-nums">{estTime}</span>
-              {/* {isOptimal && <span className="text-xs font-bold text-emerald-700 bg-emerald-100 px-2 py-0.5 rounded-full">-3.2 phút</span>} */}
+              <span className="text-[10px] text-slate-500 font-mono">
+                ({travelSec}s đi • {pickSec}s lấy)
+              </span>
             </div>
           </div>
 
-          {/* <div className="bg-white p-3 rounded-xl border border-slate-200 shadow-xs">
-            <span className="text-slate-500 flex items-center gap-1.5 font-medium">
-              <TrendingUp className="w-4 h-4 text-emerald-600" /> Hiệu suất tiết kiệm
-            </span>
-            <div className="text-lg font-extrabold text-emerald-600 tabular-nums mt-1">
-              {isOptimal ? '56.0% Chi Phí Di Chuyển' : '0% (Đi tự do)'}
-            </div>
-          </div> */}
-
-          {/* Toggle Thuật toán */}
-          <div className="bg-white p-2.5 rounded-xl border border-slate-200 shadow-xs flex flex-col justify-center">
-            <span className="text-slate-600 text-2xs font-bold uppercase tracking-wider mb-1">Mô hình định tuyến:</span>
-            <div className="flex items-center gap-1.5 bg-slate-100 p-1 rounded-lg">
-              <button
-                onClick={() => setIsOptimal(true)}
-                className={`flex-1 py-1.5 rounded-md text-xs font-bold transition-all cursor-pointer ${isOptimal ? 'bg-indigo-600 text-white shadow-sm' : 'text-slate-600 hover:text-slate-900'
-                  }`}
-              >
-                S-Shape TSP (Tối ưu)
-              </button>
-              <button
-                onClick={() => setIsOptimal(false)}
-                className={`flex-1 py-1.5 rounded-md text-xs font-bold transition-all cursor-pointer ${!isOptimal ? 'bg-slate-700 text-white shadow-sm' : 'text-slate-600 hover:text-slate-900'
-                  }`}
-              >
-                Lối Đi Tự Do
-              </button>
-            </div>
+          <div className="bg-white p-3 rounded-xl border border-slate-200 shadow-xs flex flex-col justify-center">
+            <span className="text-slate-500 font-medium">Lộ trình đề xuất:</span>
+            <span className="text-sm font-bold text-indigo-700 mt-1">Cửa 01 &rarr; Kệ hàng &rarr; Khu đóng gói</span>
           </div>
         </div>
 
@@ -395,33 +365,14 @@ export const PickPathVisualizerModal: React.FC<PickPathVisualizerModalProps> = (
           {/* Cột trái (7 cols): Sơ đồ mặt bằng 2D */}
           <div className="lg:col-span-7 space-y-3">
             <WarehouseFloorMapSvg
-              isOptimal={isOptimal}
+              isOptimal={true}
               waypoints={defaultWaypoints}
               activeStep={activeStep}
               onSelectWaypoint={(s) => setActiveStep(s)}
             />
 
-            {/* Điều khiển mô phỏng bước đi + Flow Bar */}
-            <div className="flex items-center justify-between gap-3 bg-slate-100 p-2.5 rounded-xl border border-slate-200 flex-wrap">
-              <div className="flex items-center gap-2">
-                <button
-                  onClick={() => setIsPlaying(!isPlaying)}
-                  className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer shadow-xs ${
-                    isPlaying ? 'bg-amber-500 text-white hover:bg-amber-600' : 'bg-indigo-600 text-white hover:bg-indigo-700'
-                  }`}
-                >
-                  {isPlaying ? <Pause className="w-3.5 h-3.5" /> : <Play className="w-3.5 h-3.5" />}
-                  <span>{isPlaying ? 'Tạm Dừng Mô Phỏng' : 'Tự Động Mô Phỏng Bước Đi'}</span>
-                </button>
-                <button
-                  onClick={() => { setIsPlaying(false); setActiveStep(0); }}
-                  className="p-1.5 rounded-lg bg-white hover:bg-slate-200 text-slate-600 border border-slate-300 transition-colors cursor-pointer"
-                  title="Đặt lại về Dock 01"
-                >
-                  <RotateCcw className="w-3.5 h-3.5" />
-                </button>
-              </div>
-
+            {/* Thanh chọn từng điểm dừng */}
+            <div className="bg-slate-100 p-2.5 rounded-xl border border-slate-200">
               {/* Luồng di chuyển trực quan theo từng điểm nhặt thực tế */}
               <div className="flex items-center gap-1.5 text-xs font-semibold text-slate-700 flex-wrap">
                 <button
@@ -433,7 +384,7 @@ export const PickPathVisualizerModal: React.FC<PickPathVisualizerModalProps> = (
                       : 'bg-white text-blue-700 border border-blue-200 hover:bg-blue-50'
                   }`}
                 >
-                  Dock 01
+                  Cửa 01
                 </button>
                 <ArrowRight className="w-3.5 h-3.5 text-slate-400 shrink-0" />
                 {defaultWaypoints.map((wp, idx) => {
@@ -464,7 +415,7 @@ export const PickPathVisualizerModal: React.FC<PickPathVisualizerModalProps> = (
                       : 'bg-white text-emerald-700 border border-emerald-200 hover:bg-emerald-50'
                   }`}
                 >
-                  Bàn QC
+                  Khu Đóng Gói
                 </button>
               </div>
             </div>
@@ -519,11 +470,17 @@ export const PickPathVisualizerModal: React.FC<PickPathVisualizerModalProps> = (
                         <span className="text-slate-400">•</span>
                         <span className="text-slate-600 font-semibold">{wp.shelf}</span>
                       </div>
-                      {isActive && (
-                        <span className="text-amber-700 font-bold flex items-center gap-1 animate-pulse">
-                          ● Đang lấy hàng
-                        </span>
-                      )}
+                      <div className="text-2xs font-mono font-bold">
+                        {isActive ? (
+                          <span className="text-amber-700 flex items-center gap-1 animate-pulse">
+                            ● Điểm lấy kế tiếp
+                          </span>
+                        ) : (
+                          <span className="text-slate-400">
+                            ○ Chờ lấy
+                          </span>
+                        )}
+                      </div>
                     </div>
                   </div>
                 );
@@ -536,28 +493,14 @@ export const PickPathVisualizerModal: React.FC<PickPathVisualizerModalProps> = (
         <div className="p-4 border-t border-slate-200 flex items-center justify-between bg-slate-50/90 flex-wrap gap-3">
           <div className="flex items-center gap-2.5">
             <button
-              onClick={handleSyncToPda}
-              className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold transition-all shadow-sm cursor-pointer"
-            >
-              <Smartphone className="w-4 h-4" />
-              <span>Gửi Lộ Trình Sang Máy PDA</span>
-            </button>
-            <button
               onClick={handlePrintRoute}
-              className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-white hover:bg-slate-100 text-slate-700 border border-slate-300 text-xs font-bold transition-colors cursor-pointer"
-              title="In phiếu định tuyến lộ trình nhặt hàng A4"
+              className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold transition-colors cursor-pointer shadow-sm"
+              title="In phiếu lộ trình lấy hàng A4"
             >
-              <Printer className="w-4 h-4 text-slate-500" />
+              <Printer className="w-4 h-4" />
               <span>In Phiếu Lộ Trình</span>
             </button>
           </div>
-
-          {pdaSynced && (
-            <div className="flex items-center gap-2 text-xs text-emerald-800 font-bold bg-emerald-100 px-3 py-1.5 rounded-lg border border-emerald-300 animate-in fade-in">
-              <CheckCircle2 className="w-4 h-4 text-emerald-600" />
-              <span>Đã truyền lệnh lộ trình tới PDA #04 thành công!</span>
-            </div>
-          )}
 
           <button
             onClick={onClose}
@@ -567,6 +510,7 @@ export const PickPathVisualizerModal: React.FC<PickPathVisualizerModalProps> = (
           </button>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 };

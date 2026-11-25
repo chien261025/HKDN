@@ -1,5 +1,12 @@
 import React, { useMemo } from 'react';
-import { Navigation, Compass, Layers } from 'lucide-react';
+import { Compass } from 'lucide-react';
+import {
+  START_DOCK,
+  FINISH_QC,
+  calculateDijkstraShortestRoute,
+  calculateSShapeHeuristicRoute,
+  RouteResult,
+} from '../utils/warehouseRoutingEngine';
 
 export interface PickWaypoint {
   id: string;
@@ -33,7 +40,7 @@ export interface FloorRack {
 interface WarehouseFloorMapSvgProps {
   isOptimal: boolean;
   waypoints: PickWaypoint[];
-  racks?: FloorRack[]; // optional — sơ đồ SVG tự xây từ waypoints thực tế
+  racks?: FloorRack[];
   activeStep: number;
   onSelectWaypoint: (step: number) => void;
 }
@@ -41,35 +48,29 @@ interface WarehouseFloorMapSvgProps {
 export const WarehouseFloorMapSvg: React.FC<WarehouseFloorMapSvgProps> = ({
   isOptimal,
   waypoints,
-  racks,
   activeStep,
   onSelectWaypoint,
 }) => {
-  // Start: Dock 01, Finish: Bàn Đóng Gói QC
-  const startPoint = useMemo(() => ({ x: 80, y: 450, label: 'DOCK 01' }), []);
-  const endPoint = useMemo(() => ({ x: 900, y: 450, label: 'BÀN QC' }), []);
+  const startPoint = START_DOCK;
+  const endPoint = FINISH_QC;
 
-  // Thứ tự lộ trình: Tối ưu (S-Shape) vs Tự do (Ngẫu nhiên)
+  // Sắp xếp thứ tự các điểm dừng:
+  // - Tuyến ngắn nhất (Dijkstra): sắp xếp theo thứ tự tối ưu tọa độ
+  // - S-Shape Heuristic: sắp xếp quét theo dãy
+  const routeResult = useMemo(() => {
+    const rawStops = waypoints.map((w) => ({ x: w.x, y: w.y, qty: w.qty }));
+    return isOptimal
+      ? calculateDijkstraShortestRoute(rawStops, startPoint, endPoint)
+      : calculateSShapeHeuristicRoute(rawStops, startPoint, endPoint);
+  }, [waypoints, isOptimal, startPoint, endPoint]);
+
   const orderedPoints = useMemo(() => {
     if (waypoints.length <= 1) return waypoints;
     if (isOptimal) {
-      return [...waypoints].sort((a, b) => a.stepNumber - b.stepNumber);
+      return [...waypoints].sort((a, b) => a.x - b.x || a.y - b.y);
     }
-    // Lối đi tự do không tối ưu (đảo thứ tự để đi đường dài hơn)
-    return [...waypoints].reverse();
+    return [...waypoints].sort((a, b) => a.x - b.x || b.y - a.y);
   }, [waypoints, isOptimal]);
-
-  const pathCoordinates = useMemo(() => [
-    startPoint,
-    ...orderedPoints.map((p) => ({ x: p.x, y: p.y })),
-    endPoint,
-  ], [startPoint, orderedPoints, endPoint]);
-
-  const pathD = useMemo(() => {
-    return pathCoordinates.reduce((acc, pt, idx) => {
-      return idx === 0 ? `M ${pt.x} ${pt.y}` : `${acc} L ${pt.x} ${pt.y}`;
-    }, '');
-  }, [pathCoordinates]);
 
   // Vị trí avatar người nhặt hàng theo activeStep:
   // 0: Dock 01
@@ -87,14 +88,14 @@ export const WarehouseFloorMapSvg: React.FC<WarehouseFloorMapSvgProps> = ({
       <div className="absolute top-3.5 left-4 z-10 flex items-center gap-2 bg-slate-900/90 backdrop-blur-md px-3.5 py-1.5 rounded-xl border border-slate-700 shadow-lg">
         <Compass className="w-4 h-4 text-indigo-400" />
         <span className="text-xs font-semibold text-slate-100 tracking-wide">
-          SƠ ĐỒ MẶT BẰNG 2D • ĐỊNH TUYẾN LẤY HÀNG
+          SƠ ĐỒ MẶT BẰNG 2D • ĐỊNH TUYẾN LỐI ĐI VẬT LÝ
         </span>
       </div>
 
       <div className="absolute top-3.5 right-4 z-10 flex items-center gap-2 bg-slate-900/90 backdrop-blur-md px-3.5 py-1.5 rounded-xl border border-slate-700 shadow-lg text-xs font-mono">
-        <span className={`w-2 h-2 rounded-full ${isOptimal ? 'bg-emerald-400' : 'bg-amber-400'}`}></span>
-        <span className={`font-semibold ${isOptimal ? 'text-emerald-400' : 'text-amber-400'}`}>
-          {isOptimal ? 'LỘ TRÌNH S-SHAPE TSP (TỐI ƯU)' : 'LỐI ĐI TỰ DO (CHƯA TỐI ƯU)'}
+        <span className="w-2 h-2 rounded-full bg-emerald-400"></span>
+        <span className="font-semibold text-emerald-400">
+          LỘ TRÌNH LẤY HÀNG TỐI ƯU
         </span>
       </div>
 
@@ -134,14 +135,14 @@ export const WarehouseFloorMapSvg: React.FC<WarehouseFloorMapSvgProps> = ({
         {/* Nền sàn kho */}
         <rect width="100%" height="100%" fill="url(#floorGrid)" />
 
-        {/* Hành lang an toàn xe nâng & người đi bộ (Main Aisles) */}
+        {/* Hành lang an toàn xe nâng & người đi bộ (Main Transit Aisle) */}
         <rect x="50" y="420" width="880" height="70" fill="#0d1829" stroke="#334155" strokeWidth="1.5" rx="8" />
         <rect x="50" y="486" width="880" height="4" fill="url(#hazardStripe)" opacity="0.7" />
         <text x="490" y="455" fill="#94a3b8" fontSize="12" fontWeight="bold" textAnchor="middle" letterSpacing="2">
           HÀNH LANG TRỤC CHÍNH XE NÂNG & NGƯỜI ĐI BỘ (MAIN TRANSIT AISLE)
         </text>
 
-        {/* Hành lang thoát đầu dãy trên (Top Aisle) */}
+        {/* Hành lang thoát đầu dãy trên (Top Cross Aisle) */}
         <rect x="110" y="35" width="760" height="40" fill="#0c1626" stroke="#1e293b" strokeWidth="1" rx="6" />
         <text x="490" y="58" fill="#64748b" fontSize="11" fontWeight="600" textAnchor="middle" letterSpacing="1">
           LỐI ĐI THOÁT ĐẦU DÃY KỆ (TOP CROSS AISLE)
@@ -149,20 +150,18 @@ export const WarehouseFloorMapSvg: React.FC<WarehouseFloorMapSvgProps> = ({
 
         {/* ================= DÃY KỆ — xây từ waypoints thực tế ================= */}
         {(() => {
-          // Dựng danh sách dãy kệ duy nhất từ waypoints thực tế
           const aisleSet = new Map<string, { x: number; zoneLabel: string; zoneClass: string }>();
           waypoints.forEach((wp) => {
             if (!aisleSet.has(wp.rackKey)) {
               const isZoneB = wp.zone.toLowerCase().includes('b') || wp.rackKey.startsWith('B');
               aisleSet.set(wp.rackKey, {
-                x: wp.x - 65, // căn giữa waypoint trong dãy kệ 130px
+                x: wp.x - 65,
                 zoneLabel: wp.zone,
                 zoneClass: isZoneB ? 'B' : 'A',
               });
             }
           });
 
-          // Fallback: nếu không có waypoints thì hiện 4 dãy mặc định từ DB seed
           const fallbackAisles = new Map([
             ['A01', { x: 130, zoneLabel: 'Zone A', zoneClass: 'A' }],
             ['A02', { x: 310, zoneLabel: 'Zone A', zoneClass: 'A' }],
@@ -172,7 +171,6 @@ export const WarehouseFloorMapSvg: React.FC<WarehouseFloorMapSvgProps> = ({
 
           const displayAisles = aisleSet.size > 0 ? aisleSet : fallbackAisles;
 
-          // Shelf rows cố định cho mỗi dãy (S01→S04 từ dưới lên)
           const shelfRows = [
             { label: 'S04', y: 148 },
             { label: 'S03', y: 205 },
@@ -209,9 +207,26 @@ export const WarehouseFloorMapSvg: React.FC<WarehouseFloorMapSvgProps> = ({
           });
         })()}
 
-        {/* ================= ĐƯỜNG DẪN DI CHUYỂN PHÁT SÁNG ================= */}
-        <path d={pathD} fill="none" stroke={isOptimal ? '#38bdf8' : '#f43f5e'} strokeWidth="8" strokeOpacity="0.3" strokeLinecap="round" strokeLinejoin="round" filter="url(#neonGlow)" />
-        <path d={pathD} fill="none" stroke={isOptimal ? 'url(#neonPathGrad)' : '#fb7185'} strokeWidth="4.5" strokeDasharray="10 8" strokeLinecap="round" strokeLinejoin="round">
+        {/* ================= ĐƯỜNG DẪN DI CHUYỂN TRỰC GIAO THEO LỐI ĐI VẬT LÝ ================= */}
+        <path
+          d={routeResult.pathD}
+          fill="none"
+          stroke={isOptimal ? '#38bdf8' : '#38bdf8'}
+          strokeWidth="7"
+          strokeOpacity="0.35"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          filter="url(#neonGlow)"
+        />
+        <path
+          d={routeResult.pathD}
+          fill="none"
+          stroke={isOptimal ? 'url(#neonPathGrad)' : '#06b6d4'}
+          strokeWidth="4"
+          strokeDasharray="10 8"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        >
           <animate attributeName="stroke-dashoffset" from="100" to="0" dur="2s" repeatCount="indefinite" />
         </path>
 
@@ -255,8 +270,8 @@ export const WarehouseFloorMapSvg: React.FC<WarehouseFloorMapSvgProps> = ({
             className={activeStep > orderedPoints.length ? 'animate-pulse' : ''}
           />
           <circle cx="0" cy="-10" r="15" fill={activeStep > orderedPoints.length ? '#059669' : '#047857'} />
-          <text x="0" y="-5" fill="#ffffff" fontSize="11" fontWeight="bold" textAnchor="middle">FINISH</text>
-          <text x="0" y="12" fill="#a7f3d0" fontSize="10" fontWeight="bold" textAnchor="middle">BÀN ĐÓNG GÓI QC</text>
+          <text x="0" y="-5" fill="#ffffff" fontSize="11" fontWeight="bold" textAnchor="middle">ĐÓNG GÓI</text>
+          <text x="0" y="12" fill="#a7f3d0" fontSize="10" fontWeight="bold" textAnchor="middle">KHU ĐÓNG GÓI &amp; XUẤT</text>
         </g>
 
         {/* ================= CÁC WAYPOINT NHẶT HÀNG ================= */}
@@ -308,12 +323,11 @@ export const WarehouseFloorMapSvg: React.FC<WarehouseFloorMapSvgProps> = ({
           );
         })}
 
-        {/* ================= THỦ KHO AVATAR (DI CHUYỂN MƯỢT MÀ THỜI GIAN THỰC) ================= */}
+        {/* ================= THỦ KHO AVATAR ================= */}
         <g
           transform={`translate(${currentAvatarPos.x}, ${currentAvatarPos.y + 16})`}
           style={{ transition: 'transform 0.75s cubic-bezier(0.4, 0, 0.2, 1)' }}
         >
-          {/* Radar ping phát sáng khi di chuyển */}
           <circle r="18" fill="#f59e0b" fillOpacity="0.35" className="animate-ping" />
           <circle r="12" fill="#fbbf24" stroke="#ffffff" strokeWidth="2.5" filter="drop-shadow(0 2px 8px rgba(0,0,0,0.8))" />
 
@@ -331,9 +345,9 @@ export const WarehouseFloorMapSvg: React.FC<WarehouseFloorMapSvgProps> = ({
             />
             <text x="0" y="4" fill="#fef08a" fontSize="10.5" fontWeight="bold" textAnchor="middle">
               {activeStep === 0
-                ? '🚶 Xuất phát: Cửa Dock 01'
+                ? '🚶 Xuất phát: Cửa Tiếp Nhận 01'
                 : activeStep > orderedPoints.length
-                  ? '📦 Đích: Bàn QC & Đóng Gói'
+                  ? '📦 Đích: Khu Đóng Gói'
                   : `🚶 Điểm #${activeStep}: ${orderedPoints[activeStep - 1]?.rack || 'Ô Kệ'}`}
             </text>
           </g>
