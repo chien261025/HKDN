@@ -213,7 +213,7 @@ export const InboundStagingTab: React.FC<InboundStagingTabProps> = ({
           </div>
           <div>
             <h2 className="text-xs sm:text-sm font-bold text-slate-900 uppercase tracking-wider">
-              Tiếp Nhận Hàng Bến Staging
+              Tiếp Nhận Hàng Nhập Kho
             </h2>
           </div>
         </div>
@@ -342,7 +342,7 @@ export const InboundStagingTab: React.FC<InboundStagingTabProps> = ({
                 ? `Đơn Tại Khu Đệm (${filteredOrders.length})`
                 : `Toàn Bộ Đơn PO (${filteredOrders.length})`}
           </span>
-          <span className="text-slate-400 text-2xs font-mono">Bến Staging Dock</span>
+          <span className="text-slate-400 text-2xs font-mono">Cửa Tiếp Nhận</span>
         </div>
 
         {filteredOrders.length === 0 ? (
@@ -439,7 +439,7 @@ export const InboundStagingTab: React.FC<InboundStagingTabProps> = ({
                 {/* Thao tác tiếp nhận */}
                 <div className="flex items-center justify-between pt-1">
                   <span className="text-xs text-slate-500 font-semibold">
-                    Dock Tiếp Nhận #01
+                    Cửa Tiếp Nhận #01
                   </span>
 
                   {isPending || isPartiallyStocked ? (

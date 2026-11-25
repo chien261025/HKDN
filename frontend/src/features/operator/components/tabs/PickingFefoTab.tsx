@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { PackageCheck, CheckCircle2, ScanLine, RefreshCw, Truck, AlertCircle } from 'lucide-react';
+import { PackageCheck, CheckCircle2, ScanLine, RefreshCw, Truck, AlertCircle, Navigation, MapPin } from 'lucide-react';
 import { operatorService, OutboundOrderDto, PickListItemResponseDto } from '../../services/operatorService';
 import { PickingOrderSelector } from './PickingOrderSelector';
 import { PickingStepCard } from './PickingStepCard';
@@ -24,11 +24,32 @@ export const PickingFefoTab: React.FC<PickingFefoTabProps> = ({
   const [loading, setLoading] = useState(false);
   const [dispatching, setDispatching] = useState(false);
   const [notice, setNotice] = useState<{ msg: string; type: 'success' | 'error' } | null>(null);
+  const [dispatchedRoute, setDispatchedRoute] = useState<{
+    orderCode: string;
+    algorithm: string;
+    algorithmName: string;
+    assignedBy: string;
+    assignedAt: string;
+    totalDistanceMeters: number;
+    totalTimeMinutes: string;
+  } | null>(null);
 
   const handleSelectOrder = async (order: OutboundOrderDto) => {
     setSelectedOrder(order);
     setPickSteps([]);
     setNotice(null);
+
+    // Kiểm tra xem đơn hàng đã được Quản lý kho chỉ định lộ trình tối ưu sang PDA chưa
+    try {
+      const stored = localStorage.getItem(`smart_wms_pda_route_${order.orderCode}`);
+      if (stored) {
+        setDispatchedRoute(JSON.parse(stored));
+      } else {
+        setDispatchedRoute(null);
+      }
+    } catch (e) {
+      setDispatchedRoute(null);
+    }
 
     if (order.items && order.items.length > 0) {
       setLoading(true);
@@ -61,6 +82,8 @@ export const PickingFefoTab: React.FC<PickingFefoTabProps> = ({
             });
           });
         }
+        // Sắp xếp các chặng lấy hàng theo thứ tự lộ trình tối ưu qua các dãy kệ
+        allSteps.sort((a, b) => (a.binBarcode || '').localeCompare(b.binBarcode || ''));
         setPickSteps(allSteps.map((s, idx) => ({ ...s, stepOrder: idx + 1, picked: s.picked || false })));
         if (allSteps.length === 0) {
           setNotice({
@@ -246,6 +269,28 @@ export const PickingFefoTab: React.FC<PickingFefoTabProps> = ({
                   <span>Quét Barcode</span>
                 </button>
               </div>
+
+              {dispatchedRoute && (
+                <div className="p-3 bg-gradient-to-r from-indigo-50 via-slate-50 to-emerald-50 border border-indigo-200/80 rounded-2xl flex items-center justify-between text-xs shadow-xs animate-in fade-in">
+                  <div className="flex items-center gap-2.5">
+                    <div className="w-9 h-9 rounded-xl bg-indigo-600 text-white flex items-center justify-center font-bold shadow-xs">
+                      <Navigation className="w-4 h-4" />
+                    </div>
+                    <div>
+                      <div className="font-bold text-indigo-950 flex items-center gap-1.5">
+                        <span>Lộ Trình Quản Lý Kho Đã Giao:</span>
+                        <span className="text-emerald-700 font-mono font-extrabold">{dispatchedRoute.algorithmName}</span>
+                      </div>
+                      <div className="text-[11px] text-slate-600 mt-0.5 font-medium">
+                        Người giao: <strong className="text-slate-800">{dispatchedRoute.assignedBy}</strong> • Cự ly: <strong className="text-indigo-700 font-mono">{dispatchedRoute.totalDistanceMeters}m</strong> • Ước tính: <strong className="text-indigo-700 font-mono">{dispatchedRoute.totalTimeMinutes}</strong>
+                      </div>
+                    </div>
+                  </div>
+                  <span className="px-2.5 py-1 rounded-lg bg-emerald-100 text-emerald-800 font-bold font-mono text-[10px] border border-emerald-300">
+                    ĐÃ ĐỒNG BỘ LỘ TRÌNH
+                  </span>
+                </div>
+              )}
 
               {loading ? (
                 <div className="bg-white rounded-2xl p-8 border border-slate-200 text-center text-xs text-slate-500 space-y-2">

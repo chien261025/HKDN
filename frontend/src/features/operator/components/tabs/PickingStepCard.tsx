@@ -22,9 +22,14 @@ export const PickingStepCard: React.FC<PickingStepCardProps> = ({
       }`}
     >
       <div className="flex items-center justify-between pb-2 border-b border-slate-100 text-xs">
-        <span className="font-mono font-bold text-amber-800">
-          Vị Trí Lấy Hàng
-        </span>
+        <div className="flex items-center gap-2">
+          <span className="px-2 py-0.5 rounded-md bg-indigo-50 border border-indigo-200 text-indigo-700 font-mono font-black text-xs">
+            CHẶNG #{index + 1}
+          </span>
+          <span className="font-mono font-bold text-slate-700">
+            {step.picked ? '✓ Đã hoàn tất' : '● Điểm nhặt kế tiếp'}
+          </span>
+        </div>
         <span className="text-xs font-mono text-slate-500 font-medium">
           Lấy: <strong className="text-indigo-700 text-sm font-bold">{step.pickQty}</strong> cái
         </span>

@@ -16,7 +16,7 @@ export const SmartAssistantPage: React.FC = () => {
       id: 'welcome-1',
       sender: 'ai',
       timestamp: 'Hệ Thống Sẵn Sàng',
-      text: 'Chào bạn! Hệ thống hỗ trợ tra cứu nhanh các chỉ số kho vận qua câu hỏi tự nhiên. Bạn có thể tra cứu tồn kho, tìm các lô hàng cận date (FEFO), thống kê tỷ lệ lấp đầy ô kệ hoặc kiểm tra biến động thẻ kho.',
+      text: 'Chào bạn! Hệ thống hỗ trợ tra cứu nhanh các chỉ số kho vận qua câu hỏi tự nhiên. Bạn có thể tra cứu tồn kho, tìm các lô hàng cận hạn (FEFO), thống kê tỷ lệ lấp đầy ô kệ hoặc kiểm tra biến động thẻ kho.',
     },
   ]);
 

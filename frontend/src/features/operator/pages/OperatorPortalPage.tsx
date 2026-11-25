@@ -155,17 +155,17 @@ export const OperatorPortalPage: React.FC = () => {
   const tabList = [
     {
       id: 'STAGING' as OperatorTab,
-      label: 'Tiếp Nhận Bến',
-      sub: 'Inbound Staging',
+      label: 'Tiếp Nhận Hàng',
+      sub: 'Tiếp nhận & dỡ hàng',
       icon: Truck,
       shortcut: '1',
-      badge: 'Bến Nhập',
+      badge: 'Cửa Nhập',
       color: 'blue',
     },
     {
       id: 'PUTAWAY' as OperatorTab,
       label: 'Cất Kệ Lưu Kho',
-      sub: 'Put-away',
+      sub: 'Xếp hàng lên kệ',
       icon: Layers,
       shortcut: '2',
       badge: 'Cất Kệ',
@@ -173,8 +173,8 @@ export const OperatorPortalPage: React.FC = () => {
     },
     {
       id: 'PICKING' as OperatorTab,
-      label: 'Lấy Hàng FEFO',
-      sub: 'FEFO Picking',
+      label: 'Lấy Hàng Theo HSD',
+      sub: 'Ưu tiên hàng cận hạn',
       icon: PackageCheck,
       shortcut: '3',
       badge: 'Xuất Kho',
@@ -414,11 +414,11 @@ export const OperatorPortalPage: React.FC = () => {
                     </button>
                     <button
                       type="button"
-                      onClick={() => handleInjectBarcode('WH01-ZB-B02-R02-S02-B12', 'Ô Kệ B12 Cận Date')}
+                      onClick={() => handleInjectBarcode('WH01-ZB-B02-R02-S02-B12', 'Ô Kệ B12 Cận Hạn')}
                       className="p-2 rounded-xl bg-slate-900/90 hover:bg-blue-600 text-left border border-slate-700/60 text-slate-200 transition cursor-pointer flex items-center justify-between"
                     >
                       <span className="font-bold text-[11px] text-amber-300">WH01-ZB-B02-R02-S02-B12</span>
-                      <span className="text-[10px] text-slate-400">Hàng Cận Date</span>
+                      <span className="text-[10px] text-slate-400">Hàng Cận Hạn</span>
                     </button>
                   </div>
                 </div>

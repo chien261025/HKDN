@@ -35,13 +35,17 @@ export const USER_ROLE_LABELS: Record<string, string> = {
 
 /** Phân vùng kho chuẩn */
 export const WAREHOUSE_ZONES = {
-  ZONE_A: 'ZONE_A', // Khô & Điện tử (Ambient)
-  ZONE_B: 'ZONE_B', // Kho mát 2-8°C (Cold storage)
+  ZONE_A: 'ZONE_A',
+  ZONE_B: 'ZONE_B',
+  ZONE_C: 'ZONE_C',
+  ZONE_QUA: 'ZONE_QUA',
 } as const;
 
 export const WAREHOUSE_ZONE_LABELS: Record<string, string> = {
-  ZONE_A: 'Khu A (Khô & Thiết bị)',
-  ZONE_B: 'Khu B (Kho mát 2-8°C)',
+  ZONE_A: 'Khu A - Hàng Khô & Tiêu Dùng Thường',
+  ZONE_B: 'Khu B - Kho Mát & Thực Phẩm (2°C - 8°C)',
+  ZONE_C: 'Khu C - Hàng Giá Trị Cao & Điện Tử',
+  ZONE_QUA: 'Khu Q - Khu Cách Ly & Hàng Chờ Xử Lý',
 };
 
 /** Phân trang mặc định */

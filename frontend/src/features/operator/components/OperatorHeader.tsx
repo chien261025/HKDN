@@ -135,7 +135,7 @@ export const OperatorHeader: React.FC<OperatorHeaderProps> = ({
               </span>
             </div>
             <p className="text-[11px] text-slate-500 font-medium truncate">
-              Bến Staging • Lưu Kho • Nhặt FEFO • Chuyển Kệ • Kiểm Kê
+              Tiếp Nhận • Cất Kệ • Lấy Hàng HSD • Chuyển Kệ • Kiểm Kê
             </p>
           </div>
         </div>

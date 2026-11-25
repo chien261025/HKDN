@@ -41,7 +41,7 @@ export const PutawayTab: React.FC<PutawayTabProps> = ({
             const name = prod?.name || `Sản phẩm #${item.productId}`;
             const unit = prod?.unit || 'kiện';
 
-            const zone = ({ COOL: 'ZONE_B', COLD: 'ZONE_C', SECURE: 'ZONE_D', AMBIENT: 'ZONE_A' } as Record<string,string>)[prod?.storageCondition ?? ''] ?? '';
+            const zone = ({ COOL: 'ZONE_B', COLD: 'ZONE_C', SECURE: 'ZONE_D', AMBIENT: 'ZONE_A' } as Record<string, string>)[prod?.storageCondition ?? ''] ?? '';
             const itemQty = item.remainingQty;
             if (itemQty <= 0) continue;
             const totalWeight = itemQty * (prod?.weightKg ?? 0);
@@ -265,11 +265,10 @@ export const PutawayTab: React.FC<PutawayTabProps> = ({
 
       {feedback && (
         <div
-          className={`p-3.5 rounded-xl text-xs flex items-center gap-2 font-medium shadow-2xs animate-in fade-in ${
-            feedback.type === 'success'
+          className={`p-3.5 rounded-xl text-xs flex items-center gap-2 font-medium shadow-2xs animate-in fade-in ${feedback.type === 'success'
               ? 'bg-emerald-50 border border-emerald-200 text-emerald-800'
               : 'bg-rose-50 border border-rose-200 text-rose-800'
-          }`}
+            }`}
         >
           {feedback.type === 'success' ? (
             <CheckCircle2 className="w-4 h-4 flex-shrink-0 text-emerald-600" />
@@ -309,9 +308,9 @@ export const PutawayTab: React.FC<PutawayTabProps> = ({
             <div className="w-12 h-12 rounded-2xl bg-indigo-50 text-indigo-600 mx-auto flex items-center justify-center">
               <Layers className="w-6 h-6" />
             </div>
-            <p className="text-sm font-bold text-slate-800">Khu đệm Staging đang trống</p>
+            <p className="text-sm font-bold text-slate-800">Khu tiếp nhận đang trống</p>
             <p className="text-xs text-slate-500 max-w-xs mx-auto">
-              Chưa có kiện hàng nào chờ cất kệ tại khu đệm Staging.
+              Chưa có kiện hàng nào chờ cất kệ tại khu vực tiếp nhận.
             </p>
           </div>
         ) : (
