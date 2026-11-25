@@ -29,8 +29,8 @@ public class ApiRateLimitingFilter extends OncePerRequestFilter {
     private final StringRedisTemplate redisTemplate;
     private final ObjectMapper objectMapper;
 
-    // Giới hạn tối đa 200 requests/phút trên mỗi địa chỉ IP
-    private static final int MAX_REQUESTS_PER_MINUTE = 200;
+    // Giới hạn tối đa 3000 requests/phút trên mỗi địa chỉ IP (Đảm bảo vận hành doanh nghiệp & realtime dashboard)
+    private static final int MAX_REQUESTS_PER_MINUTE = 3000;
     private static final String RATE_LIMIT_PREFIX = "wms:ratelimit:api:ip:";
 
     @Override
@@ -46,6 +46,13 @@ public class ApiRateLimitingFilter extends OncePerRequestFilter {
         }
 
         String clientIp = resolveClientIp(request);
+
+        // Bỏ qua rate limit cho localhost và mạng nội bộ container
+        if ("127.0.0.1".equals(clientIp) || "0:0:0:0:0:0:0:1".equals(clientIp) || clientIp.startsWith("172.") || clientIp.startsWith("10.") || clientIp.startsWith("192.168.")) {
+            filterChain.doFilter(request, response);
+            return;
+        }
+
         String redisKey = RATE_LIMIT_PREFIX + clientIp;
 
         try {

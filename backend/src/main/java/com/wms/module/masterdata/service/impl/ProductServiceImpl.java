@@ -2,6 +2,7 @@ package com.wms.module.masterdata.service.impl;
 
 import com.wms.common.exception.BusinessException;
 import com.wms.common.exception.ErrorCode;
+import com.wms.module.masterdata.entity.Category;
 import com.wms.module.masterdata.entity.Product;
 import com.wms.module.masterdata.repository.ProductRepository;
 import com.wms.module.masterdata.repository.SupplierRepository;
@@ -71,17 +72,27 @@ public class ProductServiceImpl implements ProductService {
         if (product.getCategoryId() == null) {
             throw new BusinessException(ErrorCode.BAD_REQUEST, "Danh mục sản phẩm (Category) không được để trống!");
         }
-        categoryRepository.findById(product.getCategoryId())
-                .orElseThrow(() -> new BusinessException(ErrorCode.BAD_REQUEST, "Danh mục sản phẩm không tồn tại: " + product.getCategoryId()));
+        validateCategoryAssignable(product.getCategoryId());
 
         String formattedSku = product.getSku().trim().toUpperCase();
         if (productRepository.findBySkuAndDeletedAtIsNull(formattedSku).isPresent()) {
-            throw new BusinessException(ErrorCode.BAD_REQUEST, "Mã SKU đã tồn tại: " + product.getSku());
+            throw new BusinessException(ErrorCode.BAD_REQUEST, "Mã SKU đã tồn tại trong danh mục: " + formattedSku);
         }
         validateSupplierForNewProduct(product.getSupplierId());
-        if (product.getBarcode() == null || product.getBarcode().isBlank()) {
-            product.setBarcode("893" + System.currentTimeMillis());
+
+        String formattedBarcode = product.getBarcode() != null ? product.getBarcode().trim() : "";
+        if (formattedBarcode.isBlank()) {
+            formattedBarcode = generateInternalEan13();
+            while (productRepository.findByBarcodeAndDeletedAtIsNull(formattedBarcode).isPresent()) {
+                formattedBarcode = generateInternalEan13();
+            }
+        } else if (productRepository.findByBarcodeAndDeletedAtIsNull(formattedBarcode).isPresent()) {
+            throw new BusinessException(ErrorCode.BAD_REQUEST, "Mã vạch (Barcode) đã tồn tại trong danh mục: " + formattedBarcode);
         }
+
+        validateProductSpecifications(product);
+
+        product.setBarcode(formattedBarcode);
         product.setSku(formattedSku);
         product.setCurrentStock(0);
         product.setCreatedAt(Instant.now());
@@ -101,7 +112,13 @@ public class ProductServiceImpl implements ProductService {
             existing.setDescription(productUpdate.getDescription());
         }
         if (productUpdate.getBarcode() != null && !productUpdate.getBarcode().isBlank()) {
-            existing.setBarcode(productUpdate.getBarcode());
+            String trimmedBarcode = productUpdate.getBarcode().trim();
+            productRepository.findByBarcodeAndDeletedAtIsNull(trimmedBarcode).ifPresent(other -> {
+                if (!other.getId().equals(existing.getId())) {
+                    throw new BusinessException(ErrorCode.BAD_REQUEST, "Mã vạch (Barcode) đã thuộc về sản phẩm khác: " + trimmedBarcode);
+                }
+            });
+            existing.setBarcode(trimmedBarcode);
         }
         if (productUpdate.getUnit() != null && !productUpdate.getUnit().isBlank()) {
             existing.setUnit(productUpdate.getUnit());
@@ -148,7 +165,8 @@ public class ProductServiceImpl implements ProductService {
         if (productUpdate.getBusinessStatus() != null) {
             existing.setBusinessStatus(productUpdate.getBusinessStatus());
         }
-        if (productUpdate.getCategoryId() != null) {
+        if (productUpdate.getCategoryId() != null && !productUpdate.getCategoryId().equals(existing.getCategoryId())) {
+            validateCategoryAssignable(productUpdate.getCategoryId());
             existing.setCategoryId(productUpdate.getCategoryId());
         }
         if (productUpdate.getSupplierId() != null && !productUpdate.getSupplierId().equals(existing.getSupplierId())) {
@@ -176,6 +194,7 @@ public class ProductServiceImpl implements ProductService {
         if (productUpdate.getConversionRate() != null && productUpdate.getConversionRate() > 0) {
             existing.setConversionRate(productUpdate.getConversionRate());
         }
+        validateProductSpecifications(existing);
         existing.setUpdatedAt(Instant.now());
         return productRepository.save(existing);
     }
@@ -191,6 +210,15 @@ public class ProductServiceImpl implements ProductService {
     @Override
     public Product softDelete(Long id) {
         Product product = findProduct(id);
+        var inventories = inventoryRepository.findByProductId(id);
+        int totalOnHand = inventories.stream().mapToInt(i -> i.getOnHandQty() != null ? i.getOnHandQty() : 0).sum();
+        int totalReserved = inventories.stream().mapToInt(i -> i.getReservedQty() != null ? i.getReservedQty() : 0).sum();
+        if (totalOnHand > 0 || totalReserved > 0) {
+            String unit = product.getUnit() != null ? product.getUnit() : "đơn vị";
+            throw new BusinessException(ErrorCode.BAD_REQUEST,
+                    String.format("Không thể xóa sản phẩm '%s' (%s) khi vẫn còn %d %s tồn kho thực tế (đang giữ chỗ: %d). Vui lòng chuyển trạng thái sang Tạm ngưng nhập / Ngừng kinh doanh!",
+                            product.getName(), product.getSku(), totalOnHand, unit, totalReserved));
+        }
         product.setDeletedAt(Instant.now());
         product.setIsActive(false);
         product.setUpdatedAt(Instant.now());
@@ -223,6 +251,19 @@ public class ProductServiceImpl implements ProductService {
                 .orElseThrow(() -> new BusinessException(ErrorCode.NOT_FOUND, "Không tìm thấy sản phẩm với ID: " + id));
     }
 
+    private void validateCategoryAssignable(Long categoryId) {
+        Category cat = categoryRepository.findById(categoryId)
+                .orElseThrow(() -> new BusinessException(ErrorCode.BAD_REQUEST, "Danh mục sản phẩm không tồn tại: " + categoryId));
+        if (cat.getDeletedAt() != null) {
+            throw new BusinessException(ErrorCode.BAD_REQUEST,
+                    "Không thể gán sản phẩm vào danh mục '" + cat.getName() + "' vì danh mục đã bị xóa!");
+        }
+        if (!Boolean.TRUE.equals(cat.getIsActive())) {
+            throw new BusinessException(ErrorCode.BAD_REQUEST,
+                    "Danh mục '" + cat.getName() + "' đang tạm ngưng, không thể gán cho sản phẩm mới hoặc chuyển sang danh mục này!");
+        }
+    }
+
     private void validateSupplierForNewProduct(Long supplierId) {
         if (supplierId == null) {
             throw new BusinessException(ErrorCode.BAD_REQUEST, "Sản phẩm phải thuộc một nhà cung cấp");
@@ -232,5 +273,57 @@ public class ProductServiceImpl implements ProductService {
         if (!Boolean.TRUE.equals(supplier.getIsActive())) {
             throw new BusinessException(ErrorCode.BAD_REQUEST, "Không thể thêm sản phẩm từ nhà cung cấp đang ngưng hợp tác!");
         }
+        if (supplier.getCode() != null && supplier.getCode().toUpperCase().startsWith("CUST-")) {
+            throw new BusinessException(ErrorCode.BAD_REQUEST, "Đối tác '" + supplier.getName() + "' là Khách hàng B2B, không phải Nhà cung cấp!");
+        }
+    }
+
+    private void validateProductSpecifications(Product p) {
+        if (p.getWeightKg() != null && p.getWeightKg().doubleValue() <= 0) {
+            throw new BusinessException(ErrorCode.BAD_REQUEST, "Trọng lượng sản phẩm phải lớn hơn 0 kg!");
+        }
+        if (p.getLengthCm() != null && p.getLengthCm().doubleValue() <= 0) {
+            throw new BusinessException(ErrorCode.BAD_REQUEST, "Chiều dài bao bì phải lớn hơn 0 cm!");
+        }
+        if (p.getWidthCm() != null && p.getWidthCm().doubleValue() <= 0) {
+            throw new BusinessException(ErrorCode.BAD_REQUEST, "Chiều rộng bao bì phải lớn hơn 0 cm!");
+        }
+        if (p.getHeightCm() != null && p.getHeightCm().doubleValue() <= 0) {
+            throw new BusinessException(ErrorCode.BAD_REQUEST, "Chiều cao bao bì phải lớn hơn 0 cm!");
+        }
+        if (p.getPurchasePrice() != null && p.getPurchasePrice().doubleValue() < 0) {
+            throw new BusinessException(ErrorCode.BAD_REQUEST, "Giá nhập không được âm!");
+        }
+        if (p.getSellingPrice() != null && p.getSellingPrice().doubleValue() < 0) {
+            throw new BusinessException(ErrorCode.BAD_REQUEST, "Giá bán không được âm!");
+        }
+        int min = p.getSafetyStock() != null ? p.getSafetyStock() : 0;
+        int rop = p.getReorderPoint() != null ? p.getReorderPoint() : 0;
+        int max = p.getMaxStock() != null ? p.getMaxStock() : 500;
+        if (min < 0 || rop < 0 || max < 1) {
+            throw new BusinessException(ErrorCode.BAD_REQUEST, "Định mức tồn kho không hợp lệ!");
+        }
+        if (min > rop) {
+            throw new BusinessException(ErrorCode.BAD_REQUEST, "Tồn kho tối thiểu (" + min + ") không được lớn hơn Ngưỡng đặt hàng lại (" + rop + ")!");
+        }
+        if (rop > max) {
+            throw new BusinessException(ErrorCode.BAD_REQUEST, "Ngưỡng đặt hàng lại (" + rop + ") không được vượt quá Tồn tối đa (" + max + ")!");
+        }
+    }
+
+    private String generateInternalEan13() {
+        StringBuilder sb = new StringBuilder("893");
+        java.util.concurrent.ThreadLocalRandom rnd = java.util.concurrent.ThreadLocalRandom.current();
+        for (int i = 0; i < 9; i++) {
+            sb.append(rnd.nextInt(10));
+        }
+        String first12 = sb.toString();
+        int sum = 0;
+        for (int i = 0; i < 12; i++) {
+            int d = first12.charAt(i) - '0';
+            sum += (i % 2 == 0) ? d : d * 3;
+        }
+        int checkDigit = (10 - (sum % 10)) % 10;
+        return first12 + checkDigit;
     }
 }

@@ -79,6 +79,44 @@ public class StockTransferService {
         ProductBatch batch = productBatchRepository.findById(request.getBatchId())
                 .orElseThrow(() -> new BusinessException(ErrorCode.NOT_FOUND, "Không tìm thấy lô hàng: " + request.getBatchId()));
 
+        // --- RÀNG BUỘC NGHIỆP VỤ WMS ENTERPRISE (SAP EWM / MANHATTAN WMS) ---
+        // 1. Kiểm tra trạng thái Lô Hết Hạn (Expired Batch Rules)
+        java.time.LocalDate today = java.time.LocalDate.now();
+        boolean isBatchExpired = (batch.getExpiryDate() != null && batch.getExpiryDate().isBefore(today))
+                || "EXPIRED".equalsIgnoreCase(batch.getStatus());
+
+        boolean isToLocQuarantine = "ZONE_QUA".equalsIgnoreCase(toLoc.getZoneCode())
+                || (toLoc.getBinBarcode() != null && (
+                    toLoc.getBinBarcode().contains("QUA") ||
+                    toLoc.getBinBarcode().contains("SCRAP") ||
+                    toLoc.getBinBarcode().contains("DISPOSAL")));
+
+        if (isBatchExpired && !isToLocQuarantine) {
+            throw new BusinessException(ErrorCode.BAD_REQUEST,
+                    String.format("Lô hàng %s đã hết hạn sử dụng (%s)! Vi phạm quy tắc an toàn kho: Không được phép điều chuyển hàng hết hạn sang ô lưu trữ thương mại (%s). Hàng hết hạn chỉ được phép chuyển vào Phân Khu Cách Ly (ZONE_QUA) để chờ kiểm định hoặc xử lý tiêu hủy!",
+                            batch.getBatchNumber(), batch.getExpiryDate(), toLoc.getBinBarcode()));
+        }
+
+        // 2. Kiểm tra Tương Thích Điều Kiện Bảo Quản Zone (Storage Condition Compatibility)
+        if (!isToLocQuarantine) {
+            String storageCond = product.getStorageCondition() != null ? product.getStorageCondition().toUpperCase() : "AMBIENT";
+            String targetZone = toLoc.getZoneCode() != null ? toLoc.getZoneCode().toUpperCase() : "";
+
+            // Hàng kho mát / lạnh (COOL / COLD) bắt buộc phải nằm ở Zone B (ZONE_B)
+            if (("COOL".equals(storageCond) || "COLD".equals(storageCond)) && !targetZone.contains("ZONE_B")) {
+                throw new BusinessException(ErrorCode.BAD_REQUEST,
+                        String.format("Vi phạm điều kiện bảo quản thực phẩm lạnh/mát! Sản phẩm '%s' (%s) yêu cầu điều kiện bảo quản %s (2°C - 8°C tại Khu B). Không được phép điều chuyển sang ô kệ %s thuộc khu vực %s!",
+                                product.getName(), product.getSku(), storageCond, toLoc.getBinBarcode(), toLoc.getZoneCode()));
+            }
+
+            // Hàng công nghệ giá trị cao (SECURE) yêu cầu bảo quản tại khu vực an ninh cao Zone C (ZONE_C)
+            if ("SECURE".equals(storageCond) && !targetZone.contains("ZONE_C")) {
+                throw new BusinessException(ErrorCode.BAD_REQUEST,
+                        String.format("Vi phạm quy tắc an ninh kho! Sản phẩm giá trị cao '%s' (%s) bắt buộc phải lưu trữ tại Khu Vực An Ninh Cao Zone C (ZONE_C). Không được phép chuyển sang khu vực %s!",
+                                product.getName(), product.getSku(), toLoc.getZoneCode()));
+            }
+        }
+
         // Kiểm tra sức chứa tối đa của ô kệ đích (Bin Capacity Validation - TR04)
         if (toLoc.getMaxWeightKg() != null) {
             java.math.BigDecimal prodWeight = product.getWeightKg() != null ? product.getWeightKg() : java.math.BigDecimal.ONE;

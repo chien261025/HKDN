@@ -62,4 +62,12 @@ public class Category {
     @jakarta.persistence.Transient
     @Builder.Default
     private Long productCount = 0L;
+
+    @jakarta.persistence.Transient
+    @Builder.Default
+    private Long childCount = 0L;
+
+    @jakarta.persistence.Transient
+    @Builder.Default
+    private Boolean clearParent = false;
 }

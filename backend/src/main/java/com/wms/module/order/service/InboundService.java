@@ -10,8 +10,10 @@ import com.wms.module.inventory.repository.ProductBatchRepository;
 import com.wms.module.inventory.repository.StockLedgerRepository;
 import com.wms.module.masterdata.entity.Location;
 import com.wms.module.masterdata.entity.Product;
+import com.wms.module.masterdata.entity.Supplier;
 import com.wms.module.masterdata.repository.LocationRepository;
 import com.wms.module.masterdata.repository.ProductRepository;
+import com.wms.module.masterdata.repository.SupplierRepository;
 import com.wms.module.order.dto.request.ExecutePutawayRequest;
 import com.wms.module.order.dto.request.ReceiveInboundRequest;
 import com.wms.module.order.entity.InboundOrder;
@@ -34,6 +36,7 @@ public class InboundService {
 
     private final LocationRepository locationRepository;
     private final ProductRepository productRepository;
+    private final SupplierRepository supplierRepository;
     private final InboundOrderRepository inboundOrderRepository;
     private final ProductBatchRepository productBatchRepository;
     private final InventoryRepository inventoryRepository;
@@ -56,6 +59,20 @@ public class InboundService {
 
     @Transactional
     public InboundOrder createInboundOrder(com.wms.module.order.dto.request.CreateInboundOrderRequest request) {
+        if (request.getSupplierId() == null) {
+            throw new BusinessException(ErrorCode.BAD_REQUEST, "Vui lòng chọn Nhà cung cấp cho đơn nhập kho (PO)!");
+        }
+        Supplier supplier = supplierRepository.findById(request.getSupplierId())
+                .orElseThrow(() -> new BusinessException(ErrorCode.NOT_FOUND, "Không tìm thấy nhà cung cấp với ID: " + request.getSupplierId()));
+        if (!Boolean.TRUE.equals(supplier.getIsActive())) {
+            throw new BusinessException(ErrorCode.BAD_REQUEST,
+                    "Không thể tạo đơn nhập kho PO vì nhà cung cấp '" + supplier.getName() + "' (" + supplier.getCode() + ") đang tạm ngưng hợp tác!");
+        }
+        if (supplier.getCode() != null && supplier.getCode().toUpperCase().startsWith("CUST-")) {
+            throw new BusinessException(ErrorCode.BAD_REQUEST,
+                    "Đối tác '" + supplier.getName() + "' là Khách hàng B2B, không phải Nhà cung cấp nhập hàng!");
+        }
+
         String code = request.getOrderCode() != null && !request.getOrderCode().isBlank()
                 ? request.getOrderCode()
                 : "PO-" + System.currentTimeMillis() % 1000000;
@@ -248,7 +265,18 @@ public class InboundService {
 
         return availableLocations.stream()
                 .filter(Location::getIsActive)
-                .filter(loc -> loc.getMaxWeightKg().compareTo(effectiveWeight) >= 0)
+                .filter(loc -> {
+                    if (loc.getMaxWeightKg() == null) return true;
+                    BigDecimal currentWeight = inventoryRepository.findAll().stream()
+                            .filter(i -> loc.getId().equals(i.getLocationId()) && i.getOnHandQty() != null && i.getOnHandQty() > 0)
+                            .map(i -> {
+                                Product p = productRepository.findById(i.getProductId()).orElse(null);
+                                BigDecimal w = (p != null && p.getWeightKg() != null) ? p.getWeightKg() : BigDecimal.ONE;
+                                return w.multiply(BigDecimal.valueOf(i.getOnHandQty()));
+                            })
+                            .reduce(BigDecimal.ZERO, BigDecimal::add);
+                    return currentWeight.add(effectiveWeight).compareTo(loc.getMaxWeightKg()) <= 0;
+                })
                 .sorted((l1, l2) -> {
                     if (isHeavyItem) {
                         boolean l1IsBottom = "S01".equalsIgnoreCase(l1.getShelf());
@@ -308,6 +336,41 @@ public class InboundService {
 
         if (!order.getWarehouseId().equals(location.getWarehouseId()) || !Boolean.TRUE.equals(location.getIsActive())) {
             throw new BusinessException(ErrorCode.BAD_REQUEST, "Ô kệ không hoạt động hoặc không thuộc kho của đơn");
+        }
+
+        // --- RÀNG BUỘC NGHIỆP VỤ WMS DOANH NGHIỆP KHI XẾP LÊN KỆ (PUTAWAY GATES) ---
+        // 1. Kiểm tra điều kiện bảo quản nhiệt độ (Storage Condition Compatibility)
+        Product product = productRepository.findById(request.getProductId())
+                .orElseThrow(() -> new BusinessException(ErrorCode.NOT_FOUND, "Không tìm thấy sản phẩm: " + request.getProductId()));
+
+        String storageCond = product.getStorageCondition() != null ? product.getStorageCondition().toUpperCase() : "AMBIENT";
+        String targetZone = location.getZoneCode() != null ? location.getZoneCode().toUpperCase() : "";
+
+        if (("COOL".equals(storageCond) || "COLD".equals(storageCond)) && !targetZone.contains("ZONE_B")) {
+            throw new BusinessException(ErrorCode.BAD_REQUEST,
+                    String.format("Vi phạm điều kiện bảo quản! Sản phẩm '%s' yêu cầu kho mát (2°C - 8°C tại Khu B). Không được phép cất vào ô %s thuộc khu vực %s!",
+                            product.getName(), location.getBinBarcode(), location.getZoneCode()));
+        }
+
+        // 2. Kiểm tra an toàn tải trọng tối đa của ô kệ (Bin Weight Capacity Check)
+        if (location.getMaxWeightKg() != null) {
+            BigDecimal prodWeight = product.getWeightKg() != null ? product.getWeightKg() : BigDecimal.ONE;
+            BigDecimal putawayWeight = prodWeight.multiply(BigDecimal.valueOf(request.getQuantity()));
+
+            BigDecimal currentWeight = inventoryRepository.findAll().stream()
+                    .filter(i -> request.getLocationId().equals(i.getLocationId()) && i.getOnHandQty() != null && i.getOnHandQty() > 0)
+                    .map(i -> {
+                        Product p = productRepository.findById(i.getProductId()).orElse(null);
+                        BigDecimal w = (p != null && p.getWeightKg() != null) ? p.getWeightKg() : BigDecimal.ONE;
+                        return w.multiply(BigDecimal.valueOf(i.getOnHandQty()));
+                    })
+                    .reduce(BigDecimal.ZERO, BigDecimal::add);
+
+            if (currentWeight.add(putawayWeight).compareTo(location.getMaxWeightKg()) > 0) {
+                throw new BusinessException(ErrorCode.BAD_REQUEST,
+                        String.format("Ô kệ %s không đủ sức chứa! Tối đa: %s kg, hiện tại: %s kg, cất thêm: %s kg (vượt quá mức tải trọng an toàn).",
+                                location.getBinBarcode(), location.getMaxWeightKg(), currentWeight, putawayWeight));
+            }
         }
         // Legacy receipts may predate mandatory lot capture. Keep their generated lot stable across placements.
         final String finalBatchNumber = targetItem.getBatchNumber() == null || targetItem.getBatchNumber().isBlank()

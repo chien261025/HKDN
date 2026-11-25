@@ -81,11 +81,11 @@ public class Supplier {
     @com.fasterxml.jackson.annotation.JsonProperty("categoryIds")
     public void setCategoryIds(List<Long> ids) {
         if (ids != null) {
-            if (this.categories == null) {
-                this.categories = new HashSet<>();
-            }
+            this.categories = new HashSet<>();
             for (Long cid : ids) {
-                this.categories.add(Category.builder().id(cid).build());
+                if (cid != null) {
+                    this.categories.add(Category.builder().id(cid).build());
+                }
             }
         }
     }

@@ -17,6 +17,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -53,40 +54,68 @@ public class LocationServiceImpl implements LocationService {
         List<Location> locations = locationRepository.findAll();
         List<com.wms.module.inventory.entity.Inventory> inventories = inventoryRepository.findAll();
 
+        Map<Long, com.wms.module.inventory.entity.ProductBatch> batchMap = productBatchRepository.findAll().stream()
+                .collect(Collectors.toMap(com.wms.module.inventory.entity.ProductBatch::getId, b -> b, (a, b) -> a));
+
+        // Chuẩn FEFO (First-Expired, First-Out): Ưu tiên hiển thị lô hàng cận hạn / hết hạn sớm nhất để thủ kho xử lý
         Map<Long, com.wms.module.inventory.entity.Inventory> invByLoc = inventories.stream()
                 .filter(i -> i.getOnHandQty() != null && i.getOnHandQty() > 0)
+                .sorted(Comparator.comparing(i -> {
+                    com.wms.module.inventory.entity.ProductBatch b = batchMap.get(i.getBatchId());
+                    return (b != null && b.getExpiryDate() != null) ? b.getExpiryDate() : LocalDate.of(2099, 1, 1);
+                }))
                 .collect(Collectors.toMap(com.wms.module.inventory.entity.Inventory::getLocationId, i -> i, (a, b) -> a));
 
         Map<Long, Product> prodMap = productRepository.findAll().stream()
                 .collect(Collectors.toMap(Product::getId, p -> p, (a, b) -> a));
 
-        Map<Long, com.wms.module.inventory.entity.ProductBatch> batchMap = productBatchRepository.findAll().stream()
-                .collect(Collectors.toMap(com.wms.module.inventory.entity.ProductBatch::getId, b -> b, (a, b) -> a));
+        Map<Long, BigDecimal> weightByLoc = inventories.stream()
+                .filter(i -> i.getOnHandQty() != null && i.getOnHandQty() > 0)
+                .collect(Collectors.groupingBy(
+                        com.wms.module.inventory.entity.Inventory::getLocationId,
+                        Collectors.reducing(BigDecimal.ZERO, i -> {
+                            Product p = prodMap.get(i.getProductId());
+                            BigDecimal w = (p != null && p.getWeightKg() != null) ? p.getWeightKg() : BigDecimal.ONE;
+                            return w.multiply(BigDecimal.valueOf(i.getOnHandQty()));
+                        }, BigDecimal::add)
+                ));
 
-        LocalDate thresholdDate = LocalDate.now().plusDays(30);
+        LocalDate today = LocalDate.now();
+        LocalDate thresholdDate = today.plusDays(30);
 
         return locations.stream().map(loc -> {
             String zoneCode = loc.getZoneCode() != null ? loc.getZoneCode() : "ZONE_A";
             String zoneName = zoneCode.contains("B")
-                    ? "Kho Mát & Thực Phẩm (Cold Storage 2-8°C)"
+                    ? "Kho Mát & Thực Phẩm (2°C - 8°C)"
                     : zoneCode.contains("C")
-                    ? "Kho Hàng Giá Trị Cao & Điện Tử (Secure Zone)"
-                    : "Kho Hàng Khô & Tiêu Dùng (Ambient Dry)";
+                    ? "Kho Hàng Giá Trị Cao & Điện Tử"
+                    : zoneCode.contains("QUA")
+                    ? "Khu Vực Cách Ly & Chờ Xử Lý"
+                    : "Kho Hàng Khô & Tiêu Dùng Thường";
 
             com.wms.module.inventory.entity.Inventory inv = invByLoc.get(loc.getId());
 
             String status = "EMPTY";
             BigDecimal currentWeight = BigDecimal.ZERO;
             Long productId = null;
+            Long batchId = null;
             String productName = null;
             String sku = null;
             Integer qty = null;
+            Integer onHandQty = 0;
+            Integer reservedQty = 0;
+            Integer availableQty = 0;
+            Boolean isExpired = false;
             String batch = null;
             LocalDate expiry = null;
 
             if (inv != null && inv.getOnHandQty() > 0) {
                 productId = inv.getProductId();
+                batchId = inv.getBatchId();
                 qty = inv.getOnHandQty();
+                onHandQty = inv.getOnHandQty();
+                reservedQty = inv.getReservedQty() != null ? inv.getReservedQty() : 0;
+                availableQty = Math.max(0, inv.getAvailableQty());
                 Product p = prodMap.get(productId);
                 if (p != null) {
                     productName = p.getName();
@@ -97,21 +126,22 @@ public class LocationServiceImpl implements LocationService {
                 if (b != null) {
                     batch = b.getBatchNumber();
                     expiry = b.getExpiryDate();
+                    if (expiry != null && (expiry.isBefore(today) || expiry.isEqual(today))) {
+                        isExpired = true;
+                    }
                 }
 
                 if (inv.getAvailableQty() <= 0 && inv.getReservedQty() > 0) {
                     status = "RESERVED";
-                } else if (expiry != null && (expiry.isBefore(thresholdDate) || expiry.isEqual(thresholdDate))) {
+                } else if (isExpired || (expiry != null && (expiry.isBefore(thresholdDate) || expiry.isEqual(thresholdDate)))) {
                     status = "EXPIRING";
                 } else {
                     status = "OCCUPIED";
                 }
 
-                // Ước tính tải trọng thực tế: lấy 60% maxWeight nếu ô đang chứa hàng
-                // (currentWeight thực tế cần sensor IoT; tạm dùng quy tắc nghiệp vụ)
-                currentWeight = loc.getMaxWeightKg()
-                        .multiply(BigDecimal.valueOf(0.6))
-                        .setScale(1, java.math.RoundingMode.HALF_UP);
+                // Tải trọng thực tế của toàn bộ hàng hóa đang lưu trữ tại ô kệ
+                BigDecimal actualWeight = weightByLoc.getOrDefault(loc.getId(), BigDecimal.ZERO);
+                currentWeight = actualWeight.setScale(1, java.math.RoundingMode.HALF_UP);
             }
 
             Long whId = loc.getWarehouseId() != null ? loc.getWarehouseId() : 1L;
@@ -135,9 +165,14 @@ public class LocationServiceImpl implements LocationService {
                     .currentWeight(currentWeight)
                     .status(status)
                     .productId(productId)
+                    .batchId(batchId)
                     .productName(productName)
                     .sku(sku)
                     .qty(qty)
+                    .onHandQty(onHandQty)
+                    .reservedQty(reservedQty)
+                    .availableQty(availableQty)
+                    .isExpired(isExpired)
                     .batch(batch)
                     .expiry(expiry)
                     .temperature("ZONE_B".equals(zoneCode) ? "4.0°C" : "24.0°C")

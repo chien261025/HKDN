@@ -10,6 +10,8 @@ import java.util.Optional;
 @Repository
 public interface CategoryRepository extends JpaRepository<Category, Long> {
     Optional<Category> findByCode(String code);
+    Optional<Category> findByCodeIgnoreCase(String code);
     List<Category> findByParentId(Long parentId);
+    long countByParentIdAndDeletedAtIsNull(Long parentId);
     List<Category> findAllByOrderByCreatedAtDesc();
 }
