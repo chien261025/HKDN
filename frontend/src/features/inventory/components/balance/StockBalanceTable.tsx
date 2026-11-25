@@ -120,7 +120,7 @@ export const StockBalanceTable: React.FC<StockBalanceTableProps> = ({
   const [reserveModalItem, setReserveModalItem] = useState<StockItem | null>(null);
   const [reserveQty, setReserveQty] = useState(5);
   const [reserveSoNumber, setReserveSoNumber] = useState('');
-  const [reserveReason, setReserveReason] = useState('Cấp phát xuất kho theo đơn hàng (SO Allocation)');
+  const [reserveReason, setReserveReason] = useState('Cấp phát giữ chỗ theo đơn xuất bán');
   const [reserveDuration, setReserveDuration] = useState('24 giờ');
   const [currentPage, setCurrentPage] = useState(1);
 
@@ -170,7 +170,27 @@ export const StockBalanceTable: React.FC<StockBalanceTableProps> = ({
 
       const matchesExpiring = filterExpiring ? (s.isExpiringSoon || s.isExpired) : true;
       const matchesReserved = filterReservedOnly ? s.reservedQty > 0 : true;
-      const matchesWarehouse = selectedWarehouse === 'ALL' || String(s.warehouseId || 1) === String(selectedWarehouse);
+      const matchesWarehouse = (() => {
+        if (!selectedWarehouse || selectedWarehouse === 'ALL') return true;
+        const match = String(selectedWarehouse).match(/\d+/);
+        const targetWhId = match ? parseInt(match[0], 10) : undefined;
+        if (!targetWhId) return true;
+
+        const itemWhId = s.warehouseId ?? (
+          s.locationBarcode?.startsWith('WH02') ? 2 :
+            s.locationBarcode?.startsWith('WH03') ? 3 :
+              s.locationBarcode?.startsWith('WH04') ? 4 : 1
+        );
+
+        return (
+          itemWhId === targetWhId ||
+          String(s.warehouseId) === String(selectedWarehouse) ||
+          String(s.warehouseId) === String(targetWhId) ||
+          s.locationBarcode?.startsWith(`WH0${targetWhId}`) ||
+          s.locationBarcode?.startsWith(`WH${targetWhId}`) ||
+          (stocks.length > 0 && stocks.every((item) => (item.warehouseId || 1) === (stocks[0].warehouseId || 1)))
+        );
+      })();
 
       const matchesAging = (() => {
         if (agingFilter === 'ALL') return true;
@@ -249,6 +269,7 @@ export const StockBalanceTable: React.FC<StockBalanceTableProps> = ({
       name: string;
       totalOnHand: number;
       totalReserved: number;
+      totalUnavailable: number;
       totalAvailable: number;
       locationCount: number;
       locations: Set<string>;
@@ -266,6 +287,7 @@ export const StockBalanceTable: React.FC<StockBalanceTableProps> = ({
           name: item.name,
           totalOnHand: 0,
           totalReserved: 0,
+          totalUnavailable: 0,
           totalAvailable: 0,
           locationCount: 0,
           locations: new Set(),
@@ -278,6 +300,7 @@ export const StockBalanceTable: React.FC<StockBalanceTableProps> = ({
       const entry = map.get(key)!;
       entry.totalOnHand += item.onHandQty;
       entry.totalReserved += item.reservedQty;
+      entry.totalUnavailable += (item.isExpired ? item.onHandQty : (item.unavailableQty || 0));
       entry.totalAvailable += item.availableQty;
       entry.locations.add(item.locationBarcode);
       entry.batches.add(item.batchNumber);
@@ -299,6 +322,7 @@ export const StockBalanceTable: React.FC<StockBalanceTableProps> = ({
       locationBarcode: string;
       totalOnHand: number;
       totalReserved: number;
+      totalUnavailable: number;
       totalAvailable: number;
       items: StockItem[];
     }>();
@@ -310,6 +334,7 @@ export const StockBalanceTable: React.FC<StockBalanceTableProps> = ({
           locationBarcode: item.locationBarcode,
           totalOnHand: 0,
           totalReserved: 0,
+          totalUnavailable: 0,
           totalAvailable: 0,
           items: [],
         });
@@ -317,6 +342,7 @@ export const StockBalanceTable: React.FC<StockBalanceTableProps> = ({
       const entry = map.get(key)!;
       entry.totalOnHand += item.onHandQty;
       entry.totalReserved += item.reservedQty;
+      entry.totalUnavailable += (item.isExpired ? item.onHandQty : (item.unavailableQty || 0));
       entry.totalAvailable += item.availableQty;
       entry.items.push(item);
     });
@@ -329,8 +355,8 @@ export const StockBalanceTable: React.FC<StockBalanceTableProps> = ({
     dimensionView === 'product'
       ? productAggregated.length
       : dimensionView === 'location'
-      ? locationAggregated.length
-      : filteredStocks.length;
+        ? locationAggregated.length
+        : filteredStocks.length;
 
   const totalPages = Math.max(1, Math.ceil(currentDatasetLength / PAGE_SIZE));
 
@@ -353,7 +379,7 @@ export const StockBalanceTable: React.FC<StockBalanceTableProps> = ({
     setReserveModalItem(item);
     setReserveQty(Math.min(5, Math.max(1, item.availableQty)));
     setReserveSoNumber('');
-    setReserveReason('Cấp phát xuất kho theo đơn hàng (SO Allocation)');
+    setReserveReason('Cấp phát giữ chỗ theo đơn xuất bán');
     setReserveDuration('24 giờ');
   };
 
@@ -514,11 +540,10 @@ export const StockBalanceTable: React.FC<StockBalanceTableProps> = ({
         <div className="flex items-center gap-1.5 bg-slate-100/90 p-1 rounded-xl border border-slate-200 text-xs font-semibold overflow-x-auto no-scrollbar">
           <button
             onClick={() => setDimensionView('batch')}
-            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg transition-all cursor-pointer whitespace-nowrap ${
-              dimensionView === 'batch'
-                ? 'bg-blue-600 text-white shadow-xs'
-                : 'text-slate-600 hover:text-slate-900'
-            }`}
+            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg transition-all cursor-pointer whitespace-nowrap ${dimensionView === 'batch'
+              ? 'bg-blue-600 text-white shadow-xs'
+              : 'text-slate-600 hover:text-slate-900'
+              }`}
           >
             <Calendar className="w-3.5 h-3.5" />
             <span>Theo Lô Hàng & HSD ({filteredStocks.length})</span>
@@ -526,11 +551,10 @@ export const StockBalanceTable: React.FC<StockBalanceTableProps> = ({
 
           <button
             onClick={() => setDimensionView('product')}
-            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg transition-all cursor-pointer whitespace-nowrap ${
-              dimensionView === 'product'
-                ? 'bg-blue-600 text-white shadow-xs'
-                : 'text-slate-600 hover:text-slate-900'
-            }`}
+            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg transition-all cursor-pointer whitespace-nowrap ${dimensionView === 'product'
+              ? 'bg-blue-600 text-white shadow-xs'
+              : 'text-slate-600 hover:text-slate-900'
+              }`}
           >
             <Package className="w-3.5 h-3.5" />
             <span>Theo Sản Phẩm ({productAggregated.length})</span>
@@ -538,11 +562,10 @@ export const StockBalanceTable: React.FC<StockBalanceTableProps> = ({
 
           <button
             onClick={() => setDimensionView('location')}
-            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg transition-all cursor-pointer whitespace-nowrap ${
-              dimensionView === 'location'
-                ? 'bg-blue-600 text-white shadow-xs'
-                : 'text-slate-600 hover:text-slate-900'
-            }`}
+            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg transition-all cursor-pointer whitespace-nowrap ${dimensionView === 'location'
+              ? 'bg-blue-600 text-white shadow-xs'
+              : 'text-slate-600 hover:text-slate-900'
+              }`}
           >
             <Layers className="w-3.5 h-3.5" />
             <span>Theo Vị Trí Ô Kệ ({locationAggregated.length})</span>
@@ -550,11 +573,10 @@ export const StockBalanceTable: React.FC<StockBalanceTableProps> = ({
 
           <button
             onClick={() => setDimensionView('aging')}
-            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg transition-all cursor-pointer whitespace-nowrap ${
-              dimensionView === 'aging'
-                ? 'bg-blue-600 text-white shadow-xs'
-                : 'text-slate-600 hover:text-slate-900'
-            }`}
+            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg transition-all cursor-pointer whitespace-nowrap ${dimensionView === 'aging'
+              ? 'bg-blue-600 text-white shadow-xs'
+              : 'text-slate-600 hover:text-slate-900'
+              }`}
           >
             <Clock className="w-3.5 h-3.5" />
             <span>Phân Tích Tuổi Hàng ({filteredStocks.length})</span>
@@ -677,11 +699,10 @@ export const StockBalanceTable: React.FC<StockBalanceTableProps> = ({
 
           <button
             onClick={() => setFilterExpiring(!filterExpiring)}
-            className={`flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-semibold border transition-colors cursor-pointer w-full sm:w-auto justify-center ${
-              filterExpiring
-                ? 'bg-rose-50 text-rose-700 border-rose-200 ring-2 ring-rose-100'
-                : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-50'
-            }`}
+            className={`flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-semibold border transition-colors cursor-pointer w-full sm:w-auto justify-center ${filterExpiring
+              ? 'bg-rose-50 text-rose-700 border-rose-200 ring-2 ring-rose-100'
+              : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-50'
+              }`}
           >
             <TrendingDown className={`w-3.5 h-3.5 ${filterExpiring ? 'text-rose-600' : 'text-slate-400'}`} />
             <span>Lô Cận Hạn</span>
@@ -689,11 +710,10 @@ export const StockBalanceTable: React.FC<StockBalanceTableProps> = ({
 
           <button
             onClick={() => setFilterReservedOnly(!filterReservedOnly)}
-            className={`flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-semibold border transition-colors cursor-pointer w-full sm:w-auto justify-center ${
-              filterReservedOnly
-                ? 'bg-amber-50 text-amber-700 border-amber-200 ring-2 ring-amber-100'
-                : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-50'
-            }`}
+            className={`flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-semibold border transition-colors cursor-pointer w-full sm:w-auto justify-center ${filterReservedOnly
+              ? 'bg-amber-50 text-amber-700 border-amber-200 ring-2 ring-amber-100'
+              : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-50'
+              }`}
           >
             <Lock className={`w-3.5 h-3.5 ${filterReservedOnly ? 'text-amber-600' : 'text-slate-400'}`} />
             <span>Hàng Đang Giữ Chỗ</span>
@@ -728,14 +748,15 @@ export const StockBalanceTable: React.FC<StockBalanceTableProps> = ({
                     <th className="py-3 px-3 text-center whitespace-nowrap">Tuổi Tồn Kho</th>
                     <th className="py-3 px-3 text-center whitespace-nowrap">Tồn Vật Lý</th>
                     <th className="py-3 px-3 text-center whitespace-nowrap">Đang Giữ Chỗ</th>
-                    <th className="py-3 px-3 text-center whitespace-nowrap">Tồn Khả Dụng</th>
+                    <th className="py-3 px-3 text-center whitespace-nowrap text-rose-700">Khóa / Cách Ly</th>
+                    <th className="py-3 px-3 text-center whitespace-nowrap text-emerald-700">Tồn Khả Dụng</th>
                     <th className="py-3 px-4 text-right whitespace-nowrap">Thao Tác</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100 text-slate-800">
                   {visibleBatchStocks.length === 0 ? (
                     <tr>
-                      <td colSpan={8}>
+                      <td colSpan={9}>
                         {renderEmptyState()}
                       </td>
                     </tr>
@@ -744,125 +765,133 @@ export const StockBalanceTable: React.FC<StockBalanceTableProps> = ({
                       const uom = getStockUnit(item);
                       const days = item.daysInStock ?? 0;
                       return (
-                      <tr key={item.id} className="hover:bg-slate-50/70 transition-colors group">
-                        <td className="py-3.5 px-4">
-                          <div className="font-semibold text-slate-900 text-sm group-hover:text-blue-600 transition-colors">
-                            {item.name}
-                          </div>
-                          <div className="text-slate-500 font-mono text-xs mt-0.5 font-medium">
-                            {item.sku}
-                          </div>
-                        </td>
-                        <td className="py-3.5 px-4 whitespace-nowrap">
-                          <span className="inline-flex items-center px-2.5 py-1 rounded-md bg-slate-100 text-slate-700 font-mono text-xs font-semibold border border-slate-200">
-                            {item.locationBarcode}
-                          </span>
-                        </td>
-                        <td className="py-3.5 px-4 whitespace-nowrap">
-                          <div className="font-mono text-slate-800 font-semibold text-xs">
-                            {item.batchNumber}
-                          </div>
-                          <div className="text-xs text-slate-500 flex items-center gap-1.5 mt-0.5">
-                            <span>HSD: <span className="font-medium text-slate-700 tabular-nums">{item.expiryDate}</span></span>
-                            {item.isExpired ? (
-                              <span className="text-2xs font-bold bg-rose-100 text-rose-800 border border-rose-300 px-2 py-0.5 rounded-full inline-flex items-center gap-1 shadow-2xs">
-                                <Ban className="w-3 h-3 text-rose-600" /> ĐÃ HẾT HẠN (Khóa xuất)
-                              </span>
-                            ) : item.isExpiringSoon ? (
-                              <span className="text-2xs font-semibold bg-amber-50 text-amber-800 border border-amber-300 px-1.5 py-0.2 rounded-full inline-flex items-center gap-1">
-                                <AlertTriangle className="w-3 h-3 text-amber-600" /> Cận Hạn {item.daysRemaining != null && item.daysRemaining >= 0 ? `(${item.daysRemaining} ngày)` : ''}
-                              </span>
-                            ) : null}
-                          </div>
-                        </td>
-                        <td className="py-3.5 px-3 text-center whitespace-nowrap">
-                          <span className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-md text-xs font-semibold border ${
-                            days > 180
+                        <tr key={item.id} className="hover:bg-slate-50/70 transition-colors group">
+                          <td className="py-3.5 px-4">
+                            <div className="font-semibold text-slate-900 text-sm group-hover:text-blue-600 transition-colors">
+                              {item.name}
+                            </div>
+                            <div className="text-slate-500 font-mono text-xs mt-0.5 font-medium">
+                              {item.sku}
+                            </div>
+                          </td>
+                          <td className="py-3.5 px-4 whitespace-nowrap">
+                            <span className="inline-flex items-center px-2.5 py-1 rounded-md bg-slate-100 text-slate-700 font-mono text-xs font-semibold border border-slate-200">
+                              {item.locationBarcode}
+                            </span>
+                          </td>
+                          <td className="py-3.5 px-4 whitespace-nowrap">
+                            <div className="font-mono text-slate-800 font-semibold text-xs">
+                              {item.batchNumber}
+                            </div>
+                            <div className="text-xs text-slate-500 flex items-center gap-1.5 mt-0.5">
+                              <span>HSD: <span className="font-medium text-slate-700 tabular-nums">{item.expiryDate}</span></span>
+                              {item.isExpired ? (
+                                <span className="text-2xs font-bold bg-rose-100 text-rose-800 border border-rose-300 px-2 py-0.5 rounded-full inline-flex items-center gap-1 shadow-2xs">
+                                  <Ban className="w-3 h-3 text-rose-600" /> ĐÃ HẾT HẠN (Khóa xuất)
+                                </span>
+                              ) : item.isExpiringSoon ? (
+                                <span className="text-2xs font-semibold bg-amber-50 text-amber-800 border border-amber-300 px-1.5 py-0.2 rounded-full inline-flex items-center gap-1">
+                                  <AlertTriangle className="w-3 h-3 text-amber-600" /> Cận Hạn {item.daysRemaining != null && item.daysRemaining >= 0 ? `(${item.daysRemaining} ngày)` : ''}
+                                </span>
+                              ) : null}
+                            </div>
+                          </td>
+                          <td className="py-3.5 px-3 text-center whitespace-nowrap">
+                            <span className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-md text-xs font-semibold border ${days > 180
                               ? 'bg-rose-50 text-rose-700 border-rose-200 font-bold'
                               : days >= 90
-                              ? 'bg-amber-50 text-amber-800 border-amber-300'
-                              : days >= 30
-                              ? 'bg-sky-50 text-sky-700 border-sky-200'
-                              : 'bg-emerald-50 text-emerald-700 border-emerald-200'
-                          }`}>
-                            <Clock className="w-3 h-3" />
-                            <span>{days} ngày</span>
-                          </span>
-                        </td>
-                        <td className="py-3.5 px-4 text-center font-bold text-slate-900 tabular-nums text-sm">
-                          {item.onHandQty.toLocaleString('vi-VN')} <span className="text-xs text-slate-500 font-normal">{uom}</span>
-                        </td>
-                        <td className="py-3.5 px-4 text-center text-sm tabular-nums">
-                          {item.reservedQty > 0 ? (
-                            <span className="font-semibold text-amber-700 bg-amber-50 px-2 py-0.5 rounded border border-amber-200">
-                              {item.reservedQty.toLocaleString('vi-VN')} {uom}
+                                ? 'bg-amber-50 text-amber-800 border-amber-300'
+                                : days >= 30
+                                  ? 'bg-sky-50 text-sky-700 border-sky-200'
+                                  : 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                              }`}>
+                              <Clock className="w-3 h-3" />
+                              <span>{days} ngày</span>
                             </span>
-                          ) : (
-                            <span className="text-slate-400 font-normal">0</span>
-                          )}
-                        </td>
-                        <td className="py-3.5 px-4 text-center text-sm tabular-nums">
-                          {item.isExpired ? (
-                            <span className="font-bold text-rose-700 bg-rose-50 px-2.5 py-0.5 rounded border border-rose-200 inline-flex items-center gap-1 text-xs">
-                              <Ban className="w-3 h-3 text-rose-600" /> 0 (Khóa xuất)
-                            </span>
-                          ) : (
-                            <span className="font-semibold px-2.5 py-0.5 rounded border text-emerald-700 bg-emerald-50 border-emerald-200">
-                              {item.availableQty.toLocaleString('vi-VN')} {uom}
-                            </span>
-                          )}
-                        </td>
-                        <td className="py-3.5 px-4 text-right whitespace-nowrap">
-                          <div className="flex items-center justify-end gap-1.5">
-                            {item.isExpired ? (
-                              <span
-                                className="px-2.5 py-1.5 rounded-lg text-xs font-semibold bg-slate-100 text-slate-500 border border-slate-200 inline-flex items-center gap-1 select-none"
-                                title="Lô hàng đã hết hạn sử dụng - Hệ thống tự động khóa giữ chỗ xuất bán"
-                              >
-                                <Ban className="w-3 h-3 text-rose-500" />
-                                <span>Khóa Xuất</span>
+                          </td>
+                          <td className="py-3.5 px-4 text-center font-bold text-slate-900 tabular-nums text-sm">
+                            {item.onHandQty.toLocaleString('vi-VN')} <span className="text-xs text-slate-500 font-normal">{uom}</span>
+                          </td>
+                          <td className="py-3.5 px-4 text-center text-sm tabular-nums">
+                            {item.reservedQty > 0 ? (
+                              <span className="font-semibold text-amber-700 bg-amber-50 px-2 py-0.5 rounded border border-amber-200">
+                                {item.reservedQty.toLocaleString('vi-VN')} {uom}
                               </span>
                             ) : (
-                              <button
-                                onClick={() => openReserveModal(item)}
-                                disabled={item.availableQty <= 0}
-                                className="px-2.5 py-1.5 rounded-lg text-xs font-semibold bg-amber-50 hover:bg-amber-100 text-amber-800 border border-amber-200 transition-colors cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed flex items-center gap-1"
-                                title={item.availableQty <= 0 ? 'Hết hàng khả dụng' : 'Giữ trước hàng cho đơn xuất'}
-                              >
-                                <Lock className="w-3 h-3 text-amber-600" />
-                                <span>Giữ Hàng</span>
-                              </button>
+                              <span className="text-slate-400 font-normal">0</span>
                             )}
+                          </td>
+                          <td className="py-3.5 px-4 text-center text-sm tabular-nums">
+                            {(item.isExpired ? item.onHandQty : (item.unavailableQty || 0)) > 0 ? (
+                              <span className="font-bold text-rose-700 bg-rose-50 px-2 py-0.5 rounded border border-rose-200 text-xs inline-flex items-center gap-1" title={item.isExpired ? 'Lô hàng đã hết hạn sử dụng' : 'Khóa cách ly kiểm định'}>
+                                <Ban className="w-3 h-3 text-rose-600" />
+                                {(item.isExpired ? item.onHandQty : (item.unavailableQty || 0)).toLocaleString('vi-VN')} {uom}
+                              </span>
+                            ) : (
+                              <span className="text-slate-400 font-normal">0</span>
+                            )}
+                          </td>
+                          <td className="py-3.5 px-4 text-center text-sm tabular-nums">
+                            {item.isExpired ? (
+                              <span className="font-bold text-rose-700 bg-rose-50 px-2.5 py-0.5 rounded border border-rose-200 inline-flex items-center gap-1 text-xs">
+                                <Ban className="w-3 h-3 text-rose-600" /> 0 (Khóa xuất)
+                              </span>
+                            ) : (
+                              <span className="font-semibold px-2.5 py-0.5 rounded border text-emerald-700 bg-emerald-50 border-emerald-200">
+                                {item.availableQty.toLocaleString('vi-VN')} {uom}
+                              </span>
+                            )}
+                          </td>
+                          <td className="py-3.5 px-4 text-right whitespace-nowrap">
+                            <div className="flex items-center justify-end gap-1.5">
+                              {item.isExpired ? (
+                                <span
+                                  className="px-2.5 py-1.5 rounded-lg text-xs font-semibold bg-slate-100 text-slate-500 border border-slate-200 inline-flex items-center gap-1 select-none"
+                                  title="Lô hàng đã hết hạn sử dụng - Hệ thống tự động khóa giữ chỗ xuất bán"
+                                >
+                                  <Ban className="w-3 h-3 text-rose-500" />
+                                  <span>Khóa Xuất</span>
+                                </span>
+                              ) : (
+                                <button
+                                  onClick={() => openReserveModal(item)}
+                                  disabled={item.availableQty <= 0}
+                                  className="px-2.5 py-1.5 rounded-lg text-xs font-semibold bg-amber-50 hover:bg-amber-100 text-amber-800 border border-amber-200 transition-colors cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed flex items-center gap-1"
+                                  title={item.availableQty <= 0 ? 'Hết hàng khả dụng' : 'Giữ trước hàng cho đơn xuất'}
+                                >
+                                  <Lock className="w-3 h-3 text-amber-600" />
+                                  <span>Giữ Hàng</span>
+                                </button>
+                              )}
 
-                            {onTransfer && (
-                              <button
-                                onClick={() => onTransfer(item)}
-                                disabled={(item.isExpired ? item.onHandQty : item.availableQty) <= 0}
-                                className={`px-2.5 py-1.5 rounded-lg text-xs font-semibold border transition-colors cursor-pointer flex items-center gap-1 ${
-                                  item.isExpired
+                              {onTransfer && (
+                                <button
+                                  onClick={() => onTransfer(item)}
+                                  disabled={(item.isExpired ? item.onHandQty : item.availableQty) <= 0}
+                                  className={`px-2.5 py-1.5 rounded-lg text-xs font-semibold border transition-colors cursor-pointer flex items-center gap-1 ${item.isExpired
                                     ? 'bg-rose-50 hover:bg-rose-100 text-rose-800 border-rose-300 font-bold shadow-2xs'
                                     : 'bg-blue-50 hover:bg-blue-100 text-blue-700 border-blue-200'
-                                }`}
-                                title={item.isExpired ? 'Điều chuyển lô hết hạn sang ô kệ khu vực cách ly (Quarantine) hoặc chờ tiêu hủy' : 'Điều chuyển sang ô kệ khác'}
-                              >
-                                <ArrowRightLeft className={`w-3 h-3 ${item.isExpired ? 'text-rose-600' : 'text-blue-600'}`} />
-                                <span>{item.isExpired ? 'Cách Ly Ô Kệ' : 'Chuyển Ô'}</span>
-                              </button>
-                            )}
+                                    }`}
+                                  title={item.isExpired ? 'Điều chuyển lô hết hạn sang khu vực cách ly hoặc chờ tiêu hủy' : 'Điều chuyển sang ô kệ khác'}
+                                >
+                                  <ArrowRightLeft className={`w-3 h-3 ${item.isExpired ? 'text-rose-600' : 'text-blue-600'}`} />
+                                  <span>{item.isExpired ? 'Cách Ly Ô Kệ' : 'Chuyển Ô'}</span>
+                                </button>
+                              )}
 
-                            {onViewLedger && (
-                              <button
-                                onClick={() => onViewLedger(item)}
-                                className="px-2.5 py-1.5 rounded-lg text-xs font-semibold bg-slate-50 hover:bg-slate-100 text-slate-700 border border-slate-200 transition-colors cursor-pointer flex items-center gap-1"
-                                title="Xem lịch sử thẻ kho & bút toán"
-                              >
-                                <FileText className="w-3 h-3 text-slate-500" />
-                                <span>Thẻ Kho</span>
-                              </button>
-                            )}
-                          </div>
-                        </td>
-                      </tr>
+                              {onViewLedger && (
+                                <button
+                                  onClick={() => onViewLedger(item)}
+                                  className="px-2.5 py-1.5 rounded-lg text-xs font-semibold bg-slate-50 hover:bg-slate-100 text-slate-700 border border-slate-200 transition-colors cursor-pointer flex items-center gap-1"
+                                  title="Xem lịch sử thẻ kho & bút toán"
+                                >
+                                  <FileText className="w-3 h-3 text-slate-500" />
+                                  <span>Thẻ Kho</span>
+                                </button>
+                              )}
+                            </div>
+                          </td>
+                        </tr>
                       );
                     })
                   )}
@@ -886,14 +915,15 @@ export const StockBalanceTable: React.FC<StockBalanceTableProps> = ({
                   <th className="py-3 px-4 text-center whitespace-nowrap">Số Lô Quản Lý</th>
                   <th className="py-3 px-4 text-center whitespace-nowrap">Tồn Vật Lý</th>
                   <th className="py-3 px-4 text-center whitespace-nowrap">Đang Giữ Chỗ</th>
-                  <th className="py-3 px-4 text-center whitespace-nowrap">Tồn Khả Dụng</th>
+                  <th className="py-3 px-4 text-center whitespace-nowrap text-rose-700">Khóa / Cách Ly</th>
+                  <th className="py-3 px-4 text-center whitespace-nowrap text-emerald-700">Tồn Khả Dụng</th>
                   <th className="py-3 px-4 text-center whitespace-nowrap">Trạng Thái</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100 text-slate-800">
                 {visibleProducts.length === 0 ? (
                   <tr>
-                    <td colSpan={8}>
+                    <td colSpan={9}>
                       {renderEmptyState('Không tìm thấy sản phẩm nào')}
                     </td>
                   </tr>
@@ -904,9 +934,8 @@ export const StockBalanceTable: React.FC<StockBalanceTableProps> = ({
                       <React.Fragment key={p.sku}>
                         <tr
                           onClick={() => toggleExpandProduct(p.sku)}
-                          className={`hover:bg-blue-50/40 transition-colors cursor-pointer select-none ${
-                            isExpanded ? 'bg-blue-50/20' : ''
-                          }`}
+                          className={`hover:bg-blue-50/40 transition-colors cursor-pointer select-none ${isExpanded ? 'bg-blue-50/20' : ''
+                            }`}
                         >
                           <td className="py-3.5 px-4 text-center">
                             <button
@@ -956,13 +985,23 @@ export const StockBalanceTable: React.FC<StockBalanceTableProps> = ({
                             )}
                           </td>
                           <td className="py-3.5 px-4 text-center tabular-nums">
+                            {p.totalUnavailable > 0 ? (
+                              <span className="font-bold text-rose-700 bg-rose-50 px-2 py-0.5 rounded border border-rose-200 inline-flex items-center gap-1 text-xs">
+                                <Ban className="w-3 h-3 text-rose-600" />
+                                {p.totalUnavailable.toLocaleString('vi-VN')}
+                              </span>
+                            ) : (
+                              <span className="text-slate-400">0</span>
+                            )}
+                          </td>
+                          <td className="py-3.5 px-4 text-center tabular-nums">
                             <span className="font-bold text-emerald-700 bg-emerald-50 px-2.5 py-0.5 rounded border border-emerald-200">
                               {p.totalAvailable.toLocaleString('vi-VN')}
                             </span>
                           </td>
                           <td className="py-3.5 px-4 text-center whitespace-nowrap">
                             {p.hasExpired ? (
-                              <span className="inline-flex items-center gap-1 text-2xs font-bold bg-rose-100 text-rose-800 border border-rose-300 px-2 py-0.5 rounded-full">
+                              <span className="inline-flex items-center gap-1 text-2xs font-bold bg-rose-100 text-rose-800 border border-rose-300 px-2 py-0.5 rounded-full" title="Sản phẩm có lô hàng quá hạn sử dụng đã bị phong tỏa tồn khả dụng">
                                 <Ban className="w-3 h-3 text-rose-600" /> Có Lô Hết Hạn
                               </span>
                             ) : p.hasExpiring ? (
@@ -980,7 +1019,7 @@ export const StockBalanceTable: React.FC<StockBalanceTableProps> = ({
                         {/* Expandable Drill-Down Sub-Table */}
                         {isExpanded && (
                           <tr className="bg-slate-50/80">
-                            <td colSpan={8} className="p-3 sm:p-4">
+                            <td colSpan={9} className="p-3 sm:p-4">
                               <div className="bg-white rounded-xl border border-slate-200 p-3 shadow-2xs space-y-2">
                                 <div className="text-xs font-bold text-slate-700 flex items-center gap-1.5 uppercase tracking-wide">
                                   <Layers className="w-3.5 h-3.5 text-blue-600" />
@@ -995,7 +1034,8 @@ export const StockBalanceTable: React.FC<StockBalanceTableProps> = ({
                                         <th className="py-2 px-3">Hạn Sử Dụng (HSD)</th>
                                         <th className="py-2 px-3 text-center">Tồn Vật Lý</th>
                                         <th className="py-2 px-3 text-center">Đang Giữ Chỗ</th>
-                                        <th className="py-2 px-3 text-center">Tồn Khả Dụng</th>
+                                        <th className="py-2 px-3 text-center text-rose-700">Khóa / Cách Ly</th>
+                                        <th className="py-2 px-3 text-center text-emerald-700">Tồn Khả Dụng</th>
                                         <th className="py-2 px-3 text-right">Thao Tác</th>
                                       </tr>
                                     </thead>
@@ -1020,7 +1060,7 @@ export const StockBalanceTable: React.FC<StockBalanceTableProps> = ({
                                               </span>
                                             ) : subItem.isExpiringSoon ? (
                                               <span className="ml-1.5 text-[10px] bg-amber-50 text-amber-800 border border-amber-300 px-1.5 py-0.2 rounded font-semibold inline-flex items-center gap-0.5">
-                                                <AlertTriangle className="w-2.5 h-2.5 text-amber-600" /> Cận Date
+                                                <AlertTriangle className="w-2.5 h-2.5 text-amber-600" /> Cận Hạn
                                               </span>
                                             ) : null}
                                           </td>
@@ -1031,6 +1071,16 @@ export const StockBalanceTable: React.FC<StockBalanceTableProps> = ({
                                             {subItem.reservedQty > 0 ? (
                                               <span className="font-bold text-amber-700 bg-amber-50 px-1.5 py-0.2 rounded border border-amber-200">
                                                 {subItem.reservedQty}
+                                              </span>
+                                            ) : (
+                                              <span className="text-slate-400">0</span>
+                                            )}
+                                          </td>
+                                          <td className="py-2.5 px-3 text-center tabular-nums">
+                                            {(subItem.isExpired ? subItem.onHandQty : (subItem.unavailableQty || 0)) > 0 ? (
+                                              <span className="font-bold text-rose-700 bg-rose-50 px-1.5 py-0.2 rounded border border-rose-200 text-[10px] inline-flex items-center gap-0.5">
+                                                <Ban className="w-2.5 h-2.5 text-rose-600" />
+                                                {(subItem.isExpired ? subItem.onHandQty : (subItem.unavailableQty || 0))}
                                               </span>
                                             ) : (
                                               <span className="text-slate-400">0</span>
@@ -1067,11 +1117,10 @@ export const StockBalanceTable: React.FC<StockBalanceTableProps> = ({
                                                 <button
                                                   onClick={() => onTransfer(subItem)}
                                                   disabled={(subItem.isExpired ? subItem.onHandQty : subItem.availableQty) <= 0}
-                                                  className={`px-2 py-1 rounded text-2xs font-semibold border transition-colors cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed ${
-                                                    subItem.isExpired
-                                                      ? 'bg-rose-50 hover:bg-rose-100 text-rose-800 border-rose-300 font-bold'
-                                                      : 'bg-blue-50 hover:bg-blue-100 text-blue-700 border-blue-200'
-                                                  }`}
+                                                  className={`px-2 py-1 rounded text-2xs font-semibold border transition-colors cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed ${subItem.isExpired
+                                                    ? 'bg-rose-50 hover:bg-rose-100 text-rose-800 border-rose-300 font-bold'
+                                                    : 'bg-blue-50 hover:bg-blue-100 text-blue-700 border-blue-200'
+                                                    }`}
                                                   title={subItem.isExpired ? 'Điều chuyển lô hết hạn sang kệ cách ly' : 'Điều chuyển sang ô khác'}
                                                 >
                                                   {subItem.isExpired ? 'Cách Ly Ô Kệ' : 'Chuyển Ô'}
@@ -1118,13 +1167,14 @@ export const StockBalanceTable: React.FC<StockBalanceTableProps> = ({
                   <th className="py-3 px-4 min-w-[320px]">Các Sản Phẩm Lưu Trữ Tại Ô</th>
                   <th className="py-3 px-4 text-center whitespace-nowrap">Tồn Vật Lý</th>
                   <th className="py-3 px-4 text-center whitespace-nowrap">Đang Giữ Chỗ</th>
-                  <th className="py-3 px-4 text-center whitespace-nowrap">Tồn Khả Dụng</th>
+                  <th className="py-3 px-4 text-center whitespace-nowrap text-rose-700">Khóa / Cách Ly</th>
+                  <th className="py-3 px-4 text-center whitespace-nowrap text-emerald-700">Tồn Khả Dụng</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100 text-slate-800">
                 {visibleLocations.length === 0 ? (
                   <tr>
-                    <td colSpan={5}>
+                    <td colSpan={6}>
                       {renderEmptyState('Không tìm thấy vị trí ô kệ nào')}
                     </td>
                   </tr>
@@ -1160,6 +1210,16 @@ export const StockBalanceTable: React.FC<StockBalanceTableProps> = ({
                         )}
                       </td>
                       <td className="py-3.5 px-4 text-center tabular-nums">
+                        {loc.totalUnavailable > 0 ? (
+                          <span className="font-bold text-rose-700 bg-rose-50 px-2 py-0.5 rounded border border-rose-200 inline-flex items-center gap-1 text-xs">
+                            <Ban className="w-3 h-3 text-rose-600" />
+                            {loc.totalUnavailable.toLocaleString('vi-VN')}
+                          </span>
+                        ) : (
+                          <span className="text-slate-400">0</span>
+                        )}
+                      </td>
+                      <td className="py-3.5 px-4 text-center tabular-nums">
                         <span className="font-bold text-emerald-700 bg-emerald-50 px-2.5 py-0.5 rounded border border-emerald-200">
                           {loc.totalAvailable.toLocaleString('vi-VN')}
                         </span>
@@ -1181,11 +1241,10 @@ export const StockBalanceTable: React.FC<StockBalanceTableProps> = ({
             {/* Card 1: < 30 ngày */}
             <div
               onClick={() => setAgingFilter(agingFilter === '<30' ? 'ALL' : '<30')}
-              className={`p-3.5 rounded-xl border transition-all cursor-pointer select-none ${
-                agingFilter === '<30'
-                  ? 'bg-emerald-50/80 border-emerald-300 ring-2 ring-emerald-200 shadow-xs'
-                  : 'bg-white border-slate-200 hover:border-emerald-300 hover:shadow-xs'
-              }`}
+              className={`p-3.5 rounded-xl border transition-all cursor-pointer select-none ${agingFilter === '<30'
+                ? 'bg-emerald-50/80 border-emerald-300 ring-2 ring-emerald-200 shadow-xs'
+                : 'bg-white border-slate-200 hover:border-emerald-300 hover:shadow-xs'
+                }`}
             >
               <div className="flex items-center justify-between text-xs font-bold text-emerald-800 mb-1">
                 <span>Mới Nhập (&lt; 30 ngày)</span>
@@ -1196,18 +1255,17 @@ export const StockBalanceTable: React.FC<StockBalanceTableProps> = ({
               </div>
               <div className="text-2xs text-slate-500 mt-1 flex items-center justify-between">
                 <span>{agingMetrics.freshCount} lô hàng</span>
-                <span className="text-emerald-700 font-medium">Vòng quay cao</span>
+                <span className="text-emerald-700 font-medium">Lưu kho ổn định</span>
               </div>
             </div>
 
             {/* Card 2: 30 - 90 ngày */}
             <div
               onClick={() => setAgingFilter(agingFilter === '30-90' ? 'ALL' : '30-90')}
-              className={`p-3.5 rounded-xl border transition-all cursor-pointer select-none ${
-                agingFilter === '30-90'
-                  ? 'bg-sky-50/80 border-sky-300 ring-2 ring-sky-200 shadow-xs'
-                  : 'bg-white border-slate-200 hover:border-sky-300 hover:shadow-xs'
-              }`}
+              className={`p-3.5 rounded-xl border transition-all cursor-pointer select-none ${agingFilter === '30-90'
+                ? 'bg-sky-50/80 border-sky-300 ring-2 ring-sky-200 shadow-xs'
+                : 'bg-white border-slate-200 hover:border-sky-300 hover:shadow-xs'
+                }`}
             >
               <div className="flex items-center justify-between text-xs font-bold text-sky-800 mb-1">
                 <span>Tiêu Chuẩn (30 - 90 ngày)</span>
@@ -1225,11 +1283,10 @@ export const StockBalanceTable: React.FC<StockBalanceTableProps> = ({
             {/* Card 3: 90 - 180 ngày */}
             <div
               onClick={() => setAgingFilter(agingFilter === '90-180' ? 'ALL' : '90-180')}
-              className={`p-3.5 rounded-xl border transition-all cursor-pointer select-none ${
-                agingFilter === '90-180'
-                  ? 'bg-amber-50/80 border-amber-300 ring-2 ring-amber-200 shadow-xs'
-                  : 'bg-white border-slate-200 hover:border-amber-300 hover:shadow-xs'
-              }`}
+              className={`p-3.5 rounded-xl border transition-all cursor-pointer select-none ${agingFilter === '90-180'
+                ? 'bg-amber-50/80 border-amber-300 ring-2 ring-amber-200 shadow-xs'
+                : 'bg-white border-slate-200 hover:border-amber-300 hover:shadow-xs'
+                }`}
             >
               <div className="flex items-center justify-between text-xs font-bold text-amber-800 mb-1">
                 <span>Tồn Chậm (90 - 180 ngày)</span>
@@ -1247,11 +1304,10 @@ export const StockBalanceTable: React.FC<StockBalanceTableProps> = ({
             {/* Card 4: > 180 ngày */}
             <div
               onClick={() => setAgingFilter(agingFilter === '>180' ? 'ALL' : '>180')}
-              className={`p-3.5 rounded-xl border transition-all cursor-pointer select-none ${
-                agingFilter === '>180'
-                  ? 'bg-rose-50/80 border-rose-300 ring-2 ring-rose-200 shadow-xs'
-                  : 'bg-white border-slate-200 hover:border-rose-300 hover:shadow-xs'
-              }`}
+              className={`p-3.5 rounded-xl border transition-all cursor-pointer select-none ${agingFilter === '>180'
+                ? 'bg-rose-50/80 border-rose-300 ring-2 ring-rose-200 shadow-xs'
+                : 'bg-white border-slate-200 hover:border-rose-300 hover:shadow-xs'
+                }`}
             >
               <div className="flex items-center justify-between text-xs font-bold text-rose-800 mb-1">
                 <span>Đọng Vốn (&gt; 180 ngày)</span>
@@ -1323,15 +1379,14 @@ export const StockBalanceTable: React.FC<StockBalanceTableProps> = ({
                             </div>
                           </td>
                           <td className="py-3.5 px-3 text-center whitespace-nowrap">
-                            <span className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-md text-xs font-semibold border ${
-                              days > 180
-                                ? 'bg-rose-50 text-rose-700 border-rose-200 font-bold'
-                                : days >= 90
+                            <span className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-md text-xs font-semibold border ${days > 180
+                              ? 'bg-rose-50 text-rose-700 border-rose-200 font-bold'
+                              : days >= 90
                                 ? 'bg-amber-50 text-amber-800 border-amber-300'
                                 : days >= 30
-                                ? 'bg-sky-50 text-sky-700 border-sky-200'
-                                : 'bg-emerald-50 text-emerald-700 border-emerald-200'
-                            }`}>
+                                  ? 'bg-sky-50 text-sky-700 border-sky-200'
+                                  : 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                              }`}>
                               <Clock className="w-3 h-3" />
                               <span>{days} ngày</span>
                             </span>
@@ -1351,25 +1406,35 @@ export const StockBalanceTable: React.FC<StockBalanceTableProps> = ({
                             )}
                           </td>
                           <td className="py-3.5 px-4 text-xs">
-                            {days > 180 ? (
+                            {item.isExpired ? (
+                              <div className="text-rose-800 font-bold bg-rose-50 p-2 rounded-lg border border-rose-200 flex items-center gap-1.5 shadow-2xs">
+                                <Ban className="w-4 h-4 text-rose-600 shrink-0" />
+                                <span>Lô HẾT HẠN: Nghiêm cấm xuất bán! Lập phiếu chuyển sang Khu Cách Ly hoặc thủ tục Tiêu Hủy / Hoàn Trả NCC (RTV)</span>
+                              </div>
+                            ) : item.isExpiringSoon ? (
+                              <div className="text-amber-800 font-bold bg-amber-50 p-2 rounded-lg border border-amber-200 flex items-center gap-1.5 shadow-2xs">
+                                <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0" />
+                                <span>Lô CẬN HẠN: Ưu tiên cấp phát xuất gấp theo FEFO hoặc thanh lý giảm giá trước ngày hết hạn</span>
+                              </div>
+                            ) : days > 180 ? (
                               <div className="text-rose-700 font-medium bg-rose-50/60 p-1.5 rounded-lg border border-rose-100 flex items-center gap-1.5">
                                 <AlertTriangle className="w-3.5 h-3.5 text-rose-600 shrink-0" />
-                                <span>Đọng vốn lâu ngày: Lập phiếu xả kho chiết khấu hoặc hoàn trả nhà cung cấp</span>
+                                <span>Đọng vốn lâu ngày: Đánh giá nhu cầu tái phân bổ hoặc thanh lý tồn đọng</span>
                               </div>
                             ) : days >= 90 ? (
                               <div className="text-amber-800 font-medium bg-amber-50/60 p-1.5 rounded-lg border border-amber-100 flex items-center gap-1.5">
                                 <TrendingDown className="w-3.5 h-3.5 text-amber-600 shrink-0" />
-                                <span>Tồn chậm: Ưu tiên xuất theo đơn bán buôn hoặc đóng gói combo kích cầu</span>
+                                <span>Tồn chậm (90-180 ngày): Ưu tiên xuất theo đơn bán buôn hoặc đóng gói combo kích cầu</span>
                               </div>
                             ) : days >= 30 ? (
                               <div className="text-sky-800 font-medium bg-sky-50/60 p-1.5 rounded-lg border border-sky-100 flex items-center gap-1.5">
                                 <CheckCircle2 className="w-3.5 h-3.5 text-sky-600 shrink-0" />
-                                <span>Chu kỳ tiêu chuẩn: Tiếp tục duy trì xuất hàng theo nguyên tắc FEFO</span>
+                                <span>Chu kỳ tiêu chuẩn (30-90 ngày): Duy trì luân chuyển ổn định theo FIFO</span>
                               </div>
                             ) : (
                               <div className="text-emerald-800 font-medium bg-emerald-50/60 p-1.5 rounded-lg border border-emerald-100 flex items-center gap-1.5">
                                 <Sparkles className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
-                                <span>Hàng mới nhập: Đang lưu kho ổn định, kiểm soát hạn sử dụng định kỳ</span>
+                                <span>Hàng mới nhập (&lt; 30 ngày): Đang lưu kho ổn định, kiểm soát hạn sử dụng định kỳ</span>
                               </div>
                             )}
                           </td>
@@ -1457,48 +1522,31 @@ export const StockBalanceTable: React.FC<StockBalanceTableProps> = ({
               </div>
             </div>
 
-            {/* Mã đơn hàng SO tham chiếu */}
+            {/* Ghi chú giữ hàng */}
             <div className="space-y-1">
               <label className="text-xs font-semibold text-slate-700">
-                Mã Đơn Xuất Kho (SO) Tham Chiếu:
+                Mã Đơn Xuất Kho Tham Chiếu (tùy chọn):
               </label>
               <input
                 type="text"
-                placeholder="Ví dụ: OUT-2026-001 hoặc SO-WINMART-TB01..."
+                placeholder="Ví dụ: SO-2026-001..."
                 value={reserveSoNumber}
                 onChange={(e) => setReserveSoNumber(e.target.value)}
                 className="w-full px-3 py-2 border border-slate-200 rounded-lg text-xs font-medium focus:outline-none focus:border-amber-500 bg-white"
               />
             </div>
 
-            {/* Lý do giữ hàng */}
             <div className="space-y-1">
-              <label className="text-xs font-semibold text-slate-700">Lý Do / Mục Đích Giữ Chỗ:</label>
+              <label className="text-xs font-semibold text-slate-700">Lý Do Giữ Hàng:</label>
               <select
                 value={reserveReason}
                 onChange={(e) => setReserveReason(e.target.value)}
                 className="w-full px-3 py-2 border border-slate-200 rounded-lg text-xs font-medium focus:outline-none focus:border-amber-500 bg-white"
               >
-                <option value="Cấp phát xuất kho theo đơn hàng (SO Allocation)">Cấp phát xuất kho theo đơn hàng (SO Allocation)</option>
-                <option value="Giữ mẫu kiểm định chất lượng (QC / Lab Sample)">Giữ mẫu kiểm định chất lượng (QC / Lab Sample)</option>
-                <option value="Dự trữ cho sự kiện / Khuyến mại (Bulk Promo Reserve)">Dự trữ cho sự kiện / Khuyến mại (Bulk Promo Reserve)</option>
-                <option value="Bảo lưu xử lý bảo hành / Đổi trả (RMA / Replacement)">Bảo lưu xử lý bảo hành / Đổi trả (RMA / Replacement)</option>
-                <option value="Khác">Khác...</option>
-              </select>
-            </div>
-
-            {/* Thời hạn hiệu lực */}
-            <div className="space-y-1">
-              <label className="text-xs font-semibold text-slate-700">Thời Hạn Hiệu Lực Giữ Chỗ:</label>
-              <select
-                value={reserveDuration}
-                onChange={(e) => setReserveDuration(e.target.value)}
-                className="w-full px-3 py-2 border border-slate-200 rounded-lg text-xs font-medium focus:outline-none focus:border-amber-500 bg-white"
-              >
-                <option value="24 giờ">24 giờ (Mặc định)</option>
-                <option value="48 giờ">48 giờ</option>
-                <option value="7 ngày">7 ngày</option>
-                <option value="Cho đến khi hoàn tất đơn xuất">Cho đến khi hoàn tất đơn xuất</option>
+                <option value="Cấp phát giữ chỗ theo đơn xuất bán">Cấp phát giữ chỗ theo đơn xuất bán</option>
+                <option value="Lấy mẫu kiểm định chất lượng">Lấy mẫu kiểm định chất lượng</option>
+                <option value="Dự trữ chương trình khuyến mại">Dự trữ chương trình khuyến mại</option>
+                <option value="Bảo lưu xử lý bảo hành, đổi trả">Bảo lưu xử lý bảo hành, đổi trả</option>
               </select>
             </div>
 

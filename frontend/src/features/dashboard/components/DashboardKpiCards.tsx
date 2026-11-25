@@ -107,7 +107,7 @@ export const DashboardKpiCards: React.FC = () => {
         <div className="mt-3">
           <div className="flex items-baseline gap-2">
             <span className="text-3xl font-extrabold text-amber-600 tracking-tight font-mono">04</span>
-            <span className="text-xs font-bold text-amber-700 uppercase">Lô Cận Date</span>
+            <span className="text-xs font-bold text-amber-700 uppercase">Lô Cận Hạn</span>
           </div>
           <div className="flex items-center gap-1.5 mt-2.5">
             <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md bg-amber-50 text-amber-800 text-xs font-bold border border-amber-200">

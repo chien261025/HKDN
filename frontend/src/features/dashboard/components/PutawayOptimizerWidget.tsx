@@ -34,7 +34,7 @@ export const PutawayOptimizerWidget: React.FC = () => {
           <div className="w-7 h-7 rounded-lg bg-indigo-50 text-indigo-600 flex items-center justify-center">
             <Cpu className="w-4 h-4" />
           </div>
-          <span>Thuật Toán Gợi Ý Cất Hàng (Smart Put-away)</span>
+          <span>Gợi Ý Vị Trí Cất Kệ Thông Minh</span>
         </h3>
         <span className="text-[11px] font-mono font-bold px-2 py-0.5 rounded-md bg-indigo-50 text-indigo-700 border border-indigo-200">
           WEIGHT HEURISTIC

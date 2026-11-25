@@ -697,7 +697,7 @@ export const CreateWarehouseModal: React.FC<CreateWarehouseModalProps> = ({
               </div>
 
               <div>
-                <label className="block text-[11px] font-semibold text-slate-600 mb-1">Cửa Tiếp Vận (Dock)</label>
+                <label className="block text-[11px] font-semibold text-slate-600 mb-1">Số Cửa Giao Nhận</label>
                 <input
                   type="number"
                   min={1}
@@ -709,7 +709,7 @@ export const CreateWarehouseModal: React.FC<CreateWarehouseModalProps> = ({
               </div>
 
               <div>
-                <label className="block text-[11px] font-semibold text-slate-600 mb-1">Số Phân Khu (Zones)</label>
+                <label className="block text-[11px] font-semibold text-slate-600 mb-1">Số Phân Khu Lưu Trữ</label>
                 <input
                   type="number"
                   min={1}

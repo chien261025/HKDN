@@ -73,7 +73,7 @@ export const AuditHeader: React.FC<AuditHeaderProps> = ({
               Quản Lý Kiểm Kê & Cân Đối Kho
             </h1>
             <p className="text-xs sm:text-sm text-slate-500 font-normal mt-0.5">
-              Đối soát số lượng thực tế từ máy quét PDA • Tự động phát hiện lệch thừa thiếu • Duyệt cân đối Sổ cái
+              Đối chiếu số lượng thực tế • Phát hiện chênh lệch thừa thiếu • Duyệt điều chỉnh tồn kho
             </p>
           </div>
         </div>
@@ -105,7 +105,7 @@ export const AuditHeader: React.FC<AuditHeaderProps> = ({
             <button
               onClick={onRefresh}
               disabled={loading}
-              title="Cập nhật tiến độ kiểm kê mới nhất từ máy quét PDA"
+              title="Cập nhật tiến độ kiểm kê mới nhất"
               className="inline-flex items-center gap-1.5 px-3 py-2.5 rounded-xl border border-emerald-300 bg-emerald-50 text-emerald-800 hover:bg-emerald-100 transition-colors text-xs font-bold cursor-pointer shadow-2xs disabled:opacity-50"
             >
               <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />

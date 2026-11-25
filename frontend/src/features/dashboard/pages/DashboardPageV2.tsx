@@ -126,6 +126,22 @@ const getEstimatedUnitPrice = (sku: string = '', category: string = ''): number 
 export type PeriodFilter = 'TODAY' | '7_DAYS' | 'THIS_MONTH' | 'CUSTOM' | 'ALL';
 export type TopSortMode = 'QUANTITY' | 'VALUE';
 
+export const parseAnyDate = (rawDate?: string): Date | null => {
+  if (!rawDate) return null;
+  const str = String(rawDate).trim();
+  if (/^\d{4}-\d{2}-\d{2}/.test(str)) {
+    const d = new Date(str.replace(' ', 'T'));
+    return isNaN(d.getTime()) ? null : d;
+  }
+  const match = str.match(/(\d{1,2})\/(\d{1,2})\/(\d{4})/);
+  if (match) {
+    const d = new Date(parseInt(match[3], 10), parseInt(match[2], 10) - 1, parseInt(match[1], 10));
+    return isNaN(d.getTime()) ? null : d;
+  }
+  const d = new Date(str);
+  return isNaN(d.getTime()) ? null : d;
+};
+
 export const isDateInPeriod = (
   rawDate?: string,
   period: PeriodFilter = 'THIS_MONTH',
@@ -134,26 +150,8 @@ export const isDateInPeriod = (
   if (period === 'ALL') return true;
   if (!rawDate) return false;
 
-  let d: Date | null = null;
-  const str = String(rawDate).trim();
-
-  // 1. Dạng YYYY-MM-DD
-  if (/^\d{4}-\d{2}-\d{2}/.test(str)) {
-    d = new Date(str.replace(' ', 'T'));
-  } else {
-    // 2. Dạng tiếng Việt / thông thường DD/MM/YYYY
-    const match = str.match(/(\d{1,2})\/(\d{1,2})\/(\d{4})/);
-    if (match) {
-      const day = parseInt(match[1], 10);
-      const month = parseInt(match[2], 10) - 1;
-      const year = parseInt(match[3], 10);
-      d = new Date(year, month, day);
-    } else {
-      d = new Date(str);
-    }
-  }
-
-  if (!d || isNaN(d.getTime())) return true;
+  const d = parseAnyDate(rawDate);
+  if (!d) return true;
 
   if (period === 'CUSTOM') {
     if (!customRange?.start && !customRange?.end) return true;
@@ -200,22 +198,20 @@ export const DashboardPage: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [activePeriod, setActivePeriod] = useState<PeriodFilter>('THIS_MONTH');
-  const [customStartDate, setCustomStartDate] = useState<string>('2026-11-01');
-  const [customEndDate, setCustomEndDate] = useState<string>('2026-11-21');
+  const [customStartDate, setCustomStartDate] = useState<string>(() => {
+    const d = new Date();
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-01`;
+  });
+  const [customEndDate, setCustomEndDate] = useState<string>(() => new Date().toISOString().slice(0, 10));
   const [showActionDropdown, setShowActionDropdown] = useState(false);
   const [topSortMode, setTopSortMode] = useState<TopSortMode>('QUANTITY');
   const [hoveredChartBar, setHoveredChartBar] = useState<number | null>(null);
 
-  // Modal điều phối & phân công nhiệm vụ (DB01)
-  const [dispatchModalOrder, setDispatchModalOrder] = useState<any | null>(null);
-  const [selectedPicker, setSelectedPicker] = useState<string>('Lê Hoàng Nam (Zone A/B)');
-  const [dispatchNotice, setDispatchNotice] = useState<string | null>(null);
-
-  const [putawayModalOrder, setPutawayModalOrder] = useState<any | null>(null);
-  const [auditModalSession, setAuditModalSession] = useState<any | null>(null);
+  const [mainTaskFilterTab, setMainTaskFilterTab] = useState<'ALL' | 'SO' | 'PO' | 'AUDIT'>('ALL');
   const [monthDetailModal, setMonthDetailModal] = useState<any | null>(null);
   const [showAllTasksModal, setShowAllTasksModal] = useState(false);
   const [taskFilterTab, setTaskFilterTab] = useState<'ALL' | 'SO' | 'PO' | 'AUDIT'>('ALL');
+  const [taskSearchKeyword, setTaskSearchKeyword] = useState<string>('');
 
   // Phân quyền vai trò người dùng (Tuân thủ SoD - IT Admin không làm nghiệp vụ kho)
   const session = authService.getCurrentSession();
@@ -232,13 +228,10 @@ export const DashboardPage: React.FC = () => {
     }
   }, [isAdmin]);
 
-  // Lắng nghe phím Escape để đóng nhanh tất cả các modal điều hành
+  // Lắng nghe phím Escape để đóng nhanh modal
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
-        setDispatchModalOrder(null);
-        setPutawayModalOrder(null);
-        setAuditModalSession(null);
         setMonthDetailModal(null);
         setShowActionDropdown(false);
         setShowAllTasksModal(false);
@@ -353,10 +346,6 @@ export const DashboardPage: React.FC = () => {
 
   const handleSyncData = async () => {
     await load();
-    setDispatchNotice('Dữ liệu toàn hệ thống kho đã được đồng bộ mới nhất từ máy chủ.');
-    setTimeout(() => {
-      setDispatchNotice((prev) => (prev?.includes('toàn hệ thống kho') ? null : prev));
-    }, 4000);
   };
 
   useEffect(() => {
@@ -467,12 +456,26 @@ export const DashboardPage: React.FC = () => {
     const recentInbound = (periodInbound.length > 0 ? periodInbound : effectiveInbound).slice(0, 4);
     const recentOutbound = (periodOutbound.length > 0 ? periodOutbound : effectiveOutbound).slice(0, 4);
 
-    let currentBranchTotalBins = 42;
-    let currentBranchOccupiedBins = 35;
-    if (!isAll) {
+    // Tính toán số lượng vị trí và tỷ lệ lấp đầy trực tiếp từ dữ liệu thực tế locations
+    const branchLocations = isAll
+      ? data.locations
+      : data.locations.filter(
+          (l: any) =>
+            l.warehouseId === targetWhId ||
+            (l.warehouseCode && l.warehouseCode === activeWarehouse) ||
+            (targetWhId === 1 && (!l.warehouseId || l.warehouseId === 1))
+        );
+
+    const dynamicTotalBins = branchLocations.length;
+    const dynamicOccupiedBins = branchLocations.filter((l) => l.status && l.status !== 'EMPTY').length;
+
+    let currentBranchTotalBins = dynamicTotalBins > 0 ? dynamicTotalBins : 17;
+    let currentBranchOccupiedBins = dynamicTotalBins > 0 ? dynamicOccupiedBins : 16;
+
+    if (dynamicTotalBins === 0 && !isAll) {
       if (activeWarehouse === 'WH01' || targetWhId === 1) {
-        currentBranchTotalBins = 42;
-        currentBranchOccupiedBins = 35;
+        currentBranchTotalBins = 17;
+        currentBranchOccupiedBins = 16;
       } else if (activeWarehouse === 'WH02' || targetWhId === 2) {
         currentBranchTotalBins = 30;
         currentBranchOccupiedBins = 21;
@@ -492,40 +495,53 @@ export const DashboardPage: React.FC = () => {
       ? Math.round((currentBranchOccupiedBins / currentBranchTotalBins) * 100)
       : 0;
 
-    const networkTotalBins = 79;
-    const networkOccupiedBins = 62;
-    const networkFillRate = 78;
+    const networkTotalBins = data.locations.length > 0 ? data.locations.length : 79;
+    const networkOccupiedBins = data.locations.length > 0 ? data.locations.filter((l) => l.status && l.status !== 'EMPTY').length : 62;
+    const networkFillRate = networkTotalBins > 0 ? Math.round((networkOccupiedBins / networkTotalBins) * 100) : 78;
 
-    // Sức chứa Zone
+    // Sức chứa Zone tính toán trực tiếp từ dữ liệu ô kệ thực địa
+    const zoneALocs = branchLocations.filter((l) => l.zone === 'ZONE_A' || l.barcode?.includes('ZA'));
+    const zoneBLocs = branchLocations.filter((l) => l.zone === 'ZONE_B' || l.barcode?.includes('ZB'));
+    const zoneCLocs = branchLocations.filter((l) => l.zone === 'ZONE_C' || l.barcode?.includes('ZC'));
+
+    const zoneATotal = zoneALocs.length > 0 ? zoneALocs.length : Math.max(1, Math.round(currentBranchTotalBins * 0.35));
+    const zoneAOccupied = zoneALocs.length > 0 ? zoneALocs.filter((l) => l.status && l.status !== 'EMPTY').length : Math.round(currentBranchOccupiedBins * 0.3);
+
+    const zoneBTotal = zoneBLocs.length > 0 ? zoneBLocs.length : Math.max(1, Math.round(currentBranchTotalBins * 0.3));
+    const zoneBOccupied = zoneBLocs.length > 0 ? zoneBLocs.filter((l) => l.status && l.status !== 'EMPTY').length : Math.round(currentBranchOccupiedBins * 0.35);
+
+    const zoneCTotal = zoneCLocs.length > 0 ? zoneCLocs.length : Math.max(1, currentBranchTotalBins - zoneATotal - zoneBTotal);
+    const zoneCOccupied = zoneCLocs.length > 0 ? zoneCLocs.filter((l) => l.status && l.status !== 'EMPTY').length : Math.max(0, currentBranchOccupiedBins - zoneAOccupied - zoneBOccupied);
+
     const zoneBreakdown = [
       {
         id: 'Zone A',
         name: 'Zone A',
         fullName: 'Khu A: Hàng Khô & Thiết Bị Điện Tử',
-        total: Math.max(1, Math.round(currentBranchTotalBins * 0.35)),
-        occupied: Math.round(currentBranchOccupiedBins * 0.3),
-        desc: `${Math.round(currentBranchOccupiedBins * 0.3)}/${Math.max(1, Math.round(currentBranchTotalBins * 0.35))} vị trí có hàng`,
-        percent: currentBranchTotalBins > 0 ? Math.round((Math.round(currentBranchOccupiedBins * 0.3) / Math.max(1, Math.round(currentBranchTotalBins * 0.35))) * 100) : 0,
+        total: zoneATotal,
+        occupied: zoneAOccupied,
+        desc: `${zoneAOccupied}/${zoneATotal} vị trí có hàng`,
+        percent: zoneATotal > 0 ? Math.round((zoneAOccupied / zoneATotal) * 100) : 0,
         barColor: 'bg-[#2563EB]',
       },
       {
         id: 'Zone B',
         name: 'Zone B',
         fullName: 'Khu B: Kho Mát & Đồ Uống (2 - 8°C)',
-        total: Math.max(1, Math.round(currentBranchTotalBins * 0.3)),
-        occupied: Math.round(currentBranchOccupiedBins * 0.35),
-        desc: `${Math.round(currentBranchOccupiedBins * 0.35)}/${Math.max(1, Math.round(currentBranchTotalBins * 0.3))} vị trí có hàng`,
-        percent: currentBranchTotalBins > 0 ? Math.round((Math.round(currentBranchOccupiedBins * 0.35) / Math.max(1, Math.round(currentBranchTotalBins * 0.3))) * 100) : 0,
+        total: zoneBTotal,
+        occupied: zoneBOccupied,
+        desc: `${zoneBOccupied}/${zoneBTotal} vị trí có hàng`,
+        percent: zoneBTotal > 0 ? Math.round((zoneBOccupied / zoneBTotal) * 100) : 0,
         barColor: 'bg-[#2563EB]',
       },
       {
         id: 'Zone C',
         name: 'Zone C',
         fullName: 'Khu C: Hóa Mỹ Phẩm & Hàng Tiêu Dùng',
-        total: Math.max(1, currentBranchTotalBins - Math.round(currentBranchTotalBins * 0.35) - Math.round(currentBranchTotalBins * 0.3)),
-        occupied: Math.max(0, currentBranchOccupiedBins - Math.round(currentBranchOccupiedBins * 0.3) - Math.round(currentBranchOccupiedBins * 0.35)),
-        desc: `${Math.max(0, currentBranchOccupiedBins - Math.round(currentBranchOccupiedBins * 0.3) - Math.round(currentBranchOccupiedBins * 0.35))}/${Math.max(1, currentBranchTotalBins - Math.round(currentBranchTotalBins * 0.35) - Math.round(currentBranchTotalBins * 0.3))} vị trí có hàng`,
-        percent: currentBranchTotalBins > 0 ? Math.round((Math.max(0, currentBranchOccupiedBins - Math.round(currentBranchOccupiedBins * 0.3) - Math.round(currentBranchOccupiedBins * 0.35)) / Math.max(1, currentBranchTotalBins - Math.round(currentBranchTotalBins * 0.35) - Math.round(currentBranchTotalBins * 0.3))) * 100) : 0,
+        total: zoneCTotal,
+        occupied: zoneCOccupied,
+        desc: `${zoneCOccupied}/${zoneCTotal} vị trí có hàng`,
+        percent: zoneCTotal > 0 ? Math.round((zoneCOccupied / zoneCTotal) * 100) : 0,
         barColor: 'bg-[#D97706]',
       },
     ];
@@ -538,18 +554,23 @@ export const DashboardPage: React.FC = () => {
 
     let lowStockItems = 0;
     let zeroStockItems = 0;
-    let nearExpiryItems = 0;
     if (isAll || totalStockUnits > 0) {
       data.products.forEach((p) => {
         const pStock = stockByProduct.get(Number(p.id)) || 0;
         if (pStock === 0) zeroStockItems++;
         if (pStock <= p.safetyStock && pStock > 0) lowStockItems++;
       });
-      nearExpiryItems = isAll ? 5 : targetWhId === 1 ? 2 : targetWhId === 2 ? 1 : 1;
     }
+    const nearExpiryLimitMs = Date.now() + 45 * 24 * 60 * 60 * 1000;
+    const nearExpiryItems = effectiveStock.filter((s: any) => {
+      if ((s.onHandQty || 0) <= 0) return false;
+      if (s.isExpiringSoon || s.isExpired) return true;
+      const exp = parseAnyDate(s.expiryDate);
+      return exp ? exp.getTime() <= nearExpiryLimitMs : false;
+    }).length;
     const totalAlertCount = lowStockItems + zeroStockItems + nearExpiryItems;
 
-    // Tổng hợp danh mục công việc cần xử lý trong ca (Actionable Tasks)
+    // Tổng hợp danh mục công việc cần xử lý
     const actionableTasks: Array<{
       id: string;
       type: 'SO_PICKING' | 'PO_PUTAWAY' | 'AUDIT_APPROVAL';
@@ -564,43 +585,46 @@ export const DashboardPage: React.FC = () => {
       data: any;
     }> = [];
 
-    // 1. Đơn xuất SO chờ lấy hàng
-    openSos.forEach((so) => {
+    // 1. Đơn xuất chờ lấy hàng
+    const pendingDispatchSos = openSos.filter((s) => s.status === 'PENDING' || s.status === 'ALLOCATED');
+    pendingDispatchSos.forEach((so) => {
       const isUrgent = so.priority === 'URGENT';
+      const itemCount = so.items?.length || 0;
       actionableTasks.push({
         id: `so-${so.id}`,
         type: 'SO_PICKING',
-        title: 'SO chờ lấy hàng',
+        title: 'Đơn xuất chờ xử lý',
         code: so.soCode || `SO-${so.id}`,
         priority: isUrgent ? 'URGENT' : 'HIGH',
-        priorityLabel: isUrgent ? 'Khẩn cấp' : 'Chờ lấy hàng',
+        priorityLabel: isUrgent ? 'Khẩn cấp' : so.status === 'ALLOCATED' ? 'Đã phân bổ lô' : 'Chờ xử lý',
         priorityColor: isUrgent ? 'bg-red-50 text-red-600 border-red-200' : 'bg-blue-50 text-blue-700 border-blue-200',
-        assignedTo: (so as any).assignedPicker || 'Lê Hoàng Nam',
-        deadlineText: 'Hạn lấy hàng: 10:30 · Xuất xe: 15:00',
-        extraInfo: `Khách hàng: ${so.customerName || 'Khách hàng Doanh Nghiệp'}`,
+        assignedTo: (so as any).assignedPicker || 'Chưa phân công',
+        deadlineText: `Ngày tạo: ${date(so.rawCreatedAt || so.orderDate)}${itemCount ? ` · ${itemCount} mặt hàng` : ''}`,
+        extraInfo: `Khách hàng: ${so.customerName || 'Khách hàng'}`,
         data: so,
       });
     });
 
-    // 2. Đơn nhập PO tại khu đệm Staging
+    // 2. Đơn nhập tại khu tiếp nhận chờ cất kệ
     const stagingPos = periodInbound.filter((p: any) => p.status === 'RECEIVED' || p.status === 'ARRIVED');
     stagingPos.forEach((po) => {
+      const itemCount = po.items?.length || 0;
       actionableTasks.push({
         id: `po-${po.id}`,
         type: 'PO_PUTAWAY',
-        title: 'Hàng tại Staging chờ cất kệ',
+        title: 'Hàng chờ xếp lên kệ',
         code: po.poCode || `PO-${po.id}`,
         priority: 'HIGH',
-        priorityLabel: 'Cần làm',
+        priorityLabel: 'Chờ cất kệ',
         priorityColor: 'bg-amber-50 text-amber-700 border-amber-200',
-        assignedTo: (po as any).receiver || 'Trần Văn Hùng',
-        deadlineText: 'Tiếp nhận: 08:00 · Hạn cất kệ: 12:00',
-        extraInfo: `Nhà cung cấp: ${po.supplierName || 'Nhà cung cấp đối tác'}`,
+        assignedTo: (po as any).receiver || (po as any).receivedBy || 'Nhân viên kho',
+        deadlineText: `Ngày tạo: ${date(po.rawCreatedAt || po.createdAt)}${itemCount ? ` · ${itemCount} mặt hàng` : ''}`,
+        extraInfo: `Nhà cung cấp: ${po.supplierName || 'Đối tác'}`,
         data: po,
       });
     });
 
-    // 3. Đợt kiểm kê chờ phê duyệt
+    // 3. Đợt kiểm kê chờ duyệt
     const pendingAudits = effectiveAudits.filter((a) => a.status === 'PENDING_REVIEW' || a.discrepanciesCount > 0);
     pendingAudits.forEach((aud) => {
       actionableTasks.push({
@@ -611,18 +635,15 @@ export const DashboardPage: React.FC = () => {
         priority: 'NORMAL',
         priorityLabel: 'Chờ duyệt',
         priorityColor: 'bg-purple-50 text-purple-700 border-purple-200',
-        assignedTo: (aud as any).auditor || 'Trần Văn Kho',
-        deadlineText: `Chốt đếm: ${(aud as any).completedAt || (aud as any).completedDate || '07:45'} · Chênh lệch: ${aud.discrepanciesCount || 1} mục`,
-        extraInfo: `Người đếm: ${(aud as any).auditor || 'Thủ kho'}`,
+        assignedTo: (aud as any).createdByName || (aud as any).auditor || 'Nhân viên kiểm đếm',
+        deadlineText: `Ngày lập: ${date((aud as any).createdAt)} · Chênh lệch: ${aud.discrepanciesCount || 0} mục`,
+        extraInfo: `Người lập: ${(aud as any).createdByName || 'Quản lý kho'}`,
         data: aud,
       });
     });
 
     const urgentTasksCount = actionableTasks.filter((t) => t.priority === 'URGENT').length;
     const totalActionableTasks = actionableTasks.length;
-    const urgentSo = actionableTasks.find((t) => t.type === 'SO_PICKING')?.data;
-    const stagingPo = actionableTasks.find((t) => t.type === 'PO_PUTAWAY')?.data;
-    const auditTask = actionableTasks.find((t) => t.type === 'AUDIT_APPROVAL')?.data;
 
     const currentZoneWarehouseName =
       currentWhObj?.name ||
@@ -639,6 +660,9 @@ export const DashboardPage: React.FC = () => {
       poPendingCount,
       recentInbound,
       recentOutbound,
+      effectiveInbound,
+      effectiveOutbound,
+      periodOutbound,
       totalStockUnits,
       totalStockValue,
       currentBranchTotalBins,
@@ -652,9 +676,6 @@ export const DashboardPage: React.FC = () => {
       zeroStockItems,
       nearExpiryItems,
       totalAlertCount,
-      urgentSo,
-      stagingPo,
-      auditTask,
       actionableTasks,
       urgentTasksCount,
       totalActionableTasks,
@@ -662,188 +683,152 @@ export const DashboardPage: React.FC = () => {
     };
   }, [data, activeWarehouse, zoneSelectedWarehouse, warehousesList, activePeriod, customStartDate, customEndDate]);
 
-  // Chi tiết đơn hàng khẩn cấp phục vụ điều phối SO (DB01)
-  const displayUrgentSo = useMemo(() => {
-    if (!summary.urgentSo) return null;
-    const base = summary.urgentSo;
-    const items =
-      base.items && base.items.length > 0
-        ? base.items
-        : [
-            {
-              id: '1',
-              productId: 4,
-              sku: 'SKU-MILK-01',
-              productName: 'Sữa tươi tiệt trùng Vinamilk 100% 1L',
-              requestedQty: 10,
-              allocatedQty: 10,
-              pickedQty: 0,
-              unit: 'Hộp',
-              allocations: [
-                {
-                  batchNumber: 'BATCH-MILK-2026-A',
-                  expiryDate: '2026-12-15',
-                  locationBarcode: 'WH01-ZB-B02-R01-S01-B01',
-                  qtyAllocated: 10,
-                  isNearestExpiry: true,
-                },
-              ],
-            },
-          ];
-    return { ...base, items };
-  }, [summary.urgentSo]);
+  const displayedTasks = useMemo(() => {
+    if (mainTaskFilterTab === 'SO') return summary.actionableTasks.filter((t) => t.type === 'SO_PICKING');
+    if (mainTaskFilterTab === 'PO') return summary.actionableTasks.filter((t) => t.type === 'PO_PUTAWAY');
+    if (mainTaskFilterTab === 'AUDIT') return summary.actionableTasks.filter((t) => t.type === 'AUDIT_APPROVAL');
+    return summary.actionableTasks;
+  }, [summary.actionableTasks, mainTaskFilterTab]);
 
   const filteredModalTasks = useMemo(() => {
-    if (taskFilterTab === 'SO') return summary.actionableTasks.filter((t) => t.type === 'SO_PICKING');
-    if (taskFilterTab === 'PO') return summary.actionableTasks.filter((t) => t.type === 'PO_PUTAWAY');
-    if (taskFilterTab === 'AUDIT') return summary.actionableTasks.filter((t) => t.type === 'AUDIT_APPROVAL');
-    return summary.actionableTasks;
-  }, [summary.actionableTasks, taskFilterTab]);
+    let list = summary.actionableTasks;
+    if (taskFilterTab === 'SO') list = list.filter((t) => t.type === 'SO_PICKING');
+    if (taskFilterTab === 'PO') list = list.filter((t) => t.type === 'PO_PUTAWAY');
+    if (taskFilterTab === 'AUDIT') list = list.filter((t) => t.type === 'AUDIT_APPROVAL');
 
-  const handleConfirmDispatch = async () => {
-    if (!dispatchModalOrder) return;
-    try {
-      if (dispatchModalOrder.id) {
-        await outboundService.allocateOrderFefo(String(dispatchModalOrder.id)).catch(() => {});
-      }
-    } catch (e) {
-      console.warn('Dispatch API call:', e);
+    if (taskSearchKeyword.trim()) {
+      const q = taskSearchKeyword.toLowerCase().trim();
+      list = list.filter(
+        (t) =>
+          t.code.toLowerCase().includes(q) ||
+          t.title.toLowerCase().includes(q) ||
+          t.assignedTo.toLowerCase().includes(q) ||
+          (t.extraInfo && t.extraInfo.toLowerCase().includes(q))
+      );
     }
-    setDispatchNotice(
-      `Đã điều phối đơn ${dispatchModalOrder.soCode} thành công cho nhân viên ${selectedPicker}. Trạng thái chuyển sang Đang lấy hàng.`
-    );
-    setData((prev) => ({
-      ...prev,
-      outbound: prev.outbound.map((o) =>
-        o.soCode === dispatchModalOrder.soCode ? { ...o, status: 'PICKING' } : o
-      ),
-    }));
-    setDispatchModalOrder(null);
-  };
+    return list;
+  }, [summary.actionableTasks, taskFilterTab, taskSearchKeyword]);
 
-  const handleConfirmPutaway = () => {
-    if (!putawayModalOrder) return;
-    setDispatchNotice(
-      `Đã điều phối cất kệ đơn nhập ${putawayModalOrder.poCode || 'PO-2026-926'} vào ô lưu trữ thành công.`
-    );
-    setData((prev) => ({
-      ...prev,
-      inbound: prev.inbound.map((p) =>
-        p.poCode === putawayModalOrder.poCode ? { ...p, status: 'STOCKED' } : p
-      ),
-    }));
-    setPutawayModalOrder(null);
-  };
+  const productBySku = useMemo(() => {
+    const map = new Map<string, ProductItem>();
+    data.products.forEach((p) => {
+      if (p.sku) map.set(p.sku.toUpperCase(), p);
+    });
+    return map;
+  }, [data.products]);
 
-  const handleConfirmAuditApproval = () => {
-    if (!auditModalSession) return;
-    setDispatchNotice(
-      `Đã phê duyệt biên bản kiểm kê ${auditModalSession.auditCode || 'AUD-2026-09-01'} và ghi nhận chênh lệch vào sổ cái thành công.`
-    );
-    setData((prev) => ({
-      ...prev,
-      audits: prev.audits.map((a) =>
-        a.id === auditModalSession.id ? { ...a, status: 'RECONCILED', discrepanciesCount: 0 } : a
-      ),
-    }));
-    setAuditModalSession(null);
-  };
+  // Biểu đồ Nhập - Xuất 6 tháng gần nhất tính từ đơn hàng thực tế
+  const { monthlyData, chartMaxScale } = useMemo(() => {
+    const now = new Date();
+    const buckets: Array<{
+      year: number;
+      monthIndex: number;
+      month: string;
+      title: string;
+      inVnd: number;
+      outVnd: number;
+    }> = [];
 
-  // Biểu đồ Nhập - Xuất 6 tháng gần nhất
-  const monthlyData = useMemo(() => {
-    if (!summary.isAll && summary.totalStockUnits === 0 && summary.recentInbound.length === 0 && summary.recentOutbound.length === 0) {
-      return [
-        { month: 'T06', inValue: 0, outValue: 0, inExact: '0 ₫', outExact: '0 ₫' },
-        { month: 'T07', inValue: 0, outValue: 0, inExact: '0 ₫', outExact: '0 ₫' },
-        { month: 'T08', inValue: 0, outValue: 0, inExact: '0 ₫', outExact: '0 ₫' },
-        { month: 'T09', inValue: 0, outValue: 0, inExact: '0 ₫', outExact: '0 ₫' },
-        { month: 'T10', inValue: 0, outValue: 0, inExact: '0 ₫', outExact: '0 ₫' },
-        { month: 'T11', inValue: 0, outValue: 0, inExact: '0 ₫', outExact: '0 ₫' },
-      ];
+    for (let offset = 5; offset >= 0; offset--) {
+      const d = new Date(now.getFullYear(), now.getMonth() - offset, 1);
+      buckets.push({
+        year: d.getFullYear(),
+        monthIndex: d.getMonth(),
+        month: `T${String(d.getMonth() + 1).padStart(2, '0')}`,
+        title: `Tháng ${d.getMonth() + 1}/${d.getFullYear()}`,
+        inVnd: 0,
+        outVnd: 0,
+      });
     }
-    const ratio = summary.isAll ? 1.0 : summary.totalStockUnits > 500 ? 1.0 : 0.6;
-    return [
-      { month: 'T06', inValue: +(25.4 * ratio).toFixed(1), outValue: +(6.2 * ratio).toFixed(1), inExact: `${(25.4 * ratio).toFixed(1)}00.000 ₫`, outExact: `${(6.2 * ratio).toFixed(1)}00.000 ₫` },
-      { month: 'T07', inValue: +(18.0 * ratio).toFixed(1), outValue: +(12.5 * ratio).toFixed(1), inExact: `${(18.0 * ratio).toFixed(1)}00.000 ₫`, outExact: `${(12.5 * ratio).toFixed(1)}00.000 ₫` },
-      { month: 'T08', inValue: +(25.0 * ratio).toFixed(1), outValue: +(32.0 * ratio).toFixed(1), inExact: `${(25.0 * ratio).toFixed(1)}00.000 ₫`, outExact: `${(32.0 * ratio).toFixed(1)}00.000 ₫` },
-      { month: 'T09', inValue: +(12.0 * ratio).toFixed(1), outValue: +(15.2 * ratio).toFixed(1), inExact: `${(12.0 * ratio).toFixed(1)}00.000 ₫`, outExact: `${(15.2 * ratio).toFixed(1)}00.000 ₫` },
-      { month: 'T10', inValue: +(40.1 * ratio).toFixed(1), outValue: +(8.5 * ratio).toFixed(1), inExact: `${(40.1 * ratio).toFixed(1)}00.000 ₫`, outExact: `${(8.5 * ratio).toFixed(1)}00.000 ₫` },
-      { month: 'T11', inValue: +(32.8 * ratio).toFixed(1), outValue: +(18.2 * ratio).toFixed(1), inExact: `${(32.8 * ratio).toFixed(1)}00.000 ₫`, outExact: `${(18.2 * ratio).toFixed(1)}00.000 ₫` },
-    ];
-  }, [summary.isAll, summary.totalStockUnits, summary.recentInbound.length, summary.recentOutbound.length]);
 
-  // Top sản phẩm luân chuyển (Fast Moving SKUs & ABC Analysis)
+    summary.effectiveInbound.forEach((po: any) => {
+      if (po.status === 'CANCELLED') return;
+      const d = parseAnyDate(po.rawCreatedAt || po.createdAt || po.expectedDeliveryDate);
+      if (!d) return;
+      const bucket = buckets.find((b) => b.year === d.getFullYear() && b.monthIndex === d.getMonth());
+      if (!bucket) return;
+      (po.items || []).forEach((it: any) => {
+        const qty = Number(it.stockedQty || it.receivedQty || it.expectedQty || 0);
+        const prod = productBySku.get(String(it.sku || '').toUpperCase());
+        const price = Number(prod?.purchasePrice || prod?.sellingPrice || getEstimatedUnitPrice(it.sku, prod?.category));
+        bucket.inVnd += qty * price;
+      });
+    });
+
+    summary.effectiveOutbound.forEach((so: any) => {
+      if (so.status === 'CANCELLED') return;
+      const d = parseAnyDate(so.rawCreatedAt || so.orderDate);
+      if (!d) return;
+      const bucket = buckets.find((b) => b.year === d.getFullYear() && b.monthIndex === d.getMonth());
+      if (!bucket) return;
+      (so.items || []).forEach((it: any) => {
+        const qty = Number(it.pickedQty || it.allocatedQty || it.requestedQty || 0);
+        const prod = productBySku.get(String(it.sku || '').toUpperCase());
+        const price = Number(prod?.sellingPrice || prod?.purchasePrice || getEstimatedUnitPrice(it.sku, prod?.category));
+        bucket.outVnd += qty * price;
+      });
+    });
+
+    const rows = buckets.map((b) => ({
+      month: b.month,
+      title: b.title,
+      inValue: +(b.inVnd / 1_000_000).toFixed(1),
+      outValue: +(b.outVnd / 1_000_000).toFixed(1),
+      inExact: `${fmt(Math.round(b.inVnd))} ₫`,
+      outExact: `${fmt(Math.round(b.outVnd))} ₫`,
+    }));
+
+    const peakMillion = rows.reduce((max, r) => Math.max(max, r.inValue, r.outValue), 0);
+    const scale = Math.max(10, Math.ceil((peakMillion * 1.15) / 10) * 10);
+    return { monthlyData: rows, chartMaxScale: scale };
+  }, [summary.effectiveInbound, summary.effectiveOutbound, productBySku]);
+
+  // Top sản phẩm xuất kho thực tế trong kỳ lọc
   const topProducts = useMemo(() => {
-    if (!summary.isAll && summary.totalStockUnits === 0 && summary.totalOpenSoCount === 0 && summary.recentOutbound.length === 0) {
-      return [];
-    }
-
-    const rawList = [
-      {
-        name: 'Bia Heineken Sleek lon 330ml',
-        sku: 'SKU-BEER-01',
-        qty: 1100,
-        unit: 'Thùng',
-        unitPrice: 420000,
-        category: 'Đồ uống (Fast Mover)',
-        velocityGroup: 'Nhóm A',
-        color: 'from-emerald-500 to-green-600',
-        badgeColor: 'bg-emerald-50 text-emerald-700 border-emerald-200',
-      },
-      {
-        name: 'Sữa tươi tiệt trùng Vinamilk 100% 1L',
-        sku: 'SKU-MILK-01',
-        qty: 280,
-        unit: 'Hộp',
-        unitPrice: 32000,
-        category: 'Sữa & Thực phẩm',
-        velocityGroup: 'Nhóm A',
-        color: 'from-purple-500 to-indigo-600',
-        badgeColor: 'bg-purple-50 text-purple-700 border-purple-200',
-      },
-      {
-        name: 'Nước giặt OMO Matic Cửa Trên 3.6kg',
-        sku: 'SKU-OMO-01',
-        qty: 125,
-        unit: 'Túi',
-        unitPrice: 215000,
-        category: 'Hóa mỹ phẩm',
-        velocityGroup: 'Nhóm B',
-        color: 'from-rose-500 to-red-600',
-        badgeColor: 'bg-rose-50 text-rose-700 border-rose-200',
-      },
-      {
-        name: 'Nước giải khát Coca-Cola lon 330ml',
-        sku: 'SKU-COCA-01',
-        qty: 80,
-        unit: 'Thùng',
-        unitPrice: 320000,
-        category: 'Giải khát đóng lon',
-        velocityGroup: 'Nhóm B',
-        color: 'from-amber-500 to-orange-500',
-        badgeColor: 'bg-amber-50 text-amber-700 border-amber-200',
-      },
-      {
-        name: 'Điện thoại Samsung Galaxy S24 Ultra',
-        sku: 'SKU-SAMS-01',
-        qty: 35,
-        unit: 'Chiếc',
-        unitPrice: 12500000,
-        category: 'Điện tử giá trị cao',
-        velocityGroup: 'High-Value',
-        color: 'from-blue-500 to-cyan-600',
-        badgeColor: 'bg-blue-50 text-blue-700 border-blue-200',
-      },
+    const palette = [
+      'from-emerald-500 to-green-600',
+      'from-purple-500 to-indigo-600',
+      'from-rose-500 to-red-600',
+      'from-amber-500 to-orange-500',
+      'from-blue-500 to-cyan-600',
     ];
+    const aggMap = new Map<string, { name: string; sku: string; qty: number; unit: string; unitPrice: number }>();
+
+    summary.periodOutbound.forEach((so: any) => {
+      if (so.status === 'CANCELLED') return;
+      (so.items || []).forEach((it: any) => {
+        const sku = String(it.sku || `SP-${it.productId || '0'}`).toUpperCase();
+        const qty = Number(it.pickedQty || it.allocatedQty || it.requestedQty || 0);
+        if (qty <= 0) return;
+        const prod = productBySku.get(sku);
+        const unitPrice = Number(prod?.sellingPrice || prod?.purchasePrice || getEstimatedUnitPrice(sku, prod?.category));
+        const existing = aggMap.get(sku);
+        if (existing) {
+          existing.qty += qty;
+        } else {
+          aggMap.set(sku, {
+            name: prod?.name || it.productName || sku,
+            sku,
+            qty,
+            unit: it.unit || prod?.unit || 'SP',
+            unitPrice,
+          });
+        }
+      });
+    });
+
+    const rawList = Array.from(aggMap.values());
+    if (rawList.length === 0) return [];
 
     if (topSortMode === 'VALUE') {
-      const sortedByValue = [...rawList].sort((a, b) => b.qty * b.unitPrice - a.qty * a.unitPrice);
-      const maxValue = sortedByValue[0].qty * sortedByValue[0].unitPrice;
-      return sortedByValue.map((p) => {
+      const sorted = [...rawList].sort((a, b) => b.qty * b.unitPrice - a.qty * a.unitPrice).slice(0, 5);
+      const maxVal = Math.max(1, sorted[0].qty * sorted[0].unitPrice);
+      return sorted.map((p, idx) => {
         const totalVal = p.qty * p.unitPrice;
-        const rawPercent = (totalVal / maxValue) * 100;
+        const rawPercent = (totalVal / maxVal) * 100;
         return {
           ...p,
+          color: palette[idx % palette.length],
           primaryMetric: `${(totalVal / 1_000_000).toLocaleString('vi-VN', { maximumFractionDigits: 1 })} Tr.đ`,
           secondaryMetric: `${fmt(p.qty)} ${p.unit}`,
           percent: Math.round(rawPercent),
@@ -852,20 +837,21 @@ export const DashboardPage: React.FC = () => {
       });
     }
 
-    const sortedByQty = [...rawList].sort((a, b) => b.qty - a.qty);
-    const maxQty = sortedByQty[0].qty;
-    return sortedByQty.map((p) => {
+    const sorted = [...rawList].sort((a, b) => b.qty - a.qty).slice(0, 5);
+    const maxQty = Math.max(1, sorted[0].qty);
+    return sorted.map((p, idx) => {
       const totalVal = p.qty * p.unitPrice;
       const rawPercent = (p.qty / maxQty) * 100;
       return {
         ...p,
+        color: palette[idx % palette.length],
         primaryMetric: `${fmt(p.qty)} ${p.unit}`,
         secondaryMetric: `${(totalVal / 1_000_000).toLocaleString('vi-VN', { maximumFractionDigits: 1 })} Tr.đ`,
         percent: Math.round(rawPercent),
         visualPercent: Math.min(100, Math.max(5, Math.round(rawPercent))),
       };
     });
-  }, [topSortMode, summary.isAll, summary.totalStockUnits, summary.totalOpenSoCount, summary.recentOutbound.length]);
+  }, [topSortMode, summary.periodOutbound, productBySku]);
 
   const formattedStock = formatCurrencyVnd(summary.totalStockValue);
 
@@ -1322,7 +1308,7 @@ export const DashboardPage: React.FC = () => {
                   onChange={(e) => setActivePeriod(e.target.value as PeriodFilter)}
                   className="appearance-none rounded-lg border border-[#E2E8F0] bg-slate-50 hover:bg-slate-100 px-3.5 py-2 pr-8 font-semibold text-slate-800 outline-none focus:border-[#2563EB] cursor-pointer text-xs sm:text-[13px] transition-colors"
                 >
-                  <option value="THIS_MONTH">📅 Tháng 11/2026</option>
+                  <option value="THIS_MONTH">📅 Tháng {new Date().getMonth() + 1}/{new Date().getFullYear()}</option>
                   <option value="TODAY">📅 Hôm nay</option>
                   <option value="7_DAYS">📅 7 ngày qua</option>
                   <option value="CUSTOM">📅 Tùy chọn khoảng ngày...</option>
@@ -1431,22 +1417,6 @@ export const DashboardPage: React.FC = () => {
           </div>
         </div>
       </header>
-
-      {/* Thông báo điều phối thời gian thực */}
-      {dispatchNotice && (
-        <div className="flex items-center justify-between rounded-xl border border-emerald-300 bg-emerald-50 px-5 py-3.5 text-sm font-semibold text-emerald-800 shadow-xs animate-in fade-in">
-          <div className="flex items-center gap-2.5">
-            <CheckCircle2 className="h-5 w-5 text-emerald-600 shrink-0" />
-            <span>{dispatchNotice}</span>
-          </div>
-          <button
-            onClick={() => setDispatchNotice(null)}
-            className="text-emerald-700 hover:text-emerald-900 cursor-pointer p-1 rounded-md hover:bg-emerald-100 transition-colors"
-          >
-            <X className="h-4 w-4" />
-          </button>
-        </div>
-      )}
 
       {error && (
         <div className="flex items-center justify-between rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
@@ -1589,13 +1559,62 @@ export const DashboardPage: React.FC = () => {
               </div>
             </div>
 
-            {summary.actionableTasks.length === 0 ? (
+            {summary.actionableTasks.length > 0 && (
+              <div className="flex items-center gap-1.5 mb-3 overflow-x-auto pb-1 text-xs">
+                <button
+                  type="button"
+                  onClick={() => setMainTaskFilterTab('ALL')}
+                  className={`px-2.5 py-1 rounded-lg font-bold transition-all cursor-pointer ${
+                    mainTaskFilterTab === 'ALL'
+                      ? 'bg-slate-900 text-white shadow-2xs'
+                      : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                  }`}
+                >
+                  Tất cả ({summary.actionableTasks.length})
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setMainTaskFilterTab('SO')}
+                  className={`px-2.5 py-1 rounded-lg font-bold transition-all cursor-pointer flex items-center gap-1 ${
+                    mainTaskFilterTab === 'SO'
+                      ? 'bg-rose-600 text-white shadow-2xs'
+                      : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                  }`}
+                >
+                  <span>Lấy hàng SO ({summary.actionableTasks.filter((t) => t.type === 'SO_PICKING').length})</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setMainTaskFilterTab('PO')}
+                  className={`px-2.5 py-1 rounded-lg font-bold transition-all cursor-pointer flex items-center gap-1 ${
+                    mainTaskFilterTab === 'PO'
+                      ? 'bg-amber-600 text-white shadow-2xs'
+                      : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                  }`}
+                >
+                  <span>Cất kệ PO ({summary.actionableTasks.filter((t) => t.type === 'PO_PUTAWAY').length})</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setMainTaskFilterTab('AUDIT')}
+                  className={`px-2.5 py-1 rounded-lg font-bold transition-all cursor-pointer flex items-center gap-1 ${
+                    mainTaskFilterTab === 'AUDIT'
+                      ? 'bg-blue-600 text-white shadow-2xs'
+                      : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                  }`}
+                >
+                  <span>Kiểm kê ({summary.actionableTasks.filter((t) => t.type === 'AUDIT_APPROVAL').length})</span>
+                </button>
+              </div>
+            )}
+
+            {displayedTasks.length === 0 ? (
               <div className="py-12 px-4 text-center rounded-xl bg-slate-50/70 border border-dashed border-slate-200 my-2">
                 <div className="mx-auto w-12 h-12 rounded-full bg-emerald-50 text-emerald-600 flex items-center justify-center mb-3">
                   <CheckCircle2 className="h-6 w-6" />
                 </div>
                 <h3 className="text-base font-bold text-slate-800">
-                  Không có công việc tồn đọng cần xử lý trong ca
+                  Không có công việc tồn đọng cần xử lý trong mục này
                 </h3>
                 <p className="text-xs sm:text-sm text-slate-500 max-w-md mx-auto mt-1">
                   Toàn bộ đơn hàng tại <strong>{summary.currentZoneWarehouseName.split(' - ')[0]}</strong> đã được xử lý hoặc chi nhánh mới chưa phát sinh yêu cầu xuất/nhập/kiểm kê.
@@ -1613,7 +1632,7 @@ export const DashboardPage: React.FC = () => {
               </div>
             ) : (
               <div className="divide-y divide-[#E2E8F0]">
-                {summary.actionableTasks.slice(0, 3).map((task) => (
+                {displayedTasks.slice(0, 3).map((task) => (
                   <div
                     key={task.id}
                     className="py-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 hover:bg-slate-50/70 -mx-2 px-2 rounded-lg transition-colors"
@@ -1656,72 +1675,45 @@ export const DashboardPage: React.FC = () => {
                     </div>
                     <div className="flex items-center gap-2 self-start sm:self-center shrink-0">
                       {task.type === 'SO_PICKING' && (
-                        <>
-                          <Link
-                            to={`/outbound?soCode=${task.code}&action=picking`}
-                            className="text-xs font-semibold text-slate-500 hover:text-rose-600 transition-colors hidden md:inline-flex items-center gap-1"
-                          >
-                            <span>Chi tiết SO</span>
-                          </Link>
-                          <button
-                            type="button"
-                            onClick={() => setDispatchModalOrder(task.data)}
-                            className="inline-flex h-9 sm:h-10 items-center gap-1.5 rounded-xl bg-rose-600 hover:bg-rose-700 text-white px-3.5 sm:px-4 text-xs sm:text-sm font-bold shadow-xs hover:shadow-md transition-all cursor-pointer"
-                          >
-                            <span>Điều phối lấy hàng</span>
-                            <ArrowRight className="h-4 w-4" />
-                          </button>
-                        </>
+                        <Link
+                          to={`/outbound?soCode=${encodeURIComponent(task.code)}&action=picking`}
+                          className="inline-flex h-9 sm:h-10 items-center gap-1.5 rounded-xl bg-rose-600 hover:bg-rose-700 text-white px-3.5 sm:px-4 text-xs sm:text-sm font-bold shadow-xs hover:shadow-md transition-all"
+                        >
+                          <span>Xử lý đơn xuất</span>
+                          <ArrowRight className="h-4 w-4" />
+                        </Link>
                       )}
                       {task.type === 'PO_PUTAWAY' && (
-                        <>
-                          <Link
-                            to="/inbound"
-                            className="text-xs font-semibold text-slate-500 hover:text-amber-700 transition-colors hidden md:inline-flex items-center gap-1"
-                          >
-                            <span>Xem đơn PO</span>
-                          </Link>
-                          <button
-                            type="button"
-                            onClick={() => setPutawayModalOrder(task.data)}
-                            className="inline-flex h-9 sm:h-10 items-center gap-1.5 rounded-xl bg-amber-600 hover:bg-amber-700 text-white px-3.5 sm:px-4 text-xs sm:text-sm font-bold shadow-xs hover:shadow-md transition-all cursor-pointer"
-                          >
-                            <span>Chỉ định cất kệ</span>
-                            <ArrowRight className="h-4 w-4" />
-                          </button>
-                        </>
+                        <Link
+                          to={`/inbound?poCode=${encodeURIComponent(task.code)}`}
+                          className="inline-flex h-9 sm:h-10 items-center gap-1.5 rounded-xl bg-amber-600 hover:bg-amber-700 text-white px-3.5 sm:px-4 text-xs sm:text-sm font-bold shadow-xs hover:shadow-md transition-all"
+                        >
+                          <span>Xếp lên kệ</span>
+                          <ArrowRight className="h-4 w-4" />
+                        </Link>
                       )}
                       {task.type === 'AUDIT_APPROVAL' && (
-                        <>
-                          <Link
-                            to="/audit"
-                            className="text-xs font-semibold text-slate-500 hover:text-blue-700 transition-colors hidden md:inline-flex items-center gap-1"
-                          >
-                            <span>Sổ kiểm kê</span>
-                          </Link>
-                          <button
-                            type="button"
-                            onClick={() => setAuditModalSession(task.data)}
-                            className="inline-flex h-9 sm:h-10 items-center gap-1.5 rounded-xl bg-[#2563EB] hover:bg-blue-700 text-white px-3.5 sm:px-4 text-xs sm:text-sm font-bold shadow-xs hover:shadow-md transition-all cursor-pointer"
-                          >
-                            <span>Phê duyệt kiểm kê</span>
-                            <ArrowRight className="h-4 w-4" />
-                          </button>
-                        </>
+                        <Link
+                          to={`/audit?auditCode=${encodeURIComponent(task.code)}`}
+                          className="inline-flex h-9 sm:h-10 items-center gap-1.5 rounded-xl bg-[#2563EB] hover:bg-blue-700 text-white px-3.5 sm:px-4 text-xs sm:text-sm font-bold shadow-xs hover:shadow-md transition-all"
+                        >
+                          <span>Duyệt kiểm kê</span>
+                          <ArrowRight className="h-4 w-4" />
+                        </Link>
                       )}
                     </div>
                   </div>
                 ))}
               </div>
             )}
-            {summary.actionableTasks.length > 3 && (
+            {displayedTasks.length > 3 && (
               <div className="pt-3 border-t border-slate-100 text-center">
                 <button
                   type="button"
                   onClick={() => setShowAllTasksModal(true)}
                   className="text-xs sm:text-[13px] font-bold text-[#2563EB] hover:underline inline-flex items-center gap-1 cursor-pointer"
                 >
-                  Xem thêm {summary.actionableTasks.length - 3} nhiệm vụ khác trong ca →
+                  Xem thêm {displayedTasks.length - 3} nhiệm vụ khác trong ca →
                 </button>
               </div>
             )}
@@ -1757,7 +1749,7 @@ export const DashboardPage: React.FC = () => {
               <div className="space-y-3.5">
                 {/* Cảnh báo 1: Cận hạn */}
                 <Link
-                  to="/inventory?tab=alerts"
+                  to="/inventory?tab=alerts&subtab=expiring"
                   className="p-3.5 rounded-lg border border-orange-200 bg-orange-50/40 hover:bg-orange-50 transition-colors flex items-center justify-between group cursor-pointer"
                 >
                   <div className="flex items-center gap-3.5">
@@ -1857,10 +1849,10 @@ export const DashboardPage: React.FC = () => {
                 </span>
 
                 {[
-                  { label: '50', top: '0%' },
-                  { label: '37,5', top: '25%' },
-                  { label: '25', top: '50%' },
-                  { label: '12,5', top: '75%' },
+                  { label: String(chartMaxScale), top: '0%' },
+                  { label: (chartMaxScale * 0.75).toLocaleString('vi-VN', { maximumFractionDigits: 1 }), top: '25%' },
+                  { label: (chartMaxScale * 0.5).toLocaleString('vi-VN', { maximumFractionDigits: 1 }), top: '50%' },
+                  { label: (chartMaxScale * 0.25).toLocaleString('vi-VN', { maximumFractionDigits: 1 }), top: '75%' },
                   { label: '0', top: '100%' },
                 ].map((g, i) => (
                   <div key={i} className="absolute left-0 right-0 flex items-center" style={{ top: g.top }}>
@@ -1873,9 +1865,8 @@ export const DashboardPage: React.FC = () => {
 
                 <div className="grid grid-cols-6 gap-3 sm:gap-6 items-end h-full relative z-10">
                   {monthlyData.map((m, idx) => {
-                    const maxScale = 50;
-                    const inHeight = Math.min(100, Math.round((m.inValue / maxScale) * 100));
-                    const outHeight = Math.min(100, Math.round((m.outValue / maxScale) * 100));
+                    const inHeight = Math.min(100, Math.round((m.inValue / chartMaxScale) * 100));
+                    const outHeight = Math.min(100, Math.round((m.outValue / chartMaxScale) * 100));
 
                     return (
                       <div
@@ -1888,7 +1879,7 @@ export const DashboardPage: React.FC = () => {
                         {hoveredChartBar === idx && (
                           <div className="absolute -top-20 left-1/2 -translate-x-1/2 bg-slate-900 text-white p-2.5 rounded-xl shadow-2xl text-xs whitespace-nowrap z-30 pointer-events-none border border-slate-700 min-w-[170px]">
                             <p className="font-bold border-b border-slate-700 pb-1 mb-1 text-slate-200">
-                              Tháng {m.month.slice(1)}/2026
+                              {m.title}
                             </p>
                             <div className="flex justify-between items-center gap-3">
                               <span className="text-slate-400">Nhập kho:</span>
@@ -1957,22 +1948,36 @@ export const DashboardPage: React.FC = () => {
               </p>
             </div>
 
-            <div className="space-y-4 pt-1">
-              {summary.zoneBreakdown.map((z, idx) => (
-                <div key={idx} className="space-y-1.5">
-                  <div className="flex justify-between items-center text-xs sm:text-[13px]">
-                    <span className="font-semibold text-slate-800">{z.fullName}</span>
-                    <span className="font-mono font-bold text-slate-900">{z.percent}%</span>
-                  </div>
-                  <div className="h-2.5 w-full bg-slate-100 rounded-full overflow-hidden">
-                    <div
-                      className={`h-full ${z.barColor} rounded-full transition-all`}
-                      style={{ width: `${z.percent}%` }}
-                    />
-                  </div>
-                  <p className="text-xs text-slate-500 font-medium">{z.desc}</p>
-                </div>
-              ))}
+            <div className="space-y-2 pt-1">
+              {summary.zoneBreakdown.map((z, idx) => {
+                const zoneCode = z.id === 'Zone A' ? 'ZONE_A' : z.id === 'Zone B' ? 'ZONE_B' : 'ZONE_C';
+                return (
+                  <Link
+                    key={idx}
+                    to={`/layout?zone=${zoneCode}`}
+                    className="block space-y-1.5 p-2 rounded-xl hover:bg-slate-50 transition-all cursor-pointer group border border-transparent hover:border-slate-200/80"
+                  >
+                    <div className="flex justify-between items-center text-xs sm:text-[13px]">
+                      <span className="font-semibold text-slate-800 group-hover:text-blue-600 transition-colors">
+                        {z.fullName}
+                      </span>
+                      <span className="font-mono font-bold text-slate-900">{z.percent}%</span>
+                    </div>
+                    <div className="h-2.5 w-full bg-slate-100 rounded-full overflow-hidden">
+                      <div
+                        className={`h-full ${z.barColor} rounded-full transition-all`}
+                        style={{ width: `${z.percent}%` }}
+                      />
+                    </div>
+                    <div className="flex items-center justify-between text-xs text-slate-500 font-medium">
+                      <span>{z.desc}</span>
+                      <span className="text-blue-600 font-semibold opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-0.5 text-2xs">
+                        Chi tiết ô kệ →
+                      </span>
+                    </div>
+                  </Link>
+                );
+              })}
             </div>
           </div>
 
@@ -1982,7 +1987,7 @@ export const DashboardPage: React.FC = () => {
               <strong className="text-slate-900">{summary.currentBranchFillRate}%</strong> ({summary.currentBranchOccupiedBins}/{summary.currentBranchTotalBins} vị trí)
             </span>
             <Link to="/layout" className="font-semibold text-[#2563EB] hover:underline inline-flex items-center gap-1">
-              Sơ đồ Digital Twin <ArrowRight className="h-3.5 w-3.5" />
+              Sơ đồ mặt bằng kho <ArrowRight className="h-3.5 w-3.5" />
             </Link>
           </div>
         </div>
@@ -2165,393 +2170,7 @@ export const DashboardPage: React.FC = () => {
         </div>
       )}
 
-      {/* MODAL 1: Điều phối SO (Dispatching & Picking Assignment Modal - DB01) */}
-      {dispatchModalOrder && (
-        <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-xs p-4 overflow-y-auto animate-in fade-in"
-          onClick={(e) => {
-            if (e.target === e.currentTarget) setDispatchModalOrder(null);
-          }}
-        >
-          <div className="relative w-full max-w-3xl rounded-2xl border border-[#E2E8F0] bg-white shadow-2xl overflow-hidden my-8">
-            <div className="bg-slate-900 text-white p-5 sm:p-6 flex items-start justify-between">
-              <div>
-                <div className="flex items-center gap-2.5">
-                  <span className="p-2 rounded-lg bg-red-500/20 text-red-400 border border-red-500/30">
-                    <Clock className="h-5 w-5" />
-                  </span>
-                  <div>
-                    <h2 className="text-lg sm:text-xl font-bold">
-                      Điều phối & Phân công lấy hàng (SO Dispatching)
-                    </h2>
-                    <p className="text-xs sm:text-sm text-slate-300 mt-0.5">
-                      Đơn xuất: <strong className="text-white font-mono">{dispatchModalOrder.soCode}</strong> · Khách hàng: <strong className="text-white">{dispatchModalOrder.customerName}</strong>
-                    </p>
-                  </div>
-                </div>
-              </div>
-              <button
-                onClick={() => setDispatchModalOrder(null)}
-                className="text-slate-400 hover:text-white p-1 rounded-lg hover:bg-slate-800 transition-colors cursor-pointer"
-              >
-                <X className="h-5 w-5" />
-              </button>
-            </div>
-
-            <div className="p-6 sm:p-7 space-y-6 max-h-[75vh] overflow-y-auto">
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 bg-slate-50 p-4 rounded-xl border border-slate-200 text-xs sm:text-sm">
-                <div>
-                  <span className="text-slate-500 block font-medium">Hạn lấy hàng (Picking SLA):</span>
-                  <span className="font-bold text-red-600 font-mono text-sm sm:text-base">10:30 (21/11/2026)</span>
-                </div>
-                <div>
-                  <span className="text-slate-500 block font-medium">Hạn xuất xe (Dispatch SLA):</span>
-                  <span className="font-bold text-slate-900 font-mono text-sm sm:text-base">15:00 (21/11/2026)</span>
-                </div>
-                <div>
-                  <span className="text-slate-500 block font-medium">Kho phụ trách xuất:</span>
-                  <span className="font-bold text-slate-900">
-                    {dispatchModalOrder.warehouseName ||
-                      warehousesList.find((w) => w.code === (dispatchModalOrder.warehouseCode || activeWarehouse))?.name ||
-                      summary.currentZoneWarehouseName.split(' - ')[0]}
-                  </span>
-                </div>
-              </div>
-
-              <div className="space-y-2">
-                <label className="block text-sm font-bold text-slate-900">
-                  Phân công nhân viên lấy hàng (Picker):
-                </label>
-                <div className="relative">
-                  <select
-                    value={selectedPicker}
-                    onChange={(e) => setSelectedPicker(e.target.value)}
-                    className="w-full appearance-none rounded-lg border border-[#E2E8F0] bg-white p-3 pr-10 text-sm font-semibold text-slate-800 outline-none focus:border-[#2563EB] focus:ring-1 focus:ring-blue-100 cursor-pointer"
-                  >
-                    <option value="Lê Hoàng Nam (Zone A/B)">Lê Hoàng Nam – Chuyên viên lấy hàng (Khu A & B) [Đang trực ca]</option>
-                    <option value="Trần Văn Kho (Zone C)">Trần Văn Kho – Chuyên viên kiểm đếm & lấy hàng (Khu C)</option>
-                    <option value="Nguyễn Văn Thao (Xe nâng)">Nguyễn Văn Thao – Vận hành xe nâng Staging/Rack</option>
-                    <option value="Phạm Minh Tuấn (Dock Outbound)">Phạm Minh Tuấn – Đóng gói & Giao nhận Dock Outbound</option>
-                  </select>
-                  <ChevronDown className="pointer-events-none absolute right-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-500" />
-                </div>
-                <p className="text-xs text-slate-500">
-                  Nhân viên được gán sẽ nhận thông báo trên thiết bị PDA để quét mã vạch lấy hàng theo lộ trình tối ưu.
-                </p>
-              </div>
-
-              <div className="space-y-2.5">
-                <div className="flex items-center justify-between">
-                  <span className="text-sm font-bold text-slate-900">
-                    Danh sách sản phẩm & Vị trí lấy hàng (Batch / Bin Allocation):
-                  </span>
-                  <span className="text-xs font-semibold text-slate-500">
-                    {dispatchModalOrder.items?.length || 2} mặt hàng
-                  </span>
-                </div>
-
-                <div className="border border-[#E2E8F0] rounded-xl overflow-hidden">
-                  <table className="w-full text-left text-xs sm:text-sm">
-                    <thead className="bg-slate-50 border-b border-[#E2E8F0] text-slate-600 font-semibold">
-                      <tr>
-                        <th className="py-2.5 px-3.5">Mặt hàng & SKU</th>
-                        <th className="py-2.5 px-3.5 text-center">Yêu cầu / Phân bổ</th>
-                        <th className="py-2.5 px-3.5">Vị trí lấy (Bin)</th>
-                        <th className="py-2.5 px-3.5">Số lô & Hạn dùng</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-[#E2E8F0] text-slate-800">
-                      {dispatchModalOrder.items && dispatchModalOrder.items.length > 0 ? (
-                        dispatchModalOrder.items.map((it: any, idx: number) => {
-                          const alloc = it.allocations?.[0];
-                          return (
-                            <tr key={idx} className="hover:bg-slate-50/60">
-                              <td className="py-3 px-3.5">
-                                <span className="font-bold text-slate-900 block">{it.productName}</span>
-                                <span className="font-mono text-xs text-slate-500">{it.sku}</span>
-                              </td>
-                              <td className="py-3 px-3.5 text-center font-mono font-bold">
-                                {it.requestedQty} {it.unit || 'Đơn vị'}
-                              </td>
-                              <td className="py-3 px-3.5">
-                                <span className="font-mono font-semibold text-blue-700 bg-blue-50 px-2 py-0.5 rounded border border-blue-200">
-                                  {alloc?.locationBarcode || 'WH01-ZA-A01-R01-S01-B01'}
-                                </span>
-                              </td>
-                              <td className="py-3 px-3.5">
-                                <span className="font-mono font-medium block">{alloc?.batchNumber || 'BATCH-2026-A'}</span>
-                                <span className="text-xs text-slate-500">HSD: {alloc?.expiryDate || '15/12/2026'}</span>
-                              </td>
-                            </tr>
-                          );
-                        })
-                      ) : (
-                        <>
-                          <tr className="hover:bg-slate-50/60">
-                            <td className="py-3 px-3.5">
-                              <span className="font-bold text-slate-900 block">Sữa tươi tiệt trùng Vinamilk 100% 1L</span>
-                              <span className="font-mono text-xs text-slate-500">SKU-MILK-01</span>
-                            </td>
-                            <td className="py-3 px-3.5 text-center font-mono font-bold text-emerald-700">
-                              10 / 10 Hộp
-                            </td>
-                            <td className="py-3 px-3.5">
-                              <span className="font-mono font-semibold text-blue-700 bg-blue-50 px-2 py-0.5 rounded border border-blue-200">
-                                WH01-ZB-B02-R01-S01-B01
-                              </span>
-                            </td>
-                            <td className="py-3 px-3.5">
-                              <span className="font-mono font-medium block">BATCH-MILK-2026-A</span>
-                              <span className="text-xs text-slate-500">HSD: 15/12/2026</span>
-                            </td>
-                          </tr>
-                          <tr className="hover:bg-slate-50/60">
-                            <td className="py-3 px-3.5">
-                              <span className="font-bold text-slate-900 block">Bia Heineken Sleek lon 330ml</span>
-                              <span className="font-mono text-xs text-slate-500">SKU-BEER-01</span>
-                            </td>
-                            <td className="py-3 px-3.5 text-center font-mono font-bold text-emerald-700">
-                              20 / 20 Thùng
-                            </td>
-                            <td className="py-3 px-3.5">
-                              <span className="font-mono font-semibold text-blue-700 bg-blue-50 px-2 py-0.5 rounded border border-blue-200">
-                                WH01-ZA-A01-R01-S01-B01
-                              </span>
-                            </td>
-                            <td className="py-3 px-3.5">
-                              <span className="font-mono font-medium block">BATCH-HEIN-2026-08</span>
-                              <span className="text-xs text-slate-500">HSD: 28/08/2027</span>
-                            </td>
-                          </tr>
-                        </>
-                      )}
-                    </tbody>
-                  </table>
-                </div>
-              </div>
-
-              <div className="flex items-center gap-2.5 rounded-lg bg-blue-50 p-3 border border-blue-200 text-xs text-blue-800">
-                <ShieldCheck className="h-4.5 w-4.5 text-blue-600 shrink-0" />
-                <span>
-                  Thao tác dưới quyền <strong>WAREHOUSE_MANAGER</strong>. Điều phối giao việc không thay đổi số lượng tồn kho vật lý (chỉ trừ tồn khi hoàn tất xuất xưởng DISPATCHED).
-                </span>
-              </div>
-            </div>
-
-            <div className="p-4 sm:p-5 bg-slate-50 border-t border-[#E2E8F0] flex flex-col sm:flex-row items-center justify-between gap-3">
-              <Link
-                to={`/outbound?soCode=${dispatchModalOrder.soCode}&action=picking`}
-                className="text-xs sm:text-sm font-semibold text-[#2563EB] hover:underline flex items-center gap-1.5"
-              >
-                Mở toàn văn đơn xuất kho <ExternalLink className="h-4 w-4" />
-              </Link>
-
-              <div className="flex items-center gap-2.5 self-end sm:self-auto">
-                <button
-                  type="button"
-                  onClick={() => setDispatchModalOrder(null)}
-                  className="px-4 py-2 rounded-lg border border-[#E2E8F0] bg-white text-xs sm:text-sm font-semibold text-slate-700 hover:bg-slate-100 transition-colors cursor-pointer"
-                >
-                  Đóng
-                </button>
-                <button
-                  type="button"
-                  onClick={handleConfirmDispatch}
-                  className="px-5 py-2 rounded-lg bg-red-600 hover:bg-red-700 text-white text-xs sm:text-sm font-semibold shadow-xs transition-colors cursor-pointer flex items-center gap-2"
-                >
-                  <UserCheck className="h-4 w-4" />
-                  <span>Xác nhận điều phối (Chuyển sang PICKING)</span>
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* MODAL 2: Điều phối cất kệ (Putaway Coordination Modal) */}
-      {putawayModalOrder && (
-        <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-xs p-4 overflow-y-auto animate-in fade-in"
-          onClick={(e) => {
-            if (e.target === e.currentTarget) setPutawayModalOrder(null);
-          }}
-        >
-          <div className="relative w-full max-w-2xl rounded-2xl border border-[#E2E8F0] bg-white shadow-2xl overflow-hidden my-8">
-            <div className="bg-slate-900 text-white p-5 sm:p-6 flex items-start justify-between">
-              <div className="flex items-center gap-2.5">
-                <span className="p-2 rounded-lg bg-amber-500/20 text-amber-400 border border-amber-500/30">
-                  <Package className="h-5 w-5" />
-                </span>
-                <div>
-                  <h2 className="text-lg sm:text-xl font-bold">Điều phối cất kệ hàng hóa</h2>
-                  <p className="text-xs sm:text-sm text-slate-300 mt-0.5">
-                    Đơn nhập: <strong className="text-white font-mono">{putawayModalOrder.poCode || 'PO-2026-926'}</strong>
-                  </p>
-                </div>
-              </div>
-              <button
-                onClick={() => setPutawayModalOrder(null)}
-                className="text-slate-400 hover:text-white p-1 rounded-lg hover:bg-slate-800 transition-colors cursor-pointer"
-              >
-                <X className="h-5 w-5" />
-              </button>
-            </div>
-
-            <div className="p-6 space-y-5 text-xs sm:text-sm">
-              <div className="grid grid-cols-2 gap-3 bg-slate-50 p-4 rounded-xl border border-slate-200">
-                <div>
-                  <span className="text-slate-500 block font-medium">Nhà cung cấp:</span>
-                  <span className="font-bold text-slate-900">{putawayModalOrder.supplierName || 'Công ty Cổ phần Sữa Việt Nam (Vinamilk)'}</span>
-                </div>
-                <div>
-                  <span className="text-slate-500 block font-medium">Vị trí hiện tại:</span>
-                  <span className="font-bold text-amber-700">Staging Area – Cửa Nhập Dock 01</span>
-                </div>
-                <div>
-                  <span className="text-slate-500 block font-medium">Tiếp nhận lúc:</span>
-                  <span className="font-bold text-slate-900">08:00 (Hạn cất kệ: 12:00)</span>
-                </div>
-                <div>
-                  <span className="text-slate-500 block font-medium">Phụ trách cất kệ:</span>
-                  <span className="font-bold text-slate-900">Trần Văn Hùng</span>
-                </div>
-              </div>
-
-              <div className="p-4 rounded-xl border border-blue-200 bg-blue-50/50 space-y-1.5">
-                <span className="text-xs font-bold text-blue-900 block">Vị trí lưu trữ đề xuất:</span>
-                <p className="text-sm font-mono font-bold text-blue-700">
-                  {(activeWarehouse === 'WH03' ? 'WH03' : activeWarehouse === 'WH02' ? 'WH02' : 'WH01')}-ZA-A02-R01-S01-B01 <span className="text-xs font-sans text-slate-600">(Khu A: Hàng Khô & Thiết Bị)</span>
-                </p>
-                <p className="text-xs text-slate-500">
-                  Hệ thống tự động chọn ô kệ còn chỗ gần nhất để tối ưu hành trình xe nâng.
-                </p>
-              </div>
-            </div>
-
-            <div className="p-4 sm:p-5 bg-slate-50 border-t border-[#E2E8F0] flex items-center justify-between">
-              <Link to="/inbound" className="text-xs sm:text-sm font-semibold text-[#2563EB] hover:underline flex items-center gap-1">
-                Xem chi tiết đơn nhập <ExternalLink className="h-4 w-4" />
-              </Link>
-              <div className="flex items-center gap-2.5">
-                <button
-                  type="button"
-                  onClick={() => setPutawayModalOrder(null)}
-                  className="px-4 py-2 rounded-lg border border-[#E2E8F0] bg-white text-xs sm:text-sm font-semibold text-slate-700 hover:bg-slate-100 transition-colors cursor-pointer"
-                >
-                  Đóng
-                </button>
-                <button
-                  type="button"
-                  onClick={handleConfirmPutaway}
-                  className="px-5 py-2 rounded-lg bg-amber-600 hover:bg-amber-700 text-white text-xs sm:text-sm font-semibold shadow-xs transition-colors cursor-pointer flex items-center gap-2"
-                >
-                  <PackageCheck className="h-4 w-4" />
-                  <span>Xác nhận cất kệ vào ô</span>
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* MODAL 3: Phê duyệt kiểm kê (Audit Approval Modal) */}
-      {auditModalSession && (
-        <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-xs p-4 overflow-y-auto animate-in fade-in"
-          onClick={(e) => {
-            if (e.target === e.currentTarget) setAuditModalSession(null);
-          }}
-        >
-          <div className="relative w-full max-w-2xl rounded-2xl border border-[#E2E8F0] bg-white shadow-2xl overflow-hidden my-8">
-            <div className="bg-slate-900 text-white p-5 sm:p-6 flex items-start justify-between">
-              <div className="flex items-center gap-2.5">
-                <span className="p-2 rounded-lg bg-blue-500/20 text-blue-400 border border-blue-500/30">
-                  <ClipboardCheck className="h-5 w-5" />
-                </span>
-                <div>
-                  <h2 className="text-lg sm:text-xl font-bold">Phê duyệt biên bản kiểm kê kho</h2>
-                  <p className="text-xs sm:text-sm text-slate-300 mt-0.5">
-                    Đợt kiểm kê: <strong className="text-white font-mono">{auditModalSession.auditCode || 'AUD-2026-09-01'}</strong>
-                  </p>
-                </div>
-              </div>
-              <button
-                onClick={() => setAuditModalSession(null)}
-                className="text-slate-400 hover:text-white p-1 rounded-lg hover:bg-slate-800 transition-colors cursor-pointer"
-              >
-                <X className="h-5 w-5" />
-              </button>
-            </div>
-
-            <div className="p-6 space-y-5 text-xs sm:text-sm">
-              <div className="grid grid-cols-2 gap-3 bg-slate-50 p-4 rounded-xl border border-slate-200">
-                <div>
-                  <span className="text-slate-500 block font-medium">Phạm vi kiểm kê:</span>
-                  <span className="font-bold text-slate-900">
-                    {auditModalSession?.warehouseName || summary.currentZoneWarehouseName.split(' - ')[0]} – Khu A (Ô ZA-A01)
-                  </span>
-                </div>
-                <div>
-                  <span className="text-slate-500 block font-medium">Người kiểm đếm:</span>
-                  <span className="font-bold text-slate-900">Trần Văn Kho</span>
-                </div>
-                <div>
-                  <span className="text-slate-500 block font-medium">Chốt số dư đối soát:</span>
-                  <span className="font-bold text-slate-900">07:45 (21/11/2026)</span>
-                </div>
-                <div>
-                  <span className="text-slate-500 block font-medium">Trạng thái hiện tại:</span>
-                  <span className="font-bold text-blue-700">Chờ Quản Lý Duyệt</span>
-                </div>
-              </div>
-
-              <div className="border border-red-200 bg-red-50/50 p-4 rounded-xl space-y-2">
-                <span className="text-xs font-bold text-red-900 block">Chi tiết sai lệch đối chiếu:</span>
-                <div className="flex items-center justify-between text-slate-800 font-medium">
-                  <span>Mặt hàng: <strong>Bia Heineken Sleek lon 330ml</strong></span>
-                  <span className="font-mono text-red-700 font-bold text-sm">Chênh lệch: -2 lon</span>
-                </div>
-                <div className="grid grid-cols-2 gap-2 text-xs text-slate-600 pt-1 border-t border-red-200/60">
-                  <span>Tồn hệ thống: <strong>100 lon</strong></span>
-                  <span>Thực tế đếm được: <strong>98 lon</strong></span>
-                </div>
-              </div>
-
-              <div className="flex items-center gap-2 rounded-lg bg-slate-100 p-3 text-xs text-slate-700">
-                <ShieldCheck className="h-4.5 w-4.5 text-blue-600 shrink-0" />
-                <span>
-                  Phê duyệt sẽ tự động kích hoạt bút toán Stock Adjustment và ghi nhận số dư thực tế vào sổ cái.
-                </span>
-              </div>
-            </div>
-
-            <div className="p-4 sm:p-5 bg-slate-50 border-t border-[#E2E8F0] flex items-center justify-between">
-              <Link to="/audit" className="text-xs sm:text-sm font-semibold text-[#2563EB] hover:underline flex items-center gap-1">
-                Xem toàn văn biên bản <ExternalLink className="h-4 w-4" />
-              </Link>
-              <div className="flex items-center gap-2.5">
-                <button
-                  type="button"
-                  onClick={() => setAuditModalSession(null)}
-                  className="px-4 py-2 rounded-lg border border-[#E2E8F0] bg-white text-xs sm:text-sm font-semibold text-slate-700 hover:bg-slate-100 transition-colors cursor-pointer"
-                >
-                  Đóng
-                </button>
-                <button
-                  type="button"
-                  onClick={handleConfirmAuditApproval}
-                  className="px-5 py-2 rounded-lg bg-[#2563EB] hover:bg-blue-700 text-white text-xs sm:text-sm font-semibold shadow-xs transition-colors cursor-pointer flex items-center gap-2"
-                >
-                  <CheckCircle2 className="h-4 w-4" />
-                  <span>Phê duyệt điều chỉnh tồn kho</span>
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* MODAL 4: Chi tiết luân chuyển theo tháng (Monthly Chart Drilldown Modal) */}
+      {/* MODAL: Chi tiết luân chuyển theo tháng */}
       {monthDetailModal && (
         <div
           className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-xs p-4 overflow-y-auto animate-in fade-in"
@@ -2563,9 +2182,9 @@ export const DashboardPage: React.FC = () => {
             <div className="bg-slate-900 text-white p-5 flex items-center justify-between">
               <div>
                 <h2 className="text-base sm:text-lg font-bold">
-                  Báo cáo luân chuyển tháng {monthDetailModal.month.slice(1)}/2026
+                  Báo cáo luân chuyển {monthDetailModal.title?.toLowerCase() || monthDetailModal.month}
                 </h2>
-                <p className="text-xs text-slate-300 mt-0.5">Số liệu ghi nhận theo sổ cái kho hàng</p>
+                <p className="text-xs text-slate-300 mt-0.5">Số liệu tổng hợp từ đơn nhập và đơn xuất trong tháng</p>
               </div>
               <button
                 onClick={() => setMonthDetailModal(null)}
@@ -2593,9 +2212,21 @@ export const DashboardPage: React.FC = () => {
                 </div>
               </div>
 
-              <div className="p-4 rounded-xl border border-slate-200 bg-slate-50 text-slate-700 text-xs sm:text-sm space-y-1">
-                <span className="font-bold text-slate-900 block">Chênh lệch luân chuyển ròng:</span>
-                <p className="font-mono font-bold text-base text-blue-700">
+              <div className="p-4 rounded-xl border border-slate-200 bg-slate-50 text-slate-700 text-xs sm:text-sm space-y-2">
+                <div className="flex items-center justify-between">
+                  <span className="font-bold text-slate-900 block">Chênh lệch luân chuyển ròng:</span>
+                  <span
+                    className={`px-2.5 py-0.5 rounded-full text-xs font-bold ${
+                      monthDetailModal.inValue >= monthDetailModal.outValue
+                        ? 'bg-emerald-100 text-emerald-800 border border-emerald-200'
+                        : 'bg-amber-100 text-amber-800 border border-amber-200'
+                    }`}
+                  >
+                    {monthDetailModal.inValue >= monthDetailModal.outValue ? '↑ Tích lũy tồn kho ròng' : '↓ Giải phóng tồn kho ròng'}
+                  </span>
+                </div>
+                <p className="font-mono font-bold text-lg text-blue-700">
+                  {monthDetailModal.inValue >= monthDetailModal.outValue ? '+' : ''}
                   {(monthDetailModal.inValue - monthDetailModal.outValue).toFixed(1)} Triệu VNĐ
                 </p>
               </div>
@@ -2719,6 +2350,27 @@ export const DashboardPage: React.FC = () => {
               </div>
             </div>
 
+            {/* Search Input Bar */}
+            <div className="bg-slate-50/60 border-b border-slate-200 px-5 py-2.5 flex items-center gap-2.5 shrink-0">
+              <Search className="h-4 w-4 text-slate-400 shrink-0" />
+              <input
+                type="text"
+                value={taskSearchKeyword}
+                onChange={(e) => setTaskSearchKeyword(e.target.value)}
+                placeholder="Tìm kiếm nhanh mã đơn (SO/PO/AUD), nhân viên, nhà cung cấp..."
+                className="w-full text-xs sm:text-sm text-slate-800 placeholder-slate-400 outline-none bg-transparent"
+              />
+              {taskSearchKeyword && (
+                <button
+                  type="button"
+                  onClick={() => setTaskSearchKeyword('')}
+                  className="text-slate-400 hover:text-slate-600 p-0.5 rounded cursor-pointer"
+                >
+                  <X className="h-4 w-4" />
+                </button>
+              )}
+            </div>
+
             {/* Task List (Scrollable) */}
             <div className="p-5 overflow-y-auto divide-y divide-slate-100 flex-1 space-y-3">
               {filteredModalTasks.length === 0 ? (
@@ -2769,43 +2421,34 @@ export const DashboardPage: React.FC = () => {
 
                     <div className="shrink-0 flex items-center gap-2 self-end sm:self-center">
                       {task.type === 'SO_PICKING' && (
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setShowAllTasksModal(false);
-                            setDispatchModalOrder(task.data);
-                          }}
-                          className="px-3.5 py-1.5 rounded-lg bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold transition-colors cursor-pointer flex items-center gap-1.5 shadow-2xs"
+                        <Link
+                          to={`/outbound?soCode=${encodeURIComponent(task.code)}&action=picking`}
+                          onClick={() => setShowAllTasksModal(false)}
+                          className="px-3.5 py-1.5 rounded-lg bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold transition-colors flex items-center gap-1.5 shadow-2xs"
                         >
-                          <span>Điều phối ngay</span>
+                          <span>Xử lý đơn xuất</span>
                           <ArrowRight className="h-3.5 w-3.5" />
-                        </button>
+                        </Link>
                       )}
                       {task.type === 'PO_PUTAWAY' && (
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setShowAllTasksModal(false);
-                            setPutawayModalOrder(task.data);
-                          }}
-                          className="px-3.5 py-1.5 rounded-lg bg-amber-600 hover:bg-amber-700 text-white text-xs font-bold transition-colors cursor-pointer flex items-center gap-1.5 shadow-2xs"
+                        <Link
+                          to={`/inbound?poCode=${encodeURIComponent(task.code)}`}
+                          onClick={() => setShowAllTasksModal(false)}
+                          className="px-3.5 py-1.5 rounded-lg bg-amber-600 hover:bg-amber-700 text-white text-xs font-bold transition-colors flex items-center gap-1.5 shadow-2xs"
                         >
-                          <span>Chỉ định cất kệ</span>
+                          <span>Xếp lên kệ</span>
                           <ArrowRight className="h-3.5 w-3.5" />
-                        </button>
+                        </Link>
                       )}
                       {task.type === 'AUDIT_APPROVAL' && (
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setShowAllTasksModal(false);
-                            setAuditModalSession(task.data);
-                          }}
-                          className="px-3.5 py-1.5 rounded-lg bg-[#2563EB] hover:bg-blue-700 text-white text-xs font-bold transition-colors cursor-pointer flex items-center gap-1.5 shadow-2xs"
+                        <Link
+                          to={`/audit?auditCode=${encodeURIComponent(task.code)}`}
+                          onClick={() => setShowAllTasksModal(false)}
+                          className="px-3.5 py-1.5 rounded-lg bg-[#2563EB] hover:bg-blue-700 text-white text-xs font-bold transition-colors flex items-center gap-1.5 shadow-2xs"
                         >
-                          <span>Phê duyệt ngay</span>
+                          <span>Duyệt kiểm kê</span>
                           <ArrowRight className="h-3.5 w-3.5" />
-                        </button>
+                        </Link>
                       )}
                     </div>
                   </div>

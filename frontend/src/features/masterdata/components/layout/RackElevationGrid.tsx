@@ -1,6 +1,6 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { BinLocation } from '../../types';
-import { Box, MapPin, Scale } from 'lucide-react';
+import { Box, MapPin, Scale, Lock } from 'lucide-react';
 
 interface RackElevationGridProps {
   locations: BinLocation[];
@@ -13,6 +13,26 @@ export const RackElevationGrid: React.FC<RackElevationGridProps> = ({
   selectedBinId,
   onSelectBin,
 }) => {
+  const [lockedBins, setLockedBins] = useState<string[]>(() => {
+    try {
+      const saved = localStorage.getItem('smart_wms_locked_bins');
+      return saved ? JSON.parse(saved) : [];
+    } catch {
+      return [];
+    }
+  });
+
+  useEffect(() => {
+    const handleStatus = () => {
+      try {
+        const saved = localStorage.getItem('smart_wms_locked_bins');
+        setLockedBins(saved ? JSON.parse(saved) : []);
+      } catch {}
+    };
+    window.addEventListener('smart_wms_bin_status_changed', handleStatus);
+    return () => window.removeEventListener('smart_wms_bin_status_changed', handleStatus);
+  }, []);
+
   // Nhóm các ô kệ theo Dãy (Aisle)
   const aisles = Array.from(new Set(locations.map((l) => l.aisle)));
   return (
@@ -71,14 +91,19 @@ export const RackElevationGrid: React.FC<RackElevationGridProps> = ({
                         const isOccupied = bin.status === 'OCCUPIED';
                         const isReserved = bin.status === 'RESERVED';
                         const isExpiring = bin.status === 'EXPIRING';
+                        const isLocked = lockedBins.includes(bin.barcode);
 
                         let statusBadge = 'bg-emerald-50 text-emerald-700 border-emerald-200';
                         let statusText = 'Ô TRỐNG';
                         let dotColor = 'bg-emerald-500';
 
-                        if (isExpiring) {
+                        if (isLocked) {
+                          statusBadge = 'bg-rose-600 text-white border-rose-600 font-bold';
+                          statusText = 'KHÓA BẢO TRÌ';
+                          dotColor = 'bg-white animate-pulse';
+                        } else if (isExpiring) {
                           statusBadge = 'bg-rose-50 text-rose-700 border-rose-200';
-                          statusText = 'CẬN DATE';
+                          statusText = 'CẬN HẠN';
                           dotColor = 'bg-rose-500 animate-pulse';
                         } else if (isReserved) {
                           statusBadge = 'bg-amber-50 text-amber-700 border-amber-200';
@@ -100,13 +125,18 @@ export const RackElevationGrid: React.FC<RackElevationGridProps> = ({
                             className={`p-3.5 rounded-xl border text-left cursor-pointer transition-all ${
                               isSelected
                                 ? 'bg-blue-50/70 border-blue-500 ring-2 ring-blue-500/20 shadow-sm'
+                                : isLocked
+                                ? 'bg-rose-50/40 border-rose-400 ring-1 ring-rose-200'
                                 : 'bg-white border-slate-200 hover:border-slate-300 hover:bg-slate-50/50 shadow-xs'
                             }`}
                           >
                             {/* Dòng 1: Barcode + Trạng thái */}
                             <div className="flex items-center justify-between text-xs font-mono">
                               <div className="flex items-center gap-2">
-                                <span className="font-bold text-blue-700 bg-blue-50 px-2.5 py-0.5 rounded border border-blue-200 text-xs">
+                                <span className={`font-bold px-2.5 py-0.5 rounded border text-xs flex items-center gap-1 ${
+                                  isLocked ? 'text-rose-700 bg-rose-100 border-rose-300' : 'text-blue-700 bg-blue-50 border-blue-200'
+                                }`}>
+                                  {isLocked && <Lock className="w-3 h-3 text-rose-600" />}
                                   {bin.barcode}
                                 </span>
                                 <span className="text-xs text-slate-500 font-medium">
@@ -135,7 +165,7 @@ export const RackElevationGrid: React.FC<RackElevationGridProps> = ({
                               </div>
                             ) : (
                               <p className="mt-2.5 text-xs text-slate-400 italic">
-                                Ô kệ sẵn sàng tiếp nhận hàng nhập Put-away
+                                Ô kệ sẵn sàng tiếp nhận hàng nhập kho
                               </p>
                             )}
 

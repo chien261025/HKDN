@@ -27,7 +27,7 @@ const pdaFleet: DeviceItem[] = [
   { id: '2', code: 'PDA-02', assignee: 'Trần Văn B', zone: 'Zone A', battery: 85, status: 'ONLINE', picksCompleted: 58 },
   { id: '3', code: 'PDA-03', assignee: 'Lê Thị C', zone: 'Zone B', battery: 78, status: 'ONLINE', picksCompleted: 51 },
   { id: '4', code: 'PDA-04', assignee: 'Phạm Văn D', zone: 'Zone C', battery: 64, status: 'ONLINE', picksCompleted: 44 },
-  { id: '5', code: 'PDA-05', assignee: 'Trạm Sạc Dock 01', zone: 'Khu Sạc', battery: 100, status: 'CHARGING', picksCompleted: 0 },
+  { id: '5', code: 'PDA-05', assignee: 'Trạm Sạc Cửa 01', zone: 'Khu Sạc', battery: 100, status: 'CHARGING', picksCompleted: 0 },
   { id: '6', code: 'PDA-06', assignee: 'Dự Phòng Sàn', zone: 'Khu Sạc', battery: 18, status: 'OFFLINE', picksCompleted: 12 },
 ];
 
@@ -123,13 +123,12 @@ export const WorkforceFleetWidget: React.FC = () => {
             >
               <div className="flex items-center gap-2.5 min-w-0">
                 <div
-                  className={`p-1.5 rounded-lg shrink-0 ${
-                    pda.status === 'ONLINE'
-                      ? 'bg-emerald-50 text-emerald-700'
-                      : pda.status === 'CHARGING'
+                  className={`p-1.5 rounded-lg shrink-0 ${pda.status === 'ONLINE'
+                    ? 'bg-emerald-50 text-emerald-700'
+                    : pda.status === 'CHARGING'
                       ? 'bg-blue-50 text-blue-700'
                       : 'bg-amber-50 text-amber-700'
-                  }`}
+                    }`}
                 >
                   <Smartphone className="w-4 h-4" />
                 </div>

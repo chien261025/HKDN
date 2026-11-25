@@ -153,7 +153,7 @@ export const OrderDispatchDrawer: React.FC<OrderDispatchDrawerProps> = ({
             </span>
           </div>
 
-          <div className="text-xs text-slate-600 font-semibold">Tuyến lấy hàng tối ưu (Pick Path):</div>
+          <div className="text-xs text-slate-600 font-semibold">Lộ trình nhặt hàng tối ưu:</div>
           <div className="flex items-center gap-1.5 text-xs font-mono flex-wrap">
             <span className="px-2.5 py-1 rounded-lg bg-white border border-slate-200 text-slate-800 font-bold">
               Khu {order.locationBarcode.startsWith('ZA') ? 'A' : 'B'}

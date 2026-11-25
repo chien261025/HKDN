@@ -1,6 +1,6 @@
-import React from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { BinLocation } from '../../types';
-import { Truck, PackageCheck, Box, Scale, ArrowDown, ArrowUp } from 'lucide-react';
+import { Truck, PackageCheck, Box, Scale, ArrowDown, ArrowUp, Lock } from 'lucide-react';
 
 interface WarehouseFloorPlan2DProps {
   locations: BinLocation[];
@@ -15,8 +15,28 @@ export const WarehouseFloorPlan2D: React.FC<WarehouseFloorPlan2DProps> = ({
   onSelectBin,
   warehouseName,
 }) => {
+  const [lockedBins, setLockedBins] = useState<string[]>(() => {
+    try {
+      const saved = localStorage.getItem('smart_wms_locked_bins');
+      return saved ? JSON.parse(saved) : [];
+    } catch {
+      return [];
+    }
+  });
+
+  useEffect(() => {
+    const handleStatus = () => {
+      try {
+        const saved = localStorage.getItem('smart_wms_locked_bins');
+        setLockedBins(saved ? JSON.parse(saved) : []);
+      } catch {}
+    };
+    window.addEventListener('smart_wms_bin_status_changed', handleStatus);
+    return () => window.removeEventListener('smart_wms_bin_status_changed', handleStatus);
+  }, []);
+
   // Nhóm ô kệ chuẩn theo Phân Khu (Zone) rồi theo Dãy (Aisle)
-  const zoneGroups = React.useMemo(() => {
+  const zoneGroups = useMemo(() => {
     const groups: Record<string, Record<string, BinLocation[]>> = {};
     locations.forEach((loc) => {
       const z = loc.zone || 'ZONE_A';
@@ -30,7 +50,7 @@ export const WarehouseFloorPlan2D: React.FC<WarehouseFloorPlan2DProps> = ({
 
   return (
     <div className="bg-white rounded-2xl p-4 sm:p-5 border border-slate-200/90 shadow-xs space-y-4">
-      {/* 1. CỔNG NHẬP HÀNG & KHU ĐỆM TIẾP NHẬN (INBOUND DOCK) */}
+      {/* 1. CỔNG TIẾP NHẬN NHẬP HÀNG */}
       <div className="bg-gradient-to-r from-emerald-500/10 via-emerald-500/5 to-emerald-500/10 border border-emerald-300/80 rounded-xl px-4 py-2.5 flex items-center justify-between text-xs">
         <div className="flex items-center gap-2.5">
           <div className="p-1.5 rounded-lg bg-emerald-600 text-white shrink-0 shadow-2xs">
@@ -39,14 +59,14 @@ export const WarehouseFloorPlan2D: React.FC<WarehouseFloorPlan2DProps> = ({
           <div>
             <div className="flex items-center gap-2">
               <span className="font-extrabold text-emerald-950 uppercase tracking-wide text-xs">
-                CỔNG NHẬP HÀNG (INBOUND DOCK & STAGING)
+                CỬA TIẾP NHẬN & PHÂN LOẠI NHẬP HÀNG
               </span>
               <span className="bg-emerald-200/70 text-emerald-900 px-2 py-0.2 rounded font-mono font-bold text-[10px]">
-                Gate 01 • Gate 02
+                Cửa 01 • Cửa 02
               </span>
             </div>
             <p className="text-emerald-700 text-[11px]">
-              Khu đệm tiếp nhận container & phân loại hàng theo pallet trước khi Putaway cất kệ
+              Khu vực dỡ hàng container và phân loại pallet trước khi cất vào ô kệ
             </p>
           </div>
         </div>
@@ -61,16 +81,20 @@ export const WarehouseFloorPlan2D: React.FC<WarehouseFloorPlan2DProps> = ({
         {Object.entries(zoneGroups).map(([zoneCode, aisles]) => {
           const zoneTitle =
             zoneCode === 'ZONE_B'
-              ? 'KHU B: KHO MÁT & THỰC PHẨM (2-8°C)'
+              ? 'KHU B: KHO MÁT & THỰC PHẨM (2°C - 8°C)'
               : zoneCode === 'ZONE_C'
-              ? 'KHU C: HÀNG GIÁ TRỊ CAO & ĐIỆN TỬ (SECURE HIGH-VALUE)'
-              : 'KHU A: HÀNG TIÊU DÙNG & HÀNG KHÔ (AMBIENT DRY)';
+              ? 'KHU C: HÀNG GIÁ TRỊ CAO & THIẾT BỊ ĐIỆN TỬ'
+              : zoneCode === 'ZONE_QUA'
+              ? 'KHU Q: KHU CÁCH LY & HÀNG CHỜ XỬ LÝ'
+              : 'KHU A: HÀNG TIÊU DÙNG & HÀNG KHÔ THƯỜNG';
 
           const zoneBadgeColor =
             zoneCode === 'ZONE_B'
               ? 'bg-cyan-50 text-cyan-800 border-cyan-200'
               : zoneCode === 'ZONE_C'
               ? 'bg-purple-50 text-purple-800 border-purple-200'
+              : zoneCode === 'ZONE_QUA'
+              ? 'bg-rose-50 text-rose-800 border-rose-200'
               : 'bg-blue-50 text-blue-800 border-blue-200';
 
           return (
@@ -107,15 +131,20 @@ export const WarehouseFloorPlan2D: React.FC<WarehouseFloorPlan2DProps> = ({
                         const isOccupied = bin.status === 'OCCUPIED';
                         const isReserved = bin.status === 'RESERVED';
                         const isExpiring = bin.status === 'EXPIRING';
+                        const isLocked = lockedBins.includes(bin.barcode);
 
                         let bgClass = 'bg-emerald-50/50 border-emerald-300 text-emerald-950 hover:bg-emerald-100/60';
                         let badgeBg = 'bg-emerald-200/80 text-emerald-900';
                         let statusText = 'Ô Trống';
 
-                        if (isExpiring) {
+                        if (isLocked) {
+                          bgClass = 'bg-rose-50 border-rose-500 text-rose-950 ring-1 ring-rose-400';
+                          badgeBg = 'bg-rose-600 text-white font-bold';
+                          statusText = 'Khóa B.Trì';
+                        } else if (isExpiring) {
                           bgClass = 'bg-rose-50 border-rose-300 text-rose-950 hover:bg-rose-100/60';
                           badgeBg = 'bg-rose-200 text-rose-900';
-                          statusText = 'Cận Date';
+                          statusText = 'Cận Hạn';
                         } else if (isReserved) {
                           bgClass = 'bg-amber-50 border-amber-300 text-amber-950 hover:bg-amber-100/60';
                           badgeBg = 'bg-amber-200 text-amber-900';
@@ -139,7 +168,10 @@ export const WarehouseFloorPlan2D: React.FC<WarehouseFloorPlan2DProps> = ({
                             }`}
                           >
                             <div className="flex items-center justify-between text-[11px] font-mono font-bold leading-none mb-1">
-                              <span>{bin.binNumber}</span>
+                              <span className="flex items-center gap-1">
+                                {isLocked && <Lock className="w-3 h-3 text-rose-600 shrink-0" />}
+                                <span>{bin.binNumber}</span>
+                              </span>
                               <span className={`text-[9px] px-1.5 py-0.5 rounded font-bold ${badgeBg}`}>
                                 {statusText}
                               </span>
@@ -179,11 +211,11 @@ export const WarehouseFloorPlan2D: React.FC<WarehouseFloorPlan2DProps> = ({
 
         {/* Lối đi xe nâng */}
         <div className="py-1.5 px-3 bg-slate-100 rounded-xl flex items-center justify-center gap-2 text-[10px] font-mono text-slate-600 font-bold border border-slate-200">
-          <span>◀◀◀ LỐI ĐI XE NÂNG & THỦ KHO NHẶT HÀNG (FORKLIFT AISLE 3.0M) ▶▶▶</span>
+          <span>◀◀◀ LỐI ĐI XE NÂNG & LẤY HÀNG (ĐỘ RỘNG TIÊU CHUẨN 3.0M) ▶▶▶</span>
         </div>
       </div>
 
-      {/* 3. CỔNG XUẤT HÀNG & KHU ĐÓNG GÓI (OUTBOUND DOCK) */}
+      {/* 3. CỔNG XUẤT HÀNG & KHU ĐIỀU PHỐI */}
       <div className="bg-gradient-to-r from-blue-500/10 via-blue-500/5 to-blue-500/10 border border-blue-300/80 rounded-xl px-4 py-2.5 flex items-center justify-between text-xs">
         <div className="flex items-center gap-2.5">
           <div className="p-1.5 rounded-lg bg-blue-600 text-white shrink-0 shadow-2xs">
@@ -192,14 +224,14 @@ export const WarehouseFloorPlan2D: React.FC<WarehouseFloorPlan2DProps> = ({
           <div>
             <div className="flex items-center gap-2">
               <span className="font-extrabold text-blue-950 uppercase tracking-wide text-xs">
-                CỔNG XUẤT HÀNG (OUTBOUND DOCK & DISPATCH)
+                CỬA ĐIỀU PHỐI & BÀN GIAO XUẤT HÀNG
               </span>
               <span className="bg-blue-200/70 text-blue-900 px-2 py-0.2 rounded font-mono font-bold text-[10px]">
-                Gate 03 • Gate 04
+                Cửa 03 • Cửa 04
               </span>
             </div>
             <p className="text-blue-700 text-[11px]">
-              Bàn kiểm đếm đơn hàng SO, đóng gói niêm phong & xuất tải giao cho xe phân phối
+              Khu vực kiểm đếm đơn hàng, đóng gói niêm phong và bàn giao phương tiện vận chuyển
             </p>
           </div>
         </div>

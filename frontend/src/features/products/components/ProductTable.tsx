@@ -20,7 +20,7 @@ import {
   AlertTriangle,
   RotateCcw,
 } from 'lucide-react';
-import { ProductItem } from '../types';
+import { CategoryItem, ProductItem, SupplierItem } from '../types';
 import { ProductMobileCards } from './ProductMobileCards';
 import { getCategoryBadge, getZoneBadge } from '../utils/productBadges';
 import { Pagination } from '../../../components/common';
@@ -33,29 +33,43 @@ const normalizeSearchText = (str?: string) =>
     .toLowerCase()
     .normalize('NFD')
     .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[đĐ]/g, 'd')
     .trim();
 
 interface ProductTableProps {
   products: ProductItem[];
+  categories?: CategoryItem[];
+  suppliers?: SupplierItem[];
   onPrintBarcode: (product: ProductItem) => void;
   onPrintBatchBarcodes?: (products: ProductItem[]) => void;
   onEditProduct: (product: ProductItem) => void;
   onViewDetail?: (product: ProductItem) => void;
   healthFilter?: string;
   onHealthFilterChange?: (filter: string) => void;
+  externalCategoryFilter?: string;
+  onExternalCategoryFilterChange?: (filter: string) => void;
+  externalSupplierFilter?: string;
+  onExternalSupplierFilterChange?: (filter: string) => void;
 }
 
 export const ProductTable: React.FC<ProductTableProps> = ({
   products,
+  categories = [],
+  suppliers = [],
   onPrintBarcode,
   onPrintBatchBarcodes,
   onEditProduct,
   onViewDetail,
   healthFilter = 'ALL',
   onHealthFilterChange,
+  externalCategoryFilter,
+  onExternalCategoryFilterChange,
+  externalSupplierFilter,
+  onExternalSupplierFilterChange,
 }) => {
   const [searchTerm, setSearchTerm] = useState('');
-  const [categoryFilter, setCategoryFilter] = useState<string>('ALL');
+  const [categoryFilter, setCategoryFilter] = useState<string>(externalCategoryFilter || 'ALL');
+  const [supplierFilter, setSupplierFilter] = useState<string>(externalSupplierFilter || 'ALL');
   const [stockHealthFilter, setStockHealthFilter] = useState<string>(healthFilter);
   const [businessStatusFilter, setBusinessStatusFilter] = useState<string>('ALL');
   const [copiedBarcode, setCopiedBarcode] = useState<string | null>(null);
@@ -76,6 +90,20 @@ export const ProductTable: React.FC<ProductTableProps> = ({
       setStockHealthFilter(healthFilter);
     }
   }, [healthFilter]);
+
+  // Đồng bộ bộ lọc danh mục từ Tab Danh mục (drill-down SKU)
+  useEffect(() => {
+    if (externalCategoryFilter !== undefined) {
+      setCategoryFilter(externalCategoryFilter);
+    }
+  }, [externalCategoryFilter]);
+
+  // Đồng bộ bộ lọc nhà cung cấp từ Tab Nhà Cung Cấp (drill-down SKU)
+  useEffect(() => {
+    if (externalSupplierFilter !== undefined) {
+      setSupplierFilter(externalSupplierFilter);
+    }
+  }, [externalSupplierFilter]);
 
   const handleCopy = (code: string) => {
     navigator.clipboard.writeText(code);
@@ -98,9 +126,20 @@ export const ProductTable: React.FC<ProductTableProps> = ({
       (p.brand && (p.brand.toLowerCase().includes(rawQ) || normalizeSearchText(p.brand).includes(normQ))) ||
       (p.supplierName && (p.supplierName.toLowerCase().includes(rawQ) || normalizeSearchText(p.supplierName).includes(normQ))) ||
       (p.storageZone && (p.storageZone.toLowerCase().includes(rawQ) || normalizeSearchText(p.storageZone).includes(normQ))) ||
-      (p.category && (p.category.toLowerCase().includes(rawQ) || normalizeSearchText(p.category).includes(normQ)));
+      (p.category && (p.category.toLowerCase().includes(rawQ) || normalizeSearchText(p.category).includes(normQ))) ||
+      (p.categoryName && (p.categoryName.toLowerCase().includes(rawQ) || normalizeSearchText(p.categoryName).includes(normQ))) ||
+      (p.categoryCode && p.categoryCode.toLowerCase().includes(rawQ));
 
-    const matchCategory = categoryFilter === 'ALL' || p.category === categoryFilter;
+    const matchCategory =
+      categoryFilter === 'ALL' ||
+      (categoryFilter.startsWith('ID:')
+        ? String(p.categoryId || '') === categoryFilter.slice(3)
+        : p.category === categoryFilter);
+
+    const matchSupplier =
+      supplierFilter === 'ALL' ||
+      String(p.supplierId || '') === supplierFilter ||
+      p.supplierCode === supplierFilter;
 
     let matchHealth = true;
     if (stockHealthFilter === 'OUT_OF_STOCK') {
@@ -119,7 +158,7 @@ export const ProductTable: React.FC<ProductTableProps> = ({
       businessStatusFilter === 'ALL' ||
       (p.businessStatus || (p.status === 'INACTIVE' ? 'SUSPENDED' : 'ACTIVE')) === businessStatusFilter;
 
-    return matchSearch && matchCategory && matchHealth && matchBusiness;
+    return matchSearch && matchCategory && matchSupplier && matchHealth && matchBusiness;
   });
 
   const totalPages = Math.max(1, Math.ceil(filteredProducts.length / PAGE_SIZE));
@@ -213,7 +252,7 @@ export const ProductTable: React.FC<ProductTableProps> = ({
 
   useEffect(() => {
     setCurrentPage(1);
-  }, [searchTerm, categoryFilter, stockHealthFilter, businessStatusFilter]);
+  }, [searchTerm, categoryFilter, supplierFilter, stockHealthFilter, businessStatusFilter]);
 
   useEffect(() => {
     setCurrentPage((page) => Math.min(page, totalPages));
@@ -242,7 +281,7 @@ export const ProductTable: React.FC<ProductTableProps> = ({
               onChange={(e) => setBusinessStatusFilter(e.target.value)}
               className="bg-transparent text-slate-700 font-medium focus:outline-none cursor-pointer"
             >
-              <option value="ALL">Tất cả trạng thái KD</option>
+              <option value="ALL">Tất cả trạng thái</option>
               <option value="ACTIVE">Đang kinh doanh</option>
               <option value="SUSPENDED">Tạm ngưng nhập</option>
               <option value="DISCONTINUED">Ngừng kinh doanh</option>
@@ -254,18 +293,59 @@ export const ProductTable: React.FC<ProductTableProps> = ({
             <Filter className="w-3.5 h-3.5 text-slate-500" />
             <select
               value={categoryFilter}
-              onChange={(e) => setCategoryFilter(e.target.value)}
-              className="bg-transparent text-slate-700 font-medium focus:outline-none cursor-pointer"
+              onChange={(e) => {
+                const next = e.target.value;
+                setCategoryFilter(next);
+                if (onExternalCategoryFilterChange) onExternalCategoryFilterChange(next);
+              }}
+              className="bg-transparent text-slate-700 font-medium focus:outline-none cursor-pointer max-w-[210px]"
             >
               <option value="ALL">Tất cả ngành hàng</option>
-              <option value="FOOD_BEVERAGE">Thực Phẩm & Đồ Uống</option>
-              <option value="CHEMICAL">Hóa Mỹ Phẩm & Tẩy Rửa</option>
-              <option value="ELECTRONICS">Linh Kiện & Điện Tử</option>
-              <option value="PHARMACEUTICAL">Dược Phẩm Y Tế</option>
-              <option value="FASHION">Thời Trang & Dệt May</option>
-              <option value="GENERAL">Hàng Tổng Hợp</option>
+              <optgroup label="Nhóm ngành hàng">
+                <option value="FOOD_BEVERAGE">Thực Phẩm &amp; Đồ Uống</option>
+                <option value="CHEMICAL">Hóa Mỹ Phẩm &amp; Tẩy Rửa</option>
+                <option value="ELECTRONICS">Linh Kiện &amp; Điện Tử</option>
+                <option value="PHARMACEUTICAL">Dược Phẩm Y Tế</option>
+                <option value="FASHION">Thời Trang &amp; Dệt May</option>
+                <option value="GENERAL">Hàng Tổng Hợp</option>
+              </optgroup>
+              {categories.filter((c) => c.status !== 'DELETED').length > 0 && (
+                <optgroup label="Theo danh mục cụ thể">
+                  {categories
+                    .filter((c) => c.status !== 'DELETED')
+                    .map((c) => (
+                      <option key={c.id} value={`ID:${c.id}`}>
+                        [{c.code}] {c.name} ({c.productCount || 0})
+                      </option>
+                    ))}
+                </optgroup>
+              )}
             </select>
           </div>
+
+          {/* Supplier Filter */}
+          {suppliers.filter((s) => !s.code?.toUpperCase().startsWith('CUST-')).length > 0 && (
+            <div className="flex items-center gap-1.5 bg-white px-2.5 py-1.5 rounded-xl border border-slate-200 shadow-2xs">
+              <select
+                value={supplierFilter}
+                onChange={(e) => {
+                  const next = e.target.value;
+                  setSupplierFilter(next);
+                  if (onExternalSupplierFilterChange) onExternalSupplierFilterChange(next);
+                }}
+                className="bg-transparent text-slate-700 font-medium focus:outline-none cursor-pointer max-w-[190px]"
+              >
+                <option value="ALL">Tất cả nhà cung cấp</option>
+                {suppliers
+                  .filter((s) => !s.code?.toUpperCase().startsWith('CUST-'))
+                  .map((s) => (
+                    <option key={s.id} value={s.id}>
+                      [{s.code}] {s.name} ({s.activeProductsCount})
+                    </option>
+                  ))}
+              </select>
+            </div>
+          )}
 
           {/* Health Filter */}
           <div className="flex items-center gap-1.5 bg-white px-2.5 py-1.5 rounded-xl border border-slate-200 shadow-2xs">
@@ -280,11 +360,11 @@ export const ProductTable: React.FC<ProductTableProps> = ({
               className="bg-transparent text-slate-700 font-medium focus:outline-none cursor-pointer"
             >
               <option value="ALL">Tất cả mức tồn</option>
-              <option value="NORMAL">Còn Hàng Ổn Định (&gt; Tối thiểu)</option>
-              <option value="WARNING">Sắp Hết / Cần Đặt (&le; Ngưỡng đặt)</option>
-              <option value="CRITICAL">Dưới Mức Tối Thiểu (&le; Tối thiểu)</option>
-              <option value="REORDER">Cần Đặt Thêm Hàng</option>
-              <option value="OUT_OF_STOCK">Đã Hết Hàng (Tồn = 0)</option>
+              <option value="NORMAL">Còn hàng ổn định</option>
+              <option value="WARNING">Sắp hết / Cần đặt</option>
+              <option value="CRITICAL">Dưới mức tối thiểu</option>
+              <option value="REORDER">Cần đặt thêm hàng</option>
+              <option value="OUT_OF_STOCK">Đã hết hàng</option>
             </select>
           </div>
         </div>
@@ -309,10 +389,10 @@ export const ProductTable: React.FC<ProductTableProps> = ({
             <button
               onClick={handleExportSelectedCsv}
               className="px-3 py-1.5 bg-blue-800/80 hover:bg-blue-800 text-white font-semibold rounded-lg border border-blue-400/40 transition-colors flex items-center gap-1.5 cursor-pointer text-xs"
-              title="Xuất file Excel danh mục các sản phẩm đang được chọn"
+              title="Xuất file CSV danh mục các sản phẩm đang được chọn"
             >
               <Download className="w-3.5 h-3.5" />
-              <span>Xuất Excel Đã Chọn</span>
+              <span>Xuất CSV đã chọn</span>
             </button>
             <button
               onClick={() => setSelectedIds(new Set())}
@@ -468,7 +548,7 @@ export const ProductTable: React.FC<ProductTableProps> = ({
                     {/* Cột 2: Phân loại & Vùng & NCC & Cách Quản Lý */}
                     <td className="py-3 px-3 space-y-1">
                       <div className="flex items-center gap-1.5 flex-wrap">
-                        {getCategoryBadge(p.category)}
+                        {getCategoryBadge(p.category, p.categoryName)}
                         {p.trackingMethod === 'SERIAL_IMEI' ? (
                           <span className="text-[10px] px-1.5 py-0.2 rounded font-bold bg-cyan-50 text-cyan-700 border border-cyan-200" title="Mặt hàng quản lý theo từng Serial / IMEI">
                             Serial/IMEI
@@ -641,10 +721,10 @@ export const ProductTable: React.FC<ProductTableProps> = ({
             <span className="w-2 h-2 rounded-full bg-emerald-500"></span> An toàn
           </span>
           <span className="flex items-center gap-1">
-            <span className="w-2 h-2 rounded-full bg-amber-500"></span> Đặt thêm (ROP)
+            <span className="w-2 h-2 rounded-full bg-amber-500"></span> Cần đặt thêm
           </span>
           <span className="flex items-center gap-1">
-            <span className="w-2 h-2 rounded-full bg-rose-500"></span> Dưới tồn tối thiểu (Min)
+            <span className="w-2 h-2 rounded-full bg-rose-500"></span> Dưới mức tối thiểu
           </span>
         </div>
       </div>

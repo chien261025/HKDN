@@ -180,8 +180,7 @@ export const CustomLabelPrintSection: React.FC = () => {
   );
 
   const [paperFormat, setPaperFormat] = useState<'A6' | 'A4'>('A6');
-  const [printerDevice, setPrinterDevice] = useState<string>('ZEBRA_ZT410');
-  const [printCopies, setPrintCopies] = useState<number>(2); // 2 bản dán 2 mặt theo chuẩn GS1
+  const [printCopies, setPrintCopies] = useState<number>(2); // 2 bản dán 2 mặt theo chuẩn giao nhận
   const [showPreviewModal, setShowPreviewModal] = useState<boolean>(false);
   const [currentPage, setCurrentPage] = useState<number>(1);
 
@@ -277,10 +276,10 @@ export const CustomLabelPrintSection: React.FC = () => {
             </div>
             <div>
               <h3 className="text-xs font-bold text-slate-900 uppercase tracking-wider">
-                Trung Tâm Phát Hành Phiếu Kiện Pallet (Pallet A6 Logistics Spooler)
+                In Phiếu Kiện Pallet (Khổ A6)
               </h3>
               <p className="text-xs text-slate-500 font-medium">
-                Quản lý {palletsList.length} kiện Pallet chuẩn GS1 · Đang hiển thị {filteredPallets.length} kết quả · Đã chọn {selectedPallets.length} kiện
+                Quản lý {palletsList.length} kiện Pallet · Đang hiển thị {filteredPallets.length} kết quả · Đã chọn {selectedPallets.length} kiện
               </p>
             </div>
           </div>
@@ -357,7 +356,7 @@ export const CustomLabelPrintSection: React.FC = () => {
               <Search className="w-3.5 h-3.5 text-slate-400 absolute left-2.5 top-1/2 -translate-y-1/2" />
               <input
                 type="text"
-                placeholder="Nhập mã SSCC, PO, tên hàng, ô đích..."
+                placeholder="Nhập mã pallet, PO, tên hàng, ô đích..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 className="w-full pl-8 pr-2.5 py-1.5 bg-slate-50 border border-slate-300 rounded-xl text-xs font-medium text-slate-800 focus:border-indigo-600 outline-none"
@@ -418,7 +417,7 @@ export const CustomLabelPrintSection: React.FC = () => {
                         )}
                       </button>
                     </th>
-                    <th className="p-3">Mã Pallet (SSCC-18)</th>
+                    <th className="p-3">Mã Pallet</th>
                     <th className="p-3">Đơn Hàng PO</th>
                     <th className="p-3">Hàng Hóa & Số Lượng</th>
                     <th className="p-3">Vị Trí Đích & Tải Trọng</th>
@@ -589,7 +588,7 @@ export const CustomLabelPrintSection: React.FC = () => {
                 </div>
                 <div>
                   <h4 className="font-extrabold text-slate-900 text-xs uppercase tracking-wider">
-                    Mẫu phiếu Pallet (Live Preview)
+                    Xem Trước Phiếu Pallet
                   </h4>
                   <p className="text-[11px] text-slate-500 font-mono">
                     Khổ A6 (105 × 148 mm) · Chuẩn GS1 Logistics
@@ -606,23 +605,8 @@ export const CustomLabelPrintSection: React.FC = () => {
               <PalletLabelCard data={activePreviewData} />
             </div>
 
-            {/* Cấu hình thiết bị & Lệnh in (Print Spooler Config) */}
+            {/* Tùy chọn khổ giấy & số lượng in */}
             <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-200 space-y-3 text-xs">
-              <div>
-                <label className="text-[10px] font-bold text-slate-600 uppercase block mb-1">
-                  Máy in đích (Target Printer):
-                </label>
-                <select
-                  value={printerDevice}
-                  onChange={(e) => setPrinterDevice(e.target.value)}
-                  className="w-full px-2.5 py-1.5 bg-white border border-slate-300 rounded-lg text-xs font-semibold text-slate-800 outline-none focus:border-indigo-600"
-                >
-                  <option value="ZEBRA_ZT410">🖨️ Zebra ZT410 Thermal (Khổ A6 - 203 DPI)</option>
-                  <option value="RICOH_LASER">🖨️ Máy in Laser Ricoh / HP công nghiệp (Khổ A6/A4)</option>
-                  <option value="LASER_PDF">📄 Xuất File PDF A6 chuẩn giao nhận</option>
-                </select>
-              </div>
-
               <div className="grid grid-cols-2 gap-2">
                 <div>
                   <label className="text-[10px] font-bold text-slate-600 uppercase block mb-1">Khổ giấy in:</label>
@@ -713,7 +697,7 @@ export const CustomLabelPrintSection: React.FC = () => {
                     Xem trước bản in thực tế ({selectedPallets.length} kiện · {selectedPallets.length * printCopies} phiếu Pallet A6)
                   </h2>
                   <p className="text-xs text-slate-300 mt-0.5">
-                    Định dạng: <strong className="text-indigo-300">{paperFormat === 'A6' ? 'Phiếu Pallet khổ A6 (105 × 148 mm)' : 'Khổ A4 (2 phiếu/trang)'}</strong> · Thiết bị: {printerDevice}
+                    Định dạng: <strong className="text-indigo-300">{paperFormat === 'A6' ? 'Phiếu Pallet khổ A6 (105 × 148 mm)' : 'Khổ A4 (2 phiếu/trang)'}</strong>
                   </p>
                 </div>
               </div>

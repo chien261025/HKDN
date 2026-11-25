@@ -126,7 +126,6 @@ export const BinLabelPrintSection: React.FC = () => {
   const [previewBinBarcode, setPreviewBinBarcode] = useState<string>('WH01-ZA-A01-R01-S01-B01');
 
   const [paperFormat, setPaperFormat] = useState<'100x60' | 'A4'>('100x60');
-  const [printerDevice, setPrinterDevice] = useState<string>('ZEBRA_ZT410');
   const [printCopies, setPrintCopies] = useState<number>(1);
   const [showPreviewModal, setShowPreviewModal] = useState<boolean>(false);
   const [currentPage, setCurrentPage] = useState(1);
@@ -316,7 +315,7 @@ export const BinLabelPrintSection: React.FC = () => {
             </div>
             <div>
               <h3 className="text-xs font-bold text-slate-900 uppercase tracking-wider">
-                Trung tâm điều phối & in nhãn ô kệ (Location Label Spooler)
+                In Tem Vị Trí Ô Kệ
               </h3>
               <p className="text-xs text-slate-500 font-medium">
                 Quản lý {binsList.length} vị trí ô kệ · Đang hiển thị {filteredLabels.length} kết quả · Đã chọn {selectedBins.length} tem
@@ -644,7 +643,7 @@ export const BinLabelPrintSection: React.FC = () => {
                 </div>
                 <div>
                   <h4 className="font-extrabold text-slate-900 text-xs uppercase tracking-wider">
-                    Mẫu tem in chuẩn (Live Preview)
+                    Xem Trước Mẫu Tem Ô Kệ
                   </h4>
                   <p className="text-[11px] text-slate-500 font-mono">
                     Tỷ lệ 100×60 mm · 300 DPI (Decal nhiệt)
@@ -661,23 +660,8 @@ export const BinLabelPrintSection: React.FC = () => {
               <BinLabelCard data={activePreviewData} />
             </div>
 
-            {/* Cấu hình thiết bị & Lệnh in (Print Spooler Config) */}
+            {/* Tùy chọn khổ giấy & số lượng in */}
             <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-200 space-y-3 text-xs">
-              <div>
-                <label className="text-[10px] font-bold text-slate-600 uppercase block mb-1">
-                  Máy in đích (Target Printer):
-                </label>
-                <select
-                  value={printerDevice}
-                  onChange={(e) => setPrinterDevice(e.target.value)}
-                  className="w-full px-2.5 py-1.5 bg-white border border-slate-300 rounded-lg text-xs font-semibold text-slate-800 outline-none focus:border-blue-600"
-                >
-                  <option value="ZEBRA_ZT410">🖨️ Zebra ZT410 Thermal (Kho A - 203 DPI)</option>
-                  <option value="XPRINTER_XP420B">🖨️ Xprinter XP-420B Decal cuộn</option>
-                  <option value="LASER_PDF">📄 Máy in Laser văn phòng (Xuất PDF A4)</option>
-                </select>
-              </div>
-
               <div className="grid grid-cols-2 gap-2">
                 <div>
                   <label className="text-[10px] font-bold text-slate-600 uppercase block mb-1">Khổ giấy:</label>
@@ -762,7 +746,7 @@ export const BinLabelPrintSection: React.FC = () => {
                     Xem trước bản in thực tế ({selectedBins.length} tem vị trí ô kệ)
                   </h2>
                   <p className="text-xs text-slate-300 mt-0.5">
-                    Định dạng: <strong className="text-blue-300">{paperFormat === '100x60' ? 'Decal dầm kệ 100×60 mm (Máy in nhiệt)' : 'Giấy Decal A4 (6 nhãn/trang)'}</strong> · Thiết bị: {printerDevice}
+                    Định dạng: <strong className="text-blue-300">{paperFormat === '100x60' ? 'Decal dầm kệ 100×60 mm' : 'Giấy Decal A4 (6 nhãn/trang)'}</strong>
                   </p>
                 </div>
               </div>

@@ -48,8 +48,8 @@ export const WarehouseShiftModal: React.FC<WarehouseShiftModalProps> = ({
   const session = authService.getCurrentSession();
   const [handoverNotes, setHandoverNotes] = useState('');
   const [pendingTasks, setPendingTasks] = useState('');
-  const [inboundCompleted, setInboundCompleted] = useState<number>(3);
-  const [outboundCompleted, setOutboundCompleted] = useState<number>(5);
+  const [inboundCompleted, setInboundCompleted] = useState<number>(0);
+  const [outboundCompleted, setOutboundCompleted] = useState<number>(0);
   const [openIssues, setOpenIssues] = useState<number>(0);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
 
@@ -206,23 +206,7 @@ export const WarehouseShiftModal: React.FC<WarehouseShiftModalProps> = ({
                     <span className="text-base font-bold text-white block mt-0.5">
                       {session?.fullName || 'Trần Trưởng Kho'}
                     </span>
-                    <span className="text-[10px] text-emerald-300 font-medium block">Đang online tại kho</span>
-                  </div>
-                </div>
-
-                {/* Live Shift Metrics */}
-                <div className="grid grid-cols-3 gap-3 mt-5 pt-4 border-t border-white/20">
-                  <div className="bg-white/10 rounded-xl p-3 text-center">
-                    <span className="text-xs text-blue-100 font-medium block">Đơn Nhập Trong Ca</span>
-                    <span className="text-xl font-extrabold text-white font-mono mt-0.5 block">4 Đơn PO</span>
-                  </div>
-                  <div className="bg-white/10 rounded-xl p-3 text-center">
-                    <span className="text-xs text-blue-100 font-medium block">Đơn Xuất Đã Lấy Hàng</span>
-                    <span className="text-xl font-extrabold text-white font-mono mt-0.5 block">6 Đơn SO</span>
-                  </div>
-                  <div className="bg-white/10 rounded-xl p-3 text-center">
-                    <span className="text-xs text-blue-100 font-medium block">Thiết Bị PDA Đang Quét</span>
-                    <span className="text-xl font-extrabold text-emerald-300 font-mono mt-0.5 block">3 Máy Active</span>
+                    <span className="text-[10px] text-emerald-300 font-medium block">Đang trực tuyến</span>
                   </div>
                 </div>
               </div>

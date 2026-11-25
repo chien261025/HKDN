@@ -66,12 +66,12 @@ export const BinDetailPanel: React.FC<BinDetailPanelProps> = ({
             <Package className="w-4 h-4" />
           </div>
           <h3 className="font-bold text-slate-900 uppercase tracking-wider text-xs">
-            Bảng Tra Cứu Vị Trí (Inspector)
+            Thông Tin Chi Tiết Vị Trí Ô Kệ
           </h3>
         </div>
 
         <p className="text-slate-600 text-xs leading-relaxed">
-          Hãy nhấp chọn một ô kệ trên sơ đồ bên trái để kiểm tra tải trọng, thông tin sản phẩm và thực hiện các thao tác điều chuyển, xuất hàng.
+          Chọn một vị trí ô kệ trên sơ đồ để kiểm tra tải trọng, thông tin sản phẩm và thực hiện các thao tác kho.
         </p>
 
         {/* Tổng quan phân khu */}
@@ -138,7 +138,7 @@ export const BinDetailPanel: React.FC<BinDetailPanelProps> = ({
             : selectedBin.status === 'RESERVED'
             ? 'Đang Giữ Đơn'
             : selectedBin.status === 'EXPIRING'
-            ? 'Cận Hạn (FEFO)'
+            ? 'Lô Cận Hạn'
             : 'Ô Còn Trống'}
         </span>
       </div>
@@ -221,10 +221,9 @@ export const BinDetailPanel: React.FC<BinDetailPanelProps> = ({
           ></div>
         </div>
 
-        <p className="text-[11px] text-slate-500">
-          {selectedBin.shelf === 'S01'
-            ? 'Tầng trệt S01: Gia cố thép chịu lực, chứa pallet hàng nặng (>100kg).'
-            : 'Tầng cao S02: Chuyên hàng nhẹ hoặc vừa, thuận tiện thao tác bốc dỡ.'}
+        <p className="text-[11px] text-slate-500 font-medium">
+          Tải trọng thiết kế: <span className="font-bold text-slate-700">{selectedBin.maxWeight} kg</span> • Sức chứa còn lại:{' '}
+          <span className="font-bold text-emerald-700">{Math.max(0, selectedBin.maxWeight - selectedBin.currentWeight)} kg</span>
         </p>
       </div>
 
@@ -241,7 +240,7 @@ export const BinDetailPanel: React.FC<BinDetailPanelProps> = ({
               <span className="text-blue-700 font-bold">{selectedBin.sku}</span>
             </div>
             <div className="flex justify-between">
-              <span className="text-slate-500">Số Lô (Batch):</span>
+              <span className="text-slate-500">Số Lô:</span>
               <span className="text-slate-800 font-bold">{selectedBin.batch}</span>
             </div>
             <div className="flex justify-between">
@@ -250,11 +249,31 @@ export const BinDetailPanel: React.FC<BinDetailPanelProps> = ({
                 {selectedBin.expiry}
               </span>
             </div>
-            <div className="flex justify-between items-center pt-1.5 border-t border-blue-100">
-              <span className="text-slate-600 font-bold">Số Lượng Thực Tế:</span>
-              <span className="text-base font-extrabold text-blue-700 font-mono">
-                {selectedBin.qty} cái
-              </span>
+            <div className="pt-2 border-t border-blue-100 space-y-1 font-mono text-2xs">
+              <div className="flex justify-between items-center text-slate-700">
+                <span className="font-semibold">Tồn Thực Tế:</span>
+                <span className="font-bold text-slate-900">{selectedBin.onHandQty != null ? selectedBin.onHandQty : (selectedBin.qty || 0)} cái</span>
+              </div>
+              <div className="flex justify-between items-center">
+                <span className="text-slate-500">Đang Giữ Đơn:</span>
+                <span className={`font-bold ${
+                  (selectedBin.reservedQty && selectedBin.reservedQty > 0) || selectedBin.status === 'RESERVED'
+                    ? 'text-amber-600'
+                    : 'text-slate-500'
+                }`}>
+                  {selectedBin.reservedQty != null ? selectedBin.reservedQty : (selectedBin.status === 'RESERVED' ? selectedBin.qty : 0)} cái
+                </span>
+              </div>
+              <div className="flex justify-between items-center pt-1 border-t border-blue-100/60 font-sans">
+                <span className="text-slate-800 font-bold text-xs">Tồn Khả Dụng:</span>
+                <span className={`text-sm font-extrabold font-mono ${
+                  (selectedBin.availableQty != null ? selectedBin.availableQty : (selectedBin.status === 'RESERVED' ? 0 : selectedBin.qty || 0)) > 0
+                    ? 'text-emerald-700'
+                    : 'text-rose-600'
+                }`}>
+                  {selectedBin.availableQty != null ? selectedBin.availableQty : (selectedBin.status === 'RESERVED' ? 0 : selectedBin.qty || 0)} cái
+                </span>
+              </div>
             </div>
           </div>
         </div>
@@ -272,10 +291,12 @@ export const BinDetailPanel: React.FC<BinDetailPanelProps> = ({
             <button
               type="button"
               onClick={() => onOpenTransferModal && onOpenTransferModal(selectedBin)}
-              className="w-full py-2.5 px-3 rounded-xl bg-blue-600 hover:bg-blue-700 active:scale-[0.99] text-white font-bold text-xs flex items-center justify-center gap-1.5 transition-all shadow-md shadow-blue-200 cursor-pointer"
+              disabled={isLocked}
+              title={isLocked ? 'Ô kệ đang khóa bảo trì' : 'Lập lệnh điều chuyển hàng sang vị trí ô kệ khác'}
+              className="w-full py-2.5 px-3 rounded-xl bg-blue-600 hover:bg-blue-700 active:scale-[0.99] disabled:opacity-50 disabled:cursor-not-allowed text-white font-bold text-xs flex items-center justify-center gap-1.5 transition-all shadow-md shadow-blue-200 cursor-pointer"
             >
               <ArrowRightLeft className="w-3.5 h-3.5" />
-              <span>Điều Chuyển Hàng Sang Ô Khác</span>
+              <span>{isLocked ? 'Ô Kệ Đang Khóa Bảo Trì' : 'Điều Chuyển Hàng Sang Ô Khác'}</span>
             </button>
 
             <div className="flex items-center gap-2">

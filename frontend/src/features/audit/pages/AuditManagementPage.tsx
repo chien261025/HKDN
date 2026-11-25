@@ -119,7 +119,7 @@ export const AuditManagementPage: React.FC = () => {
       addToast({
         type: 'success',
         title: 'Phê Duyệt Cân Đối Thành Công',
-        message: res.message || 'Hệ thống đã tự động ghi nhận bút toán ADJUSTMENT vào Sổ Cái Bất Biến (stock_ledger).',
+        message: res.message || 'Đã duyệt kiểm kê và ghi nhận điều chỉnh tồn kho vào thẻ kho.',
         duration: 6000,
       });
     } catch (err: any) {

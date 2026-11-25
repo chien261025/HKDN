@@ -8,6 +8,7 @@ interface UserSecurityAuditModalProps {
   onClose: () => void;
   user: UserAccount | null;
   onForceLogout: (userId: string) => Promise<void>;
+  isAdmin?: boolean;
 }
 
 export const UserSecurityAuditModal: React.FC<UserSecurityAuditModalProps> = ({
@@ -15,6 +16,7 @@ export const UserSecurityAuditModal: React.FC<UserSecurityAuditModalProps> = ({
   onClose,
   user,
   onForceLogout,
+  isAdmin = true,
 }) => {
   const [securityLog, setSecurityLog] = useState<UserSecurityLog | null>(null);
   const [sessions, setSessions] = useState<UserDeviceSession[]>([]);
@@ -194,7 +196,7 @@ export const UserSecurityAuditModal: React.FC<UserSecurityAuditModalProps> = ({
               </button>
             </div>
 
-            {tab !== 'AUDIT' && (
+            {isAdmin && tab !== 'AUDIT' && (
               <div className="flex items-center gap-3">
                 {activeSessions.length > 1 && (
                   <button
@@ -317,7 +319,7 @@ export const UserSecurityAuditModal: React.FC<UserSecurityAuditModalProps> = ({
                       </div>
                     </div>
 
-                    {s.isActive && (
+                    {isAdmin && s.isActive && (
                       <button
                         onClick={() => handleRevokeSingle(s.id)}
                         disabled={actionLoading}

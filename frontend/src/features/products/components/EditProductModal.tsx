@@ -2,7 +2,6 @@ import React, { useState, useEffect, useMemo } from 'react';
 import {
   Save,
   Package,
-  Barcode,
   ShieldAlert,
   AlertTriangle,
   Trash2,
@@ -10,11 +9,12 @@ import {
   Ruler,
   DollarSign,
   Layers,
-  Image as ImageIcon,
   CheckCircle2,
   Sparkles,
+  AlertCircle,
 } from 'lucide-react';
 import {
+  CategoryItem,
   ProductItem,
   ProductCategory,
   StorageZoneReq,
@@ -23,17 +23,22 @@ import {
   ProductBusinessStatus,
   ProductTrackingMethod,
 } from '../types';
+import { StockItem } from '../../labels/types';
 import { Modal, Button, InputField, SelectField } from '../../../components/common';
 import { ProductImageUploader } from './ProductImageUploader';
-import { generateInternalEan13 } from '../utils/barcodeUtils';
+import { generateInternalEan13, isValidEan13 } from '../utils/barcodeUtils';
+import { inferCategoryGroup } from '../services/productService';
 
 interface EditProductModalProps {
   isOpen: boolean;
   onClose: () => void;
   product: ProductItem | null;
-  onUpdateProduct: (product: ProductItem) => void;
+  onUpdateProduct: (product: ProductItem) => Promise<void> | void;
   suppliers: SupplierItem[];
-  onDeleteProduct: (product: ProductItem) => void;
+  categories?: CategoryItem[];
+  onDeleteProduct: (product: ProductItem) => Promise<void> | void;
+  inventoryBalances?: StockItem[];
+  existingProducts?: ProductItem[];
 }
 
 export const EditProductModal: React.FC<EditProductModalProps> = ({
@@ -42,9 +47,15 @@ export const EditProductModal: React.FC<EditProductModalProps> = ({
   product,
   onUpdateProduct,
   suppliers,
+  categories = [],
   onDeleteProduct,
+  inventoryBalances = [],
+  existingProducts = [],
 }) => {
   const [activeTab, setActiveTab] = useState<'BASIC' | 'LOGISTICS' | 'FINANCE'>('BASIC');
+  const [formError, setFormError] = useState<string>('');
+  const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
+  const [confirmDeleteOpen, setConfirmDeleteOpen] = useState<boolean>(false);
 
   // Basic info
   const [sku, setSku] = useState('');
@@ -52,6 +63,7 @@ export const EditProductModal: React.FC<EditProductModalProps> = ({
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
   const [category, setCategory] = useState<ProductCategory>('FOOD_BEVERAGE');
+  const [selectedCategoryId, setSelectedCategoryId] = useState<string>('');
   const [brand, setBrand] = useState('');
   const [origin, setOrigin] = useState('Việt Nam');
   const [imageUrl, setImageUrl] = useState('');
@@ -75,7 +87,7 @@ export const EditProductModal: React.FC<EditProductModalProps> = ({
   const [businessStatus, setBusinessStatus] = useState<ProductBusinessStatus>('ACTIVE');
   const [status, setStatus] = useState<ProductItem['status']>('ACTIVE');
 
-  // Master Data Policies: Phương thức định danh, Lô, Hạn Sử Dụng & Xuất Kho
+  // Master Data Policies
   const [trackingMethod, setTrackingMethod] = useState<ProductTrackingMethod>('FEFO_BATCH');
   const [isBatchManaged, setIsBatchManaged] = useState<boolean>(true);
   const [isExpiryManaged, setIsExpiryManaged] = useState<boolean>(true);
@@ -83,27 +95,41 @@ export const EditProductModal: React.FC<EditProductModalProps> = ({
   const [outboundStrategy, setOutboundStrategy] = useState<'FEFO' | 'FIFO' | 'LIFO'>('FEFO');
 
   useEffect(() => {
-    if (product) {
+    if (isOpen && product) {
+      setActiveTab('BASIC');
+      setFormError('');
+      setIsSubmitting(false);
+      setConfirmDeleteOpen(false);
       setSku(product.sku || '');
       setBarcode(product.barcode || '');
       setName(product.name || '');
       setDescription(product.description || '');
       setCategory(product.category || 'FOOD_BEVERAGE');
+      if (product.categoryId) {
+        setSelectedCategoryId(String(product.categoryId));
+      } else if (categories.length > 0) {
+        const matchedCat = categories.find(
+          (c) => inferCategoryGroup(Number(c.id), c.code, c.name) === product.category
+        );
+        setSelectedCategoryId(matchedCat ? String(matchedCat.id) : '');
+      } else {
+        setSelectedCategoryId('');
+      }
       setBrand(product.brand || '');
       setOrigin(product.origin || 'Việt Nam');
       setImageUrl(product.imageUrl || '');
       setUnit(product.unit || 'Hộp');
-      setWeightKg(product.weightKg || 1);
-      setLengthCm(product.lengthCm || 20);
-      setWidthCm(product.widthCm || 15);
-      setHeightCm(product.heightCm || 10);
+      setWeightKg(product.weightKg ?? 1);
+      setLengthCm(product.lengthCm ?? 20);
+      setWidthCm(product.widthCm ?? 15);
+      setHeightCm(product.heightCm ?? 10);
       setStorageZone(product.storageZone || 'ZONE_A');
       setStorageCondition(product.storageCondition || 'AMBIENT');
-      setReorderPoint(product.reorderPoint || 50);
-      setSafetyStock(product.safetyStock || 20);
-      setMaxStock(product.maxStock || 500);
-      setPurchasePrice(product.purchasePrice || 0);
-      setSellingPrice(product.sellingPrice || 0);
+      setReorderPoint(product.reorderPoint ?? 50);
+      setSafetyStock(product.safetyStock ?? 20);
+      setMaxStock(product.maxStock ?? 500);
+      setPurchasePrice(product.purchasePrice ?? 0);
+      setSellingPrice(product.sellingPrice ?? 0);
       setBusinessStatus(product.businessStatus || 'ACTIVE');
       setStatus(product.status || 'ACTIVE');
 
@@ -117,7 +143,7 @@ export const EditProductModal: React.FC<EditProductModalProps> = ({
       );
       setIsBatchManaged(product.isBatchManaged !== false);
       setIsExpiryManaged(product.isExpiryManaged !== false);
-      setShelfLifeDays(product.shelfLifeDays || (product.category === 'FOOD_BEVERAGE' ? 45 : 365));
+      setShelfLifeDays(product.shelfLifeDays ?? (product.category === 'FOOD_BEVERAGE' ? 45 : 365));
       setOutboundStrategy(product.outboundStrategy || (product.category === 'FOOD_BEVERAGE' ? 'FEFO' : 'FIFO'));
 
       const matchedSupp = suppliers.find((s) => s.code === product.supplierCode);
@@ -125,7 +151,7 @@ export const EditProductModal: React.FC<EditProductModalProps> = ({
       else if (matchedSupp) setSupplierId(matchedSupp.id);
       else if (suppliers.length > 0) setSupplierId(suppliers[0].id);
     }
-  }, [product, suppliers]);
+  }, [isOpen, product, suppliers]);
 
   const volumeCbm = useMemo(() => {
     const cbm = (lengthCm * widthCm * heightCm) / 1000000;
@@ -137,18 +163,114 @@ export const EditProductModal: React.FC<EditProductModalProps> = ({
     return Math.round(((sellingPrice - purchasePrice) / sellingPrice) * 100);
   }, [purchasePrice, sellingPrice]);
 
+  const isBarcodeDuplicate = useMemo(() => {
+    const clean = barcode.trim();
+    if (!clean || !product) return false;
+    return existingProducts.some(
+      (other) => String(other.id) !== String(product.id) && (other.barcode || '').trim() === clean
+    );
+  }, [barcode, existingProducts, product]);
+
+  const ean13CheckValid = useMemo(() => {
+    const clean = barcode.trim();
+    if (!clean) return null;
+    if (/^\d{13}$/.test(clean)) return isValidEan13(clean);
+    return null;
+  }, [barcode]);
+
+  const mrpValidationError = useMemo(() => {
+    if (safetyStock < 0 || reorderPoint < 0 || maxStock < 1) {
+      return 'Định mức tồn tối thiểu / ngưỡng đặt phải >= 0 và tồn tối đa >= 1.';
+    }
+    if (safetyStock > reorderPoint) {
+      return `Tồn kho tối thiểu (${safetyStock}) không được lớn hơn Ngưỡng đặt hàng lại (${reorderPoint}).`;
+    }
+    if (reorderPoint > maxStock) {
+      return `Ngưỡng đặt hàng lại (${reorderPoint}) không được vượt quá Mức tồn tối đa (${maxStock}).`;
+    }
+    return '';
+  }, [safetyStock, reorderPoint, maxStock]);
+
+  // Total stock across all warehouses (to enforce enterprise soft-delete protection)
+  const totalSystemStockInfo = useMemo(() => {
+    if (!product) return { onHand: 0, reserved: 0 };
+    const matched = inventoryBalances.filter(
+      (b) => String(b.productId) === String(product.id) || (b.sku && b.sku === product.sku)
+    );
+    if (matched.length === 0) {
+      return { onHand: product.currentStock || 0, reserved: 0 };
+    }
+    return matched.reduce(
+      (acc, b) => ({
+        onHand: acc.onHand + (b.onHandQty || 0),
+        reserved: acc.reserved + (b.reservedQty || 0),
+      }),
+      { onHand: 0, reserved: 0 }
+    );
+  }, [product, inventoryBalances]);
+
   if (!isOpen || !product) return null;
 
+  const hasSystemStock = totalSystemStockInfo.onHand > 0 || totalSystemStockInfo.reserved > 0;
+
   const handleAutoBarcode = () => {
-    const validEan13 = generateInternalEan13();
+    setFormError('');
+    let validEan13 = generateInternalEan13();
+    while (
+      existingProducts.some(
+        (other) => String(other.id) !== String(product.id) && (other.barcode || '').trim() === validEan13
+      )
+    ) {
+      validEan13 = generateInternalEan13();
+    }
     setBarcode(validEan13);
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const validateAll = (): string | null => {
+    if (!name.trim() || name.trim().length < 2) {
+      setActiveTab('BASIC');
+      return 'Tên sản phẩm phải có ít nhất 2 ký tự!';
+    }
+    if (isBarcodeDuplicate) {
+      setActiveTab('BASIC');
+      return `Mã vạch "${barcode.trim()}" đã thuộc về một sản phẩm khác trong danh mục!`;
+    }
+    if (categories.length > 0 && selectedCategoryId && selectedCategoryId !== String(product.categoryId || '')) {
+      const targetCat = categories.find((c) => c.id === selectedCategoryId);
+      if (!targetCat || targetCat.status !== 'ACTIVE') {
+        setActiveTab('BASIC');
+        return 'Không thể chuyển sản phẩm sang danh mục đang Ngưng hoạt động hoặc Đã xóa!';
+      }
+    }
+    if (weightKg <= 0 || lengthCm <= 0 || widthCm <= 0 || heightCm <= 0) {
+      setActiveTab('LOGISTICS');
+      return 'Trọng lượng (kg) và Kích thước bao bì (Dài, Rộng, Cao cm) phải lớn hơn 0!';
+    }
+    if (isExpiryManaged && shelfLifeDays < 1) {
+      setActiveTab('LOGISTICS');
+      return 'Mặt hàng quản lý hạn sử dụng cần số ngày HSD tiêu chuẩn >= 1!';
+    }
+    if (purchasePrice < 0 || sellingPrice < 0) {
+      setActiveTab('FINANCE');
+      return 'Giá nhập và giá bán không được âm!';
+    }
+    if (mrpValidationError) {
+      setActiveTab('FINANCE');
+      return mrpValidationError;
+    }
+    return null;
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!name.trim()) return;
+    const err = validateAll();
+    if (err) {
+      setFormError(err);
+      return;
+    }
 
     const selectedSupplier = suppliers.find((s) => s.id === supplierId) || suppliers[0];
+    const selectedCatObj = categories.find((c) => c.id === selectedCategoryId);
 
     const updatedProduct: ProductItem = {
       ...product,
@@ -156,20 +278,23 @@ export const EditProductModal: React.FC<EditProductModalProps> = ({
       name: name.trim(),
       description: description.trim(),
       category,
+      categoryId: selectedCatObj ? Number(selectedCatObj.id) : product.categoryId,
+      categoryCode: selectedCatObj?.code || product.categoryCode,
+      categoryName: selectedCatObj?.name || product.categoryName,
       brand: brand.trim(),
       origin: origin.trim(),
       imageUrl: imageUrl.trim(),
       unit: unit.trim(),
-      weightKg: Number(weightKg) || 1,
-      lengthCm: Number(lengthCm) || 20,
-      widthCm: Number(widthCm) || 15,
-      heightCm: Number(heightCm) || 10,
+      weightKg: Number(weightKg),
+      lengthCm: Number(lengthCm),
+      widthCm: Number(widthCm),
+      heightCm: Number(heightCm),
       volumeCbm,
-      reorderPoint: Number(reorderPoint) || 50,
-      safetyStock: Number(safetyStock) || 20,
-      maxStock: Number(maxStock) || 500,
-      purchasePrice: Number(purchasePrice) || 0,
-      sellingPrice: Number(sellingPrice) || 0,
+      reorderPoint: Number(reorderPoint),
+      safetyStock: Number(safetyStock),
+      maxStock: Number(maxStock),
+      purchasePrice: Number(purchasePrice),
+      sellingPrice: Number(sellingPrice),
       businessStatus,
       trackingMethod,
       isBatchManaged,
@@ -184,15 +309,46 @@ export const EditProductModal: React.FC<EditProductModalProps> = ({
       status,
     };
 
-    onUpdateProduct(updatedProduct);
-    onClose();
+    setIsSubmitting(true);
+    setFormError('');
+    try {
+      await onUpdateProduct(updatedProduct);
+      onClose();
+    } catch (apiErr: any) {
+      setFormError(apiErr?.response?.data?.message || apiErr?.message || 'Không thể lưu thay đổi hồ sơ sản phẩm.');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleConfirmDelete = async () => {
+    if (hasSystemStock) {
+      setFormError(
+        `Không thể xóa SKU ${product.sku} vì toàn hệ thống vẫn còn ${totalSystemStockInfo.onHand} ${product.unit} tồn kho (giữ chỗ: ${totalSystemStockInfo.reserved}). Hãy chuyển Trạng Thái Kinh Doanh sang "Tạm ngưng nhập" hoặc "Ngừng kinh doanh".`
+      );
+      setConfirmDeleteOpen(false);
+      return;
+    }
+
+    setIsSubmitting(true);
+    setFormError('');
+    try {
+      await onDeleteProduct(product);
+      setConfirmDeleteOpen(false);
+      onClose();
+    } catch (delErr: any) {
+      setFormError(delErr?.response?.data?.message || delErr?.message || 'Không thể xóa sản phẩm.');
+      setConfirmDeleteOpen(false);
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
     <Modal
       isOpen={isOpen}
       onClose={onClose}
-      title="Cập Nhật Hồ Sơ Kỹ Thuật Mặt Hàng (SKU)"
+      title="Cập Nhật Sản Phẩm"
       description={
         <span>
           Mã SKU: <strong className="font-mono text-blue-600 font-bold">{sku}</strong>
@@ -202,6 +358,49 @@ export const EditProductModal: React.FC<EditProductModalProps> = ({
       maxWidth="3xl"
     >
       <form onSubmit={handleSubmit} className="space-y-4">
+        {/* Inline Error Alert */}
+        {formError && (
+          <div role="alert" className="flex items-start gap-2.5 p-3 rounded-xl bg-rose-50 border border-rose-200 text-xs text-rose-800 font-medium">
+            <AlertCircle className="w-4 h-4 text-rose-600 shrink-0 mt-0.5" />
+            <span>{formError}</span>
+          </div>
+        )}
+
+        {/* Inline Delete Confirmation Panel */}
+        {confirmDeleteOpen && (
+          <div className="p-3.5 rounded-xl bg-rose-50 border border-rose-300 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <div className="text-xs text-rose-900 space-y-0.5">
+              <div className="font-bold flex items-center gap-1.5">
+                <AlertTriangle className="w-4 h-4 text-rose-600" />
+                <span>Xác nhận xóa mềm (Soft Delete) sản phẩm {product.sku}?</span>
+              </div>
+              <p className="text-rose-700">
+                Mặt hàng hiện có tồn kho = 0. Sau khi xóa sẽ ẩn khỏi danh mục kinh doanh (vẫn bảo toàn lịch sử sổ cái).
+              </p>
+            </div>
+            <div className="flex items-center gap-2 shrink-0">
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => setConfirmDeleteOpen(false)}
+                disabled={isSubmitting}
+              >
+                Hủy
+              </Button>
+              <Button
+                type="button"
+                variant="danger"
+                size="sm"
+                isLoading={isSubmitting}
+                onClick={handleConfirmDelete}
+              >
+                Xác Nhận Xóa
+              </Button>
+            </div>
+          </div>
+        )}
+
         {/* Navigation Tabs inside Modal */}
         <div className="flex items-center gap-2 border-b border-slate-200 pb-2">
           <button
@@ -248,29 +447,43 @@ export const EditProductModal: React.FC<EditProductModalProps> = ({
         {activeTab === 'BASIC' && (
           <div className="space-y-4">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {/* Mã SKU (Khóa) */}
+              {/* Mã SKU */}
               <InputField
-                label="Mã Sản Phẩm (Mã SKU)"
-                value={sku}
+                label="Mã Sản Phẩm (SKU)"
+                required
                 disabled
-                helperText="Mã sản phẩm cố định, không thể chỉnh sửa."
+                value={sku}
+                helperText="Mã cố định, không thể thay đổi sau khi tạo."
               />
 
               {/* Mã Barcode */}
               <InputField
                 label="Mã Vạch (Barcode)"
                 value={barcode}
-                onChange={(e) => setBarcode(e.target.value)}
-                helperText="* Mã vạch dùng để máy quét PDA nhận diện nhanh khi nhập xuất kho."
+                onChange={(e) => {
+                  setBarcode(e.target.value);
+                  setFormError('');
+                }}
+                error={
+                  isBarcodeDuplicate
+                    ? `Mã vạch "${barcode.trim()}" đã thuộc về sản phẩm khác!`
+                    : undefined
+                }
+                helperText={
+                  ean13CheckValid === true
+                    ? '✓ Mã vạch 13 số hợp lệ'
+                    : ean13CheckValid === false
+                    ? '⚠ Mã 13 số chưa đúng quy chuẩn'
+                    : undefined
+                }
                 action={
                   <button
                     type="button"
                     onClick={handleAutoBarcode}
                     className="text-xs text-blue-600 hover:text-blue-800 font-semibold flex items-center gap-1 cursor-pointer"
-                    title="Tạo mã vạch ngẫu nhiên"
                   >
                     <Sparkles className="w-3 h-3" />
-                    <span>Tạo mã vạch ngẫu nhiên</span>
+                    <span>Tạo mã vạch</span>
                   </button>
                 }
               />
@@ -281,34 +494,73 @@ export const EditProductModal: React.FC<EditProductModalProps> = ({
                   label="Tên Sản Phẩm"
                   required
                   value={name}
-                  onChange={(e) => setName(e.target.value)}
+                  onChange={(e) => {
+                    setName(e.target.value);
+                    setFormError('');
+                  }}
                 />
               </div>
 
               {/* Ngành hàng */}
-              <SelectField
-                label="Ngành Hàng"
-                value={category}
-                onChange={(e) => setCategory(e.target.value as ProductCategory)}
-                options={[
-                  { value: 'FOOD_BEVERAGE', label: 'Thực Phẩm & Đồ Uống (F&B)' },
-                  { value: 'ELECTRONICS', label: 'Thiết Bị & Linh Kiện Điện Tử' },
-                  { value: 'CHEMICAL', label: 'Hóa Mỹ Phẩm & Tẩy Rửa' },
-                  { value: 'PHARMACEUTICAL', label: 'Dược Phẩm & Y Tế' },
-                  { value: 'FASHION', label: 'Thời Trang & Dệt May' },
-                  { value: 'GENERAL', label: 'Hàng Tiêu Dùng Tổng Hợp' },
-                ]}
-              />
+              {categories.length > 0 ? (
+                <SelectField
+                  label="Ngành Hàng"
+                  value={selectedCategoryId}
+                  onChange={(e) => {
+                    const nextId = e.target.value;
+                    setSelectedCategoryId(nextId);
+                    const catObj = categories.find((c) => c.id === nextId);
+                    if (catObj) {
+                      setCategory(inferCategoryGroup(Number(catObj.id), catObj.code, catObj.name));
+                    }
+                    setFormError('');
+                  }}
+                  options={categories
+                    .filter((c) => c.status !== 'DELETED' || String(c.id) === String(product.categoryId || ''))
+                    .map((c) => {
+                      const isOriginal = String(c.id) === String(product.categoryId || '');
+                      const suffix =
+                        c.status === 'INACTIVE'
+                          ? isOriginal
+                            ? ' (Ngưng hoạt động - Giữ nguyên lịch sử)'
+                            : ' (Ngưng hoạt động - Không thể gán mới)'
+                          : c.status === 'DELETED'
+                          ? ' (Đã xóa - Dữ liệu lịch sử)'
+                          : '';
+                      return {
+                        value: c.id,
+                        label: `[${c.code}] ${c.name}${suffix}`,
+                        disabled: c.status !== 'ACTIVE' && !isOriginal,
+                      };
+                    })}
+                />
+              ) : (
+                <SelectField
+                  label="Ngành Hàng"
+                  value={category}
+                  onChange={(e) => setCategory(e.target.value as ProductCategory)}
+                  options={[
+                    { value: 'FOOD_BEVERAGE', label: 'Thực Phẩm & Đồ Uống (F&B)' },
+                    { value: 'ELECTRONICS', label: 'Thiết Bị & Linh Kiện Điện Tử' },
+                    { value: 'CHEMICAL', label: 'Hóa Mỹ Phẩm & Tẩy Rửa' },
+                    { value: 'PHARMACEUTICAL', label: 'Dược Phẩm & Y Tế' },
+                    { value: 'FASHION', label: 'Thời Trang & Dệt May' },
+                    { value: 'GENERAL', label: 'Hàng Tiêu Dùng Tổng Hợp' },
+                  ]}
+                />
+              )}
 
               {/* Nhà cung cấp */}
               <SelectField
                 label="Nhà Cung Cấp Mặc Định"
                 value={supplierId}
                 onChange={(e) => setSupplierId(e.target.value)}
-                options={suppliers.map((s) => ({
-                  value: s.id,
-                  label: `${s.name} (${s.code})`,
-                }))}
+                options={suppliers
+                  .filter((s) => !s.code?.toUpperCase().startsWith('CUST-') || s.id === supplierId)
+                  .map((s) => ({
+                    value: s.id,
+                    label: `${s.name} (${s.code})`,
+                  }))}
               />
 
               {/* Thương hiệu */}
@@ -341,10 +593,7 @@ export const EditProductModal: React.FC<EditProductModalProps> = ({
 
               {/* Hình ảnh sản phẩm */}
               <div className="md:col-span-2">
-                <ProductImageUploader
-                  value={imageUrl}
-                  onChange={setImageUrl}
-                />
+                <ProductImageUploader value={imageUrl} onChange={setImageUrl} />
               </div>
             </div>
           </div>
@@ -360,14 +609,19 @@ export const EditProductModal: React.FC<EditProductModalProps> = ({
                 value={unit}
                 onChange={(e) => setUnit(e.target.value)}
                 options={[
-                  { value: 'Thùng', label: 'Thùng (Carton / Box)' },
-                  { value: 'Hộp', label: 'Hộp (Inner Box)' },
-                  { value: 'Chai', label: 'Chai (Bottle)' },
-                  { value: 'Lon', label: 'Lon (Can)' },
-                  { value: 'Gói', label: 'Gói (Pack)' },
-                  { value: 'Túi', label: 'Túi (Pouch)' },
-                  { value: 'Lốc', label: 'Lốc (Multipack)' },
-                  { value: 'Chiếc', label: 'Chiếc / Cái' },
+                  { value: 'Thùng', label: 'Thùng' },
+                  { value: 'Hộp', label: 'Hộp' },
+                  { value: 'Chai', label: 'Chai' },
+                  { value: 'Lon', label: 'Lon' },
+                  { value: 'Gói', label: 'Gói' },
+                  { value: 'Túi', label: 'Túi' },
+                  { value: 'Lốc', label: 'Lốc' },
+                  { value: 'Chiếc', label: 'Chiếc' },
+                  { value: 'Cái', label: 'Cái' },
+                  { value: 'Đôi', label: 'Đôi' },
+                  { value: 'Can', label: 'Can' },
+                  { value: 'Kiện', label: 'Kiện' },
+                  { value: 'Khay', label: 'Khay' },
                   { value: 'Pallet', label: 'Pallet' },
                   { value: 'Bao', label: 'Bao (25-50kg)' },
                   { value: 'Cuộn', label: 'Cuộn' },
@@ -381,7 +635,11 @@ export const EditProductModal: React.FC<EditProductModalProps> = ({
                 step="0.01"
                 min="0.01"
                 value={weightKg}
-                onChange={(e) => setWeightKg(parseFloat(e.target.value) || 0)}
+                error={weightKg <= 0 ? 'Trọng lượng phải > 0 kg' : undefined}
+                onChange={(e) => {
+                  setWeightKg(parseFloat(e.target.value) || 0);
+                  setFormError('');
+                }}
               />
 
               {/* Kích thước Dài x Rộng x Cao */}
@@ -392,7 +650,7 @@ export const EditProductModal: React.FC<EditProductModalProps> = ({
                     Kích Thước Bao Bì (Dài x Rộng x Cao cm)
                   </span>
                   <span className="text-blue-700 font-mono bg-blue-50 px-2 py-0.5 rounded border border-blue-200">
-                    Thể Tích: <strong>{volumeCbm} m³ (CBM)</strong>
+                    Thể tích: <strong>{volumeCbm} m³</strong>
                   </span>
                 </div>
 
@@ -401,6 +659,7 @@ export const EditProductModal: React.FC<EditProductModalProps> = ({
                     label="Chiều Dài (cm)"
                     type="number"
                     step="0.1"
+                    min="0.1"
                     value={lengthCm}
                     onChange={(e) => setLengthCm(parseFloat(e.target.value) || 0)}
                   />
@@ -408,6 +667,7 @@ export const EditProductModal: React.FC<EditProductModalProps> = ({
                     label="Chiều Rộng (cm)"
                     type="number"
                     step="0.1"
+                    min="0.1"
                     value={widthCm}
                     onChange={(e) => setWidthCm(parseFloat(e.target.value) || 0)}
                   />
@@ -415,6 +675,7 @@ export const EditProductModal: React.FC<EditProductModalProps> = ({
                     label="Chiều Cao (cm)"
                     type="number"
                     step="0.1"
+                    min="0.1"
                     value={heightCm}
                     onChange={(e) => setHeightCm(parseFloat(e.target.value) || 0)}
                   />
@@ -423,43 +684,44 @@ export const EditProductModal: React.FC<EditProductModalProps> = ({
 
               {/* Phân khu lưu trữ ưu tiên */}
               <SelectField
-                label="Phân Khu Lưu Trữ Ưu Tiên (Zone)"
+                label="Khu Vực Lưu Kho"
                 value={storageZone}
-                onChange={(e) => setStorageZone(e.target.value as StorageZoneReq)}
+                onChange={(e) => {
+                  const nextZ = e.target.value as StorageZoneReq;
+                  setStorageZone(nextZ);
+                  if (nextZ === 'ZONE_B') setStorageCondition('COOL');
+                  else if (nextZ === 'ZONE_C') setStorageCondition('COLD');
+                  else if (nextZ === 'ZONE_D') setStorageCondition('SECURE');
+                  else setStorageCondition('AMBIENT');
+                }}
                 options={[
-                  { value: 'ZONE_A', label: 'ZONE A - Hàng Khô & Tiêu Dùng (Ambient Dry)' },
-                  { value: 'ZONE_B', label: 'ZONE B - Kho Mát & Thực Phẩm (Cold Storage 2-8°C)' },
-                  { value: 'ZONE_C', label: 'ZONE C - Kho Đông Lạnh Sâu (-18°C Frozen)' },
-                  { value: 'ZONE_D', label: 'ZONE D - Hàng Giá Trị Cao & Điện Tử (Secure High-Value)' },
+                  { value: 'ZONE_A', label: 'Khu A - Hàng khô thường' },
+                  { value: 'ZONE_B', label: 'Khu B - Kho mát (2°C - 8°C)' },
+                  { value: 'ZONE_C', label: 'Khu C - Kho đông (-18°C)' },
+                  { value: 'ZONE_D', label: 'Khu D - Hàng giá trị cao' },
                 ]}
               />
 
               {/* Điều kiện nhiệt độ */}
               <SelectField
-                label="Điều Kiện Bảo Quản Yêu Cầu"
+                label="Điều Kiện Bảo Quản"
                 value={storageCondition}
                 onChange={(e) => setStorageCondition(e.target.value as StorageConditionType)}
                 options={[
                   { value: 'AMBIENT', label: 'Nhiệt độ phòng (18-25°C)' },
                   { value: 'COOL', label: 'Kho mát (2-8°C)' },
                   { value: 'COLD', label: 'Đông lạnh (-18°C)' },
-                  { value: 'SECURE', label: 'Kho khóa bảo mật giá trị cao' },
+                  { value: 'SECURE', label: 'Kho an ninh giá trị cao' },
                 ]}
               />
 
-              {/* Chế độ định danh & Quản lý tồn kho (Tracking Method) */}
+              {/* Cách quản lý tồn kho */}
               <div className="md:col-span-2 space-y-2">
-                <label className="block text-xs font-bold text-slate-800 flex items-center justify-between">
-                  <span className="flex items-center gap-1.5">
-                    <Layers className="w-4 h-4 text-blue-600" />
-                    <span>Phương Thức Quản Lý & Định Danh (Tracking Method)</span>
-                  </span>
-                  <span className="text-[11px] font-normal text-slate-500">
-                    * Quyết định quy trình quét mã PDA & kiểm soát lô tại Dock Nhập/Xuất
-                  </span>
+                <label className="block text-xs font-bold text-slate-800 flex items-center gap-1.5">
+                  <Layers className="w-4 h-4 text-blue-600" />
+                  <span>Cách Quản Lý Tồn Kho</span>
                 </label>
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
-                  {/* Option 1: FEFO_BATCH */}
                   <div
                     onClick={() => {
                       setTrackingMethod('FEFO_BATCH');
@@ -477,21 +739,15 @@ export const EditProductModal: React.FC<EditProductModalProps> = ({
                     <div className="flex items-center justify-between mb-1">
                       <span className="font-bold text-xs text-indigo-950 flex items-center gap-1.5">
                         <span className="w-2 h-2 rounded-full bg-indigo-600" />
-                        FEFO & Quản Lý Lô
+                        Theo Lô &amp; Hạn Dùng
                       </span>
-                      {trackingMethod === 'FEFO_BATCH' && (
-                        <CheckCircle2 className="w-3.5 h-3.5 text-indigo-600" />
-                      )}
+                      {trackingMethod === 'FEFO_BATCH' && <CheckCircle2 className="w-3.5 h-3.5 text-indigo-600" />}
                     </div>
                     <p className="text-[11px] text-slate-500 leading-snug">
-                      Bắt buộc số Lô (Batch) & Hạn dùng (EXP). Tự động xuất hàng cận hạn trước.
+                      Quản lý theo số lô và hạn sử dụng. Tự động xuất hàng cận hạn trước.
                     </p>
-                    <span className="mt-2 text-[10px] font-semibold text-indigo-700 bg-indigo-100/70 px-1.5 py-0.5 rounded w-fit">
-                      F&B / Dược phẩm / Mỹ phẩm
-                    </span>
                   </div>
 
-                  {/* Option 2: SERIAL_IMEI */}
                   <div
                     onClick={() => {
                       setTrackingMethod('SERIAL_IMEI');
@@ -508,21 +764,15 @@ export const EditProductModal: React.FC<EditProductModalProps> = ({
                     <div className="flex items-center justify-between mb-1">
                       <span className="font-bold text-xs text-cyan-950 flex items-center gap-1.5">
                         <span className="w-2 h-2 rounded-full bg-cyan-600" />
-                        Serial / IMEI Đơn Chiếc
+                        Theo Serial / IMEI
                       </span>
-                      {trackingMethod === 'SERIAL_IMEI' && (
-                        <CheckCircle2 className="w-3.5 h-3.5 text-cyan-600" />
-                      )}
+                      {trackingMethod === 'SERIAL_IMEI' && <CheckCircle2 className="w-3.5 h-3.5 text-cyan-600" />}
                     </div>
                     <p className="text-[11px] text-slate-500 leading-snug">
-                      Mỗi đơn vị có 1 Serial/IMEI độc nhất. Quét đối soát từng máy khi Pick & Pack.
+                      Quản lý từng số Serial/IMEI riêng khi nhập và xuất kho.
                     </p>
-                    <span className="mt-2 text-[10px] font-semibold text-cyan-700 bg-cyan-100/70 px-1.5 py-0.5 rounded w-fit">
-                      Điện máy / Thiết bị / Phone
-                    </span>
                   </div>
 
-                  {/* Option 3: STANDARD */}
                   <div
                     onClick={() => {
                       setTrackingMethod('STANDARD');
@@ -539,33 +789,22 @@ export const EditProductModal: React.FC<EditProductModalProps> = ({
                     <div className="flex items-center justify-between mb-1">
                       <span className="font-bold text-xs text-slate-900 flex items-center gap-1.5">
                         <span className="w-2 h-2 rounded-full bg-slate-600" />
-                        Hàng Tiêu Chuẩn (FIFO)
+                        Tiêu Chuẩn (FIFO)
                       </span>
-                      {trackingMethod === 'STANDARD' && (
-                        <CheckCircle2 className="w-3.5 h-3.5 text-slate-800" />
-                      )}
+                      {trackingMethod === 'STANDARD' && <CheckCircle2 className="w-3.5 h-3.5 text-slate-800" />}
                     </div>
                     <p className="text-[11px] text-slate-500 leading-snug">
-                      Theo dõi số lượng tồn kho thuần túy. Xuất kho theo thứ tự ngày nhập.
+                      Theo dõi số lượng thông thường, nhập trước xuất trước.
                     </p>
-                    <span className="mt-2 text-[10px] font-semibold text-slate-700 bg-slate-200/70 px-1.5 py-0.5 rounded w-fit">
-                      Vật tư / Gia dụng / Phụ kiện
-                    </span>
                   </div>
                 </div>
               </div>
 
-              {/* Chính Sách Chi Tiết Theo Tracking Method */}
               {trackingMethod === 'FEFO_BATCH' && (
                 <div className="md:col-span-2 bg-indigo-50/60 p-3.5 rounded-xl border border-indigo-100 space-y-3">
-                  <div className="flex items-center justify-between text-xs font-bold text-slate-800">
-                    <span className="flex items-center gap-1.5 text-indigo-900">
-                      <ShieldAlert className="w-4 h-4 text-indigo-600" />
-                      Chính Sách Quản Lý Lô (Batch) & Hạn Sử Dụng (FEFO)
-                    </span>
-                    <span className="text-[11px] text-indigo-700 bg-indigo-100 px-2 py-0.5 rounded-full font-semibold">
-                      FEFO Rules
-                    </span>
+                  <div className="flex items-center gap-1.5 text-xs font-bold text-indigo-900">
+                    <ShieldAlert className="w-4 h-4 text-indigo-600" />
+                    <span>Thiết Lập Lô &amp; Hạn Sử Dụng</span>
                   </div>
 
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-3 pt-1">
@@ -578,7 +817,7 @@ export const EditProductModal: React.FC<EditProductModalProps> = ({
                         className="w-4 h-4 text-blue-600 rounded border-slate-300 focus:ring-blue-500 cursor-pointer"
                       />
                       <label htmlFor="edit-is-batch-managed" className="text-xs font-semibold text-slate-700 cursor-pointer">
-                        Bắt buộc theo dõi theo Lô (Batch/Lot Number)
+                        Bắt buộc nhập số lô hàng
                       </label>
                     </div>
 
@@ -591,70 +830,32 @@ export const EditProductModal: React.FC<EditProductModalProps> = ({
                         className="w-4 h-4 text-blue-600 rounded border-slate-300 focus:ring-blue-500 cursor-pointer"
                       />
                       <label htmlFor="edit-is-expiry-managed" className="text-xs font-semibold text-slate-700 cursor-pointer">
-                        Theo dõi Ngày sản xuất & Hạn sử dụng (Shelf Life)
+                        Theo dõi hạn sử dụng
                       </label>
                     </div>
 
                     {isExpiryManaged && (
                       <InputField
-                        label="Hạn Sử Dụng Tiêu Chuẩn (Số Ngày)"
+                        label="Hạn Sử Dụng Tiêu Chuẩn (Ngày)"
                         type="number"
                         min="1"
                         value={shelfLifeDays}
                         onChange={(e) => setShelfLifeDays(parseInt(e.target.value, 10) || 0)}
-                        helperText="VD: 45 ngày (sữa chua), 180 ngày (sữa tươi), 365 ngày (lon)"
+                        helperText="VD: 45 ngày (sữa chua), 180 ngày (sữa tươi)"
                       />
                     )}
 
                     <SelectField
-                      label="Chiến Lược Xuất Kho Tự Động"
+                      label="Thứ Tự Xuất Kho"
                       value={outboundStrategy}
                       onChange={(e) => setOutboundStrategy(e.target.value as any)}
                       options={[
-                        { value: 'FEFO', label: 'FEFO - Hết hạn trước xuất trước (Chuẩn F&B / Dược phẩm)' },
+                        { value: 'FEFO', label: 'FEFO - Cận hạn xuất trước' },
                         { value: 'FIFO', label: 'FIFO - Nhập trước xuất trước' },
                         { value: 'LIFO', label: 'LIFO - Nhập sau xuất trước' },
                       ]}
                     />
                   </div>
-                </div>
-              )}
-
-              {trackingMethod === 'SERIAL_IMEI' && (
-                <div className="md:col-span-2 bg-cyan-50/70 p-3.5 rounded-xl border border-cyan-200 space-y-2">
-                  <div className="flex items-center justify-between text-xs font-bold text-cyan-950">
-                    <span className="flex items-center gap-1.5">
-                      <Sparkles className="w-4 h-4 text-cyan-600" />
-                      Quản Lý Theo Mã Serial / IMEI Từng Chiếc
-                    </span>
-                    <span className="text-[11px] text-cyan-700 bg-cyan-100 px-2 py-0.5 rounded-full font-semibold">
-                      Thiết Bị Điện Tử & Máy Móc
-                    </span>
-                  </div>
-                  <p className="text-xs text-slate-600 leading-relaxed">
-                    Dành cho sản phẩm công nghệ, máy móc. Khi nhập hoặc xuất kho, nhân viên sẽ dùng máy PDA quét từng mã Serial/IMEI để theo dõi bảo hành và nguồn gốc.
-                  </p>
-                  <div className="flex items-center gap-6 pt-1 text-xs text-slate-700 font-medium">
-                    <div>Thứ tự xuất: <strong className="text-cyan-800">Nhập trước xuất trước (FIFO)</strong></div>
-                    <div>Thao tác quét: <strong className="text-cyan-800">Quét mã khi Nhập & Xuất kho</strong></div>
-                  </div>
-                </div>
-              )}
-
-              {trackingMethod === 'STANDARD' && (
-                <div className="md:col-span-2 bg-slate-100/80 p-3.5 rounded-xl border border-slate-200 space-y-2">
-                  <div className="flex items-center justify-between text-xs font-bold text-slate-800">
-                    <span className="flex items-center gap-1.5">
-                      <Package className="w-4 h-4 text-slate-600" />
-                      Quản Lý Theo Số Lượng Tiêu Chuẩn
-                    </span>
-                    <span className="text-[11px] text-slate-700 bg-slate-200 px-2 py-0.5 rounded-full font-semibold">
-                      Số Lượng Thông Thường
-                    </span>
-                  </div>
-                  <p className="text-xs text-slate-600 leading-relaxed">
-                    Sản phẩm được theo dõi số lượng tồn kho theo từng vị trí ô kệ. Xuất kho tự động theo thứ tự nhập trước xuất trước (FIFO), phù hợp cho hàng gia dụng, phụ kiện.
-                  </p>
                 </div>
               )}
             </div>
@@ -672,8 +873,10 @@ export const EditProductModal: React.FC<EditProductModalProps> = ({
                 step="1000"
                 min="0"
                 value={purchasePrice}
-                onChange={(e) => setPurchasePrice(parseFloat(e.target.value) || 0)}
-                helperText="* Giá mua thực tế sẽ được ghi nhận theo từng hóa đơn nhập kho."
+                onChange={(e) => {
+                  setPurchasePrice(parseFloat(e.target.value) || 0);
+                  setFormError('');
+                }}
                 icon={<DollarSign className="w-3.5 h-3.5 text-emerald-600" />}
               />
 
@@ -684,42 +887,74 @@ export const EditProductModal: React.FC<EditProductModalProps> = ({
                 step="1000"
                 min="0"
                 value={sellingPrice}
-                onChange={(e) => setSellingPrice(parseFloat(e.target.value) || 0)}
+                onChange={(e) => {
+                  setSellingPrice(parseFloat(e.target.value) || 0);
+                  setFormError('');
+                }}
                 icon={<DollarSign className="w-3.5 h-3.5 text-blue-600" />}
               />
 
-              <div className="md:col-span-2 p-3 bg-emerald-50 rounded-xl border border-emerald-200 text-xs text-emerald-800 flex items-center justify-between font-mono">
-                <span>Chênh lệch dự kiến: <b>{(sellingPrice - purchasePrice).toLocaleString()} ₫</b></span>
-                <span>Tỷ suất lợi nhuận: <b>{profitMarginPct}%</b></span>
+              <div
+                className={`md:col-span-2 p-3 rounded-xl border text-xs flex items-center justify-between font-mono ${
+                  sellingPrice > 0 && purchasePrice > sellingPrice
+                    ? 'bg-amber-50 border-amber-300 text-amber-800'
+                    : 'bg-emerald-50 border-emerald-200 text-emerald-800'
+                }`}
+              >
+                <span>
+                  Lợi nhuận dự kiến: <b>{(sellingPrice - purchasePrice).toLocaleString()} ₫</b>
+                  {sellingPrice > 0 && purchasePrice > sellingPrice && (
+                    <span className="ml-2 font-sans font-semibold text-rose-700">(⚠ Giá bán thấp hơn giá nhập)</span>
+                  )}
+                </span>
+                <span>Biên lãi: <b>{profitMarginPct}%</b></span>
               </div>
 
               {/* Định mức tồn an toàn */}
               <InputField
-                label="Tồn Kho Tối Thiểu (Cảnh báo)"
+                label="Tồn Tối Thiểu"
                 type="number"
                 min="0"
                 value={safetyStock}
-                onChange={(e) => setSafetyStock(parseInt(e.target.value) || 0)}
+                error={safetyStock > reorderPoint ? 'Tồn tối thiểu phải <= Ngưỡng đặt hàng lại' : undefined}
+                onChange={(e) => {
+                  setSafetyStock(parseInt(e.target.value, 10) || 0);
+                  setFormError('');
+                }}
                 icon={<ShieldAlert className="w-3.5 h-3.5 text-rose-500" />}
               />
 
               {/* Điểm đặt hàng lại */}
               <InputField
-                label="Ngưỡng Cần Nhập Thêm (Đặt hàng)"
+                label="Ngưỡng Đặt Hàng Lại"
                 type="number"
-                min="1"
+                min="0"
                 value={reorderPoint}
-                onChange={(e) => setReorderPoint(parseInt(e.target.value) || 0)}
+                error={
+                  reorderPoint < safetyStock
+                    ? 'Phải >= Tồn tối thiểu'
+                    : reorderPoint > maxStock
+                    ? 'Phải <= Tồn tối đa'
+                    : undefined
+                }
+                onChange={(e) => {
+                  setReorderPoint(parseInt(e.target.value, 10) || 0);
+                  setFormError('');
+                }}
                 icon={<AlertTriangle className="w-3.5 h-3.5 text-amber-500" />}
               />
 
               {/* Tồn tối đa */}
               <InputField
-                label="Mức Tồn Kho Tối Đa"
+                label="Tồn Tối Đa"
                 type="number"
-                min="10"
+                min="1"
                 value={maxStock}
-                onChange={(e) => setMaxStock(parseInt(e.target.value) || 0)}
+                error={maxStock < reorderPoint ? 'Phải >= Ngưỡng đặt hàng lại' : undefined}
+                onChange={(e) => {
+                  setMaxStock(parseInt(e.target.value, 10) || 0);
+                  setFormError('');
+                }}
                 icon={<Layers className="w-3.5 h-3.5 text-indigo-500" />}
               />
 
@@ -727,51 +962,62 @@ export const EditProductModal: React.FC<EditProductModalProps> = ({
               <SelectField
                 label="Trạng Thái Kinh Doanh"
                 value={businessStatus}
-                onChange={(e) => setBusinessStatus(e.target.value as ProductBusinessStatus)}
+                onChange={(e) => {
+                  const next = e.target.value as ProductBusinessStatus;
+                  setBusinessStatus(next);
+                  setStatus(next === 'DISCONTINUED' ? 'INACTIVE' : 'ACTIVE');
+                }}
                 options={[
-                  { value: 'ACTIVE', label: 'Đang kinh doanh (Nhập xuất bình thường)' },
+                  { value: 'ACTIVE', label: 'Đang kinh doanh' },
                   { value: 'SUSPENDED', label: 'Tạm ngưng nhập hàng' },
                   { value: 'DISCONTINUED', label: 'Ngừng kinh doanh' },
                 ]}
               />
 
-              {/* Trạng thái hoạt động hệ thống */}
-              <SelectField
-                label="Trạng Thái Hệ Thống"
-                value={status}
-                onChange={(e) => setStatus(e.target.value as ProductItem['status'])}
-                options={[
-                  { value: 'ACTIVE', label: 'Kích hoạt hoạt động' },
-                  { value: 'INACTIVE', label: 'Vô hiệu hóa (Tắt hiển thị)' },
-                ]}
-              />
+              {mrpValidationError && (
+                <div className="md:col-span-2 p-2.5 rounded-xl bg-rose-50 border border-rose-200 text-xs text-rose-700 font-semibold flex items-center gap-2">
+                  <AlertTriangle className="w-4 h-4 text-rose-600 shrink-0" />
+                  <span>{mrpValidationError}</span>
+                </div>
+              )}
             </div>
           </div>
         )}
 
         {/* Footer Actions */}
-        <div className="pt-4 border-t border-slate-200 flex items-center justify-between">
-          <Button
-            type="button"
-            variant="danger"
-            size="md"
-            icon={<Trash2 className="w-4 h-4" />}
-            onClick={() => {
-              if (window.confirm(`Bạn có chắc chắn muốn xóa mặt hàng ${product.sku} khỏi danh mục?`)) {
-                onDeleteProduct(product);
-                onClose();
+        <div className="pt-4 border-t border-slate-200 flex flex-wrap items-center justify-between gap-2">
+          <div className="flex items-center gap-2">
+            <Button
+              type="button"
+              variant="danger"
+              size="md"
+              disabled={isSubmitting || hasSystemStock}
+              icon={<Trash2 className="w-4 h-4" />}
+              title={
+                hasSystemStock
+                  ? `Đang còn ${totalSystemStockInfo.onHand} ${product.unit} tồn kho toàn hệ thống — không thể xóa`
+                  : 'Xóa mềm sản phẩm này (tồn = 0)'
               }
-            }}
-          >
-            Xóa Sản Phẩm
-          </Button>
+              onClick={() => {
+                setFormError('');
+                setConfirmDeleteOpen(true);
+              }}
+            >
+              Xóa Sản Phẩm
+            </Button>
+            {hasSystemStock && (
+              <span className="text-[11px] font-medium text-rose-700 bg-rose-50 px-2 py-1 rounded-lg border border-rose-200">
+                Còn {totalSystemStockInfo.onHand.toLocaleString()} {product.unit} tồn hệ thống (Khóa xóa)
+              </span>
+            )}
+          </div>
 
           <div className="flex items-center gap-3">
-            <Button variant="outline" size="md" onClick={onClose}>
+            <Button variant="outline" size="md" onClick={onClose} disabled={isSubmitting}>
               Hủy bỏ
             </Button>
-            <Button variant="primary" size="md" type="submit" icon={<Save className="w-4 h-4" />}>
-              Lưu Thay Đổi
+            <Button variant="primary" size="md" type="submit" isLoading={isSubmitting} icon={<Save className="w-4 h-4" />}>
+              {isSubmitting ? 'Đang Lưu...' : 'Lưu Thay Đổi'}
             </Button>
           </div>
         </div>

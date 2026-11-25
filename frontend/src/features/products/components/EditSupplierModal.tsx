@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Save, Building2, Phone, Mail, MapPin, Lock, Check, Layers } from 'lucide-react';
+import { Save, Building2, Phone, Mail, MapPin, Lock, Check, Layers, AlertTriangle, AlertCircle } from 'lucide-react';
 import { CategoryItem, SupplierItem } from '../types';
 import { Modal, Button, InputField, SelectField } from '../../../components/common';
 
@@ -7,7 +7,7 @@ interface EditSupplierModalProps {
   isOpen: boolean;
   onClose: () => void;
   supplier: SupplierItem | null;
-  onUpdateSupplier: (supplier: SupplierItem & { categoryIds?: number[] }) => void;
+  onUpdateSupplier: (supplier: SupplierItem & { categoryIds?: number[] }) => Promise<void> | void;
   availableCategories?: CategoryItem[];
 }
 
@@ -26,6 +26,8 @@ export const EditSupplierModal: React.FC<EditSupplierModalProps> = ({
   const [address, setAddress] = useState('');
   const [status, setStatus] = useState<'ACTIVE' | 'INACTIVE'>('ACTIVE');
   const [selectedCategoryIds, setSelectedCategoryIds] = useState<number[]>([]);
+  const [formError, setFormError] = useState('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   useEffect(() => {
     if (supplier) {
@@ -36,6 +38,8 @@ export const EditSupplierModal: React.FC<EditSupplierModalProps> = ({
       setEmail(supplier.email || '');
       setAddress(supplier.address || '');
       setStatus(supplier.status || 'ACTIVE');
+      setFormError('');
+      setIsSubmitting(false);
 
       // Initialize selected category IDs
       if (supplier.categories && supplier.categories.length > 0) {
@@ -49,24 +53,36 @@ export const EditSupplierModal: React.FC<EditSupplierModalProps> = ({
         setSelectedCategoryIds([]);
       }
     }
-  }, [supplier, availableCategories]);
+  }, [supplier, availableCategories, isOpen]);
 
   if (!isOpen || !supplier) return null;
 
-  const toggleCategory = (catId: number) => {
+  const initialCatIds = new Set((supplier.categories || []).map((c) => Number(c.id)));
+  const visibleCategories = availableCategories.filter(
+    (c) => c.status !== 'DELETED' || initialCatIds.has(Number(c.id))
+  );
+
+  const toggleCategory = (catId: number, isDisabled: boolean) => {
+    if (isDisabled) return;
     setSelectedCategoryIds((prev) =>
       prev.includes(catId) ? prev.filter((id) => id !== catId) : [...prev, catId]
     );
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!name.trim()) return;
+    if (!name.trim() || name.trim().length < 2) {
+      setFormError('Tên Doanh Nghiệp / Đối Tác không được để trống (tối thiểu 2 ký tự)!');
+      return;
+    }
+    if (email.trim() && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) {
+      setFormError('Hòm thư điện tử (Email) không đúng định dạng!');
+      return;
+    }
 
     const chosenCategories = availableCategories.filter((c) => selectedCategoryIds.includes(Number(c.id)));
-    const updatedCategoryNames = chosenCategories.length > 0
-      ? chosenCategories.map((c) => c.name)
-      : supplier.suppliedCategories;
+    const updatedCategoryNames =
+      chosenCategories.length > 0 ? chosenCategories.map((c) => c.name) : ['Chưa phân loại'];
 
     const updated: SupplierItem & { categoryIds?: number[] } = {
       ...supplier,
@@ -82,8 +98,16 @@ export const EditSupplierModal: React.FC<EditSupplierModalProps> = ({
       categories: chosenCategories.map((c) => ({ id: Number(c.id), code: c.code, name: c.name })),
     };
 
-    onUpdateSupplier(updated);
-    onClose();
+    setIsSubmitting(true);
+    setFormError('');
+    try {
+      await onUpdateSupplier(updated);
+      onClose();
+    } catch (err: any) {
+      setFormError(err?.response?.data?.message || err?.message || 'Không thể cập nhật thông tin nhà cung cấp.');
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
@@ -100,11 +124,31 @@ export const EditSupplierModal: React.FC<EditSupplierModalProps> = ({
       maxWidth="xl"
     >
       <form onSubmit={handleSubmit} className="space-y-4">
+        {formError && (
+          <div
+            role="alert"
+            className="flex items-start gap-2.5 p-3 rounded-xl bg-rose-50 border border-rose-200 text-xs text-rose-800 font-medium"
+          >
+            <AlertCircle className="w-4 h-4 text-rose-600 shrink-0 mt-0.5" />
+            <span>{formError}</span>
+          </div>
+        )}
+
+        {status === 'INACTIVE' && supplier.activeProductsCount > 0 && (
+          <div className="flex items-start gap-2.5 p-3 rounded-xl bg-amber-50 border border-amber-200 text-xs text-amber-900 font-medium">
+            <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
+            <span>
+              Đối tác đang gắn <strong>{supplier.activeProductsCount} sản phẩm</strong>. Khi tạm ngưng, hệ thống sẽ
+              khóa tạo sản phẩm mới và đơn nhập hàng từ đối tác này, vẫn giữ nguyên tồn kho cũ.
+            </span>
+          </div>
+        )}
+
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           {/* Supplier Code - Immutable field */}
           <div className="space-y-1">
             <label className="block text-xs font-semibold text-slate-700">
-              MÃ NCC (CODE) <span className="text-rose-500">*</span>
+              Mã Nhà Cung Cấp <span className="text-rose-500">*</span>
             </label>
             <div className="relative">
               <input
@@ -116,13 +160,13 @@ export const EditSupplierModal: React.FC<EditSupplierModalProps> = ({
               />
               <Lock className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
             </div>
-            <p className="text-[11px] text-amber-700 font-medium flex items-center gap-1 mt-1">
-              <span>🔒 Mã định danh nghiệp vụ cố định, không thể thay đổi sau khi tạo để bảo toàn lịch sử PO.</span>
+            <p className="text-[11px] text-slate-500 font-medium mt-1">
+              Mã cố định, không thể thay đổi sau khi tạo.
             </p>
           </div>
 
           <InputField
-            label="Tên Doanh Nghiệp / Đối Tác"
+            label="Tên Doanh Nghiệp"
             required
             value={name}
             onChange={(e) => setName(e.target.value)}
@@ -131,13 +175,13 @@ export const EditSupplierModal: React.FC<EditSupplierModalProps> = ({
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <InputField
-            label="Người Đại Diện Phụ Trách"
+            label="Người Phụ Trách"
             value={contactPerson}
             onChange={(e) => setContactPerson(e.target.value)}
             placeholder="VD: Nguyễn Văn A"
           />
           <InputField
-            label="Số Điện Thoại Hotline / Zalo"
+            label="Số Điện Thoại"
             value={phone}
             onChange={(e) => setPhone(e.target.value)}
             placeholder="0901234567"
@@ -147,7 +191,7 @@ export const EditSupplierModal: React.FC<EditSupplierModalProps> = ({
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <InputField
-            label="Hòm Thư Điện Tử (Email NCC)"
+            label="Email"
             type="email"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
@@ -167,19 +211,19 @@ export const EditSupplierModal: React.FC<EditSupplierModalProps> = ({
         </div>
 
         <InputField
-          label="Địa Chỉ Nhà Máy / Kho Xuất"
+          label="Địa Chỉ"
           value={address}
           onChange={(e) => setAddress(e.target.value)}
           placeholder="KCN Sóng Thần, Dĩ An, Bình Dương"
           iconRight={<MapPin className="w-4 h-4 text-slate-400" />}
         />
 
-        {/* Structured Multi-Category Linkage */}
+        {/* Multi-Category Linkage */}
         <div className="space-y-2 pt-1">
           <div className="flex items-center justify-between">
             <label className="text-xs font-semibold text-slate-700 flex items-center gap-1.5">
               <Layers className="w-4 h-4 text-indigo-600" />
-              <span>Ngành Hàng Cung Ứng (Danh Mục Liên Kết Hệ Thống)</span>
+              <span>Ngành Hàng Cung Cấp</span>
             </label>
             <span className="text-[11px] text-slate-500">
               Đã chọn: <strong className="text-indigo-600 font-bold">{selectedCategoryIds.length}</strong> ngành hàng
@@ -187,22 +231,27 @@ export const EditSupplierModal: React.FC<EditSupplierModalProps> = ({
           </div>
 
           <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 max-h-44 overflow-y-auto p-2.5 border border-slate-200 rounded-xl bg-slate-50/60">
-            {availableCategories.length === 0 ? (
+            {visibleCategories.length === 0 ? (
               <div className="col-span-3 text-xs text-slate-400 p-2 italic text-center">
-                Đang tải danh mục từ Master Data...
+                Đang tải danh mục...
               </div>
             ) : (
-              availableCategories.map((cat) => {
+              visibleCategories.map((cat) => {
                 const isSelected = selectedCategoryIds.includes(Number(cat.id));
+                const wasLinked = initialCatIds.has(Number(cat.id));
+                const isDisabled = cat.status !== 'ACTIVE' && !wasLinked;
                 return (
                   <button
                     key={cat.id}
                     type="button"
-                    onClick={() => toggleCategory(Number(cat.id))}
-                    className={`flex items-center gap-2 p-2 rounded-lg border text-left text-xs transition-all cursor-pointer ${
-                      isSelected
-                        ? 'bg-indigo-50 border-indigo-400 text-indigo-800 font-semibold shadow-2xs'
-                        : 'bg-white border-slate-200 text-slate-600 hover:border-slate-300'
+                    disabled={isDisabled}
+                    onClick={() => toggleCategory(Number(cat.id), isDisabled)}
+                    className={`flex items-center gap-2 p-2 rounded-lg border text-left text-xs transition-all ${
+                      isDisabled
+                        ? 'bg-slate-100 border-slate-200 text-slate-400 cursor-not-allowed opacity-70'
+                        : isSelected
+                        ? 'bg-indigo-50 border-indigo-400 text-indigo-800 font-semibold shadow-2xs cursor-pointer'
+                        : 'bg-white border-slate-200 text-slate-600 hover:border-slate-300 cursor-pointer'
                     }`}
                   >
                     <div
@@ -214,22 +263,20 @@ export const EditSupplierModal: React.FC<EditSupplierModalProps> = ({
                     </div>
                     <span className="truncate" title={cat.name}>
                       {cat.name}
+                      {cat.status !== 'ACTIVE' ? ' (Tạm ngưng)' : ''}
                     </span>
                   </button>
                 );
               })
             )}
           </div>
-          <p className="text-[11px] text-slate-500">
-            * Liên kết trực tiếp qua bảng quan hệ wms_supplier_category giúp lọc và phân loại sản phẩm chuẩn xác.
-          </p>
         </div>
 
         <div className="pt-4 border-t border-slate-100 flex items-center justify-end gap-3">
-          <Button variant="secondary" onClick={onClose}>
+          <Button type="button" variant="secondary" onClick={onClose} disabled={isSubmitting}>
             Hủy bỏ
           </Button>
-          <Button variant="primary" type="submit" leftIcon={<Save className="w-4 h-4" />}>
+          <Button type="submit" variant="primary" isLoading={isSubmitting} leftIcon={<Save className="w-4 h-4" />}>
             Lưu Thay Đổi
           </Button>
         </div>

@@ -189,7 +189,7 @@ export const ReportsPage: React.FC = () => {
       csvContent += `4,ADJ-2026-005,2026-10-27 16:45,Cân đối kiểm kê,SKU-COCA-330,Coca Cola Nguyên Bản 330ml,B-01-03-02,+5,Thùng,120,125,Bù chênh lệch sau đợt kiểm kê mù\n`;
     } else if (job.reportCode === 'RPT-EXPIRY') {
       csvContent += `STT,Mã SKU,Tên Hàng Hóa,Mã Lô Hàng,Ngày Sản Xuất,Hạn Sử Dụng,Số Ngày Còn Lại,Tồn Khả Dụng,Vị Trí Lưu Kho,Phân Loại Date\n`;
-      csvContent += `1,SKU-MILK-100,Sữa Tươi Tiệt Trùng 1L,BAT-2026-A1,2026-05-01,2026-11-15,19,450,A-01-02-01,CẬN DATE KHẨN CẤP (< 30 ngày)\n`;
+      csvContent += `1,SKU-MILK-100,Sữa Tươi Tiệt Trùng 1L,BAT-2026-A1,2026-05-01,2026-11-15,19,450,A-01-02-01,CẬN HẠN KHẨN CẤP (< 30 ngày)\n`;
       csvContent += `2,SKU-YOGURT-04,Sữa Chua Lên Men,BAT-2026-B2,2026-08-10,2026-12-05,39,1200,A-02-01-04,Cảnh báo (30-60 ngày)\n`;
       csvContent += `3,SKU-BEER-330,Bia Heineken Sleek 330ml,BAT-2026-C3,2026-07-20,2027-04-15,170,3500,B-02-01-03,An toàn (> 90 ngày)\n`;
     } else if (job.reportCode === 'RPT-SLOTTING') {

@@ -71,7 +71,7 @@ export const ReportsRealPage: React.FC = () => {
   const activeCount = jobs.filter((job) => job.status !== 'COMPLETED').length;
 
   return <div className="space-y-4 pb-8">
-    <ReportsHeader completedJobsCount={completedCount} activeJobsCount={activeCount} reportPeriod={selectedMonth} onOpenAssistant={() => navigate('/smartquery')} onRefresh={loadJobs} />
+    <ReportsHeader completedJobsCount={completedCount} activeJobsCount={activeCount} reportPeriod={selectedMonth} onRefresh={loadJobs} />
     <ReportTemplateSelector onTriggerExport={handleTriggerExport} isProcessing={isProcessing} />
     <div className="flex items-center justify-end gap-3 bg-white border border-slate-200 rounded-xl px-4 py-3">
       <label htmlFor="report-month" className="text-sm font-semibold text-slate-700">Tháng báo cáo</label>
@@ -79,7 +79,7 @@ export const ReportsRealPage: React.FC = () => {
     </div>
     <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 pt-1">
       <div className="lg:col-span-8"><ReportJobsFeed jobs={jobs} onDownload={handleDownload} onRemoveJob={() => {}} /></div>
-      <div className="lg:col-span-4"><ReportOverviewPanel /></div>
+      <div className="lg:col-span-4"><ReportOverviewPanel jobs={jobs} selectedMonth={selectedMonth} /></div>
     </div>
   </div>;
 };

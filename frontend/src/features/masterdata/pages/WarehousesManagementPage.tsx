@@ -785,12 +785,12 @@ export const WarehousesManagementPage: React.FC = () => {
                       <strong className="text-slate-900 font-mono text-xs">{(wh.areaM2 || 7500).toLocaleString()} m²</strong>
                     </div>
                     <div className="border-x border-slate-200">
-                      <span className="text-slate-400 text-[10px] block">Cửa Dock</span>
-                      <strong className="text-blue-600 font-mono text-xs">{wh.dockCount || 6} cửa xe</strong>
+                      <span className="text-slate-400 text-[10px] block">Cửa Xe</span>
+                      <strong className="text-blue-600 font-mono text-xs">{wh.dockCount || 6} cửa</strong>
                     </div>
                     <div>
                       <span className="text-slate-400 text-[10px] block">Phân Khu</span>
-                      <strong className="text-indigo-600 font-mono text-xs">{wh.totalZones || 3} zones</strong>
+                      <strong className="text-indigo-600 font-mono text-xs">{wh.totalZones || 3} khu</strong>
                     </div>
                   </div>
 
@@ -889,7 +889,7 @@ export const WarehousesManagementPage: React.FC = () => {
                   <th className="py-3 px-4">Mã & Tên Chi Nhánh</th>
                   <th className="py-3 px-4">Vùng Miền</th>
                   <th className="py-3 px-4">Người Phụ Trách & SĐT</th>
-                  <th className="py-3 px-4">Mặt Bằng & Cửa Dock</th>
+                  <th className="py-3 px-4">Mặt Bằng & Cửa Giao Nhận</th>
                   <th className="py-3 px-4">Sức Chứa & Lấp Đầy</th>
                   <th className="py-3 px-4 text-center">Trạng Thái</th>
                   <th className="py-3 px-4 text-right">Thao Tác</th>
@@ -966,7 +966,7 @@ export const WarehousesManagementPage: React.FC = () => {
                           {(wh.areaM2 || 7500).toLocaleString()} m²
                         </div>
                         <div className="text-[11px] text-blue-600 font-medium">
-                          {wh.dockCount || 6} cửa Dock • {wh.totalZones || 3} zones
+                          {wh.dockCount || 6} cửa xe • {wh.totalZones || 3} phân khu
                         </div>
                       </td>
 

@@ -215,36 +215,36 @@ export const UsersManagementPage: React.FC = () => {
         isAdmin={isAdmin}
       />
 
-      {/* Navigation Tab Bar: Tài Khoản & Máy Quét PDA Tin Cậy */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between border-b border-slate-200 bg-white px-4 rounded-2xl shadow-xs gap-3 py-1">
-        <div className="flex gap-2">
-          <button
-            onClick={() => setActiveTab('USERS')}
-            className={`py-3 px-3.5 text-xs sm:text-sm font-bold border-b-2 transition-all flex items-center gap-2 cursor-pointer ${
-              activeTab === 'USERS'
-                ? 'border-blue-600 text-blue-600'
-                : 'border-transparent text-slate-500 hover:text-slate-800'
-            }`}
-          >
-            <Users className="w-4 h-4" />
-            <span>Tài Khoản Nhân Sự ({users.length})</span>
-          </button>
-          <button
-            data-testid="tab-pda-devices"
-            onClick={() => setActiveTab('DEVICES')}
-            className={`py-3 px-3.5 text-xs sm:text-sm font-bold border-b-2 transition-all flex items-center gap-2 cursor-pointer ${
-              activeTab === 'DEVICES'
-                ? 'border-blue-600 text-blue-600'
-                : 'border-transparent text-slate-500 hover:text-slate-800'
-            }`}
-          >
-            <Smartphone className="w-4 h-4" />
-            <span>Máy Quét PDA & Thiết Bị Tin Cậy</span>
-            <span className="w-2 h-2 rounded-full bg-amber-500 animate-pulse"></span>
-          </button>
-        </div>
+      {/* Navigation Tab Bar: Chỉ hiển thị tab Quản trị thiết bị & Phân quyền cho Admin */}
+      {isAdmin && (
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between border-b border-slate-200 bg-white px-4 rounded-2xl shadow-xs gap-3 py-1">
+          <div className="flex gap-2">
+            <button
+              onClick={() => setActiveTab('USERS')}
+              className={`py-3 px-3.5 text-xs sm:text-sm font-bold border-b-2 transition-all flex items-center gap-2 cursor-pointer ${
+                activeTab === 'USERS'
+                  ? 'border-blue-600 text-blue-600'
+                  : 'border-transparent text-slate-500 hover:text-slate-800'
+              }`}
+            >
+              <Users className="w-4 h-4" />
+              <span>Tài Khoản Nhân Sự ({users.length})</span>
+            </button>
+            <button
+              data-testid="tab-pda-devices"
+              onClick={() => setActiveTab('DEVICES')}
+              className={`py-3 px-3.5 text-xs sm:text-sm font-bold border-b-2 transition-all flex items-center gap-2 cursor-pointer ${
+                activeTab === 'DEVICES'
+                  ? 'border-blue-600 text-blue-600'
+                  : 'border-transparent text-slate-500 hover:text-slate-800'
+              }`}
+            >
+              <Smartphone className="w-4 h-4" />
+              <span>Máy Quét PDA & Thiết Bị Tin Cậy</span>
+              <span className="w-2 h-2 rounded-full bg-amber-500 animate-pulse"></span>
+            </button>
+          </div>
 
-        {isAdmin && (
           <button
             onClick={() => setIsRbacMatrixOpen(true)}
             className="flex items-center gap-1.5 px-3 py-1.5 self-start sm:self-auto bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-semibold transition-colors cursor-pointer"
@@ -252,11 +252,11 @@ export const UsersManagementPage: React.FC = () => {
             <ShieldCheck className="w-4 h-4 text-blue-600" />
             <span>Ma Trận Phân Quyền Hệ Thống</span>
           </button>
-        )}
-      </div>
+        </div>
+      )}
 
       {/* Nội dung Tab */}
-      {activeTab === 'DEVICES' ? (
+      {isAdmin && activeTab === 'DEVICES' ? (
         <PdaDeviceManagerTab />
       ) : loading ? (
         <div className="bg-white rounded-2xl border border-slate-200 p-12 flex flex-col items-center justify-center gap-3 shadow-xs">
@@ -327,6 +327,7 @@ export const UsersManagementPage: React.FC = () => {
         onClose={() => setAuditUser(null)}
         user={auditUser}
         onForceLogout={handleForceLogoutFromAudit}
+        isAdmin={isAdmin}
       />
 
       <RbacMatrixModal

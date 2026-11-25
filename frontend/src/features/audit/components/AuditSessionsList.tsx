@@ -272,10 +272,10 @@ export const AuditSessionsList: React.FC<AuditSessionsListProps> = ({
                           <button
                             onClick={() => onOpenCountingModal(session)}
                             className="inline-flex items-center gap-1.5 px-2.5 py-1.5 bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-200 rounded-lg text-xs font-bold transition-all cursor-pointer"
-                            title="Mô phỏng nhân viên quét mã vạch thực địa bằng máy PDA"
+                            title="Nhập số lượng kiểm đếm thực tế tại kho"
                           >
                             <ScanLine className="w-3.5 h-3.5 text-blue-600" />
-                            <span>Quét Đếm (PDA)</span>
+                            <span>Kiểm Đếm</span>
                           </button>
                         )}
 
@@ -283,7 +283,7 @@ export const AuditSessionsList: React.FC<AuditSessionsListProps> = ({
                           <button
                             onClick={() => onSelectSession(session)}
                             className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all shadow-xs bg-emerald-600 hover:bg-emerald-700 text-white cursor-pointer"
-                            title="Kiểm tra sai lệch và phê duyệt ghi sổ cái"
+                            title="Kiểm tra sai lệch và phê duyệt điều chỉnh tồn kho"
                           >
                             <CheckCircle2 className="w-3.5 h-3.5" />
                             <span>Duyệt Cân Đối</span>
@@ -292,7 +292,7 @@ export const AuditSessionsList: React.FC<AuditSessionsListProps> = ({
                           <button
                             onClick={() => onSelectSession(session)}
                             className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all border border-slate-300 bg-white hover:bg-slate-100 text-slate-700 cursor-pointer shadow-2xs"
-                            title="Xem tiến độ kiểm đếm và sai lệch thời gian thực"
+                            title="Xem tiến độ kiểm đếm và sai lệch hiện tại"
                           >
                             <Eye className="w-3.5 h-3.5 text-slate-500" />
                             <span>Xem Tiến Độ</span>
@@ -301,10 +301,10 @@ export const AuditSessionsList: React.FC<AuditSessionsListProps> = ({
                           <button
                             onClick={() => onSelectSession(session)}
                             className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all border border-slate-300 bg-white hover:bg-slate-100 text-slate-700 cursor-pointer shadow-2xs"
-                            title="Xem biên bản đối soát và bút toán sổ cái đã ghi nhận"
+                            title="Xem biên bản kiểm kê và điều chỉnh đã duyệt"
                           >
                             <FileText className="w-3.5 h-3.5 text-slate-500" />
-                            <span>Xem Sổ Cái</span>
+                            <span>Xem Biên Bản</span>
                           </button>
                         )}
                       </div>

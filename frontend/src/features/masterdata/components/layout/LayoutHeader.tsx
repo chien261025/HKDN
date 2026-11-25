@@ -56,7 +56,7 @@ export const LayoutHeader: React.FC<LayoutHeaderProps> = ({
               </span>
             </div>
             <p className="text-xs text-slate-500 font-normal mt-0.5">
-              Phân cấp lưu trữ: Khu (Zone) • Dãy (Aisle) • Kệ (Rack) • Tầng (Shelf) • Ô Chứa (Bin)
+              Quản lý sơ đồ khu vực, dãy kệ và sức chứa từng ô lưu hàng
             </p>
           </div>
         </div>
@@ -138,7 +138,7 @@ export const LayoutHeader: React.FC<LayoutHeaderProps> = ({
           }`}
         >
           <span className="w-2 h-2 rounded-full bg-emerald-400"></span>
-          <span>Ô Còn Trống (Nhận hàng)</span>
+          <span>Ô Kệ Trống</span>
           <span className="text-[10px] px-1.5 py-0.2 rounded-full bg-white/30 font-mono">
             {counts.empty}
           </span>
@@ -170,7 +170,7 @@ export const LayoutHeader: React.FC<LayoutHeaderProps> = ({
           }`}
         >
           <span className="w-2 h-2 rounded-full bg-rose-400 animate-pulse"></span>
-          <span>Cận Hạn Dùng FEFO</span>
+          <span>Cận Hạn (Xuất Trước)</span>
           <span className="text-[10px] px-1.5 py-0.2 rounded-full bg-white/30 font-mono">
             {counts.expiring}
           </span>

@@ -19,24 +19,24 @@ export const ProfileInfoTab: React.FC<ProfileInfoTabProps> = ({ session }) => {
     switch (role) {
       case 'ROLE_ADMIN':
         return (
-          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-extrabold bg-purple-50 text-purple-700 border border-purple-200 font-mono">
+          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-extrabold bg-purple-50 text-purple-700 border border-purple-200">
             <Shield className="w-3.5 h-3.5 text-purple-600" />
-            ADMIN (Toàn Quyền Quản Trị)
+            Quản Trị Hệ Thống
           </span>
         );
       case 'ROLE_WAREHOUSE_MANAGER':
       case 'ROLE_MANAGER':
         return (
-          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-extrabold bg-blue-50 text-blue-700 border border-blue-200 font-mono">
+          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-extrabold bg-blue-50 text-blue-700 border border-blue-200">
             <User className="w-3.5 h-3.5 text-blue-600" />
-            QUẢN LÝ KHO (Điều Phối Vận Hành)
+            Quản Lý Kho
           </span>
         );
       case 'ROLE_OPERATOR':
         return (
-          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-extrabold bg-cyan-50 text-cyan-800 border border-cyan-200 font-mono">
+          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-extrabold bg-cyan-50 text-cyan-800 border border-cyan-200">
             <Smartphone className="w-3.5 h-3.5 text-cyan-600" />
-            THỦ KHO (Mobile Barcode PDA)
+            Thủ Kho Vận Hành
           </span>
         );
       default:
@@ -56,10 +56,10 @@ export const ProfileInfoTab: React.FC<ProfileInfoTabProps> = ({ session }) => {
           {getRoleBadge(session.role)}
         </div>
         <div className="flex items-center justify-between border-t border-slate-200 pt-2.5">
-          <span className="text-slate-500 font-medium">Kho Gán Phụ Trách:</span>
+          <span className="text-slate-500 font-medium">Kho Phụ Trách:</span>
           <span className="font-semibold text-slate-800 flex items-center gap-1.5">
             <MapPin className="w-4 h-4 text-indigo-600" />
-            Kho Tổng Tân Bình (ZONE A & B)
+            {session.warehouse || 'Kho Tổng Tân Bình'}
           </span>
         </div>
         <div className="flex items-center justify-between border-t border-slate-200 pt-2.5">
@@ -74,24 +74,24 @@ export const ProfileInfoTab: React.FC<ProfileInfoTabProps> = ({ session }) => {
           </span>
         </div>
         <div className="flex items-center justify-between border-t border-slate-200 pt-2.5">
-          <span className="text-slate-500 font-medium">Hạn Chót Phiên JWT:</span>
+          <span className="text-slate-500 font-medium">Phiên Có Hiệu Lực Đến:</span>
           <span className="font-mono text-slate-700 text-xs sm:text-sm">
             {session.expiresAt
-              ? `${new Date(session.expiresAt).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' })} ngày ${new Date(session.expiresAt).toLocaleDateString('vi-VN')} (24h)`
-              : '24 Giờ (Auto-refresh)'}
+              ? `${new Date(session.expiresAt).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' })} ngày ${new Date(session.expiresAt).toLocaleDateString('vi-VN')}`
+              : '24 giờ'}
           </span>
         </div>
       </div>
 
-      {/* Danh sách quyền hạn RBAC */}
+      {/* Danh sách quyền hạn */}
       <div className="p-4 rounded-xl bg-white border border-slate-200 space-y-2">
         <h4 className="text-xs font-bold text-slate-700 uppercase tracking-wider">
-          Đặc Quyền Tài Khoản (Permissions)
+          Quyền Hạn Tài Khoản
         </h4>
         <div className="grid grid-cols-2 gap-2 text-xs">
           <div className="flex items-center gap-1.5 text-emerald-700 font-medium">
             <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
-            <span>Đọc dữ liệu Master Data</span>
+            <span>Xem danh mục hàng hóa &amp; kho</span>
           </div>
           <div className="flex items-center gap-1.5 text-emerald-700 font-medium">
             <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 shrink-0" />

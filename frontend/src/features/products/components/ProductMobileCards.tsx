@@ -165,7 +165,7 @@ export const ProductMobileCards: React.FC<ProductMobileCardsProps> = ({
                   ? 'Tạm ngưng nhập'
                   : 'Ngừng KD'}
               </span>
-              {getCategoryBadge(p.category)}
+              {getCategoryBadge(p.category, p.categoryName)}
               {getZoneBadge(p.storageZone)}
               {p.trackingMethod === 'SERIAL_IMEI' ? (
                 <span className="text-[10px] px-1.5 py-0.5 rounded font-bold bg-cyan-50 text-cyan-700 border border-cyan-200">

@@ -67,20 +67,9 @@ export const UsersHeader: React.FC<UsersHeaderProps> = ({
               <span>Thêm Tài Khoản Mới</span>
             </button>
           ) : (
-            <div className="flex items-center gap-2.5">
-              <div className="hidden sm:flex items-center gap-2 px-3 py-2 bg-slate-100 border border-slate-200/90 rounded-xl text-xs font-semibold text-slate-700 shadow-2xs">
-                <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
-                <span>Chế độ Tra Cứu & Điều Phối</span>
-              </div>
-              <button
-                type="button"
-                onClick={onOpenCreateModal}
-                className="flex items-center gap-2 px-3.5 py-2.5 bg-blue-600 hover:bg-blue-700 active:scale-[0.99] text-white rounded-xl text-xs sm:text-sm font-bold shadow-sm shadow-blue-200 transition-all shrink-0 cursor-pointer"
-                title="Gửi phiếu đề xuất tiếp nhận nhân sự mới cho kho tới cấp quản trị duyệt"
-              >
-                <Plus className="w-4 h-4" />
-                <span>Đề Xuất Nhân Sự Mới</span>
-              </button>
+            <div className="flex items-center gap-2 px-3.5 py-2 bg-slate-100 border border-slate-200/90 rounded-xl text-xs font-semibold text-slate-700 shadow-2xs">
+              <span className="w-2 h-2 rounded-full bg-emerald-500"></span>
+              <span>Xem danh sách nhân sự kho</span>
             </div>
           )}
         </div>
@@ -92,11 +81,10 @@ export const UsersHeader: React.FC<UsersHeaderProps> = ({
         <button
           type="button"
           onClick={() => handleCardClick('ALL')}
-          className={`text-left p-4 sm:p-5 rounded-2xl border transition-all duration-200 cursor-pointer relative overflow-hidden group active:scale-[0.99] ${
-            selectedFilter === 'ALL'
-              ? 'bg-blue-50/60 border-blue-600 ring-2 ring-blue-600/30 shadow-md'
-              : 'bg-white border-slate-200 hover:border-blue-300 hover:shadow-sm'
-          }`}
+          className={`text-left p-4 sm:p-5 rounded-2xl border transition-all duration-200 cursor-pointer relative overflow-hidden group active:scale-[0.99] ${selectedFilter === 'ALL'
+            ? 'bg-blue-50/60 border-blue-600 ring-2 ring-blue-600/30 shadow-md'
+            : 'bg-white border-slate-200 hover:border-blue-300 hover:shadow-sm'
+            }`}
         >
           <div className="flex items-start justify-between">
             <div>
@@ -113,11 +101,10 @@ export const UsersHeader: React.FC<UsersHeaderProps> = ({
               </div>
             </div>
             <div
-              className={`p-2.5 rounded-xl border transition-colors ${
-                selectedFilter === 'ALL'
-                  ? 'bg-blue-600 text-white border-blue-600'
-                  : 'bg-slate-100 text-slate-700 border-slate-200 group-hover:bg-blue-50 group-hover:text-blue-600'
-              }`}
+              className={`p-2.5 rounded-xl border transition-colors ${selectedFilter === 'ALL'
+                ? 'bg-blue-600 text-white border-blue-600'
+                : 'bg-slate-100 text-slate-700 border-slate-200 group-hover:bg-blue-50 group-hover:text-blue-600'
+                }`}
             >
               <Users className="w-4.5 h-4.5" />
             </div>
@@ -125,9 +112,8 @@ export const UsersHeader: React.FC<UsersHeaderProps> = ({
           <div className="mt-2.5 flex items-center justify-between text-xs">
             <span className="text-slate-500 font-medium">Toàn bộ nhân sự kho vận</span>
             <span
-              className={`text-[11px] font-semibold ${
-                selectedFilter === 'ALL' ? 'text-blue-700' : 'text-slate-400 group-hover:text-blue-600'
-              }`}
+              className={`text-[11px] font-semibold ${selectedFilter === 'ALL' ? 'text-blue-700' : 'text-slate-400 group-hover:text-blue-600'
+                }`}
             >
               {selectedFilter === 'ALL' ? 'Xem tất cả' : 'Bấm để lọc'}
             </span>
@@ -138,11 +124,10 @@ export const UsersHeader: React.FC<UsersHeaderProps> = ({
         <button
           type="button"
           onClick={() => handleCardClick('MANAGEMENT')}
-          className={`text-left p-4 sm:p-5 rounded-2xl border transition-all duration-200 cursor-pointer relative overflow-hidden group active:scale-[0.99] ${
-            selectedFilter === 'MANAGEMENT'
-              ? 'bg-purple-50/60 border-purple-600 ring-2 ring-purple-600/30 shadow-md'
-              : 'bg-white border-slate-200 hover:border-purple-300 hover:shadow-sm'
-          }`}
+          className={`text-left p-4 sm:p-5 rounded-2xl border transition-all duration-200 cursor-pointer relative overflow-hidden group active:scale-[0.99] ${selectedFilter === 'MANAGEMENT'
+            ? 'bg-purple-50/60 border-purple-600 ring-2 ring-purple-600/30 shadow-md'
+            : 'bg-white border-slate-200 hover:border-purple-300 hover:shadow-sm'
+            }`}
         >
           <div className="flex items-start justify-between">
             <div>
@@ -161,11 +146,10 @@ export const UsersHeader: React.FC<UsersHeaderProps> = ({
               </div>
             </div>
             <div
-              className={`p-2.5 rounded-xl border transition-colors ${
-                selectedFilter === 'MANAGEMENT'
-                  ? 'bg-purple-600 text-white border-purple-600'
-                  : 'bg-purple-50 text-purple-600 border-purple-200 group-hover:bg-purple-100'
-              }`}
+              className={`p-2.5 rounded-xl border transition-colors ${selectedFilter === 'MANAGEMENT'
+                ? 'bg-purple-600 text-white border-purple-600'
+                : 'bg-purple-50 text-purple-600 border-purple-200 group-hover:bg-purple-100'
+                }`}
             >
               <Shield className="w-4.5 h-4.5" />
             </div>
@@ -177,9 +161,8 @@ export const UsersHeader: React.FC<UsersHeaderProps> = ({
                 : `${managerCount} Trưởng kho điều hành chi nhánh`}
             </span>
             <span
-              className={`text-[11px] font-semibold ${
-                selectedFilter === 'MANAGEMENT' ? 'text-purple-700' : 'text-slate-400 group-hover:text-purple-600'
-              }`}
+              className={`text-[11px] font-semibold ${selectedFilter === 'MANAGEMENT' ? 'text-purple-700' : 'text-slate-400 group-hover:text-purple-600'
+                }`}
             >
               {selectedFilter === 'MANAGEMENT' ? 'Đang chọn' : 'Bấm để lọc'}
             </span>
@@ -190,11 +173,10 @@ export const UsersHeader: React.FC<UsersHeaderProps> = ({
         <button
           type="button"
           onClick={() => handleCardClick('OPERATOR')}
-          className={`text-left p-4 sm:p-5 rounded-2xl border transition-all duration-200 cursor-pointer relative overflow-hidden group active:scale-[0.99] ${
-            selectedFilter === 'OPERATOR'
-              ? 'bg-blue-50/60 border-blue-600 ring-2 ring-blue-600/30 shadow-md'
-              : 'bg-white border-slate-200 hover:border-blue-300 hover:shadow-sm'
-          }`}
+          className={`text-left p-4 sm:p-5 rounded-2xl border transition-all duration-200 cursor-pointer relative overflow-hidden group active:scale-[0.99] ${selectedFilter === 'OPERATOR'
+            ? 'bg-blue-50/60 border-blue-600 ring-2 ring-blue-600/30 shadow-md'
+            : 'bg-white border-slate-200 hover:border-blue-300 hover:shadow-sm'
+            }`}
         >
           <div className="flex items-start justify-between">
             <div>
@@ -213,11 +195,10 @@ export const UsersHeader: React.FC<UsersHeaderProps> = ({
               </div>
             </div>
             <div
-              className={`p-2.5 rounded-xl border transition-colors ${
-                selectedFilter === 'OPERATOR'
-                  ? 'bg-blue-600 text-white border-blue-600'
-                  : 'bg-blue-50 text-blue-600 border-blue-200 group-hover:bg-blue-100'
-              }`}
+              className={`p-2.5 rounded-xl border transition-colors ${selectedFilter === 'OPERATOR'
+                ? 'bg-blue-600 text-white border-blue-600'
+                : 'bg-blue-50 text-blue-600 border-blue-200 group-hover:bg-blue-100'
+                }`}
             >
               <Smartphone className="w-4.5 h-4.5" />
             </div>
@@ -225,9 +206,8 @@ export const UsersHeader: React.FC<UsersHeaderProps> = ({
           <div className="mt-2.5 flex items-center justify-between text-xs">
             <span className="text-blue-700 font-medium">Thủ kho thực địa tại lối đi</span>
             <span
-              className={`text-[11px] font-semibold ${
-                selectedFilter === 'OPERATOR' ? 'text-blue-700' : 'text-slate-400 group-hover:text-blue-600'
-              }`}
+              className={`text-[11px] font-semibold ${selectedFilter === 'OPERATOR' ? 'text-blue-700' : 'text-slate-400 group-hover:text-blue-600'
+                }`}
             >
               {selectedFilter === 'OPERATOR' ? 'Đang chọn' : 'Bấm để lọc'}
             </span>
@@ -238,11 +218,10 @@ export const UsersHeader: React.FC<UsersHeaderProps> = ({
         <button
           type="button"
           onClick={() => handleCardClick('LOCKED')}
-          className={`text-left p-4 sm:p-5 rounded-2xl border transition-all duration-200 cursor-pointer relative overflow-hidden group active:scale-[0.99] ${
-            selectedFilter === 'LOCKED'
-              ? 'bg-rose-50/60 border-rose-600 ring-2 ring-rose-600/30 shadow-md'
-              : 'bg-white border-slate-200 hover:border-rose-300 hover:shadow-sm'
-          }`}
+          className={`text-left p-4 sm:p-5 rounded-2xl border transition-all duration-200 cursor-pointer relative overflow-hidden group active:scale-[0.99] ${selectedFilter === 'LOCKED'
+            ? 'bg-rose-50/60 border-rose-600 ring-2 ring-rose-600/30 shadow-md'
+            : 'bg-white border-slate-200 hover:border-rose-300 hover:shadow-sm'
+            }`}
         >
           <div className="flex items-start justify-between">
             <div>
@@ -261,11 +240,10 @@ export const UsersHeader: React.FC<UsersHeaderProps> = ({
               </div>
             </div>
             <div
-              className={`p-2.5 rounded-xl border transition-colors ${
-                selectedFilter === 'LOCKED'
-                  ? 'bg-rose-600 text-white border-rose-600'
-                  : 'bg-rose-50 text-rose-600 border-rose-200 group-hover:bg-rose-100'
-              }`}
+              className={`p-2.5 rounded-xl border transition-colors ${selectedFilter === 'LOCKED'
+                ? 'bg-rose-600 text-white border-rose-600'
+                : 'bg-rose-50 text-rose-600 border-rose-200 group-hover:bg-rose-100'
+                }`}
             >
               <Lock className="w-4.5 h-4.5" />
             </div>
@@ -275,9 +253,8 @@ export const UsersHeader: React.FC<UsersHeaderProps> = ({
               {lockedCount > 0 ? `${lockedCount} tài khoản bị vô hiệu hóa` : 'Tất cả tài khoản đang hoạt động'}
             </span>
             <span
-              className={`text-[11px] font-semibold ${
-                selectedFilter === 'LOCKED' ? 'text-rose-700' : 'text-slate-400 group-hover:text-rose-600'
-              }`}
+              className={`text-[11px] font-semibold ${selectedFilter === 'LOCKED' ? 'text-rose-700' : 'text-slate-400 group-hover:text-rose-600'
+                }`}
             >
               {selectedFilter === 'LOCKED' ? 'Đang chọn' : 'Bấm để lọc'}
             </span>

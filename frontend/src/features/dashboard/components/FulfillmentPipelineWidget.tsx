@@ -49,9 +49,9 @@ const stages: Stage[] = [
     badgeColor: 'bg-purple-100 text-purple-800',
   },
   {
-    title: 'Sẵn Sàng Xuất (Staged)',
+    title: 'Sẵn Sàng Xuất Kho',
     count: 25,
-    sub: 'Tại cửa Dock 01 & 02',
+    sub: 'Tại cửa xuất 01 & 02',
     icon: <PackageCheck className="w-4 h-4 text-amber-600" />,
     color: 'text-amber-700',
     bg: 'bg-amber-50',
@@ -125,12 +125,12 @@ export const FulfillmentPipelineWidget: React.FC = () => {
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-3 pt-2 text-xs">
-        {/* Inbound Docks
+        {/* Cửa tiếp nhận nhập hàng
         <div className="p-3 rounded-xl bg-slate-50 border border-slate-200/80 flex items-center justify-between">
           <div className="flex items-center gap-2.5">
             <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 shadow-xs"></span>
             <div>
-              <p className="font-bold text-slate-800">Cổng Tiếp Nhận (Inbound Dock 01)</p>
+              <p className="font-bold text-slate-800">Cửa Tiếp Nhận (Cửa 01)</p>
               <p className="text-[11px] text-slate-500">Xe container #51C-982.11 • Đang bốc dỡ 40 pallet sữa Vinamilk</p>
             </div>
           </div>

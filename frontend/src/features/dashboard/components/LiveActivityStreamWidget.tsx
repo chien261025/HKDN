@@ -37,7 +37,7 @@ const mockActivities: ActivityItem[] = [
     id: 'ACT-02',
     type: 'INBOUND',
     title: 'Tiếp nhận hàng nhập #IN-2026-042',
-    description: 'Smart Put-away gợi ý ô kệ thành công 60 thùng OMO Matic',
+    description: 'Gợi ý vị trí cất kệ thành công 60 thùng OMO Matic',
     sku: 'SKU-OMO-MATIC',
     binLocation: 'ZA-A01-R02',
     timestamp: '5 phút trước',

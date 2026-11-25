@@ -14,9 +14,15 @@ export interface BinLocation {
   maxWeight: number;
   currentWeight: number;
   status: 'EMPTY' | 'OCCUPIED' | 'RESERVED' | 'EXPIRING';
+  productId?: number;
+  batchId?: number;
   productName?: string;
   sku?: string;
   qty?: number;
+  onHandQty?: number;
+  reservedQty?: number;
+  availableQty?: number;
+  isExpired?: boolean;
   batch?: string;
   expiry?: string;
   temperature?: string;

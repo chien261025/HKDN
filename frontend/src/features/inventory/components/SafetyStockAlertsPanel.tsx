@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import {
   ShieldAlert,
   AlertOctagon,
@@ -61,7 +62,21 @@ export const SafetyStockAlertsPanel: React.FC<SafetyStockAlertsPanelProps> = ({
   onTransferItem,
   onViewLedgerItem,
 }) => {
-  const [activeTab, setActiveTab] = useState<AlertTab>('safety');
+  const [searchParams] = useSearchParams();
+  const subtabParam = searchParams.get('subtab') as AlertTab | null;
+  const [activeTab, setActiveTab] = useState<AlertTab>(() => {
+    if (subtabParam === 'expiring' || subtabParam === 'slow_moving' || subtabParam === 'safety') {
+      return subtabParam;
+    }
+    return 'safety';
+  });
+
+  useEffect(() => {
+    const sub = searchParams.get('subtab') as AlertTab | null;
+    if (sub === 'expiring' || sub === 'slow_moving' || sub === 'safety') {
+      setActiveTab(sub);
+    }
+  }, [searchParams]);
   const [filterLevel, setFilterLevel] = useState<string>('ALL');
   const [currentPage, setCurrentPage] = useState(1);
   const [searchQuery, setSearchQuery] = useState('');
@@ -147,7 +162,7 @@ export const SafetyStockAlertsPanel: React.FC<SafetyStockAlertsPanelProps> = ({
     }
     setQuarantiningBatchId(batchId);
     try {
-      await inventoryService.quarantineBatch(batchId, 'Cách ly theo cảnh báo cận date/hết hạn');
+      await inventoryService.quarantineBatch(batchId, 'Cách ly theo cảnh báo cận hạn/hết hạn');
       setActionMessage({ type: 'success', text: `Đã đưa lô ${batchNumber} vào khu vực cách ly kiểm định thành công!` });
       onBatchQuarantined?.();
     } catch (err: any) {
@@ -240,7 +255,7 @@ export const SafetyStockAlertsPanel: React.FC<SafetyStockAlertsPanelProps> = ({
           </div>
         </div>
 
-        {/* Card 2: Hàng Hết Hạn / Cận Date */}
+        {/* Card 2: Hàng Hết Hạn / Cận Hạn */}
         <div
           role="button"
           tabIndex={0}
@@ -377,7 +392,7 @@ export const SafetyStockAlertsPanel: React.FC<SafetyStockAlertsPanelProps> = ({
                   filterLevel === 'WARNING' ? 'bg-amber-600 text-white' : 'text-slate-600 hover:text-amber-700'
                 }`}
               >
-                Chạm ROP ({safetyWarning})
+                Chạm ngưỡng đặt hàng ({safetyWarning})
               </button>
             </div>
           </div>
@@ -390,8 +405,8 @@ export const SafetyStockAlertsPanel: React.FC<SafetyStockAlertsPanelProps> = ({
                   <th className="py-3 px-4 text-center whitespace-nowrap">Tồn Thực Tế</th>
                   <th className="py-3 px-4 text-center whitespace-nowrap">Đang Giữ</th>
                   <th className="py-3 px-4 text-center whitespace-nowrap">Tồn Khả Dụng</th>
-                  <th className="py-3 px-4 text-center whitespace-nowrap">Tồn An Toàn (Min)</th>
-                  <th className="py-3 px-4 text-center whitespace-nowrap">Điểm ROP</th>
+                  <th className="py-3 px-4 text-center whitespace-nowrap">Tồn Tối Thiểu</th>
+                  <th className="py-3 px-4 text-center whitespace-nowrap">Ngưỡng Đặt Hàng</th>
                   <th className="py-3 px-4 text-center whitespace-nowrap">Đề Xuất Nhập</th>
                   <th className="py-3 px-4 whitespace-nowrap">Mức Cảnh Báo</th>
                 </tr>
@@ -454,7 +469,7 @@ export const SafetyStockAlertsPanel: React.FC<SafetyStockAlertsPanelProps> = ({
                             </span>
                           ) : (
                             <span className="inline-flex items-center gap-1 text-2xs font-bold px-2.5 py-1 rounded-full bg-amber-50 text-amber-700 border border-amber-200">
-                              <Clock className="w-3 h-3 text-amber-600" /> Chạm Ngưỡng ROP
+                              <Clock className="w-3 h-3 text-amber-600" /> Chạm Ngưỡng Đặt Hàng
                             </span>
                           )}
                         </td>
@@ -468,7 +483,7 @@ export const SafetyStockAlertsPanel: React.FC<SafetyStockAlertsPanelProps> = ({
         </div>
       )}
 
-      {/* TAB 2: CẢNH BÁO CẬN DATE & HẾT HẠN */}
+      {/* TAB 2: CẢNH BÁO CẬN HẠN & HẾT HẠN */}
       {activeTab === 'expiring' && (
         <div className="bg-white rounded-2xl border border-slate-200 shadow-xs overflow-hidden">
           <div className="p-4 border-b border-slate-200 bg-slate-50/80 flex items-center justify-between gap-3">
@@ -633,7 +648,7 @@ export const SafetyStockAlertsPanel: React.FC<SafetyStockAlertsPanelProps> = ({
             <div>
               <h3 className="text-sm font-bold text-slate-900 tracking-tight flex items-center gap-2">
                 <Archive className="w-4 h-4 text-amber-600" />
-                <span>Phân Tích Tuổi Hàng Tồn Kho (Inventory Aging Analysis)</span>
+                <span>Phân Tích Hàng Tồn Lâu</span>
               </h3>
             </div>
 

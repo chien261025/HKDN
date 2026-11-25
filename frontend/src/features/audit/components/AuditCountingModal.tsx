@@ -82,13 +82,13 @@ export const AuditCountingModal: React.FC<AuditCountingModalProps> = ({
             </div>
             <div>
               <div className="flex items-center gap-2">
-                <h3 className="font-bold text-base text-slate-900">Mô Phỏng Quét PDA Kiểm Đếm Thực Địa</h3>
+                <h3 className="font-bold text-base text-slate-900">Kiểm Đếm Thực Tế</h3>
                 <span className="text-xs font-mono font-bold px-2 py-0.5 rounded bg-blue-50 text-blue-700 border border-blue-200">
                   {session.auditCode}
                 </span>
               </div>
               <p className="text-xs text-slate-500 mt-0.5">
-                Quét mã vạch vị trí / sản phẩm ➔ Hệ thống tự động tính chênh lệch thừa thiếu theo thời gian thực
+                Nhập số lượng thực tế tại từng vị trí kệ để đối chiếu với tồn kho trên hệ thống.
               </p>
             </div>
           </div>

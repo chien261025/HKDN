@@ -131,7 +131,7 @@ export const FefoRiskAndAgingWidget: React.FC = () => {
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs">
         <div className="p-3 rounded-xl bg-rose-50/50 border border-rose-100">
           <div className="flex items-center justify-between text-rose-700 text-[11px] font-semibold">
-            <span>Cận Date (&lt;30 ngày)</span>
+            <span>Cận Hạn (&lt; 30 ngày)</span>
             <AlertTriangle className="w-3.5 h-3.5 text-rose-500" />
           </div>
           <p className="text-lg font-black text-rose-700 font-mono mt-0.5">35.400.000 đ</p>

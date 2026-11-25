@@ -81,7 +81,7 @@ export const CreatePoModal: React.FC<CreatePoModalProps> = ({ initialWarehouseId
         .reduce((sum, l) => sum + (l.maxWeightKg || 0), 0);
       if (zoneCapacity > 0 && neededWeight > zoneCapacity) {
         const zoneLabel = zone === 'ZONE_B' ? 'Kho Mát (Zone B)' : zone === 'ZONE_C' ? 'Kho Đông (Zone C)' : 'Kho Khô (Zone A)';
-        return `Lưu ý tải trọng: Đơn hàng dự kiến (${neededWeight.toLocaleString()} kg) vượt quá sức chứa kệ tức thời của ${zoneLabel} (${zoneCapacity.toLocaleString()} kg). Hệ thống vẫn cho phép phát hành PO phục vụ kế hoạch mua hàng; khuyến nghị điều phối chia đợt giao hoặc áp dụng Cross-Docking luân chuyển xuất ngay.`;
+        return `Lưu ý: Tổng khối lượng (${neededWeight.toLocaleString()} kg) vượt sức chứa hiện tại của ${zoneLabel} (${zoneCapacity.toLocaleString()} kg). Bạn vẫn có thể tạo đơn và chia đợt nhập sau.`;
       }
     }
     return null;
@@ -96,8 +96,11 @@ export const CreatePoModal: React.FC<CreatePoModalProps> = ({ initialWarehouseId
 
     productService.getSuppliers().then((supps) => {
       if (supps && supps.length > 0) {
-        setSuppliers(supps);
-        setSupplierCode(supps[0].code);
+        const procurementSupps = supps.filter((s) => !s.code?.toUpperCase().startsWith('CUST-'));
+        const list = procurementSupps.length > 0 ? procurementSupps : supps;
+        setSuppliers(list);
+        const firstActive = list.find((s) => s.status === 'ACTIVE') || list[0];
+        setSupplierCode(firstActive.code);
       }
     });
 
@@ -229,8 +232,8 @@ export const CreatePoModal: React.FC<CreatePoModalProps> = ({ initialWarehouseId
               className="w-full p-2.5 rounded-xl bg-white border border-slate-300 text-slate-900 font-medium text-xs focus:outline-none focus:border-blue-600 focus:ring-2 focus:ring-blue-100"
             >
               {suppliers.map((s) => (
-                <option key={s.id} value={s.code}>
-                  {s.name} ({s.code})
+                <option key={s.id} value={s.code} disabled={s.status !== 'ACTIVE'}>
+                  {s.name} ({s.code}){s.status !== 'ACTIVE' ? ' — Ngưng hợp tác (Đã khóa PO)' : ''}
                 </option>
               ))}
             </select>
@@ -268,7 +271,7 @@ export const CreatePoModal: React.FC<CreatePoModalProps> = ({ initialWarehouseId
           <div className="space-y-2">
             {supplierProducts.length === 0 && (
               <p role="alert" className="text-xs text-amber-700 bg-amber-50 p-2 rounded-lg border border-amber-200">
-                Nhà cung cấp này chưa có sản phẩm nào đang hoạt động trong danh mục Master Data.
+                Nhà cung cấp này chưa có sản phẩm nào đang hoạt động trong danh mục hàng hóa.
               </p>
             )}
             <div className="flex items-center justify-between">
@@ -419,7 +422,7 @@ export const CreatePoModal: React.FC<CreatePoModalProps> = ({ initialWarehouseId
               <div className="p-3 rounded-xl bg-amber-50 border border-amber-300 text-amber-900 text-xs flex items-start gap-2.5">
                 <AlertTriangle className="w-4 h-4 shrink-0 text-amber-600 mt-0.5" />
                 <div className="space-y-1">
-                  <div className="font-bold text-amber-800">Cảnh Báo Sức Chứa Phân Khu (Capacity Advisory)</div>
+                  <div className="font-bold text-amber-800">Lưu Ý Sức Chứa Phân Khu</div>
                   <div className="text-[11px] leading-relaxed text-amber-700">{capacityWarning}</div>
                 </div>
               </div>

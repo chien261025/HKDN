@@ -12,7 +12,7 @@ import { BarcodeLabelModal } from '../components/BarcodeLabelModal';
 import { ProductDetailModal } from '../components/ProductDetailModal';
 import { ImportProductsModal } from '../components/ImportProductsModal';
 import { CategoryItem, ProductItem, SupplierItem } from '../types';
-import { CategoryTable } from '../components/CategoryTable';
+import { CategoryTable, CategorySavePayload } from '../components/CategoryTable';
 import { productService } from '../services/productService';
 import { inventoryService } from '../../inventory/services/inventoryService';
 import { warehouseService } from '../../masterdata/services/warehouseService';
@@ -132,15 +132,21 @@ export const ProductsPage: React.FC = () => {
   const [isCreateProductOpen, setIsCreateProductOpen] = useState(false);
   const [isImportModalOpen, setIsImportModalOpen] = useState(false);
   const [isCreateSupplierOpen, setIsCreateSupplierOpen] = useState(false);
+  const [isCreateCategoryOpen, setIsCreateCategoryOpen] = useState(false);
   const [selectedProductForEdit, setSelectedProductForEdit] = useState<ProductItem | null>(null);
   const [selectedSupplierForEdit, setSelectedSupplierForEdit] = useState<SupplierItem | null>(null);
   const [selectedProductForBarcode, setSelectedProductForBarcode] = useState<ProductItem | null>(null);
   const [selectedProductForDetail, setSelectedProductForDetail] = useState<ProductItem | null>(null);
   const [selectedStockHealthFilter, setSelectedStockHealthFilter] = useState<string>('ALL');
+  const [selectedCategoryFilter, setSelectedCategoryFilter] = useState<string>('ALL');
+  const [selectedSupplierFilter, setSelectedSupplierFilter] = useState<string>('ALL');
   const [batchPrintProducts, setBatchPrintProducts] = useState<ProductItem[] | null>(null);
 
   const handleOpenCreateModal = () => {
-    if (activeTab === 'CATEGORIES') return;
+    if (activeTab === 'CATEGORIES') {
+      setIsCreateCategoryOpen(true);
+      return;
+    }
     if (activeTab === 'PRODUCTS') {
       setIsCreateProductOpen(true);
     } else {
@@ -153,16 +159,29 @@ export const ProductsPage: React.FC = () => {
       setIsLoading(true);
       const res = await productService.batchCreateProducts(productsToImport);
       await fetchData();
+      if (res.created.length === 0 && res.errors.length > 0) {
+        const firstErr = res.errors[0];
+        const msg = `Không thể nạp sản phẩm nào (${res.errors.length} lỗi). Lỗi đầu tiên [${firstErr.sku}]: ${firstErr.error}`;
+        setError(msg);
+        throw new Error(msg);
+      }
       if (res.errors.length > 0) {
+        const firstErr = res.errors[0];
         setNotice(
-          `Đã nạp thành công ${res.created.length}/${productsToImport.length} sản phẩm. Có ${res.errors.length} sản phẩm gặp lỗi.`
+          `Đã nạp thành công ${res.created.length}/${productsToImport.length} sản phẩm mới vào danh mục hàng hóa.`
+        );
+        setError(
+          `Có ${res.errors.length} dòng bị từ chối khi lưu (${firstErr.sku}: ${firstErr.error}).`
         );
       } else {
         setNotice(`Đã nạp thành công toàn bộ ${res.created.length} sản phẩm mới từ file vào hệ thống.`);
+        setError('');
       }
       setIsImportModalOpen(false);
     } catch (err: any) {
-      setError(err?.message || 'Có lỗi xảy ra khi nạp dữ liệu hàng loạt.');
+      const msg = err?.message || 'Có lỗi xảy ra khi nạp dữ liệu hàng loạt.';
+      setError(msg);
+      throw err;
     } finally {
       setIsLoading(false);
     }
@@ -173,20 +192,24 @@ export const ProductsPage: React.FC = () => {
       await productService.createProduct(newProduct);
       await fetchData();
       setNotice(`Đã đăng ký sản phẩm mới "${newProduct.name}" (${newProduct.sku}) thành công.`);
+      setError('');
     } catch (err: any) {
-      setError(err.message || 'Không thể đăng ký sản phẩm mới.');
+      const msg = err?.response?.data?.message || err.message || 'Không thể đăng ký sản phẩm mới.';
+      setError(msg);
+      throw new Error(msg);
     }
   };
 
   const handleAddSupplier = async (newSupplier: SupplierItem & { categoryIds?: number[] }) => {
     try {
       await productService.createSupplier(newSupplier);
-      const updated = await productService.getSuppliers();
-      setSuppliers(updated);
+      await fetchData();
       setNotice(`Đã thêm nhà cung cấp mới "${newSupplier.name}" (${newSupplier.code}) thành công.`);
       setError('');
     } catch (err: any) {
-      setError(err?.response?.data?.message || err.message || 'Không thể tạo nhà cung cấp.');
+      const msg = err?.response?.data?.message || err.message || 'Không thể tạo nhà cung cấp.';
+      setError(msg);
+      throw new Error(msg);
     }
   };
 
@@ -201,6 +224,27 @@ export const ProductsPage: React.FC = () => {
     await fetchData();
   };
 
+  const handleSaveCategory = async (payload: CategorySavePayload) => {
+    if (payload.id) {
+      await productService.updateCategory(payload.id, {
+        code: payload.code,
+        name: payload.name,
+        parentId: payload.parentId,
+        clearParent: payload.clearParent,
+      });
+      setNotice(`Đã cập nhật danh mục "[${payload.code}] ${payload.name}" thành công.`);
+    } else {
+      await productService.createCategory({
+        code: payload.code,
+        name: payload.name,
+        parentId: payload.parentId,
+      });
+      setNotice(`Đã khởi tạo danh mục mới "[${payload.code}] ${payload.name}" thành công.`);
+    }
+    await fetchData();
+    setError('');
+  };
+
   const handleCategoryStatus = async (category: CategoryItem, action?: 'TOGGLE_ACTIVE' | 'DELETE' | 'RESTORE') => {
     try {
       if (action === 'RESTORE' || category.status === 'DELETED') {
@@ -212,9 +256,9 @@ export const ProductsPage: React.FC = () => {
         setNotice(`Đã chuyển trạng thái danh mục "${category.name}" sang ${nextState ? 'Đang hoạt động' : 'Ngưng hoạt động'}.`);
       } else {
         await productService.softDeleteCategory(category.id);
-        setNotice(`Đã xóa danh mục "${category.name}".`);
+        setNotice(`Đã xóa mềm danh mục "${category.name}".`);
       }
-      setCategories(await productService.getCategories());
+      await fetchData();
       setError('');
     } catch (err: any) {
       console.error('Lỗi thao tác danh mục:', err);
@@ -224,13 +268,29 @@ export const ProductsPage: React.FC = () => {
   };
 
   const handleSaveEditProduct = async (updatedProduct: ProductItem) => {
-    await productService.updateProduct(updatedProduct.id, updatedProduct);
-    await fetchData();
+    try {
+      await productService.updateProduct(updatedProduct.id, updatedProduct);
+      await fetchData();
+      setNotice(`Đã cập nhật hồ sơ sản phẩm "${updatedProduct.name}" (${updatedProduct.sku}) thành công.`);
+      setError('');
+    } catch (err: any) {
+      const msg = err?.response?.data?.message || err.message || 'Không thể cập nhật thông tin sản phẩm.';
+      setError(msg);
+      throw new Error(msg);
+    }
   };
 
   const handleDeleteProduct = async (product: ProductItem) => {
-    await productService.softDeleteProduct(product.id);
-    setProducts((prev) => prev.filter((item) => item.id !== product.id));
+    try {
+      await productService.softDeleteProduct(product.id);
+      await fetchData();
+      setNotice(`Đã xóa sản phẩm "${product.name}" (${product.sku}) khỏi danh mục hoạt động.`);
+      setError('');
+    } catch (err: any) {
+      const msg = err?.response?.data?.message || err.message || 'Không thể xóa sản phẩm.';
+      setError(msg);
+      throw new Error(msg);
+    }
   };
 
   const handleEditSupplier = (supplier: SupplierItem) => {
@@ -240,20 +300,43 @@ export const ProductsPage: React.FC = () => {
   const handleSaveEditSupplier = async (updatedSupplier: SupplierItem & { categoryIds?: number[] }) => {
     try {
       await productService.updateSupplier(updatedSupplier.id, updatedSupplier);
-      setSuppliers(await productService.getSuppliers());
+      await fetchData();
       setNotice(`Cập nhật thông tin nhà cung cấp "${updatedSupplier.name}" (${updatedSupplier.code}) thành công.`);
       setError('');
     } catch (err: any) {
-      setError(err?.response?.data?.message || err.message || 'Không thể cập nhật nhà cung cấp.');
+      const msg = err?.response?.data?.message || err.message || 'Không thể cập nhật nhà cung cấp.';
+      setError(msg);
+      throw new Error(msg);
+    }
+  };
+
+  const handleToggleSupplierStatus = async (supplier: SupplierItem) => {
+    try {
+      const nextActive = supplier.status !== 'ACTIVE';
+      await productService.updateSupplierStatus(supplier.id, nextActive);
+      await fetchData();
+      setNotice(
+        `Đã chuyển đối tác "${supplier.name}" (${supplier.code}) sang trạng thái ${
+          nextActive ? 'Đang hợp tác' : 'Tạm ngưng hợp tác'
+        }.`
+      );
+      setError('');
+    } catch (err: any) {
+      setError(err?.response?.data?.message || err.message || 'Không thể cập nhật trạng thái đối tác.');
     }
   };
 
   const handleViewSupplierProducts = (supplier: SupplierItem) => {
+    setSelectedCategoryFilter('ALL');
+    setSelectedSupplierFilter(String(supplier.id));
     setActiveTab('PRODUCTS');
   };
 
+  const isBarcodeModalOpen = !!selectedProductForBarcode || (!!batchPrintProducts && batchPrintProducts.length > 0);
+
   return (
-    <div className="space-y-4">
+    <div>
+    <div className={`space-y-4 ${isBarcodeModalOpen ? 'no-print' : ''}`}>
       {/* Top Banner & KPI Header */}
       {/* Products Header với 4 KPI lọc tương tác & định giá tài sản kho */}
       <ProductsHeader
@@ -261,6 +344,7 @@ export const ProductsPage: React.FC = () => {
         setActiveTab={setActiveTab}
         products={displayedProducts}
         suppliers={suppliers}
+        categoriesCount={categories.filter((c) => c.status !== 'DELETED').length}
         onOpenCreateModal={handleOpenCreateModal}
         onOpenImportModal={() => setIsImportModalOpen(true)}
         selectedHealthFilter={selectedStockHealthFilter}
@@ -318,6 +402,8 @@ export const ProductsPage: React.FC = () => {
       {activeTab === 'PRODUCTS' ? (
         <ProductTable
           products={displayedProducts}
+          categories={categories}
+          suppliers={suppliers}
           onPrintBarcode={(p) => {
             setSelectedProductForBarcode(p);
             setBatchPrintProducts(null);
@@ -330,15 +416,31 @@ export const ProductsPage: React.FC = () => {
           onViewDetail={(p) => setSelectedProductForDetail(p)}
           healthFilter={selectedStockHealthFilter}
           onHealthFilterChange={setSelectedStockHealthFilter}
+          externalCategoryFilter={selectedCategoryFilter}
+          onExternalCategoryFilterChange={setSelectedCategoryFilter}
+          externalSupplierFilter={selectedSupplierFilter}
+          onExternalSupplierFilterChange={setSelectedSupplierFilter}
         />
       ) : activeTab === 'SUPPLIERS' ? (
         <SupplierTable
           suppliers={suppliers}
           onEditSupplier={handleEditSupplier}
           onViewSupplierProducts={handleViewSupplierProducts}
+          onToggleStatus={handleToggleSupplierStatus}
         />
       ) : (
-        <CategoryTable categories={categories} onStatusChange={handleCategoryStatus} />
+        <CategoryTable
+          categories={categories}
+          onStatusChange={handleCategoryStatus}
+          onSaveCategory={handleSaveCategory}
+          onViewCategoryProducts={(cat) => {
+            setSelectedCategoryFilter(`ID:${cat.id}`);
+            setActiveTab('PRODUCTS');
+          }}
+          isCreateModalOpen={isCreateCategoryOpen}
+          onOpenCreateModal={() => setIsCreateCategoryOpen(true)}
+          onCloseCreateModal={() => setIsCreateCategoryOpen(false)}
+        />
       )}
 
       {/* Create Product Modal */}
@@ -347,7 +449,9 @@ export const ProductsPage: React.FC = () => {
         onClose={() => setIsCreateProductOpen(false)}
         onAddProduct={handleAddProduct}
         suppliers={suppliers}
+        categories={categories}
         existingSkus={products.map((p) => p.sku)}
+        existingBarcodes={products.map((p) => p.barcode).filter(Boolean)}
       />
 
       {/* Edit Product Modal */}
@@ -358,6 +462,9 @@ export const ProductsPage: React.FC = () => {
         onUpdateProduct={handleSaveEditProduct}
         onDeleteProduct={handleDeleteProduct}
         suppliers={suppliers}
+        categories={categories}
+        inventoryBalances={inventoryBalances}
+        existingProducts={products}
       />
 
       {/* Create Supplier Modal */}
@@ -366,6 +473,7 @@ export const ProductsPage: React.FC = () => {
         onClose={() => setIsCreateSupplierOpen(false)}
         onAddSupplier={handleAddSupplier}
         availableCategories={categories}
+        existingCodes={suppliers.map((s) => s.code)}
       />
 
       {/* Edit Supplier Modal */}
@@ -377,22 +485,12 @@ export const ProductsPage: React.FC = () => {
         availableCategories={categories}
       />
 
-      {/* GS1 Barcode Print Preview Modal (Hỗ trợ in đơn lẻ & hàng loạt) */}
-      <BarcodeLabelModal
-        isOpen={!!selectedProductForBarcode || (!!batchPrintProducts && batchPrintProducts.length > 0)}
-        onClose={() => {
-          setSelectedProductForBarcode(null);
-          setBatchPrintProducts(null);
-        }}
-        product={selectedProductForBarcode}
-        products={batchPrintProducts || undefined}
-      />
-
       {/* Bulk CSV / Excel Import Modal */}
       <ImportProductsModal
         isOpen={isImportModalOpen}
         onClose={() => setIsImportModalOpen(false)}
         existingSkus={products.map((p) => p.sku)}
+        existingBarcodes={products.map((p) => p.barcode).filter(Boolean)}
         suppliers={suppliers}
         onConfirmImport={handleBatchImport}
       />
@@ -408,6 +506,20 @@ export const ProductsPage: React.FC = () => {
           setBatchPrintProducts(null);
         }}
         inventoryBalances={inventoryBalances}
+        activeWarehouseId={activeWarehouseId}
+        activeWarehouseName={activeWarehouseObj?.name || 'Toàn Bộ Chi Nhánh Kho'}
+      />
+    </div>
+
+      {/* GS1 Barcode Print Preview Modal rendered outside no-print page container */}
+      <BarcodeLabelModal
+        isOpen={isBarcodeModalOpen}
+        onClose={() => {
+          setSelectedProductForBarcode(null);
+          setBatchPrintProducts(null);
+        }}
+        product={selectedProductForBarcode}
+        products={batchPrintProducts || undefined}
       />
     </div>
   );

@@ -22,12 +22,28 @@ export const InboundOrdersPage: React.FC = () => {
   const [busyOrderId, setBusyOrderId] = useState<string | null>(null);
 
   const [searchParams] = useSearchParams();
+  const urlPoCode = searchParams.get('poCode');
 
   useEffect(() => {
     if (searchParams.get('create') === 'true') {
       setIsCreateModalOpen(true);
     }
   }, [searchParams]);
+
+  useEffect(() => {
+    if (urlPoCode && orders.length > 0) {
+      const match = orders.find(
+        (o) => o.poCode === urlPoCode || o.id === urlPoCode || o.poCode.includes(urlPoCode)
+      );
+      if (match) {
+        if (match.status === 'RECEIVED') {
+          setPutawayOrder(match);
+        } else {
+          setSelectedOrder(match);
+        }
+      }
+    }
+  }, [urlPoCode, orders]);
 
   // Bộ lọc trạng thái đồng bộ giữa KPI Cards và danh sách đơn PO
   const [activeStatus, setActiveStatus] = useState<InboundFilterStatus>('ALL');
@@ -146,7 +162,7 @@ export const InboundOrdersPage: React.FC = () => {
     try {
       await inboundService.closeOrder(
         order.id,
-        isPartial ? 'Đóng non PO (Short-Close): Nhà cung cấp hủy phần thiếu không giao bù' : 'Vượt quá sức chứa kho / Đặt nhầm'
+        isPartial ? 'Đóng đơn sớm: Nhà cung cấp không giao bù phần thiếu' : 'Vượt quá sức chứa kho / Đặt nhầm'
       );
       await loadOrders();
     } catch (err: any) {

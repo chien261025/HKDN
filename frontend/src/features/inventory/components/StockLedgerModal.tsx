@@ -142,13 +142,13 @@ export const StockLedgerModal: React.FC<StockLedgerModalProps> = ({ entry, onClo
                   }`}
                 >
                   {entry.transactionType === 'OUTBOUND'
-                    ? 'Xuất Hàng (Goods Issue)'
+                    ? 'Xuất Kho'
                     : entry.transactionType === 'INBOUND'
-                    ? 'Nhập Hàng (Goods Receipt)'
+                    ? 'Nhập Kho'
                     : entry.transactionType === 'TRANSFER'
                     ? 'Điều Chuyển Ô Kệ'
                     : entry.transactionType === 'INITIAL_BALANCE'
-                    ? 'Số Dư Ban Đầu (Snapshot)'
+                    ? 'Số Dư Ban Đầu'
                     : 'Cân Đối Kiểm Kê'}
                 </span>
               </div>

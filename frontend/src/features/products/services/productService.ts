@@ -13,16 +13,43 @@ const mapCategoryToId = (cat?: ProductCategory, zone?: string): number => {
   return zone === 'ZONE_B' ? 2 : 1;
 };
 
+export const inferCategoryGroup = (catId?: number, code?: string, name?: string): ProductCategory => {
+  const c = (code || '').toUpperCase();
+  const n = (name || '').toLowerCase();
+  if ([3, 4].includes(Number(catId)) || c.includes('ELEC') || c.includes('PHONE') || n.includes('điện tử') || n.includes('điện thoại')) {
+    return 'ELECTRONICS';
+  }
+  if (Number(catId) === 5 || c.includes('CHEM') || n.includes('hóa mỹ phẩm') || n.includes('tẩy rửa')) {
+    return 'CHEMICAL';
+  }
+  if (Number(catId) === 9 || c.includes('MED') || c.includes('PHARM') || n.includes('dược') || n.includes('y tế')) {
+    return 'PHARMACEUTICAL';
+  }
+  if (Number(catId) === 10 || c.includes('FASH') || n.includes('thời trang') || n.includes('may mặc')) {
+    return 'FASHION';
+  }
+  if ([8, 11].includes(Number(catId)) || c.includes('FURN') || c.includes('GEN') || n.includes('nội thất') || n.includes('tổng hợp')) {
+    return 'GENERAL';
+  }
+  if ([1, 2, 6, 7].includes(Number(catId)) || c.includes('FOOD') || c.includes('COOL') || c.includes('BEV') || c.includes('COND')) {
+    return 'FOOD_BEVERAGE';
+  }
+  return 'GENERAL';
+};
+
 export const productService = {
   async getProducts(stockedOnly = false): Promise<ProductItem[]> {
     try {
-      const [res, closingBalances, supplierResponse] = await Promise.all([
+      const [res, closingBalances, supplierResponse, categoryResponse] = await Promise.all([
         apiClient.get('/masterdata/products'),
         inventoryService.getClosingBalances().catch(() => []),
         apiClient.get('/masterdata/suppliers').catch(() => ({ data: { data: [] } })),
+        apiClient.get('/masterdata/categories').catch(() => ({ data: { data: [] } })),
       ]);
       const suppliers = new Map<number, { code: string; name: string }>((supplierResponse.data.data || [])
         .map((s: any) => [Number(s.id), { code: s.code, name: s.name }]));
+      const categoriesMap = new Map<number, { code: string; name: string }>((categoryResponse.data.data || [])
+        .map((c: any) => [Number(c.id), { code: c.code, name: c.name }]));
       const stockByProduct = new Map(closingBalances.filter(s => s.warehouseId === PRIMARY_WAREHOUSE.id)
         .map(s => [s.productId, s.onHandQty]));
       if (res.data?.data && Array.isArray(res.data.data)) {
@@ -40,13 +67,8 @@ export const productService = {
             : (p.storageZone || 'ZONE_A');
 
           const catId = Number(p.categoryId);
-          let categoryType: ProductCategory = 'FOOD_BEVERAGE';
-          if ([3, 4].includes(catId)) categoryType = 'ELECTRONICS';
-          else if (catId === 5) categoryType = 'CHEMICAL';
-          else if (catId === 8 || catId === 11) categoryType = 'GENERAL';
-          else if (catId === 9) categoryType = 'PHARMACEUTICAL';
-          else if (catId === 10) categoryType = 'FASHION';
-          else categoryType = 'FOOD_BEVERAGE';
+          const catMeta = categoriesMap.get(catId);
+          const categoryType: ProductCategory = inferCategoryGroup(catId, catMeta?.code, catMeta?.name);
 
           return {
             id: String(p.id),
@@ -55,6 +77,9 @@ export const productService = {
             name: p.name,
             description: p.description || '',
             category: categoryType,
+            categoryId: Number.isFinite(catId) && catId > 0 ? catId : undefined,
+            categoryCode: catMeta?.code,
+            categoryName: catMeta?.name,
             unit: p.unit || 'Cái',
             brand: p.brand || '',
             origin: p.origin || 'Việt Nam',
@@ -65,9 +90,9 @@ export const productService = {
             widthCm: w,
             heightCm: h,
             volumeCbm: cbm,
-            reorderPoint: p.reorderPoint || 20,
-            safetyStock: p.safetyStock || 10,
-            maxStock: p.maxStock || 500,
+            reorderPoint: p.reorderPoint ?? 20,
+            safetyStock: p.safetyStock ?? 10,
+            maxStock: p.maxStock ?? 500,
             purchasePrice: Number(p.purchasePrice || 0),
             sellingPrice: Number(p.sellingPrice || 0),
             businessStatus: p.businessStatus || (p.isActive === false ? 'SUSPENDED' : 'ACTIVE'),
@@ -81,7 +106,14 @@ export const productService = {
             isExpiryManaged: p.isExpiryManaged !== undefined ? Boolean(p.isExpiryManaged) : categoryType === 'FOOD_BEVERAGE',
             shelfLifeDays: p.shelfLifeDays !== undefined ? Number(p.shelfLifeDays) : (p.sku === 'SKU-YOGURT-04' ? 45 : 365),
             outboundStrategy: p.outboundStrategy || (categoryType === 'FOOD_BEVERAGE' ? 'FEFO' : 'FIFO'),
-            trackingMethod: p.trackingMethod || (categoryType === 'ELECTRONICS' ? 'SERIAL_IMEI' : (p.isBatchManaged !== false && (categoryType === 'FOOD_BEVERAGE' || categoryType === 'PHARMACEUTICAL')) ? 'FEFO_BATCH' : 'STANDARD'),
+            trackingMethod:
+              p.trackingMethod ||
+              (categoryType === 'ELECTRONICS'
+                ? 'SERIAL_IMEI'
+                : p.isBatchManaged !== false &&
+                  (categoryType === 'FOOD_BEVERAGE' || categoryType === 'PHARMACEUTICAL' || p.isExpiryManaged === true)
+                ? 'FEFO_BATCH'
+                : 'STANDARD'),
           };
         }).filter((p: ProductItem) => !stockedOnly || p.currentStock > 0);
       }
@@ -102,11 +134,50 @@ export const productService = {
         parentId: c.parentId ? String(c.parentId) : null,
         status: c.deletedAt ? 'DELETED' : c.isActive === false ? 'INACTIVE' : 'ACTIVE',
         productCount: Number(c.productCount || 0),
+        childCount: Number(c.childCount || 0),
       }));
     } catch (err) {
       console.error('Cannot load categories from backend:', err);
       throw err;
     }
+  },
+
+  async createCategory(category: { code: string; name: string; parentId?: number | null }): Promise<CategoryItem> {
+    const res = await apiClient.post('/masterdata/categories', {
+      code: category.code,
+      name: category.name,
+      parentId: category.parentId || null,
+    });
+    const c = res.data?.data;
+    return {
+      id: String(c.id),
+      code: c.code,
+      name: c.name,
+      parentId: c.parentId ? String(c.parentId) : null,
+      status: c.deletedAt ? 'DELETED' : c.isActive === false ? 'INACTIVE' : 'ACTIVE',
+      productCount: Number(c.productCount || 0),
+      childCount: Number(c.childCount || 0),
+    };
+  },
+
+  async updateCategory(id: string, category: { code?: string; name?: string; parentId?: number | null; clearParent?: boolean; isActive?: boolean }): Promise<CategoryItem> {
+    const res = await apiClient.put(`/masterdata/categories/${id}`, {
+      code: category.code,
+      name: category.name,
+      parentId: category.parentId || null,
+      clearParent: category.clearParent || category.parentId === null,
+      isActive: category.isActive,
+    });
+    const c = res.data?.data;
+    return {
+      id: String(c.id),
+      code: c.code,
+      name: c.name,
+      parentId: c.parentId ? String(c.parentId) : null,
+      status: c.deletedAt ? 'DELETED' : c.isActive === false ? 'INACTIVE' : 'ACTIVE',
+      productCount: Number(c.productCount || 0),
+      childCount: Number(c.childCount || 0),
+    };
   },
 
   async updateProductStatus(id: string, isActive: boolean): Promise<void> {
@@ -136,13 +207,13 @@ export const productService = {
         lengthCm: product.lengthCm || 20,
         widthCm: product.widthCm || 15,
         heightCm: product.heightCm || 10,
-        safetyStock: product.safetyStock || 10,
-        reorderPoint: product.reorderPoint || 20,
-        maxStock: product.maxStock || 500,
+        safetyStock: product.safetyStock ?? 10,
+        reorderPoint: product.reorderPoint ?? 20,
+        maxStock: product.maxStock ?? 500,
         purchasePrice: product.purchasePrice || 0,
         sellingPrice: product.sellingPrice || 0,
         businessStatus: product.businessStatus || 'ACTIVE',
-        categoryId: mapCategoryToId(product.category, product.storageZone),
+        categoryId: product.categoryId || mapCategoryToId(product.category, product.storageZone),
         trackingMethod: product.trackingMethod,
         isBatchManaged: product.isBatchManaged !== undefined ? product.isBatchManaged : true,
         isExpiryManaged: product.isExpiryManaged !== undefined ? product.isExpiryManaged : (product.category === 'FOOD_BEVERAGE'),
@@ -174,9 +245,9 @@ export const productService = {
         widthCm: w,
         heightCm: h,
         volumeCbm: Math.round(((l * w * h) / 1000000) * 10000) / 10000,
-        reorderPoint: saved?.reorderPoint || product.reorderPoint || 20,
-        safetyStock: saved?.safetyStock || product.safetyStock || 10,
-        maxStock: saved?.maxStock || product.maxStock || 500,
+        reorderPoint: saved?.reorderPoint ?? product.reorderPoint ?? 20,
+        safetyStock: saved?.safetyStock ?? product.safetyStock ?? 10,
+        maxStock: saved?.maxStock ?? product.maxStock ?? 500,
         purchasePrice: Number(saved?.purchasePrice || product.purchasePrice || 0),
         sellingPrice: Number(saved?.sellingPrice || product.sellingPrice || 0),
         businessStatus: saved?.businessStatus || product.businessStatus || 'ACTIVE',
@@ -254,7 +325,7 @@ export const productService = {
         address: supplier.address,
         isActive: supplier.status !== 'INACTIVE',
       };
-      if (supplier.categoryIds && supplier.categoryIds.length > 0) {
+      if (supplier.categoryIds !== undefined) {
         payload.categoryIds = supplier.categoryIds;
       }
       const res = await apiClient.post('/masterdata/suppliers', payload);
@@ -270,12 +341,16 @@ export const productService = {
         suppliedCategories: saved?.suppliedCategories || supplier.suppliedCategories || ['Chưa phân loại'],
         categories: saved?.categories || [],
         activeProductsCount: 0,
-        status: 'ACTIVE',
+        status: saved?.isActive === false ? 'INACTIVE' : 'ACTIVE',
       };
     } catch (err) {
       console.error('Could not save supplier to backend:', err);
       throw err;
     }
+  },
+
+  async updateSupplierStatus(id: string, isActive: boolean): Promise<void> {
+    await apiClient.patch(`/masterdata/suppliers/${id}/status`, { isActive });
   },
 
   async updateProduct(id: string, product: Partial<ProductItem>): Promise<ProductItem> {
@@ -300,7 +375,7 @@ export const productService = {
         sellingPrice: product.sellingPrice,
         businessStatus: product.businessStatus,
         isActive: product.status !== 'INACTIVE',
-        categoryId: mapCategoryToId(product.category, product.storageZone),
+        categoryId: product.categoryId || mapCategoryToId(product.category, product.storageZone),
         trackingMethod: product.trackingMethod,
         isBatchManaged: product.isBatchManaged !== undefined ? product.isBatchManaged : true,
         isExpiryManaged: product.isExpiryManaged !== undefined ? product.isExpiryManaged : (product.category === 'FOOD_BEVERAGE'),
@@ -331,9 +406,9 @@ export const productService = {
         widthCm: w,
         heightCm: h,
         volumeCbm: Math.round(((l * w * h) / 1000000) * 10000) / 10000,
-        safetyStock: saved?.safetyStock || product.safetyStock!,
-        reorderPoint: saved?.reorderPoint || product.reorderPoint!,
-        maxStock: saved?.maxStock || product.maxStock || 500,
+        safetyStock: saved?.safetyStock ?? product.safetyStock!,
+        reorderPoint: saved?.reorderPoint ?? product.reorderPoint!,
+        maxStock: saved?.maxStock ?? product.maxStock ?? 500,
         purchasePrice: Number(saved?.purchasePrice || product.purchasePrice || 0),
         sellingPrice: Number(saved?.sellingPrice || product.sellingPrice || 0),
         businessStatus: saved?.businessStatus || product.businessStatus || 'ACTIVE',
@@ -355,7 +430,7 @@ export const productService = {
         address: supplier.address,
         isActive: supplier.status !== 'INACTIVE',
       };
-      if (supplier.categoryIds && supplier.categoryIds.length > 0) {
+      if (supplier.categoryIds !== undefined) {
         payload.categoryIds = supplier.categoryIds;
       }
       const res = await apiClient.put(`/masterdata/suppliers/${id}`, payload);
@@ -372,6 +447,7 @@ export const productService = {
         suppliedCategories: saved?.suppliedCategories || supplier.suppliedCategories || [],
         categories: saved?.categories || supplier.categories || [],
         activeProductsCount: saved?.activeProductsCount ?? supplier.activeProductsCount ?? 0,
+        status: saved?.isActive === false ? 'INACTIVE' : 'ACTIVE',
       } as SupplierItem;
     } catch (err) {
       console.error('Could not update supplier on backend:', err);

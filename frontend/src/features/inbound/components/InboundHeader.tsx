@@ -1,6 +1,7 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { PackagePlus, Clock, Truck, CheckCircle2, Plus, Building2 } from 'lucide-react';
 import { InboundOrder } from '../types';
+import { warehouseService, DEFAULT_WAREHOUSES } from '../../masterdata/services/warehouseService';
 
 export type InboundFilterStatus = 'ALL' | 'PENDING' | 'RECEIVED' | 'STOCKED' | 'QC_ISSUE';
 
@@ -13,14 +14,6 @@ interface InboundHeaderProps {
   onOpenCreateModal: () => void;
 }
 
-const WAREHOUSE_OPTIONS = [
-  { id: 'ALL', name: 'Toàn bộ chi nhánh kho (Hệ Thống)' },
-  { id: 'WH01', altId: '1', name: 'Kho Tổng Tân Bình - TP.HCM' },
-  { id: 'WH02', altId: '2', name: 'Kho Phân Phối VSIP Bắc Ninh' },
-  { id: 'WH03', altId: '3', name: 'Kho Vận Miền Trung - Đà Nẵng' },
-  { id: 'WH04', altId: '4', name: 'Kho Trung Chuyển Sóng Thần - Bình Dương' },
-];
-
 export const InboundHeader: React.FC<InboundHeaderProps> = ({
   orders,
   selectedWarehouse = 'ALL',
@@ -29,6 +22,16 @@ export const InboundHeader: React.FC<InboundHeaderProps> = ({
   onWarehouseChange,
   onOpenCreateModal,
 }) => {
+  const [warehouses, setWarehouses] = useState(DEFAULT_WAREHOUSES);
+
+  useEffect(() => {
+    warehouseService
+      .getWarehouses()
+      .then((list) => {
+        if (list && list.length > 0) setWarehouses(list);
+      })
+      .catch(() => {});
+  }, []);
   const totalCount = orders.length;
   const pendingCount = orders.filter((o) => o.status === 'PENDING').length;
   const receivedCount = orders.filter((o) => o.status === 'RECEIVED').length;
@@ -78,8 +81,9 @@ export const InboundHeader: React.FC<InboundHeaderProps> = ({
                   onChange={(e) => onWarehouseChange(e.target.value)}
                   className="bg-transparent text-xs sm:text-sm font-bold text-slate-900 focus:outline-none cursor-pointer pr-3"
                 >
-                  {WAREHOUSE_OPTIONS.map((opt) => (
-                    <option key={opt.id} value={opt.id}>
+                  <option value="ALL">Toàn bộ chi nhánh kho</option>
+                  {warehouses.map((opt) => (
+                    <option key={opt.id} value={opt.code}>
                       {opt.name}
                     </option>
                   ))}

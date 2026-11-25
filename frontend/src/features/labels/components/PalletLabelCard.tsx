@@ -56,7 +56,7 @@ export const PalletLabelCard: React.FC<PalletLabelCardProps> = ({ data, classNam
       {/* Main Pallet Code & Barcode */}
       <div className="my-3 text-center">
         <span className="text-3xs font-mono font-bold text-slate-500 uppercase tracking-widest block">
-          MÃ ĐỊNH DANH PALLET (SSCC-18)
+          MÃ ĐỊNH DANH KIỆN PALLET
         </span>
         <h2 className="text-lg font-black font-mono tracking-tight text-slate-950 mt-0.5">
           {data.palletCode}

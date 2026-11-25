@@ -307,7 +307,7 @@ export const AuditDiscrepancyModal: React.FC<AuditDiscrepancyModalProps> = ({
                 <div className="flex items-center gap-2">
                   <RotateCcw className="w-4 h-4 text-blue-600" />
                   <span className="font-bold text-xs text-blue-900 uppercase">
-                    Xác Minh Đếm Lại Vòng 2 (Discrepancy Recount Verification)
+                    Xác Minh Đếm Lại Lần 2
                   </span>
                 </div>
                 <button
@@ -365,7 +365,7 @@ export const AuditDiscrepancyModal: React.FC<AuditDiscrepancyModalProps> = ({
                 Chi Tiết Từng Dòng Ô Kệ & Đối Soát Bút Toán:
               </span>
               <span className="text-2xs text-slate-500 font-mono">
-                Điều chỉnh = Thực Đếm - Chốt Snapshot • Tồn Sau Cân Đối = Thực Đếm
+                Điều chỉnh = Thực tế đếm - Tồn sổ sách • Tồn sau cân đối = Thực tế đếm
               </span>
             </div>
 
@@ -375,10 +375,10 @@ export const AuditDiscrepancyModal: React.FC<AuditDiscrepancyModalProps> = ({
                   <tr>
                     <th className="py-2.5 px-3 print:py-1 print:px-1.5 print:border-r print:border-slate-300">Vị Trí Ô Kệ</th>
                     <th className="py-2.5 px-3 print:py-1 print:px-1.5 print:border-r print:border-slate-300">Mặt Hàng & Lô</th>
-                    <th className="py-2.5 px-3 text-center print:py-1 print:px-1.5 print:border-r print:border-slate-300">Chốt Snapshot</th>
+                    <th className="py-2.5 px-3 text-center print:py-1 print:px-1.5 print:border-r print:border-slate-300">Tồn Sổ Sách</th>
                     <th className="py-2.5 px-3 text-center print:py-1 print:px-1.5 print:border-r print:border-slate-300">Thực Tế Đếm</th>
                     <th className="py-2.5 px-3 text-center print:py-1 print:px-1.5 print:border-r print:border-slate-300">Chênh Lệch</th>
-                    <th className="py-2.5 px-3 text-center print:py-1 print:px-1.5 print:border-r print:border-slate-300">Điều Chỉnh Ledger</th>
+                    <th className="py-2.5 px-3 text-center print:py-1 print:px-1.5 print:border-r print:border-slate-300">Điều Chỉnh</th>
                     <th className="py-2.5 px-3 text-center print:py-1 print:px-1.5 print:border-r print:border-slate-300">Tồn Sau Cân Đối</th>
                     <th className="py-2.5 px-3 text-center print:hidden">Thao Tác</th>
                   </tr>
@@ -425,7 +425,7 @@ export const AuditDiscrepancyModal: React.FC<AuditDiscrepancyModalProps> = ({
                           )}
                         </td>
 
-                        {/* Chốt Snapshot */}
+                        {/* Tồn Sổ Sách Lúc Kiểm */}
                         <td className="py-2.5 px-3 print:py-1 print:px-1.5 text-center font-bold text-slate-800 tabular-nums print:border-r print:border-slate-300">
                           {item.systemQty !== null ? (
                             <span>{item.systemQty} {item.unit}</span>

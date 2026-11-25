@@ -19,6 +19,7 @@ import {
 import { useSearchParams } from 'react-router-dom';
 import { ProductBatchLabelCard, ProductBatchLabelData } from './ProductBatchLabelCard';
 import { apiClient } from '../../../services/api';
+import { inventoryService } from '../../inventory/services/inventoryService';
 import { Pagination } from '../../../components/common';
 
 const PAGE_SIZE = 10;
@@ -236,66 +237,120 @@ export const BatchLabelPrintSection: React.FC = () => {
   );
 
   const [paperFormat, setPaperFormat] = useState<'100x60' | 'A4'>('100x60');
-  const [printerDevice, setPrinterDevice] = useState<string>('ZEBRA_ZT410');
   const [printCopies, setPrintCopies] = useState<number>(1);
   const [showPreviewModal, setShowPreviewModal] = useState<boolean>(false);
   const [currentPage, setCurrentPage] = useState<number>(1);
 
-  // Load products từ API để đồng bộ dữ liệu thực tế
+  // Load danh sách lô hàng thực tế từ kho
   useEffect(() => {
     const fetchRealBatches = async () => {
       try {
-        const res = await apiClient.get<{ success: boolean; data: any[] }>('/masterdata/products');
-        if (res.data?.data && res.data.data.length > 0) {
-          // Bổ sung hoặc mapping thêm sản phẩm mới từ API
-          const apiProducts = res.data.data;
-          const mapped: ProductBatchItem[] = apiProducts.map((p, idx) => {
-            const isMilk = p.sku?.includes('MILK') || p.sku?.includes('YOG');
-            const exp = isMilk ? '2026-12-30' : '2027-12-31';
-            return {
-              id: `API-${p.id || idx}`,
-              batchNumber: `BATCH-${p.sku?.replace(/SKU-/i, '') || '01'}-01`,
-              sku: p.sku,
-              productName: p.name,
-              barcode: p.barcode || p.sku,
-              manufactureDate: '2026-01-01',
-              expiryDate: exp,
-              storageZone: isMilk ? 'ZONE_B (MÁT 2-8°C)' : 'ZONE_A (KHÔ & THIẾT BỊ)',
-              supplierName: p.brand || 'Chính hãng',
-              stockQuantity: 300,
-              warehouseCode: 'WH01',
-              warehouseName: 'Kho Tổng Tân Bình',
-              status: 'ACTIVE',
-            };
+        const stocks = await inventoryService.getInventoryBalances();
+        if (stocks && stocks.length > 0) {
+          const grouped = new Map<string, ProductBatchItem>();
+          const now = new Date();
+          stocks.forEach((s, idx) => {
+            const batchNum = s.batchNumber || `LOT-${s.sku}-${idx + 1}`;
+            const locWhPrefix = s.locationBarcode?.split('-')[0];
+            const whCode =
+              (locWhPrefix && locWhPrefix.startsWith('WH') ? locWhPrefix : '') ||
+              (s.warehouseId ? `WH${String(s.warehouseId).padStart(2, '0')}` : 'WH01');
+            const key = `${whCode}__${s.sku}__${batchNum}`;
+            const existing = grouped.get(key);
+            if (existing) {
+              existing.stockQuantity += s.onHandQty || 0;
+              return;
+            }
+            const expStr = s.expiryDate && s.expiryDate !== 'N/A' ? s.expiryDate : '';
+            let status: 'ACTIVE' | 'NEAR_EXPIRY' | 'EXPIRED' = 'ACTIVE';
+            if (s.isExpired) {
+              status = 'EXPIRED';
+            } else if (s.isExpiringSoon) {
+              status = 'NEAR_EXPIRY';
+            } else if (expStr) {
+              const diffDays = Math.ceil((new Date(expStr).getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
+              if (diffDays < 0) status = 'EXPIRED';
+              else if (diffDays <= 45) status = 'NEAR_EXPIRY';
+            }
+            const locUpper = (s.locationBarcode || '').toUpperCase();
+            const storageZone = locUpper.includes('-ZB-')
+              ? 'ZONE_B (MÁT 2-8°C)'
+              : locUpper.includes('-ZC-')
+              ? 'ZONE_C (ĐÔNG/HÓA)'
+              : 'ZONE_A (KHÔ & THIẾT BỊ)';
+
+            grouped.set(key, {
+              id: `STK-${s.id || idx}`,
+              batchNumber: batchNum,
+              sku: s.sku,
+              productName: s.name,
+              barcode: s.barcode || s.sku,
+              manufactureDate: s.manufactureDate || '',
+              expiryDate: expStr || 'Không thời hạn',
+              storageZone,
+              supplierName: 'Nhà cung cấp chuẩn',
+              stockQuantity: s.onHandQty || 0,
+              warehouseCode: whCode,
+              warehouseName: s.warehouseName || whCode,
+              status,
+            });
           });
 
-          // Giữ các mẫu kiểm thử chuẩn lên đầu
-          const combined = [
-            INITIAL_BATCHES[0], // LOT-TEST-001 (Còn hạn)
-            INITIAL_BATCHES[1], // LOT-TEST-002 (Hết hạn)
-            ...INITIAL_BATCHES.slice(2),
-            ...mapped.filter((m) => !INITIAL_BATCHES.some((b) => b.sku === m.sku)),
-          ];
-          setBatchesList(combined);
+          const realList = Array.from(grouped.values());
+          setBatchesList(realList);
 
-          if (targetSkuParam) {
-            const matched = combined.find((b) => b.sku === targetSkuParam);
+          if (targetBatchParam) {
+            const matched = realList.find((b) => b.batchNumber === targetBatchParam);
             if (matched) {
               setPreviewBatchNumber(matched.batchNumber);
               setSelectedBatches([matched.batchNumber]);
+              return;
             }
           }
+          if (targetSkuParam) {
+            const matched = realList.find((b) => b.sku === targetSkuParam);
+            if (matched) {
+              setPreviewBatchNumber(matched.batchNumber);
+              setSelectedBatches([matched.batchNumber]);
+              return;
+            }
+          }
+          if (realList[0]) {
+            setPreviewBatchNumber(realList[0].batchNumber);
+          }
+          return;
+        }
+
+        const res = await apiClient.get<{ success: boolean; data: any[] }>('/masterdata/products');
+        if (res.data?.data && res.data.data.length > 0) {
+          const mapped: ProductBatchItem[] = res.data.data.map((p, idx) => ({
+            id: `API-${p.id || idx}`,
+            batchNumber: `LOT-${p.sku?.replace(/SKU-/i, '') || '01'}-01`,
+            sku: p.sku,
+            productName: p.name,
+            barcode: p.barcode || p.sku,
+            manufactureDate: '',
+            expiryDate: '2027-12-31',
+            storageZone: 'ZONE_A (KHÔ & THIẾT BỊ)',
+            supplierName: p.brand || 'Chính hãng',
+            stockQuantity: 0,
+            warehouseCode: 'WH01',
+            warehouseName: 'Kho Tổng Tân Bình',
+            status: 'ACTIVE',
+          }));
+          setBatchesList(mapped);
+          if (mapped[0]) setPreviewBatchNumber(mapped[0].batchNumber);
         }
       } catch (err) {
-        console.warn('Lỗi khi tải dữ liệu sản phẩm, sử dụng dữ liệu mặc định:', err);
+        console.warn('Lỗi tải danh sách lô hàng thực tế:', err);
       }
     };
     fetchRealBatches();
-  }, [targetSkuParam]);
+  }, [targetSkuParam, targetBatchParam]);
 
   // Bộ lọc dữ liệu đa chiều
   const filteredBatches = useMemo(() => {
-    const today = new Date('2026-11-21');
+    const today = new Date();
     return batchesList.filter((b) => {
       const matchWarehouse = selectedWarehouse === 'ALL' || b.warehouseCode === selectedWarehouse;
       const matchZone =
@@ -402,7 +457,7 @@ export const BatchLabelPrintSection: React.FC = () => {
             </div>
             <div>
               <h3 className="text-xs font-bold text-slate-900 uppercase tracking-wider">
-                Trung Tâm Điều Phối & In Tem Lô Hàng (Batch & FEFO Spooler)
+                In Tem Lô Hàng &amp; Hạn Sử Dụng
               </h3>
               <p className="text-xs text-slate-500 font-medium">
                 Quản lý {batchesList.length} số lô hàng hóa · Đang hiển thị {filteredBatches.length} kết quả · Đã chọn {selectedBatches.length} lô
@@ -419,7 +474,7 @@ export const BatchLabelPrintSection: React.FC = () => {
               Còn hạn: {stats.active}
             </span>
             <span className="px-2.5 py-1 rounded-lg bg-amber-50 text-amber-800 font-bold border border-amber-200">
-              Cận date: {stats.near}
+              Cận hạn: {stats.near}
             </span>
             <span className="px-2.5 py-1 rounded-lg bg-rose-50 text-rose-800 font-bold border border-rose-200">
               Quá hạn: {stats.expired}
@@ -467,7 +522,7 @@ export const BatchLabelPrintSection: React.FC = () => {
             >
               <option value="ALL">Tất cả trạng thái</option>
               <option value="ACTIVE">🟢 Còn hạn an toàn (Safe)</option>
-              <option value="NEAR_EXPIRY">🟡 Cận date (&lt; 45 ngày)</option>
+              <option value="NEAR_EXPIRY">🟡 Cận hạn (&lt; 45 ngày)</option>
               <option value="EXPIRED">🔴 Đã quá hạn (Expired / Cách ly)</option>
             </select>
           </div>
@@ -654,7 +709,7 @@ export const BatchLabelPrintSection: React.FC = () => {
                             ) : isNear ? (
                               <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-50 text-amber-800 border border-amber-200">
                                 <Clock className="w-3 h-3 text-amber-600" />
-                                <span>Cận date</span>
+                                <span>Cận hạn</span>
                               </span>
                             ) : (
                               <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">
@@ -725,7 +780,7 @@ export const BatchLabelPrintSection: React.FC = () => {
                 </div>
                 <div>
                   <h4 className="font-extrabold text-slate-900 text-xs uppercase tracking-wider">
-                    Mẫu tem lô hàng (Live Preview)
+                    Xem Trước Tem Lô Hàng
                   </h4>
                   <p className="text-[11px] text-slate-500 font-mono">
                     Khổ Decal 100×60 mm · Barcode Code128 + QR FEFO
@@ -742,23 +797,8 @@ export const BatchLabelPrintSection: React.FC = () => {
               <ProductBatchLabelCard data={activePreviewData} />
             </div>
 
-            {/* Cấu hình thiết bị & Lệnh in (Print Spooler Config) */}
+            {/* Tùy chọn khổ giấy & số lượng in */}
             <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-200 space-y-3 text-xs">
-              <div>
-                <label className="text-[10px] font-bold text-slate-600 uppercase block mb-1">
-                  Máy in đích (Target Printer):
-                </label>
-                <select
-                  value={printerDevice}
-                  onChange={(e) => setPrinterDevice(e.target.value)}
-                  className="w-full px-2.5 py-1.5 bg-white border border-slate-300 rounded-lg text-xs font-semibold text-slate-800 outline-none focus:border-emerald-600"
-                >
-                  <option value="ZEBRA_ZT410">🖨️ Zebra ZT410 Thermal (Kho A - 203 DPI)</option>
-                  <option value="XPRINTER_XP420B">🖨️ Xprinter XP-420B Decal cuộn</option>
-                  <option value="LASER_PDF">📄 Máy in Laser văn phòng (Xuất PDF A4)</option>
-                </select>
-              </div>
-
               <div className="grid grid-cols-2 gap-2">
                 <div>
                   <label className="text-[10px] font-bold text-slate-600 uppercase block mb-1">Khổ giấy:</label>
@@ -851,7 +891,7 @@ export const BatchLabelPrintSection: React.FC = () => {
                     Xem trước bản in thực tế ({selectedBatches.length} lô · {selectedBatches.length * printCopies} tem)
                   </h2>
                   <p className="text-xs text-slate-300 mt-0.5">
-                    Định dạng: <strong className="text-emerald-300">{paperFormat === '100x60' ? 'Decal sản phẩm 100×60 mm (Máy in nhiệt)' : 'Giấy Decal A4 (6 nhãn/trang)'}</strong> · Thiết bị: {printerDevice}
+                    Định dạng: <strong className="text-emerald-300">{paperFormat === '100x60' ? 'Decal sản phẩm 100×60 mm' : 'Giấy Decal A4 (6 nhãn/trang)'}</strong>
                   </p>
                 </div>
               </div>

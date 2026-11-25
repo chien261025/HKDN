@@ -100,7 +100,7 @@ export const InboundVoucherModal: React.FC<InboundVoucherModalProps> = ({ order,
                 {order.status === 'STOCKED'
                   ? 'Đã Cất Kệ Xong'
                   : order.status === 'SHORT_CLOSED'
-                  ? 'Đóng Non PO (Short-Close)'
+                  ? 'Đóng Đơn Sớm (Chốt Số Thực Nhận)'
                   : order.status === 'CLOSED_NO_STOCK'
                   ? 'Từ Chối Cổng & Trả Hàng (Zero Stock)'
                   : order.status === 'PARTIALLY_STOCKED'
@@ -213,7 +213,7 @@ export const InboundVoucherModal: React.FC<InboundVoucherModalProps> = ({ order,
                 {order.status === 'CLOSED_NO_STOCK' || (totalRejected === totalReceived && totalReceived > 0)
                   ? `Toàn bộ ${totalRejected} kiện hàng không đạt tiêu chuẩn tiếp nhận (ẩm mốc, hư hỏng vật lý hoặc sai lệch hợp đồng). Bộ phận QC đã lập biên bản từ chối tiếp nhận toàn bộ (Zero Stock) và bàn giao trả lại xe cho tài xế chở về NCC. Đơn hàng kết thúc đóng, không phát sinh công nợ (0 VNĐ).`
                   : order.status === 'SHORT_CLOSED'
-                  ? `Nhà cung cấp xác nhận không giao bù phần còn thiếu. Kho đã hoàn tất thủ tục Đóng non PO (Short-Close) và chốt số lượng thực nhập ${totalStocked} sản phẩm để đối soát công nợ.`
+                  ? `Nhà cung cấp xác nhận không giao bù phần còn thiếu. Kho đã chốt đóng đơn sớm theo số lượng thực nhập ${totalStocked} sản phẩm.`
                   : totalRejected > 0
                   ? order.notes && (order.notes.includes('VUOT_DUNG_SAI_PO') || order.notes.includes('vượt dung sai') || order.notes.includes('Vượt dung sai'))
                     ? `Phát hiện ${totalRejected} sản phẩm vượt dung sai hợp đồng PO (+10%). Kho đã lập biên bản từ chối tiếp nhận và bàn giao trả lại xe cho tài xế chở về ngay tại cổng kiểm soát. Số lượng đạt chuẩn ${totalStocked || (totalReceived - totalRejected)} sản phẩm được chấp thuận nhập kho.`

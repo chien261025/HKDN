@@ -210,7 +210,7 @@ export const WarehouseDetailModal: React.FC<WarehouseDetailModalProps> = ({
               </span>
             </div>
             <div className="p-3 bg-white border border-slate-200 rounded-xl text-center">
-              <span className="text-slate-400 block text-[11px]">Cửa tiếp vận Dock</span>
+              <span className="text-slate-400 block text-[11px]">Số cửa giao nhận</span>
               <span className="font-extrabold text-blue-600 text-sm font-mono mt-0.5 block">
                 {warehouse.dockCount || 6} Cửa xe
               </span>
@@ -218,7 +218,7 @@ export const WarehouseDetailModal: React.FC<WarehouseDetailModalProps> = ({
             <div className="p-3 bg-white border border-slate-200 rounded-xl text-center">
               <span className="text-slate-400 block text-[11px]">Số phân khu</span>
               <span className="font-extrabold text-indigo-600 text-sm font-mono mt-0.5 block">
-                {warehouse.totalZones || zones.length} Zones
+                {warehouse.totalZones || zones.length} Khu
               </span>
             </div>
             <div className="p-3 bg-white border border-slate-200 rounded-xl text-center">
@@ -292,7 +292,7 @@ export const WarehouseDetailModal: React.FC<WarehouseDetailModalProps> = ({
           <div className="p-3 bg-blue-50/70 border border-blue-200 rounded-xl text-blue-900 flex items-start gap-2.5">
             <ShieldCheck className="w-4 h-4 text-blue-600 shrink-0 mt-0.5" />
             <p className="text-[11px] leading-relaxed">
-              Chi nhánh này được tích hợp bảo mật dải IP tin cậy, camera giám sát cửa Dock và đồng bộ tức thì với ứng dụng di động máy quét PDA của nhân viên vận hành.
+              Chi nhánh kho đang hoạt động ổn định, sẵn sàng tiếp nhận đơn nhập, xuất và kiểm kê theo phân quyền chi nhánh.
             </p>
           </div>
         </div>

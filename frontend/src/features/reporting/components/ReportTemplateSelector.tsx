@@ -18,21 +18,21 @@ interface ReportTemplateSelectorProps {
 export const REPORT_TEMPLATES: ReportTemplate[] = [
   {
     code: 'RPT-LEDGER',
-    title: 'Sổ Cái Thẻ Kho & Bút Toán Đối Soát',
-    category: 'Kiểm Toán & Kế Toán',
+    title: 'Thẻ Kho & Lịch Sử Xuất Nhập',
+    category: 'Đối Soát Tồn Kho',
     description: 'Toàn bộ giao dịch Nhập - Xuất - Điều chuyển kèm chứng từ và mã lô đối soát.',
-    estimatedRows: '',
-    estimatedSize: '4.2 MB',
+    estimatedRows: 'Excel (.xlsx)',
+    estimatedSize: 'Excel (.xlsx)',
     format: 'EXCEL',
     badgeColor: 'emerald',
   },
   {
     code: 'RPT-EXPIRY',
-    title: 'Cân Đối Tồn & Hạn Dùng (FEFO/FIFO)',
-    category: 'Quản Lý Hạn Sử Dụng',
-    description: 'Tổng hợp tồn khả dụng, phân loại lô hàng cận date 30-60-90 ngày theo danh mục SKU.',
-    estimatedRows: '',
-    estimatedSize: '1.8 MB',
+    title: 'Tồn Kho & Hạn Sử Dụng',
+    category: 'Quản Lý Hạn Dùng',
+    description: 'Tổng hợp tồn khả dụng, phân loại lô hàng cận hạn theo từng mặt hàng.',
+    estimatedRows: 'Excel (.xlsx)',
+    estimatedSize: 'Excel (.xlsx)',
     format: 'EXCEL',
     badgeColor: 'blue',
   },
@@ -40,29 +40,29 @@ export const REPORT_TEMPLATES: ReportTemplate[] = [
     code: 'RPT-INBOUND',
     title: 'Báo cáo nhập kho',
     category: 'Nhập kho & Đối soát',
-    description: 'Chi tiết đơn nhập, nhà cung cấp, sản phẩm, mã lô, số lượng dự kiến và số lượng đã nhận.',
-    estimatedRows: 'Dữ liệu thật',
+    description: 'Chi tiết đơn nhập, nhà cung cấp, sản phẩm, mã lô, số lượng dự kiến và đã nhận.',
+    estimatedRows: 'Excel (.xlsx)',
     estimatedSize: 'Excel (.xlsx)',
     format: 'EXCEL',
     badgeColor: 'blue',
   },
   {
     code: 'RPT-SLOTTING',
-    title: 'Tỷ Lệ Lấp Đầy & Dung Tích Ô Kệ',
-    category: 'Quy Hoạch Mặt Bằng',
-    description: 'Thống kê sức chứa, tỷ lệ lấp đầy thể tích & tải trọng an toàn phân khu Zone A & B.',
-    estimatedRows: '',
-    estimatedSize: '950 KB',
+    title: 'Tỷ Lệ Lấp Đầy Ô Kệ',
+    category: 'Mặt Bằng Kho',
+    description: 'Thống kê sức chứa, tỷ lệ lấp đầy và tải trọng hiện tại của các ô lưu hàng.',
+    estimatedRows: 'Excel (.xlsx)',
+    estimatedSize: 'Excel (.xlsx)',
     format: 'EXCEL',
     badgeColor: 'indigo',
   },
   {
     code: 'RPT-FULFILLMENT',
-    title: 'Hiệu Suất Đơn Hàng & SLA Vận Hành',
-    category: 'KPI Vận Hành & Giao Vận',
-    description: 'Đo lường năng suất lấy hàng (Pick/Pack), tỷ lệ hoàn tất đơn hàng và thời gian xử lý.',
-    estimatedRows: '',
-    estimatedSize: '2.5 MB',
+    title: 'Tiến Độ & Hiệu Suất Xuất Kho',
+    category: 'Giao Hàng & Vận Hành',
+    description: 'Tổng hợp tỷ lệ hoàn thành đơn xuất hàng và tiến độ xử lý theo kỳ.',
+    estimatedRows: 'Excel (.xlsx)',
+    estimatedSize: 'Excel (.xlsx)',
     format: 'EXCEL',
     badgeColor: 'amber',
   },
@@ -148,7 +148,7 @@ export const ReportTemplateSelector: React.FC<ReportTemplateSelectorProps> = ({
               {/* Action Button */}
               <div className="mt-5 pt-4 border-t border-slate-100 flex items-center justify-between gap-2">
                 <div className="text-[11px] text-slate-500 font-medium">
-                  Ước tính: <strong className="text-slate-700 font-semibold">{tmpl.estimatedSize}</strong>
+                  Định dạng: <strong className="text-slate-700 font-semibold">{tmpl.estimatedSize}</strong>
                 </div>
 
                 <button

@@ -23,6 +23,9 @@ export interface ProductItem {
   name: string;
   description?: string;
   category: ProductCategory;
+  categoryId?: number;
+  categoryCode?: string;
+  categoryName?: string;
   unit: string;
   brand?: string;
   origin?: string;
@@ -59,6 +62,7 @@ export interface CategoryItem {
   parentId?: string | null;
   status: 'ACTIVE' | 'INACTIVE' | 'DELETED';
   productCount?: number;
+  childCount?: number;
 }
 
 export interface SupplierItem {

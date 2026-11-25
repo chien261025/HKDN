@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { BinLocation } from '../types';
 import { LayoutHeader } from '../components/layout/LayoutHeader';
 import { WarehouseFloorPlan2D } from '../components/layout/WarehouseFloorPlan2D';
@@ -11,15 +12,28 @@ import { WarehouseItem } from '../types';
 import { StockItem } from '../../labels/types';
 
 export const LocationLayoutPage: React.FC = () => {
-  const [activeWarehouseId, setActiveWarehouseId] = useState<string>(() => warehouseService.getActiveWarehouseId());
+  const [searchParams] = useSearchParams();
+  const initialZone = searchParams.get('zone') || 'ALL';
+  const initialWh = searchParams.get('warehouse') || warehouseService.getActiveWarehouseId();
+  const [activeWarehouseId, setActiveWarehouseId] = useState<string>(() => initialWh);
   const [warehouses, setWarehouses] = useState<WarehouseItem[]>(DEFAULT_WAREHOUSES);
   const [locations, setLocations] = useState<BinLocation[]>([]);
-  const [selectedZone, setSelectedZone] = useState<string>('ALL');
+  const [selectedZone, setSelectedZone] = useState<string>(() => initialZone);
   const [statusFilter, setStatusFilter] = useState<'ALL' | 'EMPTY' | 'OCCUPIED' | 'EXPIRING'>('ALL');
   const [selectedBinId, setSelectedBinId] = useState<number | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [viewMode, setViewMode] = useState<'FLOOR_PLAN' | 'RACK_ELEVATION'>('FLOOR_PLAN');
   const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const zone = searchParams.get('zone');
+    if (zone) setSelectedZone(zone);
+    const wh = searchParams.get('warehouse');
+    if (wh) {
+      setActiveWarehouseId(wh);
+      warehouseService.setActiveWarehouseId(wh);
+    }
+  }, [searchParams]);
 
   // Modal điều chuyển ô kệ trực tiếp
   const [transferSourceItem, setTransferSourceItem] = useState<StockItem | null>(null);
@@ -178,18 +192,25 @@ export const LocationLayoutPage: React.FC = () => {
 
   // Xử lý mở Modal điều chuyển ô kệ từ Panel chi tiết
   const handleOpenTransfer = (bin: BinLocation) => {
+    const onHand = bin.onHandQty != null ? bin.onHandQty : (bin.qty || 0);
+    const reserved = bin.reservedQty != null ? bin.reservedQty : (bin.status === 'RESERVED' ? onHand : 0);
+    const available = bin.availableQty != null ? bin.availableQty : Math.max(0, onHand - reserved);
+
     const stockItem: StockItem = {
       id: bin.id,
-      productId: (bin as any).productId || 1,
+      productId: bin.productId || 1,
+      batchId: bin.batchId,
+      warehouseId: bin.warehouseId || (bin.barcode?.startsWith('WH02') ? 2 : bin.barcode?.startsWith('WH03') ? 3 : bin.barcode?.startsWith('WH04') ? 4 : 1),
       locationId: bin.id,
       sku: bin.sku || 'SKU-GENERAL',
       name: bin.productName || 'Hàng hóa lưu kho',
       locationBarcode: bin.barcode,
       batchNumber: bin.batch || 'BATCH-01',
       expiryDate: bin.expiry || 'N/A',
-      onHandQty: bin.qty || 0,
-      reservedQty: 0,
-      availableQty: bin.qty || 0,
+      onHandQty: onHand,
+      reservedQty: reserved,
+      availableQty: available,
+      isExpired: bin.isExpired || false,
     };
     setTransferSourceItem(stockItem);
     setIsTransferModalOpen(true);
@@ -256,6 +277,7 @@ export const LocationLayoutPage: React.FC = () => {
           isOpen={isTransferModalOpen}
           onClose={() => setIsTransferModalOpen(false)}
           sourceItem={transferSourceItem as any}
+          availableLocations={branchLocations}
           onSuccess={handleTransferSuccess}
         />
       )}

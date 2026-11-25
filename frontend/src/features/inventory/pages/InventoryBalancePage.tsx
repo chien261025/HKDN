@@ -2,7 +2,6 @@ import React, { useState, useEffect, useTransition } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { Package, Clock, Layers, ArrowRightLeft, CheckCircle2, AlertCircle, ShieldAlert, Building2, RefreshCw, Ban } from 'lucide-react';
 import { StockItem, StockTransferDto } from '../../labels/types';
-import { OutboundFefoWorkbench } from '../components/OutboundFefoWorkbench';
 import { StockBalanceTable } from '../components/balance/StockBalanceTable';
 import { StockTransferHistoryTable } from '../components/balance/StockTransferHistoryTable';
 import { SafetyStockAlertsPanel } from '../components/SafetyStockAlertsPanel';
@@ -18,7 +17,7 @@ import { warehouseService, DEFAULT_WAREHOUSES } from '../../masterdata/services/
 export const InventoryBalancePage: React.FC = () => {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
-  const [activeTab, setActiveTab] = useState<'outbound' | 'balance' | 'ledger' | 'transfer' | 'alerts'>('balance');
+  const [activeTab, setActiveTab] = useState<'balance' | 'ledger' | 'transfer' | 'alerts'>('balance');
   const [, startTransition] = useTransition();
 
   // Bộ lọc tương tác qua 4 thẻ KPI tổng quan
@@ -29,7 +28,7 @@ export const InventoryBalancePage: React.FC = () => {
 
   const [warehouseList, setWarehouseList] = useState<any[]>([
     { id: 'ALL', code: 'ALL', name: 'Toàn bộ chi nhánh kho (Hệ Thống)' },
-    ...DEFAULT_WAREHOUSES.map((w) => ({ id: String(w.id), code: w.code, name: w.name })),
+    ...DEFAULT_WAREHOUSES.map((w) => ({ id: w.code, code: w.code, name: w.name })),
   ]);
 
   useEffect(() => {
@@ -39,7 +38,7 @@ export const InventoryBalancePage: React.FC = () => {
         if (list && list.length > 0) {
           setWarehouseList([
             { id: 'ALL', code: 'ALL', name: 'Toàn bộ chi nhánh kho (Hệ Thống)' },
-            ...list.map((w) => ({ id: String(w.id), code: w.code, name: w.name })),
+            ...list.map((w) => ({ id: w.code, code: w.code, name: w.name })),
           ]);
         }
       } catch (err) {
@@ -51,13 +50,15 @@ export const InventoryBalancePage: React.FC = () => {
 
   useEffect(() => {
     const tab = searchParams.get('tab');
-    if (tab && ['outbound', 'balance', 'ledger', 'transfer', 'alerts'].includes(tab)) {
+    if (tab && ['balance', 'ledger', 'transfer', 'alerts'].includes(tab)) {
       setActiveTab(tab as any);
+    } else if (tab === 'outbound') {
+      navigate('/outbound', { replace: true });
     }
     if (searchParams.get('action') === 'transfer') {
       setShowTransferModal(true);
     }
-  }, [searchParams]);
+  }, [searchParams, navigate]);
 
   // Bộ chọn kho dùng chung toàn trang - Khởi tạo từ active warehouse
   const [selectedWarehouse, setSelectedWarehouse] = useState<string>(() => {
@@ -87,7 +88,24 @@ export const InventoryBalancePage: React.FC = () => {
   const [activeLedgerEntry, setActiveLedgerEntry] = useState<LedgerEntryData | null>(null);
   const [showLedgerModal, setShowLedgerModal] = useState(false);
 
-  const currentWhId = selectedWarehouse === 'ALL' ? undefined : Number(selectedWarehouse);
+  const normalizeWarehouseCode = (wh?: string | number): string => {
+    if (!wh || wh === 'ALL') return 'ALL';
+    const s = String(wh).trim();
+    if (s.startsWith('WH')) return s;
+    const num = parseInt(s, 10);
+    if (!isNaN(num)) {
+      return `WH0${num}`;
+    }
+    return s;
+  };
+
+  const getTargetWhId = (whStr?: string | number): number | undefined => {
+    if (!whStr || whStr === 'ALL') return undefined;
+    const match = String(whStr).match(/\d+/);
+    return match ? parseInt(match[0], 10) : undefined;
+  };
+
+  const currentWhId = getTargetWhId(selectedWarehouse);
 
   const loadStockData = (whId = currentWhId) => {
     setLoadingStocks(true);
@@ -143,18 +161,13 @@ export const InventoryBalancePage: React.FC = () => {
     }
   };
 
-  const getTargetWhId = (whStr?: string | number): number | undefined => {
-    if (!whStr || whStr === 'ALL') return undefined;
-    const match = String(whStr).match(/\d+/);
-    return match ? parseInt(match[0], 10) : undefined;
-  };
-
   // Thay đổi kho toàn hệ thống đồng bộ với Global Header
   const handleWarehouseChange = (whIdStr: string) => {
-    setSelectedWarehouse(whIdStr);
-    warehouseService.setActiveWarehouseId(whIdStr);
-    window.dispatchEvent(new CustomEvent('smart_wms_warehouse_changed', { detail: whIdStr }));
-    const targetWhId = getTargetWhId(whIdStr);
+    const norm = normalizeWarehouseCode(whIdStr);
+    setSelectedWarehouse(norm);
+    warehouseService.setActiveWarehouseId(norm);
+    window.dispatchEvent(new CustomEvent('smart_wms_warehouse_changed', { detail: norm }));
+    const targetWhId = getTargetWhId(norm);
     loadStockData(targetWhId);
     loadAlertData(targetWhId);
     loadLedgers(targetWhId);
@@ -163,7 +176,8 @@ export const InventoryBalancePage: React.FC = () => {
   // Lắng nghe sự kiện đổi kho từ Global Header
   useEffect(() => {
     const handleWhChange = (e: any) => {
-      const newWh = e.detail || warehouseService.getActiveWarehouseId() || 'ALL';
+      const raw = e.detail || warehouseService.getActiveWarehouseId() || 'ALL';
+      const newWh = normalizeWarehouseCode(raw);
       setSelectedWarehouse(newWh);
       const targetWhId = getTargetWhId(newWh);
       loadStockData(targetWhId);
@@ -185,11 +199,7 @@ export const InventoryBalancePage: React.FC = () => {
 
   const handleKpiCardClick = (filter: 'ALL' | 'RESERVED' | 'BLOCKED' | 'AVAILABLE') => {
     setKpiFilter(filter);
-    if (filter === 'AVAILABLE') {
-      setActiveTab('outbound');
-    } else {
-      setActiveTab('balance');
-    }
+    setActiveTab('balance');
   };
 
   useEffect(() => {
@@ -200,7 +210,7 @@ export const InventoryBalancePage: React.FC = () => {
     loadTransfers();
   }, []);
 
-  const handleTabChange = (tab: 'outbound' | 'balance' | 'ledger' | 'transfer' | 'alerts') => {
+  const handleTabChange = (tab: 'balance' | 'ledger' | 'transfer' | 'alerts') => {
     if (tab === 'ledger') loadLedgers();
     if (tab === 'balance') loadStockData();
     if (tab === 'alerts') loadAlertData();
@@ -294,8 +304,8 @@ export const InventoryBalancePage: React.FC = () => {
           qtyChange: 0,
           balanceBefore: item.onHandQty,
           balanceAfter: item.onHandQty,
-          performedBy: 'Hệ thống WMS (Audit Snapshot)',
-          notes: 'Bản chụp số dư tồn kho tức thời tại ô kệ lưu trữ. Xác nhận trạng thái lưu kho chuẩn hóa.',
+          performedBy: 'Hệ thống kiểm soát tồn kho',
+          notes: 'Số dư tồn kho hiện tại tại ô lưu trữ.',
           timestamp: new Date().toLocaleString('vi-VN'),
           hashSignature: `SHA256:SNAPSHOT-${item.id}`,
         };
@@ -326,10 +336,10 @@ export const InventoryBalancePage: React.FC = () => {
           </div>
           <div>
             <h1 className="text-xl sm:text-2xl font-bold text-slate-900 tracking-tight">
-              Quản Lý Tồn Kho & Sổ Cái Biến Động
+              Quản Lý Tồn Kho &amp; Thẻ Kho
             </h1>
             <p className="text-xs sm:text-sm text-slate-500 font-normal mt-0.5">
-              Kiểm soát số dư hàng hóa theo vị trí ô kệ, số lô, hạn sử dụng và lịch sử biến động thẻ kho.
+              Theo dõi tồn kho theo vị trí kệ, số lô, hạn sử dụng và lịch sử xuất nhập.
             </p>
           </div>
         </div>
@@ -341,7 +351,7 @@ export const InventoryBalancePage: React.FC = () => {
             <div className="flex flex-col">
               <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Phạm vi dữ liệu kho:</span>
               <select
-                value={selectedWarehouse}
+                value={normalizeWarehouseCode(selectedWarehouse)}
                 onChange={(e) => handleWarehouseChange(e.target.value)}
                 className="bg-transparent text-xs sm:text-sm font-bold text-slate-900 focus:outline-none cursor-pointer pr-4"
               >
@@ -469,11 +479,11 @@ export const InventoryBalancePage: React.FC = () => {
           onClick={() => handleKpiCardClick('AVAILABLE')}
           onKeyDown={(e) => (e.key === 'Enter' || e.key === ' ') && handleKpiCardClick('AVAILABLE')}
           className={`p-4 sm:p-5 rounded-2xl border transition-all duration-200 cursor-pointer text-left select-none group relative ${
-            activeTab === 'outbound' || (activeTab === 'balance' && kpiFilter === 'AVAILABLE')
+            activeTab === 'balance' && kpiFilter === 'AVAILABLE'
               ? 'bg-emerald-50 border-emerald-600 ring-2 ring-emerald-600/30 shadow-md'
               : 'bg-white border-slate-200/90 hover:border-emerald-300 hover:shadow-sm'
           }`}
-          title="Bấm để mở phân bổ xuất hàng"
+          title="Lọc các mặt hàng có tồn khả dụng sẵn sàng xuất"
         >
           <div className="flex items-start justify-between">
             <div>
@@ -482,7 +492,7 @@ export const InventoryBalancePage: React.FC = () => {
                 {totalAvailable.toLocaleString('vi-VN')} <span className="text-sm font-bold text-slate-400">SP</span>
               </div>
             </div>
-            <div className={`p-2.5 rounded-xl transition-colors ${activeTab === 'outbound' || (activeTab === 'balance' && kpiFilter === 'AVAILABLE') ? 'bg-emerald-600 text-white shadow-xs' : 'bg-emerald-50 text-emerald-700 border border-emerald-200'}`}>
+            <div className={`p-2.5 rounded-xl transition-colors ${activeTab === 'balance' && kpiFilter === 'AVAILABLE' ? 'bg-emerald-600 text-white shadow-xs' : 'bg-emerald-50 text-emerald-700 border border-emerald-200'}`}>
               <CheckCircle2 className="w-5 h-5" />
             </div>
           </div>
@@ -518,7 +528,7 @@ export const InventoryBalancePage: React.FC = () => {
           }`}
         >
           <Clock className="w-4 h-4 text-slate-500" />
-          <span>Sổ Cái Thẻ Kho</span>
+          <span>Thẻ Kho Xuất Nhập</span>
           <span className="px-1.5 py-0.2 rounded-full text-2xs bg-indigo-100 text-indigo-700 font-mono">
             {ledgers.length}
           </span>
@@ -556,18 +566,6 @@ export const InventoryBalancePage: React.FC = () => {
               {transfers.length}
             </span>
           )}
-        </button>
-
-        <button
-          onClick={() => handleTabChange('outbound')}
-          className={`flex items-center gap-2 px-4 py-2.5 text-xs sm:text-sm font-semibold border-b-2 transition-all cursor-pointer whitespace-nowrap ${
-            activeTab === 'outbound'
-              ? 'border-blue-600 text-blue-700 bg-blue-50/50 rounded-t-lg'
-              : 'border-transparent text-slate-600 hover:text-slate-900 hover:border-slate-300'
-          }`}
-        >
-          <Clock className="w-4 h-4 text-slate-500" />
-          <span>Điều Phối Xuất (FEFO)</span>
         </button>
       </div>
 
@@ -649,10 +647,6 @@ export const InventoryBalancePage: React.FC = () => {
               setShowLedgerModal(true);
             }}
           />
-        )}
-
-        {activeTab === 'outbound' && (
-          <OutboundFefoWorkbench />
         )}
 
         {activeTab === 'alerts' && (

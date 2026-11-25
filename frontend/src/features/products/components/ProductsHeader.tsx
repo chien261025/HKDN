@@ -8,6 +8,7 @@ interface ProductsHeaderProps {
   setActiveTab: (tab: 'PRODUCTS' | 'SUPPLIERS' | 'CATEGORIES') => void;
   products: ProductItem[];
   suppliers: SupplierItem[];
+  categoriesCount?: number;
   onOpenCreateModal: () => void;
   onOpenImportModal?: () => void;
   selectedHealthFilter?: string;
@@ -19,6 +20,7 @@ export const ProductsHeader: React.FC<ProductsHeaderProps> = ({
   setActiveTab,
   products,
   suppliers,
+  categoriesCount,
   onOpenCreateModal,
   onOpenImportModal,
   selectedHealthFilter = 'ALL',
@@ -134,7 +136,7 @@ export const ProductsHeader: React.FC<ProductsHeaderProps> = ({
               Danh Mục Sản Phẩm & Hàng Hóa
             </h1>
             <p className="text-xs sm:text-sm text-slate-500 font-normal mt-0.5">
-              Quản lý mã hàng, mã vạch, đơn vị tính, kích thước, giá cả và định mức tồn kho
+              Quản lý sản phẩm, danh mục ngành hàng, nhà cung cấp và tồn kho
             </p>
           </div>
         </div>
@@ -162,7 +164,7 @@ export const ProductsHeader: React.FC<ProductsHeaderProps> = ({
               }`}
             >
               <Tags className="w-4 h-4 text-blue-600" />
-              <span>Danh mục</span>
+              <span>{categoriesCount !== undefined ? `Danh mục (${categoriesCount})` : 'Danh mục'}</span>
             </button>
             <button
               onClick={() => setActiveTab('SUPPLIERS')}
@@ -214,20 +216,25 @@ export const ProductsHeader: React.FC<ProductsHeaderProps> = ({
               </button>
             )}
 
-            {activeTab !== 'CATEGORIES' && (
-              <button
-                onClick={onOpenCreateModal}
-                className="flex items-center gap-2 px-4 py-2.5 bg-blue-600 hover:bg-blue-700 active:scale-[0.99] text-white rounded-xl text-xs sm:text-sm font-bold shadow-sm shadow-blue-200 transition-all shrink-0 cursor-pointer"
-              >
-                <Plus className="w-4 h-4" />
-                <span>{activeTab === 'PRODUCTS' ? 'Thêm Sản Phẩm Mới' : 'Thêm Nhà Cung Cấp'}</span>
-              </button>
-            )}
+            <button
+              onClick={onOpenCreateModal}
+              className="flex items-center gap-2 px-4 py-2.5 bg-blue-600 hover:bg-blue-700 active:scale-[0.99] text-white rounded-xl text-xs sm:text-sm font-bold shadow-sm shadow-blue-200 transition-all shrink-0 cursor-pointer"
+            >
+              <Plus className="w-4 h-4" />
+              <span>
+                {activeTab === 'PRODUCTS'
+                  ? 'Thêm Sản Phẩm Mới'
+                  : activeTab === 'SUPPLIERS'
+                  ? 'Thêm Nhà Cung Cấp'
+                  : 'Thêm Danh Mục Mới'}
+              </span>
+            </button>
           </div>
         </div>
       </div>
 
-      {/* 5 KPI Metrics (Tương tác trực tiếp để lọc bảng danh mục) */}
+      {/* 5 KPI Metrics (Hiển thị tập trung tại Tab Sản Phẩm) */}
+      {activeTab === 'PRODUCTS' && (
       <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3.5">
         {/* Card 1: Total SKU */}
         <div
@@ -356,11 +363,12 @@ export const ProductsHeader: React.FC<ProductsHeaderProps> = ({
               <DollarSign className="w-4 h-4" />
             </div>
           </div>
-          <div className="mt-2 text-xs text-emerald-700 font-mono font-medium truncate" title={canSeePrice ? `${totalInventoryValuation.toLocaleString()} ₫` : 'Đã ẩn bảo mật'}>
-            {canSeePrice ? `${totalInventoryValuation.toLocaleString()} ₫` : '*** (Bảo mật nội bộ)'}
+          <div className="mt-2 text-xs text-emerald-700 font-mono font-medium truncate" title={canSeePrice ? `${totalInventoryValuation.toLocaleString()} ₫` : 'Đã ẩn'}>
+            {canSeePrice ? `${totalInventoryValuation.toLocaleString()} ₫` : '*** (Đã ẩn)'}
           </div>
         </div>
       </div>
+      )}
     </div>
   );
 };

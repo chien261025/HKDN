@@ -199,7 +199,7 @@ export const InboundOrderList: React.FC<InboundOrderListProps> = ({
     if (isClosedNoStock) {
       return {
         stage: 'Đóng đơn',
-        subText: 'Không có hàng đạt QC',
+        subText: 'Không có hàng đạt tiêu chuẩn',
         percent: 100,
         barColor: 'bg-slate-400',
         textColor: 'text-slate-600',
@@ -209,7 +209,7 @@ export const InboundOrderList: React.FC<InboundOrderListProps> = ({
     if (isShortClosed) {
       const qc = getOrderQcMetrics(order);
       return {
-        stage: 'Đóng non PO (Short-Close)',
+        stage: 'Đã đóng đơn sớm',
         subText: `Đã cất ${qc.totalStocked}/${qc.totalExpected} ${unitLabel} · Hủy phần thiếu`,
         percent: 100,
         barColor: 'bg-slate-500',
@@ -248,9 +248,9 @@ export const InboundOrderList: React.FC<InboundOrderListProps> = ({
       return {
         stage: 'Đã cất kệ & ghi sổ',
         subText: isOverDelivered
-          ? `Đã cất ${qc.totalStocked}/${qc.totalExpected} ${unitLabel} (+${overDiff} dôi dư trong dung sai)`
+          ? `Đã cất ${qc.totalStocked}/${qc.totalExpected} ${unitLabel} (+${overDiff} dôi dư cho phép)`
           : qc.totalRejected > 0
-            ? `Đã cất ${qc.totalStocked}/${qc.totalExpected} ${unitLabel} (Loại ${qc.totalRejected} lỗi QC)`
+            ? `Đã cất ${qc.totalStocked}/${qc.totalExpected} ${unitLabel} (Loại ${qc.totalRejected} hàng lỗi)`
             : `Đã cất ${qc.totalStocked}/${qc.totalExpected} ${unitLabel} (Hoàn tất 100%)`,
         percent: 100,
         barColor: 'bg-emerald-500',
@@ -263,7 +263,7 @@ export const InboundOrderList: React.FC<InboundOrderListProps> = ({
       const putawayPct = Math.min(100, Math.round((qc.totalStocked / targetStock) * 100));
       return {
         stage: 'Đang cất lên kệ',
-        subText: `Đã cất ${qc.totalStocked}/${targetStock} ${unitLabel} đạt QC`,
+        subText: `Đã cất ${qc.totalStocked}/${targetStock} ${unitLabel} đạt kiểm tra`,
         percent: Math.min(95, Math.round(50 + putawayPct * 0.45)),
         barColor: 'bg-blue-600',
         textColor: 'text-blue-700',
@@ -271,9 +271,9 @@ export const InboundOrderList: React.FC<InboundOrderListProps> = ({
     }
 
     return {
-      stage: 'Tại khu đệm & QC',
+      stage: 'Tại khu đệm chờ xếp kệ',
       subText: qc.totalRejected > 0
-        ? `Đã nhận ${qc.totalReceived}/${qc.totalExpected} ${unitLabel} (Đạt QC: ${targetStock})`
+        ? `Đã nhận ${qc.totalReceived}/${qc.totalExpected} ${unitLabel} (Đạt: ${targetStock})`
         : `Đã nhận ${qc.totalReceived}/${qc.totalExpected} ${unitLabel} vào khu đệm`,
       percent: 50,
       barColor: 'bg-blue-500',
@@ -762,7 +762,7 @@ export const InboundOrderList: React.FC<InboundOrderListProps> = ({
                           <span className="text-slate-400 italic text-[11px]">Chờ xe tải đến</span>
                         ) : qc.totalRejected > 0 ? (
                           <span className="inline-flex items-center gap-1 text-[11px] font-bold px-2 py-0.5 rounded-full bg-rose-50 text-rose-700 border border-rose-200">
-                            <AlertOctagon className="w-3 h-3 text-rose-600" /> {order.notes?.includes('vượt dung sai') || order.notes?.includes('Vượt dung sai') ? `Trả xe: ${qc.totalRejected}` : `QC: Lỗi ${qc.totalRejected}`} {unitLabel}
+                            <AlertOctagon className="w-3 h-3 text-rose-600" /> {order.notes?.includes('vượt dung sai') || order.notes?.includes('Vượt dung sai') ? `Trả xe: ${qc.totalRejected}` : `Hàng lỗi: ${qc.totalRejected}`} {unitLabel}
                           </span>
                         ) : qc.totalReceived < qc.totalExpected ? (
                           <span className="inline-flex items-center gap-1 text-[11px] font-bold px-2 py-0.5 rounded-full bg-amber-50 text-amber-700 border border-amber-200">
@@ -774,7 +774,7 @@ export const InboundOrderList: React.FC<InboundOrderListProps> = ({
                           </span>
                         ) : (
                           <span className="inline-flex items-center gap-1 text-[11px] font-bold px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200">
-                            <CheckCircle2 className="w-3 h-3 text-emerald-600" /> Đạt QC 100%
+                            <CheckCircle2 className="w-3 h-3 text-emerald-600" /> Đủ &amp; đạt 100%
                           </span>
                         )}
                       </td>
@@ -802,12 +802,12 @@ export const InboundOrderList: React.FC<InboundOrderListProps> = ({
                       <td className="py-3.5 px-3 text-xs whitespace-nowrap">
                         {order.status === 'CLOSED_NO_STOCK' && (
                           <span className="inline-flex items-center gap-1.5 text-xs font-bold text-rose-800 bg-rose-50 px-2.5 py-1 rounded-lg border border-rose-300">
-                            <Ban className="w-3.5 h-3.5 text-rose-600" /> TỪ CHỐI CỔNG (ZERO STOCK)
+                            <Ban className="w-3.5 h-3.5 text-rose-600" /> ĐÃ TỪ CHỐI NHẬN
                           </span>
                         )}
                         {order.status === 'SHORT_CLOSED' && (
                           <span className="inline-flex items-center gap-1.5 text-xs font-bold text-slate-700 bg-slate-100 px-2.5 py-1 rounded-lg border border-slate-300">
-                            <Ban className="w-3.5 h-3.5 text-slate-500" /> ĐÓNG NON (SHORT-CLOSE)
+                            <Ban className="w-3.5 h-3.5 text-slate-500" /> ĐÃ ĐÓNG ĐƠN SỚM
                           </span>
                         )}
                         {order.status === 'PARTIALLY_STOCKED' && (

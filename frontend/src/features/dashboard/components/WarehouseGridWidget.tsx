@@ -41,7 +41,7 @@ export const WarehouseGridWidget: React.FC<WarehouseGridWidgetProps> = ({
               <span className="w-2 h-2 rounded-full bg-amber-500"></span> Đang Giữ
             </span>
             <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-slate-50 border border-slate-200">
-              <span className="w-2 h-2 rounded-full bg-rose-500 animate-pulse"></span> Cận Date
+              <span className="w-2 h-2 rounded-full bg-rose-500 animate-pulse"></span> Cận Hạn
             </span>
           </div>
         </div>
@@ -75,7 +75,7 @@ export const WarehouseGridWidget: React.FC<WarehouseGridWidgetProps> = ({
               };
             } else if (bin.status === 'EXPIRING') {
               statusPill = {
-                text: 'Cận Date',
+                text: 'Cận Hạn',
                 dot: 'bg-rose-500 animate-pulse',
                 bg: 'bg-rose-50/30',
                 border: 'border-rose-200 hover:border-rose-400',

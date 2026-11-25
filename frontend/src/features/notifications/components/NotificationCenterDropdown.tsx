@@ -2,7 +2,6 @@ import React, { useState, useRef, useEffect } from 'react';
 import {
   Bell,
   CheckCheck,
-  Sparkles,
   RefreshCw,
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
@@ -112,22 +111,6 @@ export const NotificationCenterDropdown: React.FC = () => {
             </div>
 
             <div className="flex items-center gap-1">
-              <button
-                type="button"
-                onClick={() =>
-                  triggerTestAlert(
-                    'Kiểm Kê Kho Khẩn Cấp',
-                    'Phát hiện chênh lệch -3 hộp iPhone 15 tại ô A-01-01!',
-                    'WARNING'
-                  )
-                }
-                title="Gửi thông báo mô phỏng kiểm kê"
-                className="p-1.5 text-slate-400 hover:text-indigo-600 hover:bg-white rounded-lg transition-colors cursor-pointer text-xs flex items-center gap-1 font-semibold"
-              >
-                <Sparkles className="w-3.5 h-3.5 text-indigo-500" />
-                <span className="hidden sm:inline text-[11px]">Test</span>
-              </button>
-
               {unreadCount > 0 && (
                 <button
                   type="button"
@@ -206,9 +189,9 @@ export const NotificationCenterDropdown: React.FC = () => {
                 <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
                 <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
               </span>
-              <span className="font-medium text-emerald-700">Real-Time SSE Live</span>
+              <span className="font-medium text-emerald-700">Kết nối trực tiếp</span>
             </div>
-            <span className="text-slate-400">Smart WMS v1.0</span>
+            <span className="text-slate-400">Cập nhật tự động</span>
           </div>
         </div>
       )}
