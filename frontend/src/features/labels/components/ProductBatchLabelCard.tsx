@@ -22,6 +22,19 @@ export const ProductBatchLabelCard: React.FC<ProductBatchLabelCardProps> = ({
   data,
   className = '',
 }) => {
+  if (!data || !data.batchNumber) {
+    return (
+      <div
+        className={`bg-white border-2 border-dashed border-slate-200 rounded-xl p-4 flex flex-col items-center justify-center text-center text-xs text-slate-400 ${className}`}
+        style={{ width: '100%', maxWidth: '360px', minHeight: '210px' }}
+      >
+        <Package className="w-8 h-8 text-slate-300 mb-2" />
+        <p className="font-semibold text-slate-600">Đang tải mẫu tem lô hàng...</p>
+        <p className="text-2xs text-slate-400 mt-0.5">Vui lòng chọn một lô hàng từ danh sách để xem trước tem in</p>
+      </div>
+    );
+  }
+
   const isExpired = data.expiryDate ? new Date(data.expiryDate) < new Date('2026-11-21') : false;
 
   // Chuẩn hóa tên phân khu để hiển thị gọn gàng, không bị vỡ dòng

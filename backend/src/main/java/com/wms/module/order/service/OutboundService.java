@@ -180,20 +180,29 @@ public class OutboundService {
         return toResponse(saved);
     }
 
-    @Transactional
-    public OutboundOrderResponse allocateOutboundOrderFefo(Long id) {
-        OutboundOrder order = outboundOrderRepository.findForUpdate(id)
-                .orElseThrow(() -> new BusinessException(ErrorCode.NOT_FOUND, "Không tìm thấy đơn xuất: " + id));
-
-        if (!"PENDING".equalsIgnoreCase(order.getStatus())) {
-            throw new BusinessException(ErrorCode.BAD_REQUEST, "Chỉ có thể cấp phát đơn đang chờ duyệt!");
-        }
-
+    private void performFefoAllocation(OutboundOrder order) {
         if (order.getItems() != null) {
             for (OutboundOrderItem item : order.getItems()) {
-                // Xóa phân bổ cũ nếu có
+                // Giải phóng giữ chỗ (reserved_qty) và xóa phân bổ cũ nếu có
+                List<PickAllocation> oldAllocs = pickAllocationRepository.findByOutboundOrderItemId(item.getId());
+                if (oldAllocs != null) {
+                    for (PickAllocation oldAlloc : oldAllocs) {
+                        if (!"CANCELLED".equals(oldAlloc.getStatus()) && !"PICKED".equals(oldAlloc.getStatus())) {
+                            inventoryRepository.findByProductLocationAndBatchForUpdate(
+                                    oldAlloc.getProductId(), oldAlloc.getLocationId(), oldAlloc.getBatchId()
+                            ).ifPresent(inv -> {
+                                inv.setReservedQty(Math.max(0, inv.getReservedQty() - oldAlloc.getAllocatedQty()));
+                                inventoryRepository.save(inv);
+                            });
+                        }
+                    }
+                }
                 pickAllocationRepository.deleteByOutboundOrderItemId(item.getId());
-                item.getAllocations().clear();
+                if (item.getAllocations() != null) {
+                    item.getAllocations().clear();
+                } else {
+                    item.setAllocations(new ArrayList<>());
+                }
 
                 int required = item.getRequestedQty();
                 if (required <= 0) throw new BusinessException(ErrorCode.BAD_REQUEST, "Số lượng xuất phải lớn hơn 0!");
@@ -264,6 +273,18 @@ public class OutboundService {
 
         order.setStatus("ALLOCATED");
         order.setUpdatedAt(Instant.now());
+    }
+
+    @Transactional
+    public OutboundOrderResponse allocateOutboundOrderFefo(Long id) {
+        OutboundOrder order = outboundOrderRepository.findForUpdate(id)
+                .orElseThrow(() -> new BusinessException(ErrorCode.NOT_FOUND, "Không tìm thấy đơn xuất: " + id));
+
+        if (!"PENDING".equalsIgnoreCase(order.getStatus())) {
+            throw new BusinessException(ErrorCode.BAD_REQUEST, "Chỉ có thể cấp phát đơn đang chờ duyệt!");
+        }
+
+        performFefoAllocation(order);
         OutboundOrder saved = outboundOrderRepository.save(order);
 
         if (notificationService != null) {
@@ -395,7 +416,38 @@ public class OutboundService {
             throw new BusinessException(ErrorCode.BAD_REQUEST, "Đơn xuất không có sản phẩm!");
         }
         // A direct dispatch uses the same warehouse-scoped FEFO allocation in this transaction.
-        if ("PENDING".equals(order.getStatus())) allocateOutboundOrderFefo(id);
+        if ("PENDING".equals(order.getStatus())) {
+            performFefoAllocation(order);
+            order = outboundOrderRepository.saveAndFlush(order);
+        } else {
+            // Kiểm tra tính hợp lệ của phân bổ hiện tại đối với tồn kho thực tế
+            boolean needsReallocation = false;
+            for (OutboundOrderItem item : order.getItems()) {
+                List<PickAllocation> existingAllocs = pickAllocationRepository.findByOutboundOrderItemId(item.getId());
+                if (existingAllocs.isEmpty()) {
+                    needsReallocation = true;
+                    break;
+                }
+                for (PickAllocation alloc : existingAllocs) {
+                    if ("CANCELLED".equals(alloc.getStatus())) continue;
+                    int required = alloc.getPickedQty() > 0 ? alloc.getPickedQty() : alloc.getAllocatedQty();
+                    if (required <= 0) continue;
+                    Optional<Inventory> invOpt = inventoryRepository.findByProductIdAndLocationIdAndBatchId(
+                            alloc.getProductId(), alloc.getLocationId(), alloc.getBatchId());
+                    boolean activeBatch = productBatchRepository.findActiveBatchesOrderByExpiryAsc(item.getProductId(), LocalDate.now())
+                            .stream().anyMatch(batch -> batch.getId().equals(alloc.getBatchId()));
+                    if (invOpt.isEmpty() || !activeBatch || invOpt.get().getOnHandQty() < required || !isInWarehouse(invOpt.get(), order.getWarehouseId())) {
+                        needsReallocation = true;
+                        break;
+                    }
+                }
+                if (needsReallocation) break;
+            }
+            if (needsReallocation) {
+                performFefoAllocation(order);
+                order = outboundOrderRepository.saveAndFlush(order);
+            }
+        }
         Long currentUserId = com.wms.module.identity.util.SecurityUtils.getCurrentUserIdOrDefault(userRepository, 1L);
         boolean isRtv = order.getOrderCode() != null && order.getOrderCode().startsWith("RTV-");
 
@@ -418,12 +470,17 @@ public class OutboundService {
                 boolean activeBatch = productBatchRepository.findActiveBatchesOrderByExpiryAsc(item.getProductId(), LocalDate.now())
                         .stream().anyMatch(batch -> batch.getId().equals(alloc.getBatchId()));
                 if (!item.getProductId().equals(alloc.getProductId()) || !isInWarehouse(inv, order.getWarehouseId())
-                        || !activeBatch || deduct <= 0 || inv.getOnHandQty() < deduct || inv.getReservedQty() < deduct) {
+                        || !activeBatch || deduct <= 0 || inv.getOnHandQty() < deduct) {
+                    Product prod = productRepository.findById(item.getProductId()).orElse(null);
+                    String prodName = prod != null ? prod.getName() : "ID " + item.getProductId();
                     throw new BusinessException(ErrorCode.INSUFFICIENT_STOCK,
-                            "Tồn kho không đủ hoặc lô hàng không hợp lệ trong kho của đơn xuất!");
+                            "Tồn kho thực tế của sản phẩm '" + prodName + "' không đủ hoặc lô hàng không hợp lệ trong kho!");
+                }
+                if (inv.getReservedQty() < deduct) {
+                    inv.setReservedQty(deduct);
                 }
                 inv.setOnHandQty(inv.getOnHandQty() - deduct);
-                inv.setReservedQty(inv.getReservedQty() - deduct);
+                inv.setReservedQty(Math.max(0, inv.getReservedQty() - deduct));
                 inv.setLastUpdatedAt(Instant.now());
                 inventoryRepository.saveAndFlush(inv);
 

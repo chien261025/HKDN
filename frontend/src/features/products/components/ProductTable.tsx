@@ -80,8 +80,18 @@ export const ProductTable: React.FC<ProductTableProps> = ({
 
   useEffect(() => {
     const handler = () => setMaskVersion((v) => v + 1);
+    const handleGlobalSearch = (e: any) => {
+      if (typeof e.detail === 'string') {
+        setSearchTerm(e.detail);
+        setCurrentPage(1);
+      }
+    };
     window.addEventListener('smart_wms_price_mask_changed', handler);
-    return () => window.removeEventListener('smart_wms_price_mask_changed', handler);
+    window.addEventListener('smart_wms_global_search', handleGlobalSearch);
+    return () => {
+      window.removeEventListener('smart_wms_price_mask_changed', handler);
+      window.removeEventListener('smart_wms_global_search', handleGlobalSearch);
+    };
   }, []);
 
   // Đồng bộ bộ lọc trạng thái tồn kho từ ngoài vào
@@ -142,16 +152,18 @@ export const ProductTable: React.FC<ProductTableProps> = ({
       p.supplierCode === supplierFilter;
 
     let matchHealth = true;
+    const stock = p.currentStock || 0;
+    const threshold = Math.max(p.safetyStock || 0, p.reorderPoint || 0);
     if (stockHealthFilter === 'OUT_OF_STOCK') {
-      matchHealth = p.currentStock === 0;
+      matchHealth = stock <= 0;
     } else if (stockHealthFilter === 'WARNING') {
-      matchHealth = p.currentStock <= p.reorderPoint && p.currentStock > 0;
+      matchHealth = stock > 0 && stock <= threshold;
     } else if (stockHealthFilter === 'CRITICAL') {
-      matchHealth = p.currentStock <= p.safetyStock && p.currentStock > 0;
+      matchHealth = stock > 0 && stock <= (p.safetyStock || 0);
     } else if (stockHealthFilter === 'REORDER') {
-      matchHealth = p.currentStock <= p.reorderPoint && p.currentStock > p.safetyStock;
+      matchHealth = stock > (p.safetyStock || 0) && stock <= (p.reorderPoint || 0);
     } else if (stockHealthFilter === 'NORMAL') {
-      matchHealth = p.currentStock > p.safetyStock;
+      matchHealth = stock > threshold;
     }
 
     const matchBusiness =

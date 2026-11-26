@@ -26,11 +26,21 @@ export const ProductsHeader: React.FC<ProductsHeaderProps> = ({
   selectedHealthFilter = 'ALL',
   onSelectHealthFilter,
 }) => {
-  const inStockCount = products.filter((p) => p.currentStock > p.safetyStock).length;
-  const lowStockCount = products.filter((p) => p.currentStock <= p.safetyStock && p.currentStock > 0).length;
-  const reorderCount = products.filter((p) => p.currentStock <= p.reorderPoint && p.currentStock > p.safetyStock).length;
-  const outOfStockCount = products.filter((p) => p.currentStock === 0).length;
-  const warningStockCount = lowStockCount + reorderCount;
+  // Phân loại 3 nhóm tồn kho loại trừ lẫn nhau (Mutually Exclusive):
+  // 1. Đã hết: currentStock <= 0
+  // 2. Sắp hết / Cần đặt: currentStock > 0 && currentStock <= max(safetyStock, reorderPoint)
+  // 3. Còn hàng ổn định: currentStock > max(safetyStock, reorderPoint)
+  const outOfStockCount = products.filter((p) => (p.currentStock || 0) <= 0).length;
+  const warningStockCount = products.filter((p) => {
+    const stock = p.currentStock || 0;
+    const threshold = Math.max(p.safetyStock || 0, p.reorderPoint || 0);
+    return stock > 0 && stock <= threshold;
+  }).length;
+  const inStockCount = products.filter((p) => {
+    const stock = p.currentStock || 0;
+    const threshold = Math.max(p.safetyStock || 0, p.reorderPoint || 0);
+    return stock > threshold;
+  }).length;
 
   const totalInventoryValuation = products.reduce(
     (sum, p) => sum + p.currentStock * (p.purchasePrice || 0),
@@ -266,13 +276,13 @@ export const ProductsHeader: React.FC<ProductsHeaderProps> = ({
 
         {/* Card 2: Còn hàng an toàn */}
         <div
-          onClick={() => onSelectHealthFilter && onSelectHealthFilter('NORMAL')}
+          onClick={() => onSelectHealthFilter && onSelectHealthFilter(selectedHealthFilter === 'NORMAL' ? 'ALL' : 'NORMAL')}
           className={`bg-white rounded-2xl p-4 border transition-all cursor-pointer select-none ${
             selectedHealthFilter === 'NORMAL'
               ? 'ring-2 ring-emerald-600 border-emerald-600 bg-emerald-50/20 shadow-sm'
               : 'border-slate-200 hover:border-slate-300 shadow-xs hover:shadow-sm'
           }`}
-          title="Mặt hàng có tồn kho an toàn"
+          title="Mặt hàng có tồn kho an toàn (bấm lại để bỏ lọc)"
         >
           <div className="flex items-start justify-between">
             <div>
@@ -294,13 +304,20 @@ export const ProductsHeader: React.FC<ProductsHeaderProps> = ({
 
         {/* Card 3: Cảnh báo ROP & Min */}
         <div
-          onClick={() => onSelectHealthFilter && onSelectHealthFilter('WARNING')}
+          onClick={() => {
+            if (!onSelectHealthFilter) return;
+            const isWarningActive =
+              selectedHealthFilter === 'WARNING' ||
+              selectedHealthFilter === 'CRITICAL' ||
+              selectedHealthFilter === 'REORDER';
+            onSelectHealthFilter(isWarningActive ? 'ALL' : 'WARNING');
+          }}
           className={`bg-white rounded-2xl p-4 border transition-all cursor-pointer select-none ${
             selectedHealthFilter === 'WARNING' || selectedHealthFilter === 'CRITICAL' || selectedHealthFilter === 'REORDER'
               ? 'ring-2 ring-amber-600 border-amber-600 bg-amber-50/20 shadow-sm'
               : 'border-slate-200 hover:border-slate-300 shadow-xs hover:shadow-sm'
           }`}
-          title="Mặt hàng sắp hết hoặc chạm điểm đặt hàng"
+          title="Mặt hàng sắp hết hoặc chạm điểm đặt hàng (bấm lại để bỏ lọc)"
         >
           <div className="flex items-start justify-between">
             <div>
@@ -311,7 +328,7 @@ export const ProductsHeader: React.FC<ProductsHeaderProps> = ({
                 {warningStockCount}
               </div>
             </div>
-            <div className={`p-2.5 rounded-xl border ${selectedHealthFilter === 'CRITICAL' || selectedHealthFilter === 'REORDER' ? 'bg-amber-600 text-white border-amber-700' : 'bg-amber-50 text-amber-700 border-amber-200'}`}>
+            <div className={`p-2.5 rounded-xl border ${selectedHealthFilter === 'WARNING' || selectedHealthFilter === 'CRITICAL' || selectedHealthFilter === 'REORDER' ? 'bg-amber-600 text-white border-amber-700' : 'bg-amber-50 text-amber-700 border-amber-200'}`}>
               <AlertTriangle className="w-4 h-4" />
             </div>
           </div>
@@ -322,13 +339,13 @@ export const ProductsHeader: React.FC<ProductsHeaderProps> = ({
 
         {/* Card 4: Hết hàng */}
         <div
-          onClick={() => onSelectHealthFilter && onSelectHealthFilter('OUT_OF_STOCK')}
+          onClick={() => onSelectHealthFilter && onSelectHealthFilter(selectedHealthFilter === 'OUT_OF_STOCK' ? 'ALL' : 'OUT_OF_STOCK')}
           className={`bg-white rounded-2xl p-4 border transition-all cursor-pointer select-none ${
             selectedHealthFilter === 'OUT_OF_STOCK'
               ? 'ring-2 ring-rose-600 border-rose-600 bg-rose-50/20 shadow-sm'
               : 'border-slate-200 hover:border-slate-300 shadow-xs hover:shadow-sm'
           }`}
-          title="Mặt hàng có số lượng tồn bằng 0"
+          title="Mặt hàng có số lượng tồn bằng 0 (bấm lại để bỏ lọc)"
         >
           <div className="flex items-start justify-between">
             <div>

@@ -198,14 +198,18 @@ export const LayoutHeader: React.FC<LayoutHeaderProps> = ({
             onChange={(e) => onSelectZone(e.target.value)}
             className="px-3 py-1.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold text-slate-800 outline-none focus:border-blue-600 cursor-pointer"
           >
-            <option value="ALL">Toàn Bộ Phân Khu (Zone A, B, C)</option>
+            <option value="ALL">Toàn Bộ Phân Khu</option>
             {zones.map((z) => (
               <option key={z} value={z}>
-                {z === 'ZONE_B'
+                {z === 'ZONE_A'
+                  ? 'Khu A: Hàng Khô & Tiêu Dùng'
+                  : z === 'ZONE_B'
                   ? 'Khu B: Kho Mát (2-8°C)'
                   : z === 'ZONE_C'
                   ? 'Khu C: Hàng Giá Trị Cao & Điện Tử'
-                  : 'Khu A: Hàng Khô & Tiêu Dùng'}
+                  : z === 'ZONE_QUA'
+                  ? 'Khu Q: Khu Cách Ly & Hàng Chờ Xử Lý'
+                  : z}
               </option>
             ))}
           </select>

@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { BinLocation } from '../../types';
+import { locationService } from '../../services/locationService';
 import {
   Scale,
   ArrowRightLeft,
@@ -22,6 +23,7 @@ interface BinDetailPanelProps {
   totalLocationsCount: number;
   occupiedCount: number;
   onOpenTransferModal?: (bin: BinLocation) => void;
+  onRefreshLocations?: () => void;
 }
 
 export const BinDetailPanel: React.FC<BinDetailPanelProps> = ({
@@ -29,34 +31,33 @@ export const BinDetailPanel: React.FC<BinDetailPanelProps> = ({
   totalLocationsCount,
   occupiedCount,
   onOpenTransferModal,
+  onRefreshLocations,
 }) => {
-  const [lockedBins, setLockedBins] = useState<string[]>(() => {
+  const [updatingStatus, setUpdatingStatus] = useState(false);
+  const [statusError, setStatusError] = useState<string | null>(null);
+
+  React.useEffect(() => {
+    setStatusError(null);
+  }, [selectedBin?.id]);
+
+  const isLocked = selectedBin ? selectedBin.isActive === false : false;
+  const hasReservedStock = selectedBin
+    ? (selectedBin.reservedQty != null && selectedBin.reservedQty > 0) || selectedBin.status === 'RESERVED'
+    : false;
+
+  const handleToggleLock = async () => {
+    if (!selectedBin || updatingStatus) return;
+    setUpdatingStatus(true);
+    setStatusError(null);
+    const nextActive = selectedBin.isActive === false;
     try {
-      const saved = localStorage.getItem('smart_wms_locked_bins');
-      return saved ? JSON.parse(saved) : [];
-    } catch {
-      return [];
+      await locationService.updateLocationStatus(selectedBin.id, nextActive);
+      onRefreshLocations?.();
+    } catch (err: any) {
+      setStatusError(err?.response?.data?.message || err?.message || 'Không thể cập nhật trạng thái ô kệ.');
+    } finally {
+      setUpdatingStatus(false);
     }
-  });
-
-  const isLocked = selectedBin ? lockedBins.includes(selectedBin.barcode) : false;
-
-  const handleToggleLock = () => {
-    if (!selectedBin) return;
-    setLockedBins((prev) => {
-      const next = prev.includes(selectedBin.barcode)
-        ? prev.filter((b) => b !== selectedBin.barcode)
-        : [...prev, selectedBin.barcode];
-      try {
-        localStorage.setItem('smart_wms_locked_bins', JSON.stringify(next));
-        window.dispatchEvent(
-          new CustomEvent('smart_wms_bin_status_changed', {
-            detail: { barcode: selectedBin.barcode, locked: next.includes(selectedBin.barcode) },
-          })
-        );
-      } catch {}
-      return next;
-    });
   };
   if (!selectedBin) {
     return (
@@ -108,8 +109,11 @@ export const BinDetailPanel: React.FC<BinDetailPanelProps> = ({
     );
   }
 
-  // Tỷ lệ tải trọng
-  const weightPct = Math.min(Math.round((selectedBin.currentWeight / selectedBin.maxWeight) * 100), 100);
+  // Tỷ lệ tải trọng thực tế (không che giấu tình trạng vượt tải trọng thiết kế)
+  const weightPct = selectedBin.maxWeight > 0 ? Math.round((selectedBin.currentWeight / selectedBin.maxWeight) * 100) : 0;
+  const barPct = Math.min(weightPct, 100);
+  const isOverloaded = selectedBin.maxWeight > 0 && selectedBin.currentWeight > selectedBin.maxWeight;
+  const excessWeight = isOverloaded ? Number((selectedBin.currentWeight - selectedBin.maxWeight).toFixed(1)) : 0;
 
   return (
     <div className="bg-white rounded-2xl p-5 border border-slate-200 space-y-4 shadow-sm text-sm sticky top-4">
@@ -164,27 +168,47 @@ export const BinDetailPanel: React.FC<BinDetailPanelProps> = ({
         </div>
         <button
           type="button"
+          disabled={updatingStatus || (!isLocked && hasReservedStock)}
           onClick={handleToggleLock}
-          className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all border shadow-xs cursor-pointer flex items-center gap-1.5 ${
+          className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all border shadow-xs flex items-center gap-1.5 disabled:opacity-50 disabled:cursor-not-allowed ${
             isLocked
-              ? 'bg-rose-600 text-white border-rose-700 hover:bg-rose-700 shadow-rose-200'
-              : 'bg-white text-slate-700 border-slate-300 hover:bg-slate-100 hover:text-slate-900'
+              ? 'bg-rose-600 text-white border-rose-700 hover:bg-rose-700 shadow-rose-200 cursor-pointer'
+              : hasReservedStock
+              ? 'bg-amber-50 text-amber-800 border-amber-300'
+              : 'bg-white text-slate-700 border-slate-300 hover:bg-slate-100 hover:text-slate-900 cursor-pointer'
           }`}
-          title={isLocked ? 'Bấm để Mở Khóa ô kệ' : 'Bấm để Khóa Bảo Trì ô kệ này'}
+          title={
+            isLocked
+              ? 'Bấm để Mở Khóa ô kệ'
+              : hasReservedStock
+              ? 'Không thể khóa bảo trì ô đang có hàng giữ cho đơn xuất kho'
+              : 'Bấm để Khóa Bảo Trì ô kệ này'
+          }
         >
           {isLocked ? (
             <>
               <Unlock className="w-3.5 h-3.5 text-white" />
-              <span>Mở Khóa Ô</span>
+              <span>{updatingStatus ? 'Đang cập nhật...' : 'Mở Khóa Ô'}</span>
             </>
           ) : (
             <>
               <Lock className="w-3.5 h-3.5 text-slate-500" />
-              <span>Khóa Bảo Trì</span>
+              <span>{updatingStatus ? 'Đang cập nhật...' : 'Khóa Bảo Trì'}</span>
             </>
           )}
         </button>
       </div>
+      {!isLocked && hasReservedStock && (
+        <div className="p-2.5 rounded-xl bg-amber-50 border border-amber-200 text-amber-900 text-[11px] font-medium flex items-center gap-1.5">
+          <AlertTriangle className="w-3.5 h-3.5 text-amber-600 shrink-0" />
+          <span>Ô kệ đang giữ hàng cho đơn xuất kho — tạm khóa thao tác bảo trì để đảm bảo tiến độ lấy hàng.</span>
+        </div>
+      )}
+      {statusError && (
+        <div className="p-2.5 rounded-xl bg-rose-50 border border-rose-200 text-rose-800 text-xs font-medium">
+          {statusError}
+        </div>
+      )}
 
       {/* Tọa độ không gian kho */}
       <div className="space-y-1.5 p-3 rounded-xl bg-slate-50 border border-slate-200 text-xs font-mono">
@@ -201,30 +225,47 @@ export const BinDetailPanel: React.FC<BinDetailPanelProps> = ({
       </div>
 
       {/* Thước Đo Tải Trọng An Toàn (Weight Safety Gauge) */}
-      <div className="p-3 rounded-xl bg-slate-50 border border-slate-200 space-y-2">
+      <div className={`p-3 rounded-xl border space-y-2 ${isOverloaded ? 'bg-rose-50/80 border-rose-300' : 'bg-slate-50 border-slate-200'}`}>
         <div className="flex items-center justify-between text-xs">
           <span className="text-slate-700 font-semibold flex items-center gap-1.5">
-            <Scale className="w-3.5 h-3.5 text-blue-600" />
+            <Scale className={`w-3.5 h-3.5 ${isOverloaded ? 'text-rose-600' : 'text-blue-600'}`} />
             Tải Trọng Chịu Lực:
           </span>
-          <span className="font-mono font-bold text-slate-900 text-xs">
-            {selectedBin.currentWeight} / {selectedBin.maxWeight} kg ({weightPct}%)
+          <span className={`font-mono font-bold text-xs ${isOverloaded ? 'text-rose-700' : 'text-slate-900'}`}>
+            {selectedBin.currentWeight} / {selectedBin.maxWeight} kg ({weightPct}%{isOverloaded ? ' • QUÁ TẢI' : ''})
           </span>
         </div>
 
         <div className="w-full h-2 bg-slate-200 rounded-full overflow-hidden">
           <div
             className={`h-full rounded-full transition-all duration-300 ${
-              weightPct > 85 ? 'bg-rose-500' : weightPct > 50 ? 'bg-amber-500' : 'bg-emerald-500'
+              isOverloaded ? 'bg-rose-600' : weightPct > 85 ? 'bg-rose-500' : weightPct > 50 ? 'bg-amber-500' : 'bg-emerald-500'
             }`}
-            style={{ width: `${weightPct}%` }}
+            style={{ width: `${barPct}%` }}
           ></div>
         </div>
 
         <p className="text-[11px] text-slate-500 font-medium">
-          Tải trọng thiết kế: <span className="font-bold text-slate-700">{selectedBin.maxWeight} kg</span> • Sức chứa còn lại:{' '}
-          <span className="font-bold text-emerald-700">{Math.max(0, selectedBin.maxWeight - selectedBin.currentWeight)} kg</span>
+          Tải trọng thiết kế: <span className="font-bold text-slate-700">{selectedBin.maxWeight} kg</span> •{' '}
+          {isOverloaded ? (
+            <>
+              Vượt tải thiết kế:{' '}
+              <span className="font-extrabold text-rose-700">+{excessWeight} kg</span>
+            </>
+          ) : (
+            <>
+              Sức chứa còn lại:{' '}
+              <span className="font-bold text-emerald-700">{Math.max(0, Number((selectedBin.maxWeight - selectedBin.currentWeight).toFixed(1)))} kg</span>
+            </>
+          )}
         </p>
+
+        {isOverloaded && (
+          <div className="p-2 rounded-lg bg-rose-100/90 border border-rose-300 text-[11px] text-rose-900 font-semibold flex items-start gap-1.5">
+            <AlertTriangle className="w-3.5 h-3.5 text-rose-700 shrink-0 mt-0.5" />
+            <span>Cảnh báo an toàn kệ: Tải trọng thực tế đang vượt giới hạn thiết kế. Vui lòng điều chuyển bớt hàng sang ô khác.</span>
+          </div>
+        )}
       </div>
 
       {/* Thông tin sản phẩm lưu trữ */}
@@ -277,6 +318,11 @@ export const BinDetailPanel: React.FC<BinDetailPanelProps> = ({
             </div>
           </div>
         </div>
+      ) : isLocked ? (
+        <div className="p-4 rounded-xl bg-rose-50 border border-rose-200 text-rose-800 text-xs text-center space-y-1">
+          <p className="font-bold">Ô Kệ Đang Khóa Bảo Trì</p>
+          <p className="text-xs text-rose-700">Tạm ngưng tiếp nhận hàng nhập kho mới và điều chuyển cho đến khi được mở khóa.</p>
+        </div>
       ) : (
         <div className="p-4 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs text-center space-y-1">
           <p className="font-bold">Ô Kệ Còn Trống</p>
@@ -319,13 +365,25 @@ export const BinDetailPanel: React.FC<BinDetailPanelProps> = ({
           </>
         ) : (
           <>
-            <Link
-              to="/inbound"
-              className="w-full py-2.5 px-3 rounded-xl bg-emerald-600 hover:bg-emerald-700 active:scale-[0.99] text-white font-bold text-xs flex items-center justify-center gap-1.5 transition-all shadow-md shadow-emerald-200 cursor-pointer"
-            >
-              <Plus className="w-3.5 h-3.5" />
-              <span>Cất Hàng Nhập Kho</span>
-            </Link>
+            {isLocked ? (
+              <button
+                type="button"
+                disabled
+                title="Ô kệ đang khóa bảo trì"
+                className="w-full py-2.5 px-3 rounded-xl bg-rose-100 text-rose-700 border border-rose-200 font-bold text-xs flex items-center justify-center gap-1.5 opacity-75 cursor-not-allowed"
+              >
+                <Lock className="w-3.5 h-3.5" />
+                <span>Ô Kệ Đang Khóa Bảo Trì</span>
+              </button>
+            ) : (
+              <Link
+                to="/inbound"
+                className="w-full py-2.5 px-3 rounded-xl bg-emerald-600 hover:bg-emerald-700 active:scale-[0.99] text-white font-bold text-xs flex items-center justify-center gap-1.5 transition-all shadow-md shadow-emerald-200 cursor-pointer"
+              >
+                <Plus className="w-3.5 h-3.5" />
+                <span>Cất Hàng Nhập Kho</span>
+              </Link>
+            )}
 
             <Link
               to={`/labels?bin=${selectedBin.barcode}&tab=BINS`}

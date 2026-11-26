@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { PackageCheck, CheckCircle2, ScanLine, RefreshCw, Truck, AlertCircle, Navigation, MapPin } from 'lucide-react';
+import { PackageCheck, CheckCircle2, ScanLine, RefreshCw, Truck, AlertCircle } from 'lucide-react';
 import { operatorService, OutboundOrderDto, PickListItemResponseDto } from '../../services/operatorService';
 import { PickingOrderSelector } from './PickingOrderSelector';
 import { PickingStepCard } from './PickingStepCard';
@@ -24,32 +24,11 @@ export const PickingFefoTab: React.FC<PickingFefoTabProps> = ({
   const [loading, setLoading] = useState(false);
   const [dispatching, setDispatching] = useState(false);
   const [notice, setNotice] = useState<{ msg: string; type: 'success' | 'error' } | null>(null);
-  const [dispatchedRoute, setDispatchedRoute] = useState<{
-    orderCode: string;
-    algorithm: string;
-    algorithmName: string;
-    assignedBy: string;
-    assignedAt: string;
-    totalDistanceMeters: number;
-    totalTimeMinutes: string;
-  } | null>(null);
 
   const handleSelectOrder = async (order: OutboundOrderDto) => {
     setSelectedOrder(order);
     setPickSteps([]);
     setNotice(null);
-
-    // Kiểm tra xem đơn hàng đã được Quản lý kho chỉ định lộ trình tối ưu sang PDA chưa
-    try {
-      const stored = localStorage.getItem(`smart_wms_pda_route_${order.orderCode}`);
-      if (stored) {
-        setDispatchedRoute(JSON.parse(stored));
-      } else {
-        setDispatchedRoute(null);
-      }
-    } catch (e) {
-      setDispatchedRoute(null);
-    }
 
     if (order.items && order.items.length > 0) {
       setLoading(true);
@@ -110,7 +89,7 @@ export const PickingFefoTab: React.FC<PickingFefoTabProps> = ({
       const orderList = await operatorService.getOutboundOrders();
       setOrders(orderList);
 
-      const pendingList = orderList.filter((o) => o.status !== 'DISPATCHED' && o.status !== 'SHIPPED');
+      const pendingList = orderList.filter((o) => o.status === 'ALLOCATED' || o.status === 'PICKING' || o.status === 'PENDING');
       if (pendingList.length > 0) {
         const target =
           selectedOrder && pendingList.some((o) => o.id === selectedOrder.id)
@@ -147,13 +126,13 @@ export const PickingFefoTab: React.FC<PickingFefoTabProps> = ({
         updated[matchedIdx].picked = true;
         setPickSteps(updated);
         setNotice({
-          msg: `[PDA] Quét khớp ô ${code}! Đã xác nhận nhặt ${updated[matchedIdx].pickQty} sản phẩm.`,
+          msg: `Đã quét khớp ô ${code} và xác nhận lấy ${updated[matchedIdx].pickQty} sản phẩm.`,
           type: 'success',
         });
       } else {
         soundEffects.playErrorBuzz();
         setNotice({
-          msg: `[PDA] Đã quét mã: ${code}. Không khớp với ô kệ hoặc sản phẩm của bước cần nhặt.`,
+          msg: `Mã ${code} không khớp với ô kệ hoặc sản phẩm của bước cần lấy.`,
           type: 'error',
         });
       }
@@ -210,7 +189,7 @@ export const PickingFefoTab: React.FC<PickingFefoTabProps> = ({
           </div>
           <div>
             <h2 className="text-xs font-bold text-slate-900 uppercase tracking-wider">
-              Nhiệm Vụ Lấy Hàng (FEFO Picking)
+              Nhiệm Vụ Lấy Hàng Theo Hạn Dùng (FEFO)
             </h2>
           </div>
         </div>
@@ -270,28 +249,6 @@ export const PickingFefoTab: React.FC<PickingFefoTabProps> = ({
                 </button>
               </div>
 
-              {dispatchedRoute && (
-                <div className="p-3 bg-gradient-to-r from-indigo-50 via-slate-50 to-emerald-50 border border-indigo-200/80 rounded-2xl flex items-center justify-between text-xs shadow-xs animate-in fade-in">
-                  <div className="flex items-center gap-2.5">
-                    <div className="w-9 h-9 rounded-xl bg-indigo-600 text-white flex items-center justify-center font-bold shadow-xs">
-                      <Navigation className="w-4 h-4" />
-                    </div>
-                    <div>
-                      <div className="font-bold text-indigo-950 flex items-center gap-1.5">
-                        <span>Lộ Trình Quản Lý Kho Đã Giao:</span>
-                        <span className="text-emerald-700 font-mono font-extrabold">{dispatchedRoute.algorithmName}</span>
-                      </div>
-                      <div className="text-[11px] text-slate-600 mt-0.5 font-medium">
-                        Người giao: <strong className="text-slate-800">{dispatchedRoute.assignedBy}</strong> • Cự ly: <strong className="text-indigo-700 font-mono">{dispatchedRoute.totalDistanceMeters}m</strong> • Ước tính: <strong className="text-indigo-700 font-mono">{dispatchedRoute.totalTimeMinutes}</strong>
-                      </div>
-                    </div>
-                  </div>
-                  <span className="px-2.5 py-1 rounded-lg bg-emerald-100 text-emerald-800 font-bold font-mono text-[10px] border border-emerald-300">
-                    ĐÃ ĐỒNG BỘ LỘ TRÌNH
-                  </span>
-                </div>
-              )}
-
               {loading ? (
                 <div className="bg-white rounded-2xl p-8 border border-slate-200 text-center text-xs text-slate-500 space-y-2">
                   <RefreshCw className="w-8 h-8 text-indigo-500 mx-auto animate-spin" />
@@ -306,12 +263,12 @@ export const PickingFefoTab: React.FC<PickingFefoTabProps> = ({
                     <p className="font-extrabold text-slate-900 text-sm">
                       {selectedOrder.status === 'DISPATCHED'
                         ? 'Đơn hàng đã xuất kho & hoàn tất bàn giao vận chuyển!'
-                        : 'Đơn Hàng Chưa Có Lệnh Phân Bổ (Reservation Pending)'}
+                        : 'Đơn Hàng Chưa Được Giữ Hàng'}
                     </p>
                     <p className="text-slate-500 text-2xs max-w-sm mx-auto leading-relaxed">
                       {selectedOrder.status === 'DISPATCHED'
                         ? 'Hàng hóa đã rời khỏi khu đệm xuất kho và bàn giao cho đơn vị vận tải.'
-                        : 'Quy chuẩn WMS: Nhân viên hiện trường chỉ lấy hàng khi Quản lý kho đã phân bổ tồn kho (Reserved Stock). Vui lòng yêu cầu Quản lý kho phân bổ hoặc bổ sung tồn trước khi lấy hàng.'}
+                        : 'Thủ kho chỉ bắt đầu lấy hàng sau khi Quản lý kho phân bổ lô hàng FEFO cho đơn xuất này.'}
                     </p>
                   </div>
                   {selectedOrder.status !== 'DISPATCHED' && (
@@ -320,16 +277,19 @@ export const PickingFefoTab: React.FC<PickingFefoTabProps> = ({
                         type="button"
                         onClick={() => {
                           soundEffects.playSuccessBeep();
-                          alert('Đã gửi thông báo đến Quản Lý Kho: Yêu cầu phân bổ tồn kho FEFO cho đơn xuất ' + selectedOrder.orderCode);
+                          setNotice({
+                            msg: `Đã ghi nhận yêu cầu kiểm tra phân bổ tồn kho cho đơn xuất ${selectedOrder.orderCode}. Vui lòng báo Quản lý kho phân bổ.`,
+                            type: 'success',
+                          });
                         }}
-                        className="px-4 py-2 bg-amber-500 hover:bg-amber-600 text-slate-950 font-bold rounded-xl text-xs transition shadow-xs cursor-pointer flex items-center gap-1.5"
+                        className="px-4 py-2.5 min-h-[40px] bg-amber-500 hover:bg-amber-600 text-slate-950 font-bold rounded-xl text-xs transition shadow-xs cursor-pointer flex items-center gap-1.5"
                       >
-                        <span>Yêu Cầu Quản Lý Kho Phân Bổ</span>
+                        <span>Báo Quản Lý Phân Bổ</span>
                       </button>
                       <button
                         type="button"
                         onClick={loadData}
-                        className="px-3 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-xl text-xs transition cursor-pointer"
+                        className="px-3 py-2.5 min-h-[40px] bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-xl text-xs transition cursor-pointer"
                       >
                         Kiểm Tra Lại
                       </button>
@@ -353,10 +313,10 @@ export const PickingFefoTab: React.FC<PickingFefoTabProps> = ({
                     type="button"
                     disabled={dispatching}
                     onClick={handleConfirmDispatch}
-                    className="w-full py-3 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-2xl text-xs flex items-center justify-center gap-2 shadow-md shadow-emerald-200 transition-all cursor-pointer"
+                    className="w-full py-3.5 min-h-[48px] bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-2xl text-xs sm:text-sm flex items-center justify-center gap-2 shadow-md shadow-emerald-200 transition-all cursor-pointer"
                   >
                     {dispatching ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Truck className="w-4 h-4" />}
-                    <span>Xác Nhận Xuất Kho & Bàn Giao Vận Chuyển (Dispatch)</span>
+                    <span>Xác Nhận Xuất Kho & Bàn Giao Vận Chuyển</span>
                   </button>
                 </div>
               )}

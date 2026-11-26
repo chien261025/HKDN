@@ -58,8 +58,13 @@ public class InventoryAuditServiceImpl implements InventoryAuditService {
 
     @Override
     @Transactional(readOnly = true)
-    public List<InventoryAuditResponse> getAllAudits() {
+    public List<InventoryAuditResponse> getAllAudits(Long warehouseId) {
         List<InventoryAudit> audits = inventoryAuditRepository.findAll();
+        if (warehouseId != null) {
+            audits = audits.stream()
+                    .filter(a -> warehouseId.equals(a.getWarehouseId()))
+                    .collect(Collectors.toList());
+        }
         if (audits.isEmpty()) {
             return Collections.emptyList();
         }
@@ -94,6 +99,11 @@ public class InventoryAuditServiceImpl implements InventoryAuditService {
         Map<Long, ProductBatch> batchMap = productBatchRepository.findAll().stream().collect(Collectors.toMap(ProductBatch::getId, b -> b, (a, b) -> a));
 
         List<Inventory> filteredInventories = filterInventoriesByScope(whInventories, locMap, prodMap, scopeType, scopeValue);
+        if (!Boolean.TRUE.equals(request.getIncludeEmptyBins())) {
+            filteredInventories = filteredInventories.stream()
+                    .filter(i -> i.getOnHandQty() != null && i.getOnHandQty() > 0)
+                    .collect(Collectors.toList());
+        }
 
         Set<Long> matchedLocationIds = filteredInventories.stream().map(Inventory::getLocationId).collect(Collectors.toSet());
         Set<Long> matchedProductIds = filteredInventories.stream().map(Inventory::getProductId).collect(Collectors.toSet());

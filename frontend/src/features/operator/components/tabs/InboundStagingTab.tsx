@@ -93,7 +93,7 @@ export const InboundStagingTab: React.FC<InboundStagingTabProps> = ({
     if (matchedOrder) {
       soundEffects.playSuccessBeep();
       setNotice({
-        msg: `[PDA] Nhận diện đơn PO: ${matchedOrder.orderCode}. Đang mở bảng kiểm đếm...`,
+        msg: `Đã nhận diện đơn nhập ${matchedOrder.orderCode}. Đang mở bảng kiểm đếm...`,
         type: 'success',
       });
       setQcOrder(matchedOrder);
@@ -109,7 +109,7 @@ export const InboundStagingTab: React.FC<InboundStagingTabProps> = ({
       soundEffects.playSuccessBeep();
       setSearchTerm(matchedProd.sku);
       setNotice({
-        msg: `[PDA] Quét kiện hàng: ${matchedProd.name} (${matchedProd.sku})! Đang lọc đơn tương ứng.`,
+        msg: `Đã quét sản phẩm ${matchedProd.name} (${matchedProd.sku}). Đang lọc đơn tương ứng.`,
         type: 'success',
       });
       setQuickInput('');
@@ -120,7 +120,7 @@ export const InboundStagingTab: React.FC<InboundStagingTabProps> = ({
     soundEffects.playSuccessBeep();
     setSearchTerm(trimmed);
     setNotice({
-      msg: `[PDA] Đã ghi nhận mã: ${trimmed}. Đang lọc đơn phù hợp.`,
+      msg: `Đã ghi nhận mã ${trimmed}. Đang lọc đơn phù hợp.`,
       type: 'success',
     });
     setQuickInput('');
@@ -134,7 +134,7 @@ export const InboundStagingTab: React.FC<InboundStagingTabProps> = ({
       soundEffects.playCompleteChime();
       await loadData();
       setNotice({
-        msg: `Đã hoàn tất tiếp nhận & kiểm định QC cho đơn ${qcOrder?.orderCode}!`,
+        msg: `Đã hoàn tất tiếp nhận & kiểm đếm cho đơn ${qcOrder?.orderCode}!`,
         type: 'success',
       });
     } catch (err: any) {
@@ -359,7 +359,7 @@ export const InboundStagingTab: React.FC<InboundStagingTabProps> = ({
             const isPending = order.status === 'PENDING';
             const isPartiallyStocked = order.status === 'PARTIALLY_STOCKED';
             const totalUnits = (order.items || []).reduce((sum, it) => sum + (it.expectedQty || 0), 0);
-            const supplierName = order.supplier?.name || (order as any).supplierName || 'Nhà Cung Cấp Chuẩn';
+            const supplierName = order.supplier?.name || (order as any).supplierName || 'Nhà cung cấp';
 
             return (
               <div
@@ -386,11 +386,6 @@ export const InboundStagingTab: React.FC<InboundStagingTabProps> = ({
                       >
                         {isPartiallyStocked ? 'CẤT 1 PHẦN · GIAO BÙ' : isPending ? 'CHỜ TIẾP NHẬN' : 'TẠI KHU ĐỆM'}
                       </span>
-                      {order.warehouseId === 2 && (
-                        <span className="text-[10px] font-semibold px-1.5 py-0.2 rounded bg-purple-50 text-purple-700 border border-purple-200">
-                          Bắc Ninh
-                        </span>
-                      )}
                     </div>
 
                     <div className="text-xs text-slate-600 font-medium flex items-center gap-1.5 mt-1">
@@ -439,7 +434,7 @@ export const InboundStagingTab: React.FC<InboundStagingTabProps> = ({
                 {/* Thao tác tiếp nhận */}
                 <div className="flex items-center justify-between pt-1">
                   <span className="text-xs text-slate-500 font-semibold">
-                    Cửa Tiếp Nhận #01
+                    Khu tiếp nhận kho
                   </span>
 
                   {isPending || isPartiallyStocked ? (
@@ -447,7 +442,7 @@ export const InboundStagingTab: React.FC<InboundStagingTabProps> = ({
                       type="button"
                       disabled={receivingId === order.id}
                       onClick={() => setQcOrder(order)}
-                      className="flex items-center gap-1.5 px-4 py-2 bg-blue-600 hover:bg-blue-700 active:bg-blue-800 disabled:opacity-50 text-white rounded-xl text-xs font-bold shadow-xs transition-all cursor-pointer"
+                      className="flex items-center gap-1.5 px-4 py-2.5 min-h-[42px] bg-blue-600 hover:bg-blue-700 active:bg-blue-800 disabled:opacity-50 text-white rounded-xl text-xs font-bold shadow-xs transition-all cursor-pointer"
                     >
                       {receivingId === order.id ? (
                         <RefreshCw className="w-3.5 h-3.5 animate-spin" />

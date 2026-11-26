@@ -9,7 +9,7 @@ import com.wms.module.inventory.entity.InventoryAudit;
 import java.util.List;
 
 public interface InventoryAuditService {
-    List<InventoryAuditResponse> getAllAudits();
+    List<InventoryAuditResponse> getAllAudits(Long warehouseId);
     InventoryAuditResponse getAuditById(Long id);
     AuditScopePreviewResponse previewScope(AuditScopePreviewRequest request);
     InventoryAuditResponse createAudit(CreateAuditRequest request);

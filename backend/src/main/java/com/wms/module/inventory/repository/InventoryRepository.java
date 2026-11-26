@@ -30,6 +30,8 @@ public interface InventoryRepository extends JpaRepository<Inventory, Long> {
 
     List<Inventory> findByProductId(Long productId);
 
+    List<Inventory> findByLocationId(Long locationId);
+
     @Query("select i from Inventory i, Location l where l.id = i.locationId and l.warehouseId = :warehouseId and i.onHandQty > 0")
     List<Inventory> findAuditStock(@Param("warehouseId") Long warehouseId);
 

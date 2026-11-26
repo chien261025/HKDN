@@ -44,15 +44,16 @@ export const StockTransferTab: React.FC<StockTransferTabProps> = ({
       setProducts(prods);
       setInventories(invs);
 
-      // Tự động chọn ô nguồn có tồn kho khả dụng nếu chưa chọn
+      // Tự động chọn ô nguồn có tồn kho khả dụng (không bị khóa bảo trì) nếu chưa chọn
       if (!fromBarcode && locs.length > 0) {
-        const locWithStock = locs.find((l) =>
+        const activeLocs = locs.filter((l) => l.isActive !== false);
+        const locWithStock = activeLocs.find((l) =>
           invs.some((i) => i.locationId === l.id && i.availableQty > 0)
         );
-        const initialFrom = locWithStock ? locWithStock.binBarcode : locs[0].binBarcode;
+        const initialFrom = locWithStock ? locWithStock.binBarcode : (activeLocs[0]?.binBarcode || locs[0].binBarcode);
         setFromBarcode(initialFrom);
 
-        const destLoc = locs.find((l) => l.binBarcode !== initialFrom);
+        const destLoc = activeLocs.find((l) => l.binBarcode !== initialFrom);
         if (destLoc) setToBarcode(destLoc.binBarcode);
       }
     } catch (err: any) {
@@ -74,13 +75,18 @@ export const StockTransferTab: React.FC<StockTransferTabProps> = ({
       );
 
       if (matchedLoc) {
-        soundEffects.playSuccessBeep();
-        if (activeScanTarget === 'TO') {
-          setToBarcode(matchedLoc.binBarcode);
-          setFeedback({ msg: `[PDA] Đã chọn ô đích: ${matchedLoc.binBarcode}`, type: 'success' });
+        if (matchedLoc.isActive === false) {
+          soundEffects.playErrorBuzz();
+          setFeedback({ msg: `Ô kệ ${matchedLoc.binBarcode} đang bị khóa bảo trì, không thể thao tác!`, type: 'error' });
         } else {
-          setFromBarcode(matchedLoc.binBarcode);
-          setFeedback({ msg: `[PDA] Đã chọn ô nguồn: ${matchedLoc.binBarcode}`, type: 'success' });
+          soundEffects.playSuccessBeep();
+          if (activeScanTarget === 'TO') {
+            setToBarcode(matchedLoc.binBarcode);
+            setFeedback({ msg: `Đã chọn ô đích: ${matchedLoc.binBarcode}`, type: 'success' });
+          } else {
+            setFromBarcode(matchedLoc.binBarcode);
+            setFeedback({ msg: `Đã chọn ô nguồn: ${matchedLoc.binBarcode}`, type: 'success' });
+          }
         }
       } else {
         // Kiểm tra xem mã quét có phải là mã vạch sản phẩm không
@@ -93,12 +99,12 @@ export const StockTransferTab: React.FC<StockTransferTabProps> = ({
           soundEffects.playSuccessBeep();
           setSelectedInvId(matchedInv.id);
           setFeedback({
-            msg: `[PDA] Đã chọn mặt hàng: ${matchedInv.productName} (Lô ${matchedInv.batchNumber})`,
+            msg: `Đã chọn mặt hàng: ${matchedInv.productName} (Lô ${matchedInv.batchNumber})`,
             type: 'success',
           });
         } else {
           soundEffects.playErrorBuzz();
-          setFeedback({ msg: `[PDA] Mã không hợp lệ hoặc không có trong ô nguồn: ${scannedCode}`, type: 'error' });
+          setFeedback({ msg: `Mã không hợp lệ hoặc không có trong ô nguồn: ${scannedCode}`, type: 'error' });
         }
       }
       onClearScannedCode?.();
@@ -137,6 +143,16 @@ export const StockTransferTab: React.FC<StockTransferTabProps> = ({
     if (fromLocation.id === toLocation.id) {
       soundEffects.playErrorBuzz();
       setFeedback({ msg: 'Ô nguồn và ô đích không được trùng nhau!', type: 'error' });
+      return;
+    }
+    if (fromLocation.isActive === false) {
+      soundEffects.playErrorBuzz();
+      setFeedback({ msg: `Ô nguồn ${fromLocation.binBarcode} đang bị khóa bảo trì!`, type: 'error' });
+      return;
+    }
+    if (toLocation.isActive === false) {
+      soundEffects.playErrorBuzz();
+      setFeedback({ msg: `Ô đích ${toLocation.binBarcode} đang bị khóa bảo trì!`, type: 'error' });
       return;
     }
     if (!activeInvItem) {
@@ -199,7 +215,7 @@ export const StockTransferTab: React.FC<StockTransferTabProps> = ({
           </div>
           <div>
             <h2 className="text-xs font-bold text-slate-900 uppercase tracking-wider">
-              Điều Chuyển Ô Kệ (Stock Transfer)
+              Điều Chuyển Ô Kệ Nội Bộ
             </h2>
           </div>
         </div>
@@ -238,7 +254,7 @@ export const StockTransferTab: React.FC<StockTransferTabProps> = ({
             <div className="p-4 rounded-2xl bg-white border border-slate-200 shadow-xs space-y-2">
               <div className="flex items-center justify-between">
                 <span className="text-2xs font-extrabold uppercase text-slate-500 tracking-wider">
-                  Ô Kệ Nguồn (From Bin)
+                  Ô Kệ Nguồn
                 </span>
                 <button
                   type="button"
@@ -254,13 +270,14 @@ export const StockTransferTab: React.FC<StockTransferTabProps> = ({
                   setFromBarcode(e.target.value);
                   setSelectedInvId(null);
                 }}
-                className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-300 rounded-xl text-xs font-mono font-bold text-slate-900 focus:bg-white focus:border-purple-600 focus:outline-none"
+                className="w-full px-3.5 py-2.5 min-h-[42px] bg-slate-50 border border-slate-300 rounded-xl text-xs font-mono font-bold text-slate-900 focus:bg-white focus:border-purple-600 focus:outline-none"
               >
                 {locations.map((loc) => {
                   const hasStock = inventories.some((i) => i.locationId === loc.id && i.availableQty > 0);
+                  const isLocked = loc.isActive === false;
                   return (
-                    <option key={loc.id} value={loc.binBarcode}>
-                      {loc.binBarcode} ({loc.zoneCode}) {hasStock ? '• [Có hàng]' : '• [Trống]'}
+                    <option key={loc.id} value={loc.binBarcode} disabled={isLocked}>
+                      {loc.binBarcode} ({loc.zoneCode}) {isLocked ? '• [Đang khóa]' : hasStock ? '• [Có hàng]' : '• [Trống]'}
                     </option>
                   );
                 })}
@@ -330,7 +347,7 @@ export const StockTransferTab: React.FC<StockTransferTabProps> = ({
             <div className="p-4 rounded-2xl bg-white border border-slate-200 shadow-xs space-y-2">
               <div className="flex items-center justify-between">
                 <span className="text-2xs font-extrabold uppercase text-slate-500 tracking-wider">
-                  Ô Kệ Đích (To Bin)
+                  Ô Kệ Đích
                 </span>
                 <button
                   type="button"
@@ -343,13 +360,20 @@ export const StockTransferTab: React.FC<StockTransferTabProps> = ({
               <select
                 value={toBarcode}
                 onChange={(e) => setToBarcode(e.target.value)}
-                className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-300 rounded-xl text-xs font-mono font-bold text-slate-900 focus:bg-white focus:border-purple-600 focus:outline-none"
+                className="w-full px-3.5 py-2.5 min-h-[42px] bg-slate-50 border border-slate-300 rounded-xl text-xs font-mono font-bold text-slate-900 focus:bg-white focus:border-purple-600 focus:outline-none"
               >
-                {locations.map((loc) => (
-                  <option key={loc.id} value={loc.binBarcode} disabled={loc.binBarcode === fromBarcode}>
-                    {loc.binBarcode} ({loc.zoneCode}) {loc.binBarcode === fromBarcode ? '• [Ô nguồn trùng]' : ''}
-                  </option>
-                ))}
+                {locations.map((loc) => {
+                  const isLocked = loc.isActive === false;
+                  return (
+                    <option
+                      key={loc.id}
+                      value={loc.binBarcode}
+                      disabled={loc.binBarcode === fromBarcode || isLocked}
+                    >
+                      {loc.binBarcode} ({loc.zoneCode}) {isLocked ? '• [Đang khóa]' : loc.binBarcode === fromBarcode ? '• [Ô nguồn trùng]' : ''}
+                    </option>
+                  );
+                })}
               </select>
             </div>
 
@@ -401,11 +425,11 @@ export const StockTransferTab: React.FC<StockTransferTabProps> = ({
             {/* Submit Button */}
             <button
               type="submit"
-              disabled={submitting || currentAvailableQty <= 0 || fromBarcode === toBarcode}
-              className="w-full py-3.5 rounded-2xl bg-purple-600 hover:bg-purple-700 disabled:bg-slate-300 disabled:cursor-not-allowed text-white font-extrabold text-sm shadow-md shadow-purple-200 transition-all active:scale-98 flex items-center justify-center gap-2 cursor-pointer"
+              disabled={submitting || currentAvailableQty <= 0 || fromBarcode === toBarcode || fromLocation?.isActive === false || toLocation?.isActive === false}
+              className="w-full py-3.5 min-h-[48px] rounded-2xl bg-purple-600 hover:bg-purple-700 disabled:bg-slate-300 disabled:cursor-not-allowed text-white font-extrabold text-sm shadow-md shadow-purple-200 transition-all active:scale-98 flex items-center justify-center gap-2 cursor-pointer"
             >
               <ArrowRightLeft className="w-4 h-4" />
-              <span>{submitting ? 'Đang Thực Hiện Điều Chuyển...' : 'Xác Nhận Chuyển Ô Kệ & Cập Nhật Sổ Cái'}</span>
+              <span>{submitting ? 'Đang Thực Hiện Điều Chuyển...' : 'Xác Nhận Điều Chuyển Ô Kệ'}</span>
             </button>
           </div>
         </div>

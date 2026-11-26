@@ -188,6 +188,10 @@ export const CreateUserModal: React.FC<CreateUserModalProps> = ({
       setErrorMessage('Vui lòng nhập Họ và tên nhân viên!');
       return false;
     }
+    if (email.trim() && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) {
+      setErrorMessage('Địa chỉ email không đúng định dạng (VD: user@smartwms.vn)!');
+      return false;
+    }
     if (isEmailDuplicate) {
       setErrorMessage(`Địa chỉ email '${cleanEmail}' đã được sử dụng bởi tài khoản khác! Vui lòng nhập email khác.`);
       return false;
@@ -205,6 +209,15 @@ export const CreateUserModal: React.FC<CreateUserModalProps> = ({
     return true;
   };
 
+  const validateStep3 = () => {
+    if (!tempPassword || tempPassword.trim().length < 6) {
+      setErrorMessage('Mật khẩu khởi tạo phải có tối thiểu 6 ký tự!');
+      return false;
+    }
+    setErrorMessage(null);
+    return true;
+  };
+
   const handleNextStep = () => {
     if (currentStep === 1) {
       if (validateStep1()) setCurrentStep(2);
@@ -215,7 +228,7 @@ export const CreateUserModal: React.FC<CreateUserModalProps> = ({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!validateStep1() || !validateStep2()) return;
+    if (!validateStep1() || !validateStep2() || !validateStep3()) return;
 
     setIsSubmitting(true);
     setErrorMessage(null);

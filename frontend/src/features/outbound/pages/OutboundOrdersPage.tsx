@@ -14,7 +14,8 @@ import { OutboundOrder, OutboundStock } from '../types';
 import { outboundService } from '../services/outboundService';
 import { inventoryService } from '../../inventory/services/inventoryService';
 import { WarehouseClosingBalances } from '../../inventory/components/WarehouseClosingBalances';
-import { warehouseService } from '../../masterdata/services/warehouseService';
+import { warehouseService, getWarehouseDisplayName } from '../../masterdata/services/warehouseService';
+import { GeminiAssistantDrawer, GeminiAssistantContext } from '../../smartquery/components/GeminiAssistantDrawer';
 
 export const OutboundOrdersPage: React.FC = () => {
   const [stock, setStock] = useState<OutboundStock[]>([]);
@@ -23,6 +24,8 @@ export const OutboundOrdersPage: React.FC = () => {
   const busy = useRef(false);
   const [processing, setProcessing] = useState(false);
   const [orders, setOrders] = useState<OutboundOrder[]>([]);
+  const [geminiDrawerOpen, setGeminiDrawerOpen] = useState(false);
+  const [geminiContext, setGeminiContext] = useState<GeminiAssistantContext | null>(null);
   const [activeStatus, setActiveStatus] = useState<OutboundFilterStatus>('ALL');
   const [selectedWarehouse, setSelectedWarehouse] = useState<string | number>(() => {
     return warehouseService.getActiveWarehouseId() || 'ALL';
@@ -85,7 +88,7 @@ export const OutboundOrdersPage: React.FC = () => {
 
   useEffect(() => {
     const handleWarehouseChange = (e: any) => {
-      const newWhId = e?.detail?.warehouseId || warehouseService.getActiveWarehouseId() || 'ALL';
+      const newWhId = (typeof e?.detail === 'object' ? e?.detail?.warehouseId : e?.detail) || warehouseService.getActiveWarehouseId() || 'ALL';
       setSelectedWarehouse(newWhId);
     };
 
@@ -234,6 +237,13 @@ export const OutboundOrdersPage: React.FC = () => {
         activeStatus={activeStatus}
         onStatusChange={setActiveStatus}
         onOpenCreateModal={() => setIsCreateModalOpen(true)}
+        onOpenGeminiAssistant={() => {
+          setGeminiContext({
+            title: 'Kora AI — Phân Tích Điểm Nghẽn Xuất Kho',
+            warehouseCode: selectedWarehouse !== 'ALL' ? String(selectedWarehouse) : undefined,
+          });
+          setGeminiDrawerOpen(true);
+        }}
       />
 
       {error && <p role="alert" className="rounded-xl bg-rose-50 p-3 text-sm text-rose-700 font-medium">{error}</p>}
@@ -244,6 +254,7 @@ export const OutboundOrdersPage: React.FC = () => {
       <WarehouseClosingBalances
         balances={stock}
         selectedWarehouseId={selectedWarehouse}
+        warehouseName={getWarehouseDisplayName(selectedWarehouse)}
         defaultExpanded={false}
       />
 
@@ -260,6 +271,25 @@ export const OutboundOrdersPage: React.FC = () => {
         onStartPicking={(order) => setPickingModalOrder(order)}
         onOpenVoucher={(order) => setVoucherModalOrder(order)}
         onOpenOrderLedger={handleOpenOrderLedger}
+        onDiagnoseOrder={(order) => {
+          const whCode = order.warehouseId
+            ? order.warehouseId < 10
+              ? `WH0${order.warehouseId}`
+              : `WH${order.warehouseId}`
+            : selectedWarehouse !== 'ALL'
+              ? String(selectedWarehouse)
+              : undefined;
+          const firstItem = order.items?.[0];
+          setGeminiContext({
+            title: `Kora AI — Phân Tích Đơn ${order.soCode}`,
+            warehouseCode: whCode,
+            orderCode: order.soCode,
+            sku: firstItem?.sku,
+            productName: firstItem?.productName,
+            requestedQty: firstItem?.requestedQty,
+          });
+          setGeminiDrawerOpen(true);
+        }}
       />
 
       {/* Create Order Modal with dynamic warehouse binding */}
@@ -268,8 +298,20 @@ export const OutboundOrdersPage: React.FC = () => {
           initialWarehouseId={selectedWarehouse}
           onClose={() => setIsCreateModalOpen(false)}
           onCreateOrder={handleCreateOrder}
+          onOpenGeminiAssistant={(ctx) => {
+            setIsCreateModalOpen(false);
+            setGeminiContext(ctx);
+            setGeminiDrawerOpen(true);
+          }}
         />
       )}
+
+      {/* Trợ Lý Gemini AI Phân Tích Sự Cố Xuất Kho */}
+      <GeminiAssistantDrawer
+        isOpen={geminiDrawerOpen}
+        onClose={() => setGeminiDrawerOpen(false)}
+        context={geminiContext}
+      />
 
       {/* Order Detail Modal */}
       {selectedOrder && (

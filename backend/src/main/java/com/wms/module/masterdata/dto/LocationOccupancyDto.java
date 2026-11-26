@@ -26,6 +26,7 @@ public class LocationOccupancyDto {
     private BigDecimal maxWeight;
     private BigDecimal currentWeight;
     private String status; // EMPTY, OCCUPIED, EXPIRING, RESERVED
+    private Boolean isActive;
     private Long productId;
     private Long batchId;
     private String productName;

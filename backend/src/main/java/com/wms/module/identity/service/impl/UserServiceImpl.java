@@ -100,21 +100,25 @@ public class UserServiceImpl implements UserService {
 
         // Multi-warehouse assignment
         List<UserWarehouseAccess> accesses = new ArrayList<>();
-        List<Long> whIds = request.getAssignedWarehouseIds();
+        List<Long> rawWhIds = request.getAssignedWarehouseIds();
         Long primaryId = request.getPrimaryWarehouseId();
 
-        if (whIds == null || whIds.isEmpty()) {
-            whIds = warehouseRepository.findAll().stream()
+        Set<Long> uniqueWhIds;
+        if (rawWhIds == null || rawWhIds.isEmpty()) {
+            uniqueWhIds = warehouseRepository.findAll().stream()
                     .map(Warehouse::getId)
                     .findFirst()
-                    .map(List::of)
-                    .orElse(Collections.emptyList());
+                    .map(Set::of)
+                    .orElse(Collections.emptySet());
+        } else {
+            uniqueWhIds = new LinkedHashSet<>(rawWhIds);
         }
-        if (primaryId == null) {
-            primaryId = whIds.get(0);
+        if (primaryId == null && !uniqueWhIds.isEmpty()) {
+            primaryId = uniqueWhIds.iterator().next();
         }
 
-        for (Long whId : whIds) {
+        List<UserWarehouseAccess> toSave = new ArrayList<>();
+        for (Long whId : uniqueWhIds) {
             Optional<Warehouse> whOpt = warehouseRepository.findById(whId);
             if (whOpt.isPresent()) {
                 UserWarehouseAccess uwa = UserWarehouseAccess.builder()
@@ -123,8 +127,11 @@ public class UserServiceImpl implements UserService {
                         .isPrimary(whId.equals(primaryId))
                         .createdAt(Instant.now())
                         .build();
-                accesses.add(userWarehouseAccessRepository.save(uwa));
+                toSave.add(uwa);
             }
+        }
+        if (!toSave.isEmpty()) {
+            accesses = userWarehouseAccessRepository.saveAllAndFlush(toSave);
         }
 
         saveAuditLog("USER_CREATE", "USER", savedUser.getId().toString(), savedUser.getUsername(),
@@ -321,14 +328,17 @@ public class UserServiceImpl implements UserService {
         }
 
         // Multi-warehouse access update
-        List<UserWarehouseAccess> accesses = userWarehouseAccessRepository.findByUserId(user.getId());
+        List<UserWarehouseAccess> accesses = new ArrayList<>();
         if (request.getAssignedWarehouseIds() != null && !request.getAssignedWarehouseIds().isEmpty()) {
             userWarehouseAccessRepository.deleteByUserId(user.getId());
-            accesses = new ArrayList<>();
-            Long primaryId = request.getPrimaryWarehouseId() != null
-                    ? request.getPrimaryWarehouseId() : request.getAssignedWarehouseIds().get(0);
+            userWarehouseAccessRepository.flush();
 
-            for (Long whId : request.getAssignedWarehouseIds()) {
+            Set<Long> uniqueWhIds = new LinkedHashSet<>(request.getAssignedWarehouseIds());
+            Long primaryId = request.getPrimaryWarehouseId() != null
+                    ? request.getPrimaryWarehouseId() : uniqueWhIds.iterator().next();
+
+            List<UserWarehouseAccess> toSave = new ArrayList<>();
+            for (Long whId : uniqueWhIds) {
                 Optional<Warehouse> whOpt = warehouseRepository.findById(whId);
                 if (whOpt.isPresent()) {
                     UserWarehouseAccess uwa = UserWarehouseAccess.builder()
@@ -337,9 +347,14 @@ public class UserServiceImpl implements UserService {
                             .isPrimary(whId.equals(primaryId))
                             .createdAt(Instant.now())
                             .build();
-                    accesses.add(userWarehouseAccessRepository.save(uwa));
+                    toSave.add(uwa);
                 }
             }
+            if (!toSave.isEmpty()) {
+                accesses = userWarehouseAccessRepository.saveAllAndFlush(toSave);
+            }
+        } else {
+            accesses = userWarehouseAccessRepository.findByUserId(user.getId());
         }
 
         user.setUpdatedAt(Instant.now());

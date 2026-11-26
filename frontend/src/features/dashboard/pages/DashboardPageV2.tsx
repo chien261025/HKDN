@@ -35,7 +35,6 @@ import {
   PackageCheck,
   Shield,
   Users,
-  Smartphone,
   KeyRound,
   Activity,
   Sparkles,
@@ -57,7 +56,7 @@ import { warehouseService, DEFAULT_WAREHOUSES } from '../../masterdata/services/
 import { WarehouseItem } from '../../masterdata/types';
 import { authService } from '../../auth/services/authService';
 import { userService } from '../../users/services/userService';
-import { UserAccount } from '../../users/types';
+import { UserAccount, AuditLogEntry } from '../../users/types';
 
 type Data = {
   inbound: InboundOrder[];
@@ -80,10 +79,14 @@ const date = (v?: string) => {
 const labels: Record<string, string> = {
   PENDING: 'Chờ xử lý',
   RECEIVED: 'Tại khu đệm',
+  PARTIALLY_STOCKED: 'Cất một phần',
   STOCKED: 'Đã cất kệ',
   ALLOCATED: 'Đã phân bổ',
   PICKING: 'Đang lấy hàng',
+  SHORT_PICKED: 'Lấy thiếu',
   DISPATCHED: 'Đã xuất kho',
+  SHORT_CLOSED: 'Đóng đơn sớm',
+  CLOSED_NO_STOCK: 'Đóng không có hàng',
   CANCELLED: 'Đã hủy',
 };
 
@@ -221,10 +224,12 @@ export const DashboardPage: React.FC = () => {
     return isAdmin ? 'SYSTEM' : 'OPERATIONS';
   });
   const [usersList, setUsersList] = useState<UserAccount[]>([]);
+  const [auditLogs, setAuditLogs] = useState<AuditLogEntry[]>([]);
 
   useEffect(() => {
     if (isAdmin) {
       userService.getAllUsers().then(setUsersList).catch(() => []);
+      userService.getAuditLogs().then(setAuditLogs).catch(() => []);
     }
   }, [isAdmin]);
 
@@ -346,6 +351,10 @@ export const DashboardPage: React.FC = () => {
 
   const handleSyncData = async () => {
     await load();
+    if (isAdmin) {
+      userService.getAllUsers().then(setUsersList).catch(() => []);
+      userService.getAuditLogs().then(setAuditLogs).catch(() => []);
+    }
   };
 
   useEffect(() => {
@@ -469,49 +478,29 @@ export const DashboardPage: React.FC = () => {
     const dynamicTotalBins = branchLocations.length;
     const dynamicOccupiedBins = branchLocations.filter((l) => l.status && l.status !== 'EMPTY').length;
 
-    let currentBranchTotalBins = dynamicTotalBins > 0 ? dynamicTotalBins : 17;
-    let currentBranchOccupiedBins = dynamicTotalBins > 0 ? dynamicOccupiedBins : 16;
-
-    if (dynamicTotalBins === 0 && !isAll) {
-      if (activeWarehouse === 'WH01' || targetWhId === 1) {
-        currentBranchTotalBins = 17;
-        currentBranchOccupiedBins = 16;
-      } else if (activeWarehouse === 'WH02' || targetWhId === 2) {
-        currentBranchTotalBins = 30;
-        currentBranchOccupiedBins = 21;
-      } else if (activeWarehouse === 'WH03' || targetWhId === 3) {
-        currentBranchTotalBins = 25;
-        currentBranchOccupiedBins = 18;
-      } else if (activeWarehouse === 'WH04' || targetWhId === 4) {
-        currentBranchTotalBins = 20;
-        currentBranchOccupiedBins = 14;
-      } else {
-        // Chi nhánh mới setup như Kho Quy Nhơn
-        currentBranchTotalBins = currentWhObj?.totalZones ? currentWhObj.totalZones * 8 : 24;
-        currentBranchOccupiedBins = totalStockUnits > 0 ? Math.min(currentBranchTotalBins, Math.ceil(totalStockUnits / 25)) : 0;
-      }
-    }
+    const currentBranchTotalBins = dynamicTotalBins;
+    const currentBranchOccupiedBins = dynamicOccupiedBins;
     const currentBranchFillRate = currentBranchTotalBins > 0
       ? Math.round((currentBranchOccupiedBins / currentBranchTotalBins) * 100)
       : 0;
 
-    const networkTotalBins = data.locations.length > 0 ? data.locations.length : 79;
-    const networkOccupiedBins = data.locations.length > 0 ? data.locations.filter((l) => l.status && l.status !== 'EMPTY').length : 62;
-    const networkFillRate = networkTotalBins > 0 ? Math.round((networkOccupiedBins / networkTotalBins) * 100) : 78;
+    const networkTotalBins = data.locations.length;
+    const networkOccupiedBins = data.locations.filter((l) => l.status && l.status !== 'EMPTY').length;
+    const networkFillRate = networkTotalBins > 0 ? Math.round((networkOccupiedBins / networkTotalBins) * 100) : 0;
 
     // Sức chứa Zone tính toán trực tiếp từ dữ liệu ô kệ thực địa
     const zoneALocs = branchLocations.filter((l) => l.zone === 'ZONE_A' || l.barcode?.includes('ZA'));
     const zoneBLocs = branchLocations.filter((l) => l.zone === 'ZONE_B' || l.barcode?.includes('ZB'));
     const zoneCLocs = branchLocations.filter((l) => l.zone === 'ZONE_C' || l.barcode?.includes('ZC'));
 
-    const zoneATotal = zoneALocs.length > 0 ? zoneALocs.length : Math.max(1, Math.round(currentBranchTotalBins * 0.35));
-    const zoneAOccupied = zoneALocs.length > 0 ? zoneALocs.filter((l) => l.status && l.status !== 'EMPTY').length : Math.round(currentBranchOccupiedBins * 0.3);
+    const zoneATotal = zoneALocs.length;
+    const zoneAOccupied = zoneALocs.filter((l) => l.status && l.status !== 'EMPTY').length;
 
-    const zoneBTotal = zoneBLocs.length > 0 ? zoneBLocs.length : Math.max(1, Math.round(currentBranchTotalBins * 0.3));
-    const zoneBOccupied = zoneBLocs.length > 0 ? zoneBLocs.filter((l) => l.status && l.status !== 'EMPTY').length : Math.round(currentBranchOccupiedBins * 0.35);
+    const zoneBTotal = zoneBLocs.length;
+    const zoneBOccupied = zoneBLocs.filter((l) => l.status && l.status !== 'EMPTY').length;
 
-    const zoneCTotal = zoneCLocs.length > 0 ? zoneCLocs.length : Math.max(1, currentBranchTotalBins - zoneATotal - zoneBTotal);
-    const zoneCOccupied = zoneCLocs.length > 0 ? zoneCLocs.filter((l) => l.status && l.status !== 'EMPTY').length : Math.max(0, currentBranchOccupiedBins - zoneAOccupied - zoneBOccupied);
+    const zoneCTotal = zoneCLocs.length;
+    const zoneCOccupied = zoneCLocs.filter((l) => l.status && l.status !== 'EMPTY').length;
 
     const zoneBreakdown = [
       {
@@ -948,7 +937,7 @@ export const DashboardPage: React.FC = () => {
                   </span>
                   <span className="inline-flex items-center gap-1.5 rounded-lg border border-blue-200 bg-blue-50 px-3 py-1.5 font-semibold text-blue-800">
                     <ShieldCheck className="h-4 w-4 text-blue-600" />
-                    AST JSqlParser Security: Đang bảo vệ
+                    Truy vấn chỉ đọc an toàn
                   </span>
                 </div>
               </div>
@@ -986,10 +975,10 @@ export const DashboardPage: React.FC = () => {
                     Nhân Sự & Phân Quyền
                   </span>
                   <div className="text-3xl font-extrabold text-slate-900 font-mono mt-1.5">
-                    {usersList.length || 6}
+                    {usersList.length}
                   </div>
                   <p className="text-xs text-slate-500 font-medium mt-1">
-                    {adminUsersCount || 2} Quản trị • {managerUsersCount || 1} Trưởng kho • {operatorUsersCount || 3} Thủ kho
+                    {adminUsersCount} Quản trị • {managerUsersCount} Quản lý kho • {operatorUsersCount} Thủ kho
                   </p>
                 </div>
                 <div className="p-3 rounded-xl bg-blue-50 text-blue-600 border border-blue-100 group-hover:bg-blue-600 group-hover:text-white transition-colors">
@@ -1035,21 +1024,21 @@ export const DashboardPage: React.FC = () => {
               <div className="flex items-start justify-between">
                 <div>
                   <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider block">
-                    Thiết Bị PDA Tin Cậy
+                    Nhật Ký Kiểm Toán Hệ Thống
                   </span>
                   <div className="text-3xl font-extrabold text-slate-900 font-mono mt-1.5">
-                    3 Thiết bị
+                    {auditLogs.length} sự kiện
                   </div>
                   <p className="text-xs text-slate-500 font-medium mt-1">
-                    Datalogic, Honeywell, Zebra (100% Hoạt động)
+                    {warehousesList.filter((w) => w.trustedIps && w.trustedIps.trim()).length} / {warehousesList.length} kho cấu hình IP tin cậy
                   </p>
                 </div>
                 <div className="p-3 rounded-xl bg-purple-50 text-purple-600 border border-purple-100 group-hover:bg-purple-600 group-hover:text-white transition-colors">
-                  <Smartphone className="w-5 h-5" />
+                  <Activity className="w-5 h-5" />
                 </div>
               </div>
               <div className="mt-3 pt-3 border-t border-slate-100 flex items-center justify-between text-xs text-purple-600 font-semibold group-hover:translate-x-0.5 transition-transform">
-                <span>Quản lý thiết bị PDA</span>
+                <span>Quản lý mạng kho & phiên truy cập</span>
                 <ArrowRight className="w-4 h-4" />
               </div>
             </Link>
@@ -1169,7 +1158,17 @@ export const DashboardPage: React.FC = () => {
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-100">
-                    {warehousesList.map((w) => (
+                    {warehousesList.map((w) => {
+                      const typeLabel =
+                        w.type === 'CENTRAL' ? 'Kho Trung Tâm' :
+                        w.type === 'COLD_STORAGE' ? 'Kho Lạnh' :
+                        w.type === 'HUB' ? 'Kho Trung Chuyển' : 'Kho Phân Phối';
+                      const regionLabel =
+                        w.region === 'NORTH' ? 'Miền Bắc' :
+                        w.region === 'CENTRAL_VN' ? 'Miền Trung' :
+                        w.region === 'MEKONG' ? 'ĐBSCL' : 'Miền Nam';
+                      const active = w.isActive !== false;
+                      return (
                       <tr key={w.code} className="hover:bg-slate-50/80 transition-colors">
                         <td className="py-3 px-3">
                           <span className="font-mono font-bold text-blue-700 bg-blue-50 px-1.5 py-0.5 rounded border border-blue-200 mr-2">
@@ -1178,23 +1177,28 @@ export const DashboardPage: React.FC = () => {
                           <span className="font-semibold text-slate-900">{w.name}</span>
                         </td>
                         <td className="py-3 px-3 text-slate-600">
-                          <div>{w.type || 'Kho Phân Phối'}</div>
-                          <div className="text-[11px] text-slate-400">{w.region || 'Toàn quốc'}</div>
+                          <div>{typeLabel}</div>
+                          <div className="text-[11px] text-slate-400">{regionLabel}</div>
                         </td>
                         <td className="py-3 px-3 text-slate-700 font-medium">
-                          {w.managerName || 'Trần Trưởng Kho'}
+                          {w.managerName || 'Chưa phân công'}
                         </td>
                         <td className="py-3 px-3 font-mono font-semibold text-slate-800">
                           {(w.capacityPallets || 3000).toLocaleString('vi-VN')} Pallet
                         </td>
                         <td className="py-3 px-3 text-center">
-                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200">
-                            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
-                            Hoạt động
+                          <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-semibold border ${
+                            active
+                              ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                              : 'bg-slate-100 text-slate-600 border-slate-200'
+                          }`}>
+                            <span className={`w-1.5 h-1.5 rounded-full ${active ? 'bg-emerald-500' : 'bg-slate-400'}`} />
+                            {active ? 'Hoạt động' : 'Tạm ngưng'}
                           </span>
                         </td>
                       </tr>
-                    ))}
+                      );
+                    })}
                   </tbody>
                 </table>
               </div>
@@ -1218,41 +1222,30 @@ export const DashboardPage: React.FC = () => {
               </div>
 
               <div className="space-y-3">
-                <div className="p-3 bg-slate-50 rounded-xl border border-slate-200 text-xs space-y-1">
-                  <div className="flex items-center justify-between text-slate-500 text-[11px]">
-                    <span className="font-mono">{lastUpdatedTime} Hôm nay</span>
-                    <span className="text-emerald-700 font-bold bg-emerald-50 px-1.5 py-0.2 rounded border border-emerald-200">Thành công</span>
+                {auditLogs.length === 0 ? (
+                  <div className="p-6 text-center bg-slate-50 rounded-xl border border-dashed border-slate-200 text-xs text-slate-500">
+                    Chưa có sự kiện kiểm toán bảo mật nào được ghi nhận từ máy chủ.
                   </div>
-                  <p className="font-semibold text-slate-800">Đăng nhập tài khoản Quản trị viên tối cao (@admin)</p>
-                  <p className="text-[11px] text-slate-500 font-mono">IP: 192.168.1.101 • Vị trí: Việt Nam</p>
-                </div>
-
-                <div className="p-3 bg-slate-50 rounded-xl border border-slate-200 text-xs space-y-1">
-                  <div className="flex items-center justify-between text-slate-500 text-[11px]">
-                    <span className="font-mono">15:10:24 Hôm nay</span>
-                    <span className="text-blue-700 font-bold bg-blue-50 px-1.5 py-0.2 rounded border border-blue-200">Đã áp dụng</span>
-                  </div>
-                  <p className="font-semibold text-slate-800">Cập nhật Ma trận phân quyền RBAC v5</p>
-                  <p className="text-[11px] text-slate-500 font-mono">Kích hoạt quyền giám sát toàn bộ phân hệ vận hành</p>
-                </div>
-
-                <div className="p-3 bg-slate-50 rounded-xl border border-slate-200 text-xs space-y-1">
-                  <div className="flex items-center justify-between text-slate-500 text-[11px]">
-                    <span className="font-mono">14:20:00 Hôm nay</span>
-                    <span className="text-purple-700 font-bold bg-purple-50 px-1.5 py-0.2 rounded border border-purple-200">Khai báo</span>
-                  </div>
-                  <p className="font-semibold text-slate-800">Khai báo chi nhánh mới: Kho Quy Nhơn (@WH0)</p>
-                  <p className="text-[11px] text-slate-500 font-mono">Trưởng kho: Khánh Kelvin • Sức chứa: 3.000 Pallet</p>
-                </div>
-
-                <div className="p-3 bg-slate-50 rounded-xl border border-slate-200 text-xs space-y-1">
-                  <div className="flex items-center justify-between text-slate-500 text-[11px]">
-                    <span className="font-mono">13:00:22 Hôm nay</span>
-                    <span className="text-slate-700 font-bold bg-slate-100 px-1.5 py-0.2 rounded border border-slate-200">Tự động</span>
-                  </div>
-                  <p className="font-semibold text-slate-800">Quét bảo mật định kỳ AST JSqlParser</p>
-                  <p className="text-[11px] text-slate-500 font-mono">Trạng thái: 0 truy vấn độc hại, hệ thống an toàn</p>
-                </div>
+                ) : (
+                  auditLogs.slice(0, 5).map((logItem) => (
+                    <div key={logItem.id} className="p-3 bg-slate-50 rounded-xl border border-slate-200 text-xs space-y-1">
+                      <div className="flex items-center justify-between text-slate-500 text-[11px]">
+                        <span className="font-mono">
+                          {logItem.createdAt ? new Date(logItem.createdAt).toLocaleString('vi-VN') : '—'}
+                        </span>
+                        <span className="text-indigo-700 font-bold bg-indigo-50 px-1.5 py-0.2 rounded border border-indigo-200">
+                          {logItem.action}
+                        </span>
+                      </div>
+                      <p className="font-semibold text-slate-800 line-clamp-2">
+                        {logItem.details || `${logItem.action}: ${logItem.targetName || logItem.targetType}`}
+                      </p>
+                      <p className="text-[11px] text-slate-500 font-mono">
+                        @{logItem.actorUsername} {logItem.ipAddress ? `• IP: ${logItem.ipAddress}` : ''}
+                      </p>
+                    </div>
+                  ))
+                )}
               </div>
             </div>
           </div>
@@ -1935,10 +1928,11 @@ export const DashboardPage: React.FC = () => {
                     onChange={(e) => setZoneSelectedWarehouse(e.target.value)}
                     className="rounded-lg border border-[#E2E8F0] bg-slate-50 px-2.5 py-1 text-xs font-semibold text-slate-700 outline-none focus:border-[#2563EB] cursor-pointer"
                   >
-                    <option value="WH01">Kho Tân Bình</option>
-                    <option value="WH02">Kho VSIP Bắc Ninh</option>
-                    <option value="WH03">Kho Đà Nẵng</option>
-                    <option value="WH04">Kho Sóng Thần</option>
+                    {warehousesList.map((w) => (
+                      <option key={w.code} value={w.code}>
+                        {w.shortName || w.name} ({w.code})
+                      </option>
+                    ))}
                   </select>
                 )}
               </div>

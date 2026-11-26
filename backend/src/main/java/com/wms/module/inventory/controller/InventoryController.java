@@ -101,9 +101,10 @@ public class InventoryController {
     }
 
     @GetMapping("/audit")
-    @Operation(summary = "Lấy danh sách các đợt kiểm kê kho", description = "Trả về toàn bộ các phiên kiểm kê mù định kỳ")
-    public ApiResponse<List<com.wms.module.inventory.dto.response.InventoryAuditResponse>> getAllAudits() {
-        List<com.wms.module.inventory.dto.response.InventoryAuditResponse> audits = inventoryAuditService.getAllAudits();
+    @Operation(summary = "Lấy danh sách các đợt kiểm kê kho", description = "Trả về các phiên kiểm kê mù định kỳ, có hỗ trợ lọc theo chi nhánh kho")
+    public ApiResponse<List<com.wms.module.inventory.dto.response.InventoryAuditResponse>> getAllAudits(
+            @RequestParam(required = false) Long warehouseId) {
+        List<com.wms.module.inventory.dto.response.InventoryAuditResponse> audits = inventoryAuditService.getAllAudits(warehouseId);
         return ApiResponse.success("Lấy danh sách đợt kiểm kê thành công!", audits);
     }
 

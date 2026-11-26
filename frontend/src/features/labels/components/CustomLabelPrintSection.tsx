@@ -18,6 +18,10 @@ import {
 import { useSearchParams } from 'react-router-dom';
 import { PalletLabelCard, PalletLabelData } from './PalletLabelCard';
 import { Pagination } from '../../../components/common';
+import { inboundService } from '../../inbound/services/inboundService';
+import { warehouseService, DEFAULT_WAREHOUSES } from '../../masterdata/services/warehouseService';
+import { locationService } from '../../masterdata/services/locationService';
+import { WarehouseItem } from '../../masterdata/types';
 
 const PAGE_SIZE = 8;
 
@@ -28,142 +32,13 @@ export interface PalletItem extends PalletLabelData {
   status: 'QC_PASSED' | 'PENDING_PUTAWAY' | 'STOCKED';
 }
 
-export const INITIAL_PALLETS: PalletItem[] = [
-  {
-    id: 'PLT-01',
-    palletCode: 'PLT-TEST-001',
-    orderCode: 'PO-2026-001',
-    productName: 'Thiết bị mẫu kiểm thử WMS (TEST-WMS-001)',
-    sku: 'TEST-WMS-001',
-    totalQuantity: 120,
-    unit: 'Kiện A6 (120 Hộp)',
-    grossWeightKg: 450,
-    destinationLocation: 'WH01-ZA-A01-R01-S01-B01',
-    warehouseCode: 'WH01',
-    warehouseName: 'Kho Tổng Tân Bình',
-    dateCreated: '21/11/2026',
-    inspectorName: 'Nguyễn Quản Trị',
-    status: 'QC_PASSED',
-  },
-  {
-    id: 'PLT-02',
-    palletCode: 'PLT-TEST-002',
-    orderCode: 'PO-2026-001',
-    productName: 'Thiết bị mẫu kiểm thử WMS (TEST-WMS-001)',
-    sku: 'TEST-WMS-001',
-    totalQuantity: 80,
-    unit: 'Kiện A6 (80 Hộp)',
-    grossWeightKg: 320,
-    destinationLocation: 'WH01-ZA-A01-R01-S02-B02',
-    warehouseCode: 'WH01',
-    warehouseName: 'Kho Tổng Tân Bình',
-    dateCreated: '21/11/2026',
-    inspectorName: 'Trần Thủ Kho',
-    status: 'PENDING_PUTAWAY',
-  },
-  {
-    id: 'PLT-03',
-    palletCode: 'PLT-MILK-2026-01',
-    orderCode: 'INB-2026-001',
-    productName: 'Sữa tươi tiệt trùng Vinamilk 100% 1L',
-    sku: 'SKU-MILK-100',
-    totalQuantity: 150,
-    unit: 'Kiện A6 (600 Hộp)',
-    grossWeightKg: 650,
-    destinationLocation: 'WH01-ZB-B01-R01-S01-B05',
-    warehouseCode: 'WH01',
-    warehouseName: 'Kho Tổng Tân Bình',
-    dateCreated: '20/11/2026',
-    inspectorName: 'Lê Nhân Viên',
-    status: 'STOCKED',
-  },
-  {
-    id: 'PLT-04',
-    palletCode: 'PLT-MILK-2026-02',
-    orderCode: 'PO-VINAMILK-001',
-    productName: 'Sữa tươi tiệt trùng Vinamilk 100% 1L',
-    sku: 'SKU-MILK-100',
-    totalQuantity: 120,
-    unit: 'Kiện A6 (480 Hộp)',
-    grossWeightKg: 520,
-    destinationLocation: 'WH01-ZB-B01-R01-S02-B06',
-    warehouseCode: 'WH01',
-    warehouseName: 'Kho Tổng Tân Bình',
-    dateCreated: '21/11/2026',
-    inspectorName: 'Nguyễn Quản Trị',
-    status: 'PENDING_PUTAWAY',
-  },
-  {
-    id: 'PLT-05',
-    palletCode: 'PLT-SAMS-2026-01',
-    orderCode: 'INB-2026-002',
-    productName: 'Điện thoại Samsung Galaxy S24 Ultra 256GB',
-    sku: 'SKU-SAMS-S24',
-    totalQuantity: 60,
-    unit: 'Kiện A6 (120 Máy)',
-    grossWeightKg: 180,
-    destinationLocation: 'WH01-ZA-A02-R01-S01-B04',
-    warehouseCode: 'WH01',
-    warehouseName: 'Kho Tổng Tân Bình',
-    dateCreated: '19/11/2026',
-    inspectorName: 'Trần Thủ Kho',
-    status: 'STOCKED',
-  },
-  {
-    id: 'PLT-06',
-    palletCode: 'PLT-OMO-2026-01',
-    orderCode: 'PO-202610-088',
-    productName: 'Nước giặt OMO Matic Cửa Trên 3.6kg',
-    sku: 'SKU-OMO-MATIC',
-    totalQuantity: 80,
-    unit: 'Kiện A6 (160 Can)',
-    grossWeightKg: 620,
-    destinationLocation: 'WH01-ZA-A01-R02-S01-B03',
-    warehouseCode: 'WH01',
-    warehouseName: 'Kho Tổng Tân Bình',
-    dateCreated: '18/11/2026',
-    inspectorName: 'Nguyễn Quản Trị',
-    status: 'STOCKED',
-  },
-  {
-    id: 'PLT-07',
-    palletCode: 'PLT-BEER-2026-01',
-    orderCode: 'PO-202610-088',
-    productName: 'Bia Heineken Sleek lon 330ml',
-    sku: 'SKU-BEER-330',
-    totalQuantity: 200,
-    unit: 'Kiện A6 (400 Thùng)',
-    grossWeightKg: 850,
-    destinationLocation: 'WH01-ZA-A02-R01-S01-B07',
-    warehouseCode: 'WH01',
-    warehouseName: 'Kho Tổng Tân Bình',
-    dateCreated: '21/11/2026',
-    inspectorName: 'Lê Nhân Viên',
-    status: 'QC_PASSED',
-  },
-  {
-    id: 'PLT-08',
-    palletCode: 'PLT-YOG-2026-01',
-    orderCode: 'PO-202610-089',
-    productName: 'Sữa chua Vinamilk có đường Lốc 4 hộp',
-    sku: 'SKU-YOGURT-04',
-    totalQuantity: 100,
-    unit: 'Kiện A6 (500 Lốc)',
-    grossWeightKg: 410,
-    destinationLocation: 'WH01-ZB-B01-R01-S01-B05',
-    warehouseCode: 'WH01',
-    warehouseName: 'Kho Tổng Tân Bình',
-    dateCreated: '21/11/2026',
-    inspectorName: 'Trần Thủ Kho',
-    status: 'PENDING_PUTAWAY',
-  },
-];
-
 export const CustomLabelPrintSection: React.FC = () => {
   const [searchParams] = useSearchParams();
   const targetPalletParam = searchParams.get('pallet');
 
-  const [palletsList, setPalletsList] = useState<PalletItem[]>(INITIAL_PALLETS);
+  const [palletsList, setPalletsList] = useState<PalletItem[]>([]);
+  const [warehouses, setWarehouses] = useState<WarehouseItem[]>(DEFAULT_WAREHOUSES);
+  const [isLoading, setIsLoading] = useState<boolean>(false);
   const [selectedWarehouse, setSelectedWarehouse] = useState<string>('ALL');
   const [selectedStatus, setSelectedStatus] = useState<'ALL' | 'QC_PASSED' | 'PENDING_PUTAWAY' | 'STOCKED'>('ALL');
   const [selectedOrder, setSelectedOrder] = useState<string>('ALL');
@@ -175,9 +50,81 @@ export const CustomLabelPrintSection: React.FC = () => {
   );
 
   // Pallet đang hiển thị ở khung Live Preview
-  const [previewPalletCode, setPreviewPalletCode] = useState<string>(
-    targetPalletParam || INITIAL_PALLETS[0].palletCode
-  );
+  const [previewPalletCode, setPreviewPalletCode] = useState<string>(targetPalletParam || '');
+
+  useEffect(() => {
+    const loadPalletLabels = async () => {
+      setIsLoading(true);
+      try {
+        const [orders, whs, locs] = await Promise.all([
+          inboundService.getInboundOrders(),
+          warehouseService.getWarehouses(),
+          locationService.getLocations(),
+        ]);
+        if (whs.length > 0) setWarehouses(whs);
+        const whById = new Map(whs.map((w) => [Number(w.id), w]));
+
+        const generated: PalletItem[] = [];
+        orders.forEach((order) => {
+          if (order.status === 'PENDING' || order.status === 'CANCELLED') return;
+          const wh = whById.get(Number(order.warehouseId || 1));
+          const whCode = wh?.code || `WH0${order.warehouseId || 1}`;
+          const whName = wh?.shortName || wh?.name || `Chi nhánh #${order.warehouseId || 1}`;
+
+          (order.items || []).forEach((item, idx) => {
+            const qty = item.receivedQty && item.receivedQty > 0 ? item.receivedQty : item.expectedQty;
+            if (!qty || qty <= 0) return;
+            const isStocked =
+              item.status === 'COMPLETED' ||
+              (item.stockedQty != null && item.stockedQty >= qty) ||
+              order.status === 'STOCKED';
+            const status: PalletItem['status'] = isStocked
+              ? 'STOCKED'
+              : item.stockedQty != null && item.stockedQty > 0
+              ? 'PENDING_PUTAWAY'
+              : 'QC_PASSED';
+
+            const matchedLoc = locs.find(
+              (l) =>
+                Number(l.warehouseId) === Number(order.warehouseId || 1) &&
+                l.productId === item.productId
+            );
+            const unitWeight = item.weightKg && item.weightKg > 0 ? Number(item.weightKg) : 1;
+            const palletCode = `PLT-${order.poCode.replace(/[^A-Z0-9-]/gi, '')}-${String(idx + 1).padStart(2, '0')}`;
+
+            generated.push({
+              id: `${order.id}-${item.id}`,
+              palletCode,
+              orderCode: order.poCode,
+              productName: item.productName,
+              sku: item.sku,
+              totalQuantity: qty,
+              unit: `${qty} ${item.unit || 'Kiện'}`,
+              grossWeightKg: Math.round(qty * unitWeight * 10) / 10,
+              destinationLocation: matchedLoc?.barcode || `${whCode}-STAGING`,
+              warehouseCode: whCode,
+              warehouseName: whName,
+              dateCreated: order.expectedDeliveryDate || new Date().toLocaleDateString('vi-VN'),
+              inspectorName: order.approvedBy || 'Thủ kho ca trực',
+              status,
+            });
+          });
+        });
+
+        setPalletsList(generated);
+        if (targetPalletParam) {
+          setPreviewPalletCode(targetPalletParam);
+        } else if (generated.length > 0) {
+          setPreviewPalletCode(generated[0].palletCode);
+        }
+      } catch (err) {
+        console.warn('Lỗi tải dữ liệu kiện hàng in tem Pallet:', err);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    void loadPalletLabels();
+  }, [targetPalletParam]);
 
   const [paperFormat, setPaperFormat] = useState<'A6' | 'A4'>('A6');
   const [printCopies, setPrintCopies] = useState<number>(2); // 2 bản dán 2 mặt theo chuẩn giao nhận
@@ -312,8 +259,11 @@ export const CustomLabelPrintSection: React.FC = () => {
               className="w-full px-2.5 py-1.5 bg-slate-50 border border-slate-300 rounded-xl text-xs font-semibold text-slate-700 focus:border-indigo-600 outline-none"
             >
               <option value="ALL">Toàn bộ chi nhánh kho ({palletsList.length})</option>
-              <option value="WH01">WH01 - Kho Tổng Tân Bình</option>
-              <option value="WH02">WH02 - Kho VSIP Bắc Ninh</option>
+              {warehouses.map((w) => (
+                <option key={w.code} value={w.code}>
+                  {w.code} - {w.shortName || w.name}
+                </option>
+              ))}
             </select>
           </div>
 
@@ -602,7 +552,13 @@ export const CustomLabelPrintSection: React.FC = () => {
 
             {/* LIVE PREVIEW CARD (RENDER DUY NHẤT 1 PHIẾU CHUẨN A6) */}
             <div className="p-3 rounded-xl bg-slate-100/70 border border-slate-200 flex justify-center">
-              <PalletLabelCard data={activePreviewData} />
+              {activePreviewData ? (
+                <PalletLabelCard data={activePreviewData} />
+              ) : (
+                <div className="py-10 px-4 text-center text-xs text-slate-500">
+                  {isLoading ? 'Đang tải kiện hàng từ máy chủ...' : 'Chưa có kiện hàng nào được tiếp nhận để hiển thị mẫu phiếu.'}
+                </div>
+              )}
             </div>
 
             {/* Tùy chọn khổ giấy & số lượng in */}

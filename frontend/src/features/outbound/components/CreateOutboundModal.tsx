@@ -1,19 +1,21 @@
 import React, { useEffect, useState } from 'react';
-import { X, Plus, Trash2, PackageCheck, Building2, AlertTriangle, RotateCcw } from 'lucide-react';
+import { X, Plus, Trash2, PackageCheck, Building2, AlertTriangle, RotateCcw, Sparkles } from 'lucide-react';
 import { OutboundOrder, OutboundStock } from '../types';
 import { outboundService, cleanOutboundText } from '../services/outboundService';
 import { inventoryService } from '../../inventory/services/inventoryService';
 import { SupplierItem } from '../../products/types';
 import { WarehouseItem } from '../../masterdata/types';
 import { warehouseService, DEFAULT_WAREHOUSES } from '../../masterdata/services/warehouseService';
+import { GeminiAssistantContext } from '../../smartquery/components/GeminiAssistantDrawer';
 
 interface Props {
     initialWarehouseId?: string | number;
     onClose: () => void;
     onCreateOrder: (order: OutboundOrder) => Promise<void>;
+    onOpenGeminiAssistant?: (ctx: GeminiAssistantContext) => void;
 }
 
-export const CreateOutboundModal: React.FC<Props> = ({ initialWarehouseId, onClose, onCreateOrder }) => {
+export const CreateOutboundModal: React.FC<Props> = ({ initialWarehouseId, onClose, onCreateOrder, onOpenGeminiAssistant }) => {
     const [orderType, setOrderType] = useState<'SO' | 'RTV'>('SO');
     const [warehouses, setWarehouses] = useState<WarehouseItem[]>(DEFAULT_WAREHOUSES);
     const [warehouseId, setWarehouseId] = useState<number>(() => {
@@ -165,9 +167,49 @@ export const CreateOutboundModal: React.FC<Props> = ({ initialWarehouseId, onClo
 
                 <form onSubmit={submit} className="space-y-4 p-6 text-sm">
                     {error && (
-                        <div role="alert" className="rounded-xl bg-rose-50 p-3 text-xs text-rose-700 border border-rose-200 flex items-center gap-2">
-                            <AlertTriangle className="w-4 h-4 shrink-0" />
-                            <span>{error}</span>
+                        <div role="alert" className="rounded-xl bg-rose-50 p-3 text-xs text-rose-700 border border-rose-200 space-y-2">
+                            <div className="flex items-start gap-2">
+                                <AlertTriangle className="w-4 h-4 shrink-0 mt-0.5" />
+                                <span className="leading-relaxed font-medium">{error}</span>
+                            </div>
+                            {onOpenGeminiAssistant && /tồn|khả dụng|không đủ|vượt|thiếu|insufficient|stock/i.test(error) && (
+                                <div className="pl-6">
+                                    <button
+                                        type="button"
+                                        onClick={() => {
+                                            const whObj = warehouses.find(
+                                                (w) =>
+                                                    Number(String(w.id).replace(/\D/g, '')) === warehouseId ||
+                                                    w.code === `WH0${warehouseId}` ||
+                                                    w.code === `WH${warehouseId}`
+                                            );
+                                            const whCode =
+                                                whObj?.code ||
+                                                (warehouseId < 10 ? `WH0${warehouseId}` : `WH${warehouseId}`);
+                                            const offending =
+                                                items.find((it) => {
+                                                    if (!it.productId) return false;
+                                                    const st = stock.find((s) => s.productId === it.productId);
+                                                    return st ? it.qty > st.availableQty : true;
+                                                }) || items.find((it) => it.productId != null);
+                                            const matchedStock = offending?.productId
+                                                ? stock.find((s) => s.productId === offending.productId)
+                                                : undefined;
+                                            onOpenGeminiAssistant({
+                                                title: `Kora AI — Giải Thích Thiếu Tồn (${matchedStock?.sku || whCode})`,
+                                                warehouseCode: whCode,
+                                                sku: matchedStock?.sku,
+                                                productName: matchedStock?.name,
+                                                requestedQty: offending?.qty,
+                                            });
+                                        }}
+                                        className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold shadow-xs cursor-pointer transition-colors"
+                                    >
+                                        <Sparkles className="w-3.5 h-3.5" />
+                                        <span>Phân tích nguyên nhân bằng Kora AI</span>
+                                    </button>
+                                </div>
+                            )}
                         </div>
                     )}
 
@@ -438,6 +480,55 @@ export const CreateOutboundModal: React.FC<Props> = ({ initialWarehouseId, onClo
                                 </div>
                             )}
                         </div>
+
+                        {onOpenGeminiAssistant && items.some(it => {
+                            const prod = products.find(pr => pr.productId === it.productId);
+                            return prod != null && it.qty > prod.availableQty;
+                        }) && (() => {
+                            const offending = items.find(it => {
+                                const prod = products.find(pr => pr.productId === it.productId);
+                                return prod != null && it.qty > prod.availableQty;
+                            })!;
+                            const prod = products.find(pr => pr.productId === offending.productId)!;
+                            const whObj = warehouses.find(
+                                (w) => Number(String(w.id).replace(/\D/g, '')) === warehouseId || w.code === `WH0${warehouseId}` || w.code === `WH${warehouseId}`
+                            );
+                            const whCode = whObj?.code || (warehouseId < 10 ? `WH0${warehouseId}` : `WH${warehouseId}`);
+                            const lockedOrReserved = Math.max(0, prod.onHandQty - prod.availableQty);
+                            return (
+                                <div role="status" className="rounded-xl bg-amber-50 border border-amber-200 p-3 flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
+                                    <div className="text-xs text-amber-900 space-y-0.5">
+                                        <div className="font-bold flex items-center gap-1.5">
+                                            <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0" />
+                                            <span>
+                                                [{prod.sku}] chỉ còn {prod.availableQty.toLocaleString('vi-VN')} {prod.unit} khả dụng (cần xuất {offending.qty.toLocaleString('vi-VN')} {prod.unit})
+                                            </span>
+                                        </div>
+                                        <p className="text-[11px] text-amber-800 pl-5">
+                                            {lockedOrReserved > 0
+                                                ? `Tồn vật lý hiện có ${prod.onHandQty.toLocaleString('vi-VN')} ${prod.unit}, nhưng ${lockedOrReserved.toLocaleString('vi-VN')} ${prod.unit} đang bị giữ cho đơn khác hoặc hết hạn/cách ly.`
+                                                : `Nhu cầu đang vượt tổng tồn vật lý thực tế (${prod.onHandQty.toLocaleString('vi-VN')} ${prod.unit}).`}
+                                        </p>
+                                    </div>
+                                    <button
+                                        type="button"
+                                        onClick={() =>
+                                            onOpenGeminiAssistant({
+                                                title: `Kora AI — Giải Thích Thiếu Tồn (${prod.sku})`,
+                                                warehouseCode: whCode,
+                                                sku: prod.sku,
+                                                productName: prod.name,
+                                                requestedQty: offending.qty,
+                                            })
+                                        }
+                                        className="shrink-0 inline-flex items-center gap-1.5 px-3 py-2 rounded-lg bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold shadow-xs cursor-pointer transition-colors"
+                                    >
+                                        <Sparkles className="w-3.5 h-3.5" />
+                                        <span>Phân tích nguyên nhân bằng Kora AI</span>
+                                    </button>
+                                </div>
+                            );
+                        })()}
                     </div>
 
                     <div>

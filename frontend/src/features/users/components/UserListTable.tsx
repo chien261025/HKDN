@@ -280,6 +280,7 @@ export const UserListTable: React.FC<UserListTableProps> = ({
               <option value="VSIP">Kho VSIP Bắc Ninh</option>
               <option value="Miền Trung">Kho Vận Miền Trung</option>
               <option value="Sóng Thần">Kho Sóng Thần</option>
+              <option value="Quy Nhơn">Kho Quy Nhơn</option>
             </select>
           </div>
 

@@ -205,7 +205,7 @@ export const StockBalanceTable: React.FC<StockBalanceTableProps> = ({
       const matchesKpi = (() => {
         if (!activeKpiFilter || activeKpiFilter === 'ALL') return true;
         if (activeKpiFilter === 'RESERVED') return (s.reservedQty || 0) > 0;
-        if (activeKpiFilter === 'BLOCKED') return s.isExpired || s.isExpiringSoon || (s.unavailableQty && s.unavailableQty > 0);
+        if (activeKpiFilter === 'BLOCKED') return Boolean(s.isExpired) || (s.unavailableQty || 0) > 0;
         if (activeKpiFilter === 'AVAILABLE') return (s.availableQty || 0) > 0;
         return true;
       })();
@@ -360,7 +360,7 @@ export const StockBalanceTable: React.FC<StockBalanceTableProps> = ({
 
   const totalPages = Math.max(1, Math.ceil(currentDatasetLength / PAGE_SIZE));
 
-  useEffect(() => setCurrentPage(1), [dimensionView, searchQuery, filterExpiring, filterReservedOnly, selectedWarehouse, agingFilter]);
+  useEffect(() => setCurrentPage(1), [dimensionView, searchQuery, filterExpiring, filterReservedOnly, selectedWarehouse, agingFilter, activeKpiFilter]);
   useEffect(() => setCurrentPage((page) => Math.min(page, totalPages)), [totalPages]);
 
   const visibleBatchStocks = useMemo(() => {
@@ -385,6 +385,9 @@ export const StockBalanceTable: React.FC<StockBalanceTableProps> = ({
 
   const handleConfirmReserve = () => {
     if (!reserveModalItem) return;
+    if (!reserveQty || reserveQty <= 0 || reserveQty > reserveModalItem.availableQty) {
+      return;
+    }
     onReserveItem(reserveModalItem, reserveQty, {
       soNumber: reserveSoNumber.trim() || undefined,
       reason: reserveReason,
@@ -1544,6 +1547,7 @@ export const StockBalanceTable: React.FC<StockBalanceTableProps> = ({
                 className="w-full px-3 py-2 border border-slate-200 rounded-lg text-xs font-medium focus:outline-none focus:border-amber-500 bg-white"
               >
                 <option value="Cấp phát giữ chỗ theo đơn xuất bán">Cấp phát giữ chỗ theo đơn xuất bán</option>
+                <option value="Giữ hàng ưu tiên cho khách VIP">Giữ hàng ưu tiên cho khách VIP</option>
                 <option value="Lấy mẫu kiểm định chất lượng">Lấy mẫu kiểm định chất lượng</option>
                 <option value="Dự trữ chương trình khuyến mại">Dự trữ chương trình khuyến mại</option>
                 <option value="Bảo lưu xử lý bảo hành, đổi trả">Bảo lưu xử lý bảo hành, đổi trả</option>
@@ -1567,11 +1571,31 @@ export const StockBalanceTable: React.FC<StockBalanceTableProps> = ({
               <input
                 type="number"
                 min={1}
-                max={reserveModalItem.availableQty}
-                value={reserveQty}
-                onChange={(e) => setReserveQty(Math.max(1, Math.min(reserveModalItem.availableQty, parseInt(e.target.value) || 1)))}
-                className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm font-semibold focus:outline-none focus:border-amber-500 font-mono"
+                value={reserveQty === 0 ? '' : reserveQty}
+                onChange={(e) => {
+                  const val = e.target.value === '' ? 0 : parseInt(e.target.value, 10);
+                  setReserveQty(isNaN(val) ? 0 : val);
+                }}
+                className={`w-full px-3 py-2 border rounded-lg text-sm font-semibold focus:outline-none font-mono ${
+                  reserveQty <= 0 || reserveQty > reserveModalItem.availableQty
+                    ? 'border-rose-400 bg-rose-50/40 text-rose-700 focus:border-rose-500'
+                    : 'border-slate-200 focus:border-amber-500'
+                }`}
               />
+              {reserveQty > reserveModalItem.availableQty && (
+                <div className="flex items-center gap-1.5 text-xs font-semibold text-rose-600 bg-rose-50 border border-rose-200 rounded-lg px-2.5 py-1.5">
+                  <AlertTriangle className="w-3.5 h-3.5 shrink-0" />
+                  <span>
+                    Số lượng yêu cầu ({reserveQty}) vượt quá tồn khả dụng ({reserveModalItem.availableQty} {reserveModalItem.unit || 'SP'})!
+                  </span>
+                </div>
+              )}
+              {reserveQty <= 0 && (
+                <div className="flex items-center gap-1.5 text-xs font-semibold text-rose-600 bg-rose-50 border border-rose-200 rounded-lg px-2.5 py-1.5">
+                  <AlertTriangle className="w-3.5 h-3.5 shrink-0" />
+                  <span>Số lượng giữ chỗ phải lớn hơn 0!</span>
+                </div>
+              )}
             </div>
 
             <div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-100">
@@ -1584,8 +1608,9 @@ export const StockBalanceTable: React.FC<StockBalanceTableProps> = ({
               </button>
               <button
                 type="button"
+                disabled={reserveQty <= 0 || reserveQty > reserveModalItem.availableQty}
                 onClick={handleConfirmReserve}
-                className="px-4 py-2 rounded-lg text-xs font-semibold bg-amber-600 hover:bg-amber-700 text-white shadow-xs transition-colors cursor-pointer flex items-center gap-1.5"
+                className="px-4 py-2 rounded-lg text-xs font-semibold bg-amber-600 hover:bg-amber-700 disabled:opacity-50 disabled:cursor-not-allowed text-white shadow-xs transition-colors cursor-pointer flex items-center gap-1.5"
               >
                 <Lock className="w-3.5 h-3.5" />
                 <span>Xác Nhận Giữ Chỗ</span>

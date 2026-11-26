@@ -9,9 +9,12 @@ import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
@@ -50,5 +53,19 @@ public class LocationController {
     public ApiResponse<Location> getLocationByBarcode(
             @Parameter(description = "Mã vạch trên kệ", example = "ZA-A01-R01-S01-B01") @PathVariable String binBarcode) {
         return ApiResponse.success(locationService.getLocationByBarcode(binBarcode));
+    }
+
+    @PatchMapping("/{id}/status")
+    @PreAuthorize("hasAnyRole('ADMIN', 'WAREHOUSE_MANAGER')")
+    @Operation(summary = "Khóa bảo trì hoặc mở khóa ô kệ", description = "Cập nhật trạng thái hoạt động is_active của ô kệ trong cơ sở dữ liệu")
+    public ApiResponse<Location> updateLocationStatus(
+            @PathVariable Long id,
+            @RequestParam Boolean isActive) {
+        boolean nextActive = Boolean.TRUE.equals(isActive);
+        Location updated = locationService.updateLocationStatus(id, nextActive);
+        String msg = nextActive
+                ? "Đã mở khóa ô kệ " + updated.getBinBarcode() + " thành công!"
+                : "Đã khóa bảo trì ô kệ " + updated.getBinBarcode() + " thành công!";
+        return ApiResponse.success(msg, updated);
     }
 }

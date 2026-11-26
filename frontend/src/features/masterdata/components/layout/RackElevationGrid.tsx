@@ -1,37 +1,46 @@
-import React, { useState, useEffect } from 'react';
+import React from 'react';
 import { BinLocation } from '../../types';
-import { Box, MapPin, Scale, Lock } from 'lucide-react';
+import { Box, MapPin, Scale, Lock, SearchX, RotateCcw } from 'lucide-react';
 
 interface RackElevationGridProps {
   locations: BinLocation[];
   selectedBinId: number | null;
   onSelectBin: (bin: BinLocation) => void;
+  onResetFilters?: () => void;
 }
 
 export const RackElevationGrid: React.FC<RackElevationGridProps> = ({
   locations,
   selectedBinId,
   onSelectBin,
+  onResetFilters,
 }) => {
-  const [lockedBins, setLockedBins] = useState<string[]>(() => {
-    try {
-      const saved = localStorage.getItem('smart_wms_locked_bins');
-      return saved ? JSON.parse(saved) : [];
-    } catch {
-      return [];
-    }
-  });
 
-  useEffect(() => {
-    const handleStatus = () => {
-      try {
-        const saved = localStorage.getItem('smart_wms_locked_bins');
-        setLockedBins(saved ? JSON.parse(saved) : []);
-      } catch {}
-    };
-    window.addEventListener('smart_wms_bin_status_changed', handleStatus);
-    return () => window.removeEventListener('smart_wms_bin_status_changed', handleStatus);
-  }, []);
+  if (locations.length === 0) {
+    return (
+      <div className="bg-white rounded-2xl py-14 px-6 border border-dashed border-slate-300 flex flex-col items-center justify-center text-center space-y-3 shadow-xs">
+        <div className="w-12 h-12 rounded-2xl bg-slate-100 border border-slate-200 flex items-center justify-center text-slate-400">
+          <SearchX className="w-6 h-6" />
+        </div>
+        <div className="space-y-1">
+          <p className="text-sm font-bold text-slate-800">Không tìm thấy ô kệ nào phù hợp</p>
+          <p className="text-xs text-slate-500 max-w-sm">
+            Không có vị trí lưu trữ nào khớp với từ khóa tìm kiếm, phân khu hoặc bộ lọc trạng thái hiện tại.
+          </p>
+        </div>
+        {onResetFilters && (
+          <button
+            type="button"
+            onClick={onResetFilters}
+            className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold shadow-xs transition-colors cursor-pointer"
+          >
+            <RotateCcw className="w-3.5 h-3.5" />
+            <span>Đặt lại bộ lọc</span>
+          </button>
+        )}
+      </div>
+    );
+  }
 
   // Nhóm các ô kệ theo Dãy (Aisle)
   const aisles = Array.from(new Set(locations.map((l) => l.aisle)));
@@ -91,7 +100,7 @@ export const RackElevationGrid: React.FC<RackElevationGridProps> = ({
                         const isOccupied = bin.status === 'OCCUPIED';
                         const isReserved = bin.status === 'RESERVED';
                         const isExpiring = bin.status === 'EXPIRING';
-                        const isLocked = lockedBins.includes(bin.barcode);
+                        const isLocked = bin.isActive === false;
 
                         let statusBadge = 'bg-emerald-50 text-emerald-700 border-emerald-200';
                         let statusText = 'Ô TRỐNG';
@@ -115,8 +124,9 @@ export const RackElevationGrid: React.FC<RackElevationGridProps> = ({
                           dotColor = 'bg-indigo-600';
                         }
 
-                        // Tỷ lệ tải trọng
-                        const weightPct = Math.min(Math.round((bin.currentWeight / bin.maxWeight) * 100), 100);
+                        // Tỷ lệ tải trọng thực tế (không kẹp ở 100% để cảnh báo quá tải chuẩn WMS)
+                        const weightPct = bin.maxWeight > 0 ? Math.round((bin.currentWeight / bin.maxWeight) * 100) : 0;
+                        const isOverloaded = bin.maxWeight > 0 && bin.currentWeight > bin.maxWeight;
 
                         return (
                           <div
@@ -163,6 +173,10 @@ export const RackElevationGrid: React.FC<RackElevationGridProps> = ({
                                   </span>
                                 </div>
                               </div>
+                            ) : isLocked ? (
+                              <p className="mt-2.5 text-xs text-rose-600 font-medium italic">
+                                Ô kệ đang khóa bảo trì — tạm ngưng tiếp nhận hàng hóa
+                              </p>
                             ) : (
                               <p className="mt-2.5 text-xs text-slate-400 italic">
                                 Ô kệ sẵn sàng tiếp nhận hàng nhập kho
@@ -175,8 +189,8 @@ export const RackElevationGrid: React.FC<RackElevationGridProps> = ({
                                 <Scale className="w-3.5 h-3.5 text-slate-400" />
                                 Tải: {bin.currentWeight} / {bin.maxWeight} kg
                               </span>
-                              <span className={weightPct > 80 ? 'text-rose-600 font-bold' : 'text-slate-600'}>
-                                {weightPct}%
+                              <span className={isOverloaded ? 'text-rose-700 font-extrabold' : weightPct > 80 ? 'text-rose-600 font-bold' : 'text-slate-600'}>
+                                {weightPct}%{isOverloaded ? ' • QUÁ TẢI' : ''}
                               </span>
                             </div>
                           </div>

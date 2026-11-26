@@ -131,9 +131,18 @@ export const PutawayExecutionModal: React.FC<Props> = ({ order, onClose, onConfi
               }}
             />
             {quantity > remaining && (
-              <div className="text-xs text-rose-600 font-bold mt-1.5 flex items-center gap-1.5 p-2 rounded-lg bg-rose-50 border border-rose-200">
-                <AlertTriangle className="w-4 h-4 shrink-0 text-rose-600" />
-                <span>Số lượng ({quantity.toLocaleString()}) vượt quá {remaining.toLocaleString()} {item?.unit || 'kiện'} đạt QC của đơn hàng!</span>
+              <div className="text-xs text-rose-600 font-bold mt-1.5 flex items-center justify-between p-2 rounded-lg bg-rose-50 border border-rose-200">
+                <div className="flex items-center gap-1.5">
+                  <AlertTriangle className="w-4 h-4 shrink-0 text-rose-600" />
+                  <span>Số lượng ({quantity.toLocaleString()}) vượt quá {remaining.toLocaleString()} {item?.unit || 'kiện'} đạt QC của đơn hàng!</span>
+                </div>
+                <button
+                  type="button"
+                  className="text-xs text-blue-700 underline font-bold cursor-pointer hover:text-blue-900"
+                  onClick={() => setQuantity(remaining)}
+                >
+                  Chỉnh về {remaining} {item?.unit || 'kiện'}
+                </button>
               </div>
             )}
           </label>
@@ -204,6 +213,7 @@ export const PutawayExecutionModal: React.FC<Props> = ({ order, onClose, onConfi
 
         <div className="pt-2">
           <button
+            type="submit"
             disabled={busy || !canSubmit}
             className="w-full rounded-xl bg-emerald-600 hover:bg-emerald-700 font-bold px-4 py-2.5 text-white disabled:opacity-40 disabled:cursor-not-allowed transition-all shadow-xs flex items-center justify-center gap-2 cursor-pointer"
           >

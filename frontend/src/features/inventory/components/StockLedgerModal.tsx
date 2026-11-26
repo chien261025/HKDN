@@ -271,6 +271,20 @@ export const StockLedgerModal: React.FC<StockLedgerModalProps> = ({ entry, onClo
             <p className="text-slate-800 mt-0.5 font-medium leading-relaxed">{entry.notes || 'Bút toán tự động ghi nhận vào sổ cái theo nguyên tắc Append-Only.'}</p>
           </div>
 
+          {/* Dấu vết Bảo mật Bất biến & Chữ ký SHA-256 */}
+          <div className="p-2.5 rounded-xl bg-emerald-50/70 print:bg-white border border-emerald-200 print:border-slate-300 flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-xs">
+            <div className="flex items-center gap-2">
+              <ShieldCheck className="w-4 h-4 text-emerald-600 shrink-0" />
+              <div>
+                <span className="font-bold text-emerald-900">Sổ Cái Bất Biến (Append-Only Immutable Ledger)</span>
+                <span className="block text-[11px] text-emerald-700">Chỉ đọc (Read-Only) — Nghiêm cấm chỉnh sửa hoặc xóa bỏ lịch sử</span>
+              </div>
+            </div>
+            <div className="font-mono text-[11px] bg-white px-2.5 py-1 rounded-lg border border-emerald-200 text-slate-700 select-all">
+              {entry.hashSignature || `SHA256:WMS-${entry.id}-${entry.referenceCode || 'LEDGER'}`}
+            </div>
+          </div>
+
           {/* Chữ Ký 3 Bên Hợp Chuẩn Vận Hành (Chỉ hiển thị khi in ra giấy / PDF) */}
           <div className="hidden print:block pt-3 border-t-2 border-slate-900 print:pt-2 print:mt-2">
             <div className="grid grid-cols-3 gap-3 text-center">

@@ -13,8 +13,8 @@ export const PickingOrderSelector: React.FC<PickingOrderSelectorProps> = ({
   selectedOrder,
   onSelectOrder,
 }) => {
-  // Chỉ hiển thị các đơn xuất kho đang chờ nhặt hoặc đang phân bổ (loại bỏ hoàn toàn các đơn đã xuất DISPATCHED)
-  const pendingOrders = orders.filter((o) => o.status !== 'DISPATCHED' && o.status !== 'SHIPPED');
+  // Chỉ hiển thị các đơn xuất kho đang chờ nhặt hoặc đang phân bổ (loại bỏ hoàn toàn các đơn đã xuất hoặc đã hủy)
+  const pendingOrders = orders.filter((o) => o.status === 'ALLOCATED' || o.status === 'PICKING' || o.status === 'PENDING');
 
   return (
     <div className="bg-white rounded-2xl p-4 border border-slate-200 space-y-2.5 shadow-xs">

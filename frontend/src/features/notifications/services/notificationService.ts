@@ -1,4 +1,6 @@
 import { apiClient } from '../../../services/api';
+import { STORAGE_KEYS } from '../../../constants';
+import { getDeviceFingerprint } from '../../auth/utils/deviceFingerprint';
 import { NotificationMessage } from '../types';
 
 export const notificationService = {
@@ -74,40 +76,76 @@ export const notificationService = {
     onError?: (err: any) => void
   ): () => void {
     const streamUrl = '/api/notifications/stream';
-    let eventSource: EventSource | null = null;
+    let abortController: AbortController | null = null;
+    let retryTimer: ReturnType<typeof setTimeout> | null = null;
     let isDisposed = false;
 
-    const connect = () => {
+    const connect = async () => {
       if (isDisposed) return;
-      try {
-        eventSource = new EventSource(streamUrl);
+      const token = localStorage.getItem(STORAGE_KEYS.TOKEN);
+      if (!token) return;
 
-        eventSource.addEventListener('notification', (e: MessageEvent) => {
-          try {
-            const data: NotificationMessage = JSON.parse(e.data);
-            onMessage(data);
-          } catch (parseErr) {
-            console.error('[NotificationService] Lỗi parse dữ liệu SSE:', parseErr);
-          }
+      abortController = new AbortController();
+      try {
+        const response = await fetch(streamUrl, {
+          method: 'GET',
+          headers: {
+            Accept: 'text/event-stream',
+            Authorization: `Bearer ${token}`,
+            'X-Device-Fingerprint': getDeviceFingerprint(),
+          },
+          signal: abortController.signal,
         });
 
-        eventSource.onopen = () => {
-          // Connected
-        };
+        if (response.status === 401 || response.status === 403) {
+          return;
+        }
+        if (!response.ok || !response.body) {
+          throw new Error(`SSE HTTP ${response.status}`);
+        }
 
-        eventSource.onerror = (e) => {
-          if (onError) onError(e);
-          if (eventSource) {
-            eventSource.close();
-            eventSource = null;
+        const reader = response.body.getReader();
+        const decoder = new TextDecoder('utf-8');
+        let buffer = '';
+
+        while (!isDisposed) {
+          const { value, done } = await reader.read();
+          if (done) break;
+          buffer += decoder.decode(value, { stream: true });
+
+          const events = buffer.split(/\r?\n\r?\n/);
+          buffer = events.pop() || '';
+
+          for (const rawEvent of events) {
+            const lines = rawEvent.split(/\r?\n/);
+            let eventName = 'message';
+            const dataLines: string[] = [];
+
+            for (const line of lines) {
+              if (line.startsWith('event:')) {
+                eventName = line.slice(6).trim();
+              } else if (line.startsWith('data:')) {
+                dataLines.push(line.slice(5).trim());
+              }
+            }
+
+            if (eventName === 'notification' && dataLines.length > 0) {
+              try {
+                const data: NotificationMessage = JSON.parse(dataLines.join('\n'));
+                onMessage(data);
+              } catch (parseErr) {
+                console.error('[NotificationService] Lỗi parse dữ liệu SSE:', parseErr);
+              }
+            }
           }
-          // Thử kết nối lại sau 5s nếu chưa unmount
-          if (!isDisposed) {
-            setTimeout(connect, 5000);
-          }
-        };
-      } catch (e) {
+        }
+      } catch (e: any) {
+        if (e?.name === 'AbortError' || isDisposed) return;
         if (onError) onError(e);
+      }
+
+      if (!isDisposed) {
+        retryTimer = setTimeout(connect, 5000);
       }
     };
 
@@ -115,9 +153,13 @@ export const notificationService = {
 
     return () => {
       isDisposed = true;
-      if (eventSource) {
-        eventSource.close();
-        eventSource = null;
+      if (retryTimer) {
+        clearTimeout(retryTimer);
+        retryTimer = null;
+      }
+      if (abortController) {
+        abortController.abort();
+        abortController = null;
       }
     };
   },

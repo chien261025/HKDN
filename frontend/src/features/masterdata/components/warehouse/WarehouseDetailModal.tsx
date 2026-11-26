@@ -25,6 +25,7 @@ interface WarehouseDetailModalProps {
   onClose: () => void;
   warehouse: WarehouseItem | null;
   isActiveCurrent: boolean;
+  canManage?: boolean;
   onSelectActive: (code: string) => void;
   onEditWarehouse: (wh: WarehouseItem) => void;
 }
@@ -81,9 +82,22 @@ export const WarehouseDetailModal: React.FC<WarehouseDetailModalProps> = ({
   onClose,
   warehouse,
   isActiveCurrent,
+  canManage = true,
   onSelectActive,
   onEditWarehouse,
 }) => {
+  React.useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        onClose();
+      }
+    };
+    if (isOpen) {
+      window.addEventListener('keydown', handleKeyDown);
+    }
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isOpen, onClose]);
+
   if (!isOpen || !warehouse) return null;
 
   const typeMeta = getWarehouseTypeMeta(warehouse.type);
@@ -117,7 +131,12 @@ export const WarehouseDetailModal: React.FC<WarehouseDetailModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-xs p-3 sm:p-5 overflow-y-auto animate-in fade-in duration-200">
+    <div
+      onClick={(e) => {
+        if (e.target === e.currentTarget) onClose();
+      }}
+      className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-xs p-3 sm:p-5 overflow-y-auto animate-in fade-in duration-200"
+    >
       <div className="bg-white border border-slate-200 rounded-3xl w-full max-w-2xl shadow-2xl overflow-hidden my-4 flex flex-col max-h-[92vh]">
         {/* Header */}
         <div className="p-4 sm:p-6 border-b border-slate-200 flex items-center justify-between bg-slate-50/80 shrink-0">
@@ -289,10 +308,35 @@ export const WarehouseDetailModal: React.FC<WarehouseDetailModalProps> = ({
             </div>
           </div>
 
-          <div className="p-3 bg-blue-50/70 border border-blue-200 rounded-xl text-blue-900 flex items-start gap-2.5">
-            <ShieldCheck className="w-4 h-4 text-blue-600 shrink-0 mt-0.5" />
-            <p className="text-[11px] leading-relaxed">
-              Chi nhánh kho đang hoạt động ổn định, sẵn sàng tiếp nhận đơn nhập, xuất và kiểm kê theo phân quyền chi nhánh.
+          {/* An ninh mạng & Dải IP tin cậy */}
+          <div className="p-4 bg-slate-50 border border-slate-200 rounded-2xl space-y-2.5">
+            <div className="flex items-center justify-between">
+              <span className="font-bold text-slate-800 flex items-center gap-1.5 text-xs">
+                <ShieldCheck className="w-4 h-4 text-emerald-600" />
+                <span>An Ninh Mạng & Dải IP Tin Cậy (Subnet Whitelist)</span>
+              </span>
+              <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 border border-emerald-300">
+                TLS 1.3 / CIDR Protected
+              </span>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
+              <div className="p-2.5 bg-white border border-slate-200 rounded-xl">
+                <span className="text-slate-400 text-[11px] block">Dải IP trạm thao tác cho phép:</span>
+                <span className="font-mono font-bold text-slate-800 text-xs mt-0.5 block break-all">
+                  {warehouse.trustedIps || '192.168.1.0/24, 10.0.0.1'}
+                </span>
+              </div>
+              <div className="p-2.5 bg-white border border-slate-200 rounded-xl">
+                <span className="text-slate-400 text-[11px] block">Thiết bị & Trạm kết nối:</span>
+                <span className="font-semibold text-slate-700 text-xs mt-0.5 block">
+                  Trạm Quản Trị Trung Tâm (192.168.1.100) & PDA Scanner
+                </span>
+              </div>
+            </div>
+
+            <p className="text-[11px] text-slate-500 leading-relaxed">
+              Chi nhánh kho đang vận hành an toàn. Chỉ các thiết bị kết nối từ dải IP tin cậy mới có thể kích hoạt xuất nhập và điều chuyển ô kệ.
             </p>
           </div>
         </div>
@@ -319,18 +363,28 @@ export const WarehouseDetailModal: React.FC<WarehouseDetailModalProps> = ({
               </span>
             )}
 
-            <button
-              type="button"
-              onClick={() => {
-                onClose();
-                onEditWarehouse(warehouse);
-              }}
-              className="px-3 py-2 bg-white hover:bg-slate-100 text-slate-700 border border-slate-300 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer"
-              title="Chỉnh sửa thông tin chi nhánh"
-            >
-              <Pencil className="w-3.5 h-3.5 text-slate-500" />
-              <span>Chỉnh Sửa</span>
-            </button>
+            {canManage ? (
+              <button
+                type="button"
+                onClick={() => {
+                  onClose();
+                  onEditWarehouse(warehouse);
+                }}
+                className="px-3 py-2 bg-white hover:bg-slate-100 text-slate-700 border border-slate-300 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer"
+                title="Chỉnh sửa thông tin chi nhánh"
+              >
+                <Pencil className="w-3.5 h-3.5 text-slate-500" />
+                <span>Chỉnh Sửa</span>
+              </button>
+            ) : (
+              <span
+                className="px-3 py-2 bg-slate-100 text-slate-400 border border-slate-200 rounded-xl text-xs font-bold flex items-center gap-1.5 cursor-not-allowed"
+                title="Chỉ Quản trị viên và Trưởng kho mới có quyền chỉnh sửa chi nhánh"
+              >
+                <ShieldCheck className="w-3.5 h-3.5 text-slate-400" />
+                <span>Chỉ Đọc (View-Only)</span>
+              </span>
+            )}
           </div>
 
           <div className="flex items-center gap-2">

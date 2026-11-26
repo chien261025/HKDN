@@ -1,5 +1,5 @@
-import React from 'react';
-import { Send, Sparkles, CornerDownLeft, Loader2, X } from 'lucide-react';
+import React, { useState } from 'react';
+import { ArrowUp, Loader2, Sparkles, X } from 'lucide-react';
 
 interface ChatInputSectionProps {
   input: string;
@@ -7,6 +7,7 @@ interface ChatInputSectionProps {
   onSend: (textToSend?: string) => void;
   loading: boolean;
   quickPrompts: string[];
+  showPrompts?: boolean;
 }
 
 export const ChatInputSection: React.FC<ChatInputSectionProps> = ({
@@ -15,83 +16,93 @@ export const ChatInputSection: React.FC<ChatInputSectionProps> = ({
   onSend,
   loading,
   quickPrompts,
+  showPrompts = false,
 }) => {
+  const [promptPopoverOpen, setPromptPopoverOpen] = useState(false);
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!loading && input.trim()) {
+      setPromptPopoverOpen(false);
       onSend();
     }
   };
 
   return (
-    <div className="pt-2 space-y-2.5">
-      {/* Quick Suggestion Chips */}
-      <div className="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-thin">
-        <span className="text-xs font-bold text-slate-500 uppercase tracking-wider flex items-center gap-1.5 flex-shrink-0">
-          <Sparkles className="w-3.5 h-3.5 text-indigo-600" /> Gợi ý:
-        </span>
-        {quickPrompts.map((prompt, idx) => (
+    <div className="relative space-y-2">
+      {showPrompts && promptPopoverOpen && quickPrompts.length > 0 && (
+        <>
+          <div className="fixed inset-0 z-10" onClick={() => setPromptPopoverOpen(false)} />
+          <div className="absolute bottom-full left-0 mb-2 w-full max-w-lg rounded-2xl border border-slate-200 bg-white p-2 shadow-lg z-20 space-y-1">
+            <div className="px-2.5 py-1 text-[11px] font-semibold text-slate-400">
+              Câu hỏi gợi ý
+            </div>
+            {quickPrompts.map((p) => (
+              <button
+                key={p}
+                type="button"
+                disabled={loading}
+                onClick={() => {
+                  setPromptPopoverOpen(false);
+                  onSend(p);
+                }}
+                className="w-full text-left rounded-xl px-3 py-2 text-xs text-slate-700 hover:bg-blue-50 hover:text-blue-700 transition-colors cursor-pointer"
+              >
+                {p}
+              </button>
+            ))}
+          </div>
+        </>
+      )}
+
+      <form
+        onSubmit={handleSubmit}
+        className="flex items-center gap-2 rounded-2xl border border-slate-200 bg-white pl-3 pr-2 py-2 shadow-[0_2px_12px_rgba(15,23,42,0.06)] transition-all focus-within:border-blue-400 focus-within:ring-4 focus-within:ring-blue-50"
+      >
+        {showPrompts && quickPrompts.length > 0 && (
           <button
-            key={idx}
             type="button"
-            onClick={() => onSend(prompt)}
             disabled={loading}
-            className="flex-shrink-0 text-xs px-3.5 py-1.5 rounded-xl bg-white hover:bg-slate-50 border border-slate-200 hover:border-indigo-200 text-slate-700 hover:text-indigo-700 transition-all font-semibold shadow-2xs disabled:opacity-50 cursor-pointer"
+            onClick={() => setPromptPopoverOpen((prev) => !prev)}
+            title="Chọn câu hỏi gợi ý"
+            className="inline-flex items-center gap-1 rounded-xl border border-slate-200 bg-slate-50 hover:bg-blue-50 hover:border-blue-200 hover:text-blue-700 px-2.5 py-1.5 text-xs font-medium text-slate-600 transition-colors shrink-0 cursor-pointer"
           >
-            {prompt}
+            <Sparkles className="w-3.5 h-3.5 text-blue-600" />
+            <span className="hidden sm:inline">Gợi ý</span>
           </button>
-        ))}
-      </div>
+        )}
 
-      {/* Input Form */}
-      <form onSubmit={handleSubmit} className="relative">
-        <div className="flex items-center gap-2 bg-white border border-slate-300 rounded-2xl p-1.5 shadow-sm focus-within:border-indigo-600 focus-within:ring-2 focus-within:ring-indigo-100 transition-all">
-          <input
-            type="text"
-            value={input}
-            onChange={(e) => setInput(e.target.value)}
-            disabled={loading}
-            placeholder="Hỏi bất kỳ thông tin kho (VD: 'Tìm các mặt hàng còn dưới 20 cái', 'Thống kê tồn theo Khu A')..."
-            className="flex-1 bg-transparent px-3.5 py-2.5 text-sm text-slate-900 placeholder-slate-400 focus:outline-none disabled:opacity-50 font-medium"
-          />
-
-          {input && (
-            <button
-              type="button"
-              onClick={() => setInput('')}
-              className="p-2 text-slate-400 hover:text-slate-600 rounded-lg hover:bg-slate-100 transition-colors cursor-pointer"
-              title="Xóa nội dung"
-            >
-              <X className="w-4 h-4" />
-            </button>
-          )}
-
+        <input
+          type="text"
+          value={input}
+          onChange={(e) => setInput(e.target.value)}
+          disabled={loading}
+          placeholder="Hỏi Kora AI về đơn SO, tồn khả dụng, lô cận hạn, PO chờ cất kệ..."
+          className="flex-1 min-w-0 bg-transparent px-1 py-1.5 text-[15px] text-slate-900 placeholder:text-slate-400 focus:outline-none disabled:opacity-60"
+        />
+        {input && !loading && (
           <button
-            type="submit"
-            disabled={loading || !input.trim()}
-            className="px-5 py-2.5 bg-indigo-600 hover:bg-indigo-700 disabled:bg-slate-200 text-white disabled:text-slate-400 rounded-xl shadow-sm font-bold text-xs flex items-center gap-2 transition-all active:scale-95 flex-shrink-0 cursor-pointer"
+            type="button"
+            onClick={() => setInput('')}
+            className="flex size-8 items-center justify-center rounded-lg text-slate-400 hover:bg-slate-100 hover:text-slate-600 transition-colors cursor-pointer"
+            title="Xóa nội dung"
           >
-            {loading ? (
-              <>
-                <Loader2 className="w-4 h-4 animate-spin" />
-                <span className="hidden sm:inline">AST Kiểm Duyệt...</span>
-              </>
-            ) : (
-              <>
-                <span>Gửi</span>
-                <Send className="w-3.5 h-3.5" />
-              </>
-            )}
+            <X className="w-4 h-4" />
           </button>
-        </div>
-
-        {/* <div className="flex items-center justify-between px-2 pt-1.5 text-xs text-slate-500 font-medium">
-          <span>Nhấn <kbd className="px-2 py-0.5 rounded bg-slate-100 text-slate-700 border border-slate-200 font-mono text-xs">Enter ↵</kbd> để gửi truy vấn</span>
-          <span className="flex items-center gap-1.5 text-emerald-700 font-semibold">
-            <CornerDownLeft className="w-3.5 h-3.5 text-emerald-600" /> Auto Sanitize & LIMIT 50 Enforced
-          </span>
-        </div> */}
+        )}
+        <button
+          type="submit"
+          disabled={loading || !input.trim()}
+          aria-label="Gửi câu hỏi"
+          className="flex size-9 items-center justify-center rounded-xl bg-blue-600 text-white hover:bg-blue-700 disabled:bg-slate-100 disabled:text-slate-400 transition-colors cursor-pointer disabled:cursor-not-allowed shrink-0"
+        >
+          {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <ArrowUp className="w-4 h-4" />}
+        </button>
       </form>
+
+      <p className="text-center text-[11px] text-slate-400">
+        Kora AI (Powered by Gemini) có thể sai sót · Dữ liệu chỉ đọc theo quyền RBAC
+      </p>
     </div>
   );
 };

@@ -3,6 +3,7 @@ import { MapPin, Weight, AlertTriangle } from 'lucide-react';
 import { BarcodeSvg, QrCodeSvg } from '../../../components/common';
 
 export interface BinLabelData {
+  id?: number;
   binBarcode: string;
   zoneCode: string;
   aisle: string;
@@ -22,6 +23,19 @@ interface BinLabelCardProps {
 }
 
 export const BinLabelCard: React.FC<BinLabelCardProps> = ({ data, className = '' }) => {
+  if (!data || !data.binBarcode) {
+    return (
+      <div
+        className={`bg-white border-2 border-dashed border-slate-200 rounded-xl p-4 flex flex-col items-center justify-center text-center text-xs text-slate-400 ${className}`}
+        style={{ width: '100%', maxWidth: '360px', minHeight: '210px' }}
+      >
+        <MapPin className="w-8 h-8 text-slate-300 mb-2" />
+        <p className="font-semibold text-slate-600">Đang tải mẫu tem ô kệ...</p>
+        <p className="text-2xs text-slate-400 mt-0.5">Vui lòng chọn một ô kệ từ danh sách để xem trước tem in</p>
+      </div>
+    );
+  }
+
   const isColdZone = data.zoneCode?.includes('ZB') || data.zoneCode?.includes('ZONE_B');
   const isInactive = data.isActive === false;
 

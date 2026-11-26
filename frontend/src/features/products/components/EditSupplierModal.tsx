@@ -79,6 +79,14 @@ export const EditSupplierModal: React.FC<EditSupplierModalProps> = ({
       setFormError('Hòm thư điện tử (Email) không đúng định dạng!');
       return;
     }
+    const cleanPhone = phone.trim();
+    if (
+      cleanPhone &&
+      (!/^[0-9+\-.\s()]{8,20}$/.test(cleanPhone) || cleanPhone.replace(/\D/g, '').length < 8)
+    ) {
+      setFormError('Số điện thoại liên hệ không hợp lệ (chỉ gồm chữ số, 8–15 số, VD: 0909123456)!');
+      return;
+    }
 
     const chosenCategories = availableCategories.filter((c) => selectedCategoryIds.includes(Number(c.id)));
     const updatedCategoryNames =

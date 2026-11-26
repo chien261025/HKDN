@@ -210,18 +210,25 @@ export const userService = {
    * Admin cập nhật thông tin và vai trò người dùng
    */
   async updateUser(id: string, payload: import('../types').UpdateUserPayload): Promise<UserAccount> {
-    const res = await apiClient.put<ApiResponse<BackendUserResponse>>(`/users/${id}`, payload);
-    if (!res.data.success || !res.data.data) {
-      throw new Error(res.data.message || 'Không thể cập nhật thông tin người dùng');
-    }
+    try {
+      const res = await apiClient.put<ApiResponse<BackendUserResponse>>(`/users/${id}`, payload);
+      if (!res.data.success || !res.data.data) {
+        throw new Error(res.data.message || 'Không thể cập nhật thông tin người dùng');
+      }
 
-    return mapBackendUserToAccount(res.data.data, {
-      fullName: payload.fullName,
-      email: payload.email,
-      phone: payload.phone,
-      assignedWarehouse: payload.assignedWarehouse,
-      role: payload.role as UserRole,
-    });
+      return mapBackendUserToAccount(res.data.data, {
+        fullName: payload.fullName,
+        email: payload.email,
+        phone: payload.phone,
+        assignedWarehouse: payload.assignedWarehouse,
+        role: payload.role as UserRole,
+      });
+    } catch (err: any) {
+      const serverMessage =
+        err.response?.data?.message ||
+        (err.message && !err.message.includes('status code') ? err.message : null);
+      throw new Error(serverMessage || 'Không thể cập nhật thông tin người dùng do dữ liệu không hợp lệ!');
+    }
   },
 
   /**
@@ -360,5 +367,27 @@ export const userService = {
    */
   async updateCurrentLocation(payload: { location: string; ip: string }): Promise<void> {
     await apiClient.put('/users/me/sessions/current-location', payload);
+  },
+
+  /**
+   * Lấy danh sách dải IP mạng nội bộ tin cậy của các chi nhánh kho
+   */
+  async getTrustedNetworks(): Promise<Array<{ id: number; code: string; name: string; trustedIps?: string; isActive?: boolean }>> {
+    const res = await apiClient.get<ApiResponse<Array<{ id: number; code: string; name: string; trustedIps?: string; isActive?: boolean }>>>('/masterdata/warehouses');
+    if (!res.data.success || !res.data.data) {
+      return [];
+    }
+    return res.data.data;
+  },
+
+  /**
+   * Cập nhật dải IP tin cậy cho một chi nhánh kho
+   */
+  async updateTrustedNetwork(warehouseId: number, trustedIps: string): Promise<string> {
+    const res = await apiClient.put<ApiResponse<any>>(`/masterdata/warehouses/${warehouseId}`, { trustedIps });
+    if (!res.data.success) {
+      throw new Error(res.data.message || 'Không thể cập nhật dải IP mạng kho');
+    }
+    return res.data.message || 'Cập nhật dải IP tin cậy thành công!';
   },
 };

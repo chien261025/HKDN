@@ -13,6 +13,7 @@ import { AppRoutes } from './components/AppRoutes';
 import { NotificationProvider } from '../features/notifications/context/NotificationContext';
 import { ToastNotificationContainer } from '../features/notifications/components/ToastNotificationContainer';
 import { IdleTimeoutGuard } from '../features/auth/components/IdleTimeoutGuard';
+import { FloatingGeminiWidget } from '../features/smartquery/components/FloatingGeminiWidget';
 import { STORAGE_KEYS } from '../constants';
 
 const AppContent: React.FC = () => {
@@ -172,6 +173,9 @@ const AppContent: React.FC = () => {
           onClose={() => setShowScanner(false)}
         />
       )}
+
+      {/* Global Context-Aware Gemini AI Assistant (Admin & Manager only) */}
+      <FloatingGeminiWidget session={session} />
     </div>
   );
 };

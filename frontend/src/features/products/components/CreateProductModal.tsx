@@ -397,7 +397,11 @@ export const CreateProductModal: React.FC<CreateProductModalProps> = ({
     return '';
   };
 
-  const handleNextStep = () => {
+  const handleNextStep = (e?: React.MouseEvent) => {
+    if (e) {
+      e.preventDefault();
+      e.stopPropagation();
+    }
     const err = validateTab(activeTab);
     if (err) {
       setFormError(err);
@@ -1183,11 +1187,12 @@ export const CreateProductModal: React.FC<CreateProductModalProps> = ({
             </Button>
           )}
           {activeTab !== 'FINANCE' ? (
-            <Button variant="primary" size="md" type="button" onClick={handleNextStep}>
+            <Button key="btn-next-step" variant="primary" size="md" type="button" onClick={handleNextStep}>
               Bước Tiếp Theo &rarr;
             </Button>
           ) : (
             <Button
+              key="btn-submit-product"
               variant="primary"
               size="md"
               type="submit"

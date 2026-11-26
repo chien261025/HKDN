@@ -91,6 +91,7 @@ export const CreateWarehouseModal: React.FC<CreateWarehouseModalProps> = ({
   const [dockCount, setDockCount] = useState(6);
   const [totalZones, setTotalZones] = useState(3);
   const [temperatureRange, setTemperatureRange] = useState('18°C - 25°C (Kho Tiêu Chuẩn)');
+  const [trustedIps, setTrustedIps] = useState('192.168.1.0/24, 10.0.0.1');
   const [isActive, setIsActive] = useState(true);
 
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
@@ -166,6 +167,18 @@ export const CreateWarehouseModal: React.FC<CreateWarehouseModalProps> = ({
   };
 
   useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        onClose();
+      }
+    };
+    if (isOpen) {
+      window.addEventListener('keydown', handleKeyDown);
+    }
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isOpen, onClose]);
+
+  useEffect(() => {
     if (isOpen) {
       if (editingWarehouse) {
         setCode(editingWarehouse.code);
@@ -204,6 +217,7 @@ export const CreateWarehouseModal: React.FC<CreateWarehouseModalProps> = ({
         setDockCount(editingWarehouse.dockCount || 6);
         setTotalZones(editingWarehouse.totalZones || 3);
         setTemperatureRange(editingWarehouse.temperatureRange || '18°C - 25°C (Kho Tiêu Chuẩn)');
+        setTrustedIps(editingWarehouse.trustedIps || '192.168.1.0/24, 10.0.0.1');
         setIsActive(editingWarehouse.isActive !== false);
       } else {
         const nextNum = existingWarehouses.length + 1;
@@ -239,6 +253,7 @@ export const CreateWarehouseModal: React.FC<CreateWarehouseModalProps> = ({
         setDockCount(6);
         setTotalZones(3);
         setTemperatureRange('18°C - 25°C (Kho Tiêu Chuẩn)');
+        setTrustedIps('192.168.1.0/24, 10.0.0.1');
         setIsActive(true);
       }
       setErrorMsg(null);
@@ -337,6 +352,7 @@ export const CreateWarehouseModal: React.FC<CreateWarehouseModalProps> = ({
         dockCount: Number(dockCount) || 4,
         totalZones: Number(totalZones) || 3,
         temperatureRange,
+        trustedIps: trustedIps.trim() || '192.168.1.0/24, 10.0.0.1',
         isActive,
         newManagerAccount: newManagerAccountPayload,
       };
@@ -357,7 +373,12 @@ export const CreateWarehouseModal: React.FC<CreateWarehouseModalProps> = ({
   const selectedManagerUser = eligibleManagers.find((m) => String(m.id) === selectedUserId);
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-xs p-3 sm:p-5 overflow-y-auto animate-in fade-in duration-200">
+    <div
+      onClick={(e) => {
+        if (e.target === e.currentTarget) onClose();
+      }}
+      className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-xs p-3 sm:p-5 overflow-y-auto animate-in fade-in duration-200"
+    >
       <div className="bg-white rounded-3xl shadow-2xl border border-slate-200 w-full max-w-2xl overflow-hidden flex flex-col my-4 max-h-[92vh]">
         {/* Header */}
         <div className="px-6 py-4.5 border-b border-slate-200 flex items-center justify-between bg-slate-50 shrink-0">
@@ -748,6 +769,32 @@ export const CreateWarehouseModal: React.FC<CreateWarehouseModalProps> = ({
                 <option value="INACTIVE">⏸️ Tạm Dừng Bảo Trì / Nâng Cấp Kỹ Thuật</option>
               </select>
             </div>
+          </div>
+
+          {/* Row 7: An Ninh Mạng & Dải IP Tin Cậy (Trusted IP Whitelist) */}
+          <div className="p-3.5 bg-slate-50 border border-slate-200 rounded-2xl space-y-2">
+            <div className="flex items-center justify-between">
+              <span className="font-bold text-slate-800 flex items-center gap-1.5 text-xs">
+                <ShieldCheck className="w-4 h-4 text-emerald-600" />
+                <span>An Ninh Mạng & Dải IP Tin Cậy (Trusted IP / Subnet Whitelist)</span>
+              </span>
+              <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 border border-emerald-300">
+                CIDR / IPv4 Whitelist
+              </span>
+            </div>
+            <div className="relative">
+              <input
+                type="text"
+                name="trustedIps"
+                value={trustedIps}
+                onChange={(e) => setTrustedIps(e.target.value)}
+                placeholder="VD: 192.168.1.0/24, 10.0.0.1, 172.16.20.0/24"
+                className="w-full px-3 py-2 bg-white border border-slate-300 rounded-xl text-xs font-mono text-slate-900 focus:outline-none focus:border-blue-600 focus:ring-2 focus:ring-blue-100"
+              />
+            </div>
+            <p className="text-[11px] text-slate-500">
+              Chỉ các thiết bị máy trạm, PDA và barcode scanner kết nối từ các dải IP/Subnet này mới được phép thực thi tác vụ nhập xuất kho (Tiêu chuẩn SAP EWM & Manhattan Active WM).
+            </p>
           </div>
 
           <div className="p-3 bg-blue-50/80 border border-blue-200 rounded-xl text-blue-900 text-[11px] leading-relaxed flex items-center gap-2">

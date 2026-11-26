@@ -794,7 +794,13 @@ export const BatchLabelPrintSection: React.FC = () => {
 
             {/* LIVE PREVIEW CARD (RENDER DUY NHẤT 1 TEM CHUẨN) */}
             <div className="p-3 rounded-xl bg-slate-100/70 border border-slate-200 flex justify-center">
-              <ProductBatchLabelCard data={activePreviewData} />
+              {activePreviewData ? (
+                <ProductBatchLabelCard data={activePreviewData} />
+              ) : (
+                <div className="py-10 px-4 text-center text-xs text-slate-500">
+                  Chưa có lô hàng nào được chọn để hiển thị mẫu tem.
+                </div>
+              )}
             </div>
 
             {/* Tùy chọn khổ giấy & số lượng in */}

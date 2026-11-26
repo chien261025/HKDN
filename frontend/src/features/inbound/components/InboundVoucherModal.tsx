@@ -1,8 +1,9 @@
 import React, { useEffect } from 'react';
 import { createPortal } from 'react-dom';
-import { Printer, X, FileText, CheckCircle2, Building2, Truck, ShieldCheck, AlertOctagon } from 'lucide-react';
+import { Printer, X, FileText, CheckCircle2, Building2, Truck, ShieldCheck, AlertOctagon, QrCode } from 'lucide-react';
 import { InboundOrder } from '../types';
 import { getWarehouseDisplayName } from '../../masterdata/services/warehouseService';
+import { BarcodeSvg } from '../../../components/common';
 
 interface InboundVoucherModalProps {
   order: InboundOrder;
@@ -48,6 +49,16 @@ export const InboundVoucherModal: React.FC<InboundVoucherModalProps> = ({ order,
           </div>
 
           <div className="flex items-center gap-2">
+            <a
+              href={`/labels?tab=BATCHES&sku=${encodeURIComponent(order.items[0]?.sku || '')}`}
+              target="_blank"
+              rel="noreferrer"
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200 text-xs font-bold transition-all shadow-xs cursor-pointer print:hidden"
+              title="Chuyển sang phân hệ in tem mã vạch lô / pallet cho đơn hàng này"
+            >
+              <QrCode className="w-3.5 h-3.5" />
+              <span>In Tem Mã Vạch / Lô</span>
+            </a>
             <button
               onClick={() => window.print()}
               className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold transition-all shadow-xs cursor-pointer"
@@ -74,6 +85,15 @@ export const InboundVoucherModal: React.FC<InboundVoucherModalProps> = ({ order,
             <h1 className="text-xl sm:text-2xl print:text-base font-black text-slate-900 tracking-tight uppercase">
               PHIẾU NHẬP KHO KIÊM BIÊN BẢN TIẾP NHẬN (GRN)
             </h1>
+            <div className="flex items-center justify-center my-1 print:my-0.5">
+              <BarcodeSvg
+                value={order.poCode}
+                format="CODE128"
+                width={1.6}
+                height={34}
+                fontSize={10}
+              />
+            </div>
             <div className="text-xs text-slate-600 font-medium print:text-[10px]">
               Số: <strong className="font-mono text-slate-900">{order.poCode}</strong> • Ngày lập: {order.createdAt || order.expectedDeliveryDate}
             </div>

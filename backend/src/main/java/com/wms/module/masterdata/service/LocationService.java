@@ -10,4 +10,5 @@ public interface LocationService {
     List<Location> getLocationsByZone(String zoneCode);
     Location getLocationByBarcode(String binBarcode);
     List<LocationOccupancyDto> getLocationOccupancy();
+    Location updateLocationStatus(Long id, boolean isActive);
 }

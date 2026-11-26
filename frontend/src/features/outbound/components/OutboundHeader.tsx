@@ -1,5 +1,5 @@
 import React from 'react';
-import { PackageCheck, Clock, ShieldCheck, Plus, CheckCircle2 } from 'lucide-react';
+import { PackageCheck, Clock, ShieldCheck, Plus, CheckCircle2, Sparkles } from 'lucide-react';
 import { OutboundOrder } from '../types';
 
 export type OutboundFilterStatus = 'ALL' | 'PENDING' | 'PICKING' | 'DISPATCHED';
@@ -9,6 +9,7 @@ interface OutboundHeaderProps {
   activeStatus?: OutboundFilterStatus;
   onStatusChange?: (status: OutboundFilterStatus) => void;
   onOpenCreateModal: () => void;
+  onOpenGeminiAssistant?: () => void;
 }
 
 export const OutboundHeader: React.FC<OutboundHeaderProps> = ({
@@ -16,11 +17,22 @@ export const OutboundHeader: React.FC<OutboundHeaderProps> = ({
   activeStatus = 'ALL',
   onStatusChange,
   onOpenCreateModal,
+  onOpenGeminiAssistant,
 }) => {
   const totalCount = orders.length;
   const pendingCount = orders.filter((o) => o.status === 'PENDING').length;
   const pickingCount = orders.filter((o) => o.status === 'ALLOCATED' || o.status === 'PICKING').length;
   const dispatchedCount = orders.filter((o) => o.status === 'DISPATCHED').length;
+
+  const handleCardClick = (status: OutboundFilterStatus) => {
+    if (onStatusChange) {
+      if (activeStatus === status && status !== 'ALL') {
+        onStatusChange('ALL');
+      } else {
+        onStatusChange(status);
+      }
+    }
+  };
 
   return (
     <div className="space-y-4">
@@ -40,20 +52,35 @@ export const OutboundHeader: React.FC<OutboundHeaderProps> = ({
           </div>
         </div>
 
-        <button
-          onClick={onOpenCreateModal}
-          className="flex items-center gap-2 px-4 py-2.5 bg-blue-600 hover:bg-blue-700 active:scale-[0.99] text-white rounded-xl text-xs sm:text-sm font-bold shadow-md shadow-blue-200 transition-all shrink-0 cursor-pointer"
-        >
-          <Plus className="w-4 h-4" />
-          <span>+ Tạo Đơn Xuất Kho</span>
-        </button>
+        <div className="flex items-center gap-2 shrink-0 flex-wrap">
+          {onOpenGeminiAssistant && (
+            <button
+              type="button"
+              onClick={onOpenGeminiAssistant}
+              className="flex items-center gap-1.5 px-3.5 py-2.5 bg-white hover:bg-blue-50 text-blue-700 border border-blue-200 hover:border-blue-400 active:scale-[0.99] rounded-xl text-xs sm:text-sm font-bold shadow-[0_1px_2px_rgba(15,23,42,0.04)] transition-all shrink-0 cursor-pointer"
+            >
+              <Sparkles className="w-4 h-4 text-blue-600" />
+              <span>Kora AI</span>
+            </button>
+          )}
+          <button
+            onClick={onOpenCreateModal}
+            className="flex items-center gap-2 px-4 py-2.5 bg-blue-600 hover:bg-blue-700 active:scale-[0.99] text-white rounded-xl text-xs sm:text-sm font-bold shadow-md shadow-blue-200 transition-all shrink-0 cursor-pointer"
+          >
+            <Plus className="w-4 h-4" />
+            <span>+ Tạo Đơn Xuất Kho</span>
+          </button>
+        </div>
       </div>
 
       {/* 4 Pipeline Stage KPI Cards - Interactive Filter */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3.5">
         {/* Total SO */}
         <div
-          onClick={() => onStatusChange?.('ALL')}
+          role="button"
+          tabIndex={0}
+          onClick={() => handleCardClick('ALL')}
+          onKeyDown={(e) => (e.key === 'Enter' || e.key === ' ') && handleCardClick('ALL')}
           className={`bg-white rounded-2xl p-4 sm:p-5 border border-slate-200/90 border-l-4 border-l-slate-700 shadow-sm hover:shadow-md transition-all cursor-pointer select-none ${
             activeStatus === 'ALL' ? 'ring-2 ring-slate-400' : ''
           }`}
@@ -73,7 +100,10 @@ export const OutboundHeader: React.FC<OutboundHeaderProps> = ({
 
         {/* Stage 1: Pending */}
         <div
-          onClick={() => onStatusChange?.('PENDING')}
+          role="button"
+          tabIndex={0}
+          onClick={() => handleCardClick('PENDING')}
+          onKeyDown={(e) => (e.key === 'Enter' || e.key === ' ') && handleCardClick('PENDING')}
           className={`bg-white rounded-2xl p-4 sm:p-5 border border-slate-200/90 border-l-4 border-l-amber-500 shadow-sm hover:shadow-md transition-all cursor-pointer select-none ${
             activeStatus === 'PENDING' ? 'ring-2 ring-amber-400' : ''
           }`}
@@ -96,7 +126,10 @@ export const OutboundHeader: React.FC<OutboundHeaderProps> = ({
 
         {/* Stage 2: Picking */}
         <div
-          onClick={() => onStatusChange?.('PICKING')}
+          role="button"
+          tabIndex={0}
+          onClick={() => handleCardClick('PICKING')}
+          onKeyDown={(e) => (e.key === 'Enter' || e.key === ' ') && handleCardClick('PICKING')}
           className={`bg-white rounded-2xl p-4 sm:p-5 border border-slate-200/90 border-l-4 border-l-blue-600 shadow-sm hover:shadow-md transition-all cursor-pointer select-none ${
             activeStatus === 'PICKING' ? 'ring-2 ring-blue-400' : ''
           }`}
@@ -119,7 +152,10 @@ export const OutboundHeader: React.FC<OutboundHeaderProps> = ({
 
         {/* Stage 3: Dispatched */}
         <div
-          onClick={() => onStatusChange?.('DISPATCHED')}
+          role="button"
+          tabIndex={0}
+          onClick={() => handleCardClick('DISPATCHED')}
+          onKeyDown={(e) => (e.key === 'Enter' || e.key === ' ') && handleCardClick('DISPATCHED')}
           className={`bg-white rounded-2xl p-4 sm:p-5 border border-slate-200/90 border-l-4 border-l-emerald-600 shadow-sm hover:shadow-md transition-all cursor-pointer select-none ${
             activeStatus === 'DISPATCHED' ? 'ring-2 ring-emerald-400' : ''
           }`}

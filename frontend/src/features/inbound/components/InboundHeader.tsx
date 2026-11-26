@@ -48,7 +48,11 @@ export const InboundHeader: React.FC<InboundHeaderProps> = ({
 
   const handleCardClick = (status: InboundFilterStatus) => {
     if (onStatusChange) {
-      onStatusChange(status);
+      if (activeStatus === status && status !== 'ALL') {
+        onStatusChange('ALL');
+      } else {
+        onStatusChange(status);
+      }
     }
   };
 

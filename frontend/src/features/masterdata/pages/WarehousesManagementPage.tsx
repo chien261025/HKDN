@@ -28,6 +28,7 @@ import {
 import { WarehouseItem, WarehouseType, WarehouseRegion } from '../types';
 import { warehouseService } from '../services/warehouseService';
 import { userService } from '../../users/services/userService';
+import { authService } from '../../auth/services/authService';
 import { UserAccount } from '../../users/types';
 import { CreateWarehouseModal } from '../components/warehouse/CreateWarehouseModal';
 import {
@@ -49,6 +50,14 @@ export const WarehousesManagementPage: React.FC = () => {
   const [activeWarehouseId, setActiveWarehouseId] = useState<string>(() => warehouseService.getActiveWarehouseId());
   const [loading, setLoading] = useState(true);
   const [toast, setToast] = useState<ToastState | null>(null);
+
+  // RBAC Permission Check
+  const currentSession = authService.getCurrentSession();
+  const canManageWarehouses =
+    !currentSession?.role ||
+    currentSession.role === 'ROLE_ADMIN' ||
+    currentSession.role === 'ROLE_WAREHOUSE_MANAGER' ||
+    currentSession.role === 'ROLE_MANAGER';
 
   // View mode
   const [viewMode, setViewMode] = useState<'GRID' | 'TABLE'>('GRID');
@@ -422,16 +431,26 @@ export const WarehousesManagementPage: React.FC = () => {
             </button>
           </div>
 
-          <button
-            onClick={() => {
-              setEditingWarehouse(null);
-              setIsCreateOpen(true);
-            }}
-            className="flex items-center gap-2 px-4 py-2.5 bg-blue-600 hover:bg-blue-700 active:scale-95 text-white rounded-xl text-xs sm:text-sm font-bold shadow-md shadow-blue-200 transition-all shrink-0 cursor-pointer"
-          >
-            <Plus className="w-4 h-4" />
-            <span>Thêm Chi Nhánh Kho Mới</span>
-          </button>
+          {canManageWarehouses ? (
+            <button
+              onClick={() => {
+                setEditingWarehouse(null);
+                setIsCreateOpen(true);
+              }}
+              className="flex items-center gap-2 px-4 py-2.5 bg-blue-600 hover:bg-blue-700 active:scale-95 text-white rounded-xl text-xs sm:text-sm font-bold shadow-md shadow-blue-200 transition-all shrink-0 cursor-pointer"
+            >
+              <Plus className="w-4 h-4" />
+              <span>Thêm Chi Nhánh Kho Mới</span>
+            </button>
+          ) : (
+            <span
+              title="Chỉ Quản trị viên và Trưởng kho mới có quyền thêm chi nhánh kho"
+              className="flex items-center gap-2 px-3 py-2 bg-slate-100 text-slate-400 border border-slate-200 rounded-xl text-xs font-bold cursor-not-allowed shrink-0"
+            >
+              <ShieldCheck className="w-4 h-4 text-slate-400" />
+              <span>Chỉ Đọc (View-Only)</span>
+            </span>
+          )}
         </div>
       </div>
 
@@ -847,18 +866,29 @@ export const WarehousesManagementPage: React.FC = () => {
                     </button>
 
                     {/* Chỉnh sửa */}
-                    <button
-                      type="button"
-                      onClick={() => {
-                        const mgr = resolveWarehouseManager(wh);
-                        setEditingWarehouse({ ...wh, ...mgr });
-                        setIsCreateOpen(true);
-                      }}
-                      className="p-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl border border-slate-200 transition-colors cursor-pointer"
-                      title="Chỉnh sửa thông tin chi nhánh"
-                    >
-                      <Pencil className="w-3.5 h-3.5" />
-                    </button>
+                    {canManageWarehouses ? (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const mgr = resolveWarehouseManager(wh);
+                          setEditingWarehouse({ ...wh, ...mgr });
+                          setIsCreateOpen(true);
+                        }}
+                        className="p-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl border border-slate-200 transition-colors cursor-pointer"
+                        title="Chỉnh sửa thông tin chi nhánh"
+                      >
+                        <Pencil className="w-3.5 h-3.5" />
+                      </button>
+                    ) : (
+                      <button
+                        type="button"
+                        disabled
+                        className="p-2 bg-slate-50 text-slate-300 rounded-xl border border-slate-200 cursor-not-allowed"
+                        title="Chỉ Quản trị viên và Trưởng kho mới có quyền chỉnh sửa chi nhánh"
+                      >
+                        <Pencil className="w-3.5 h-3.5" />
+                      </button>
+                    )}
                   </div>
 
                   {/* Nút Kích Hoạt Làm Việc */}
@@ -1019,18 +1049,29 @@ export const WarehousesManagementPage: React.FC = () => {
                           >
                             <Layers className="w-3.5 h-3.5" />
                           </button>
-                          <button
-                            type="button"
-                            onClick={() => {
-                              const mgr = resolveWarehouseManager(wh);
-                              setEditingWarehouse({ ...wh, ...mgr });
-                              setIsCreateOpen(true);
-                            }}
-                            className="p-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg border border-slate-200 cursor-pointer"
-                            title="Chỉnh sửa kho"
-                          >
-                            <Pencil className="w-3.5 h-3.5" />
-                          </button>
+                          {canManageWarehouses ? (
+                            <button
+                              type="button"
+                              onClick={() => {
+                                const mgr = resolveWarehouseManager(wh);
+                                setEditingWarehouse({ ...wh, ...mgr });
+                                setIsCreateOpen(true);
+                              }}
+                              className="p-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg border border-slate-200 cursor-pointer"
+                              title="Chỉnh sửa kho"
+                            >
+                              <Pencil className="w-3.5 h-3.5" />
+                            </button>
+                          ) : (
+                            <button
+                              type="button"
+                              disabled
+                              className="p-1.5 bg-slate-50 text-slate-300 rounded-lg border border-slate-200 cursor-not-allowed"
+                              title="Chỉnh sửa kho (Chỉ Quản trị viên/Trưởng kho)"
+                            >
+                              <Pencil className="w-3.5 h-3.5" />
+                            </button>
+                          )}
                           <button
                             type="button"
                             onClick={() => handleSelectActive(wh.code)}
@@ -1063,6 +1104,7 @@ export const WarehousesManagementPage: React.FC = () => {
           (activeWarehouseId === viewingDetailWarehouse.code ||
             activeWarehouseId === String(viewingDetailWarehouse.id))
         }
+        canManage={canManageWarehouses}
         onSelectActive={handleSelectActive}
         onEditWarehouse={(wh) => {
           setEditingWarehouse(wh);

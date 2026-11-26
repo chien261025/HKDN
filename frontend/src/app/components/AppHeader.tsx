@@ -19,9 +19,8 @@ import {
 import { useLocation, useNavigate } from 'react-router-dom';
 import { AuthSession } from '../../features/auth/types';
 import { NotificationCenterDropdown } from '../../features/notifications/components/NotificationCenterDropdown';
-import { warehouseService, DEFAULT_WAREHOUSES } from '../../features/masterdata/services/warehouseService';
+import { warehouseService, DEFAULT_WAREHOUSES, filterWarehousesForCurrentUser } from '../../features/masterdata/services/warehouseService';
 import { warehouseShiftService } from '../../features/masterdata/services/warehouseShiftService';
-import { WarehouseShiftModal } from '../../features/masterdata/components/WarehouseShiftModal';
 
 interface AppHeaderProps {
   isSidebarCollapsed: boolean;
@@ -50,7 +49,6 @@ export const AppHeader: React.FC<AppHeaderProps> = ({
     return localStorage.getItem('smart_wms_active_warehouse') || 'ALL';
   });
   const [isWarehouseOpen, setIsWarehouseOpen] = useState(false);
-  const [isShiftModalOpen, setIsShiftModalOpen] = useState(false);
   const currentShift = warehouseShiftService.getCurrentShift();
   const warehouseRef = useRef<HTMLDivElement>(null);
   const searchInputRef = useRef<HTMLInputElement>(null);
@@ -76,8 +74,24 @@ export const AppHeader: React.FC<AppHeaderProps> = ({
 
   const handleGlobalSearchKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === 'Enter') {
+      const term = globalSearch.trim();
       window.dispatchEvent(new CustomEvent('smart_wms_global_search', { detail: globalSearch }));
-      const pagesWithOwnSearch = ['/inbound', '/outbound', '/inventory', '/products', '/users', '/audit', '/staging'];
+
+      // Nhận diện nhanh mã vị trí ô kệ (VD: WH01-ZB-B01-R01-S02-B06, B01-R01, QUA-R99...) -> điều hướng tới /layout
+      const upper = term.toUpperCase();
+      const isBinCodePattern = /^(WH0\d-|Z[A-Z]-|[A-Z]\d{2}-R\d{2}|QUA-R\d{2}|[A-Z]\d{2}-R\d{2}-S\d{2}-B\d{2})/.test(upper) ||
+        (upper.includes('-R') && upper.includes('-S'));
+
+      if (isBinCodePattern) {
+        const whMatch = upper.match(/^(WH0\d)-/);
+        const params = new URLSearchParams();
+        if (term) params.set('search', term);
+        if (whMatch) params.set('warehouse', whMatch[1]);
+        navigate(`/layout?${params.toString()}`);
+        return;
+      }
+
+      const pagesWithOwnSearch = ['/inbound', '/outbound', '/inventory', '/products', '/users', '/audit', '/staging', '/layout'];
       const hasOwnSearch = pagesWithOwnSearch.some((p) => location.pathname.startsWith(p));
       if (!hasOwnSearch) {
         navigate('/inventory');
@@ -97,7 +111,7 @@ export const AppHeader: React.FC<AppHeaderProps> = ({
 
   useEffect(() => {
     const loadWarehouses = async () => {
-      const list = await warehouseService.getWarehouses();
+      const list = filterWarehousesForCurrentUser(await warehouseService.getWarehouses());
       setWarehouseList([
         { id: 'ALL', code: 'ALL', name: 'Toàn bộ chi nhánh kho', shortName: 'Toàn bộ kho' },
         ...list.map((w) => ({ id: w.code, code: w.code, name: w.name, shortName: w.shortName || w.name })),
@@ -147,7 +161,7 @@ export const AppHeader: React.FC<AppHeaderProps> = ({
     '/inventory': 'Tồn Kho & Thẻ Kho',
     '/audit': 'Kiểm Kê Kho Hàng',
     '/labels': 'In Tem Mã Vạch & QR',
-    '/smartquery': 'Truy Vấn Dữ Liệu',
+    '/smartquery': 'Kora AI',
     '/reports': 'Báo Cáo & Thống Kê',
     '/operator': 'Giao Diện Quét Mã PDA',
   };
@@ -237,18 +251,15 @@ export const AppHeader: React.FC<AppHeaderProps> = ({
 
       {/* Right User Profile, Warehouse Selector & Notifications */}
       <div className="flex items-center gap-1.5 sm:gap-3 shrink-0">
-        {/* Nút Xem Ca Trực & Sổ Giao Ban Ca */}
-        <button
-          type="button"
-          onClick={() => setIsShiftModalOpen(true)}
-          className="hidden md:flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-xl border border-slate-200 bg-slate-50 hover:bg-slate-100 text-slate-800 text-xs font-semibold shadow-2xs transition-all cursor-pointer"
-          title="Xem thông tin ca trực và sổ giao ban ca kho"
+        {/* Hiển thị ca làm việc hiện tại theo đồng hồ */}
+        <div
+          className="hidden md:flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-xl border border-slate-200 bg-slate-50 text-slate-800 text-xs font-semibold shadow-2xs"
+          title={currentShift.description}
         >
           <Clock className="w-3.5 h-3.5 text-blue-600 shrink-0" />
           <span className="font-bold text-slate-900">{currentShift.name}</span>
           <span className="text-slate-400 font-mono text-[11px]">({currentShift.startTime}-{currentShift.endTime})</span>
-          <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse ml-0.5"></span>
-        </button>
+        </div>
 
         {/* Warehouse Branch Selector (Bộ Chọn Chi Nhánh Kho Hàng) */}
         <div ref={warehouseRef} className="relative">
@@ -344,14 +355,6 @@ export const AppHeader: React.FC<AppHeaderProps> = ({
           </button>
         </div>
       </div>
-
-      {/* Sổ Ca Làm Việc & Bàn Giao Ca Kho Bãi Modal */}
-      <WarehouseShiftModal
-        isOpen={isShiftModalOpen}
-        onClose={() => setIsShiftModalOpen(false)}
-        activeWarehouseName={activeWarehouse.name}
-        activeWarehouseId={activeWarehouse.code || activeWarehouse.id}
-      />
     </header>
   );
 };

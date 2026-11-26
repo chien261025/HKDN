@@ -28,6 +28,13 @@ import { BlindCountTab } from '../components/tabs/BlindCountTab';
 import { CameraBarcodeScanner } from '../../../components/scanner/CameraBarcodeScanner';
 import { OperatorTab } from '../types';
 import { soundEffects } from '../utils/soundEffects';
+import {
+  operatorService,
+  InboundOrderDto,
+  OutboundOrderDto,
+  ProductDto,
+  LocationDto,
+} from '../services/operatorService';
 
 export const OperatorPortalPage: React.FC = () => {
   const [activeTab, setActiveTab] = useState<OperatorTab>('STAGING');
@@ -61,11 +68,30 @@ export const OperatorPortalPage: React.FC = () => {
   const [soundEnabled, setSoundEnabled] = useState<boolean>(true);
   const [isToolboxOpen, setIsToolboxOpen] = useState<boolean>(false);
 
-  const [scanHistory, setScanHistory] = useState<Array<{ code: string; time: string; label?: string }>>([
-    { code: 'PO-2026-234', time: '22:30:15', label: 'Đơn PO Samsung' },
-    { code: 'SKU-MILK-100', time: '22:28:40', label: 'Sữa tươi Vinamilk' },
-    { code: 'WH01-ZB-B01-R01-S02-B06', time: '22:25:12', label: 'Ô Kệ B06 Tầng 2' },
-  ]);
+  const [scanHistory, setScanHistory] = useState<Array<{ code: string; time: string; label?: string }>>([]);
+  const [quickRefs, setQuickRefs] = useState<{
+    inbounds: InboundOrderDto[];
+    outbounds: OutboundOrderDto[];
+    products: ProductDto[];
+    locations: LocationDto[];
+  }>({ inbounds: [], outbounds: [], products: [], locations: [] });
+
+  useEffect(() => {
+    if (!isToolboxOpen) return;
+    Promise.all([
+      operatorService.getInboundOrders().catch(() => []),
+      operatorService.getOutboundOrders().catch(() => []),
+      operatorService.getProducts().catch(() => []),
+      operatorService.getLocations().catch(() => []),
+    ]).then(([inbounds, outbounds, products, locations]) => {
+      setQuickRefs({
+        inbounds: inbounds.filter((o) => o.status === 'PENDING' || o.status === 'PARTIALLY_STOCKED' || o.status === 'RECEIVED').slice(0, 3),
+        outbounds: outbounds.filter((o) => o.status === 'ALLOCATED' || o.status === 'PICKING' || o.status === 'PENDING').slice(0, 3),
+        products: products.slice(0, 4),
+        locations: locations.filter((l) => l.isActive !== false).slice(0, 4),
+      });
+    });
+  }, [isToolboxOpen]);
 
   const toggleDisplayMode = () => {
     setDisplayMode((prev) => {
@@ -183,7 +209,7 @@ export const OperatorPortalPage: React.FC = () => {
     {
       id: 'TRANSFER' as OperatorTab,
       label: 'Điều Chuyển Kệ',
-      sub: 'Stock Transfer',
+      sub: 'Chuyển hàng nội bộ',
       icon: ArrowRightLeft,
       shortcut: '4',
       badge: 'Nội Bộ',
@@ -192,7 +218,7 @@ export const OperatorPortalPage: React.FC = () => {
     {
       id: 'AUDIT' as OperatorTab,
       label: 'Kiểm Kê Kho',
-      sub: 'Cycle Count',
+      sub: 'Đếm & đối soát tồn',
       icon: ClipboardCheck,
       shortcut: '5',
       badge: 'Đối Soát',
@@ -346,80 +372,73 @@ export const OperatorPortalPage: React.FC = () => {
 
             {/* Drawer Body */}
             <div className="flex-1 overflow-y-auto p-4 space-y-4 text-xs font-mono">
-              {/* Section 1: Bảng mã thao tác nhanh dán tại trạm bến */}
+              {/* Section 1: Mã đơn hàng & vị trí thực tế đang mở */}
               <div className="bg-slate-800/80 border border-slate-700/80 rounded-2xl p-4 space-y-3">
                 <div className="flex items-center justify-between pb-2 border-b border-slate-700 text-slate-300">
-                  <span className="font-bold uppercase text-[11px] text-blue-400">🏷️ Bảng Mã Vạch Thao Tác Nhanh (Trạm Bến)</span>
-                  <span className="text-[10px] text-slate-400">Chạm để xác nhận mã</span>
+                  <span className="font-bold uppercase text-[11px] text-blue-400">Mã Thao Tác Nhanh Hiện Trường</span>
+                  <span className="text-[10px] text-slate-400">Chạm để chọn mã</span>
                 </div>
 
                 <div className="space-y-1.5">
-                  <span className="text-[10px] uppercase font-bold text-slate-400 block pt-1">Đơn hàng (PO / SO):</span>
+                  <span className="text-[10px] uppercase font-bold text-slate-400 block pt-1">Đơn hàng đang mở (PO / SO):</span>
                   <div className="grid grid-cols-2 gap-1.5">
-                    <button
-                      type="button"
-                      onClick={() => handleInjectBarcode('PO-2026-234', 'Đơn PO Samsung')}
-                      className="p-2 rounded-xl bg-slate-900/90 hover:bg-blue-600 text-left border border-slate-700/60 text-slate-200 transition cursor-pointer"
-                    >
-                      <div className="font-bold text-[11px] text-blue-300">PO-2026-234</div>
-                      <div className="text-[10px] text-slate-400 truncate">Nhận bến Samsung</div>
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => handleInjectBarcode('SO-2026-884', 'Đơn xuất SO Co.op')}
-                      className="p-2 rounded-xl bg-slate-900/90 hover:bg-blue-600 text-left border border-slate-700/60 text-slate-200 transition cursor-pointer"
-                    >
-                      <div className="font-bold text-[11px] text-emerald-300">SO-2026-884</div>
-                      <div className="text-[10px] text-slate-400 truncate">Xuất Co.opmart</div>
-                    </button>
+                    {quickRefs.inbounds.map((po) => (
+                      <button
+                        key={`po-${po.id}`}
+                        type="button"
+                        onClick={() => handleInjectBarcode(po.orderCode, po.supplier?.name || 'Đơn nhập')}
+                        className="p-2 min-h-[44px] rounded-xl bg-slate-900/90 hover:bg-blue-600 text-left border border-slate-700/60 text-slate-200 transition cursor-pointer"
+                      >
+                        <div className="font-bold text-[11px] text-blue-300 truncate">{po.orderCode}</div>
+                        <div className="text-[10px] text-slate-400 truncate">{po.supplier?.name || 'Đơn nhập kho'}</div>
+                      </button>
+                    ))}
+                    {quickRefs.outbounds.map((so) => (
+                      <button
+                        key={`so-${so.id}`}
+                        type="button"
+                        onClick={() => handleInjectBarcode(so.orderCode, so.customerName || 'Đơn xuất')}
+                        className="p-2 min-h-[44px] rounded-xl bg-slate-900/90 hover:bg-blue-600 text-left border border-slate-700/60 text-slate-200 transition cursor-pointer"
+                      >
+                        <div className="font-bold text-[11px] text-emerald-300 truncate">{so.orderCode}</div>
+                        <div className="text-[10px] text-slate-400 truncate">{so.customerName || 'Đơn xuất kho'}</div>
+                      </button>
+                    ))}
+                    {quickRefs.inbounds.length === 0 && quickRefs.outbounds.length === 0 && (
+                      <div className="col-span-2 text-[11px] text-slate-400 py-1.5">
+                        Không có đơn nhập/xuất đang chờ.
+                      </div>
+                    )}
                   </div>
 
-                  <span className="text-[10px] uppercase font-bold text-slate-400 block pt-2">Mặt hàng (SKU / Barcode):</span>
+                  <span className="text-[10px] uppercase font-bold text-slate-400 block pt-2">Mặt hàng đang kinh doanh:</span>
                   <div className="grid grid-cols-2 gap-1.5">
-                    <button
-                      type="button"
-                      onClick={() => handleInjectBarcode('SKU-MILK-100', 'Sữa tươi Vinamilk')}
-                      className="p-2 rounded-xl bg-slate-900/90 hover:bg-blue-600 text-left border border-slate-700/60 text-slate-200 transition cursor-pointer"
-                    >
-                      <div className="font-bold text-[11px] text-slate-200">SKU-MILK-100</div>
-                      <div className="text-[10px] text-slate-400 truncate">Sữa Vinamilk 1L</div>
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => handleInjectBarcode('SKU-TEA-TH', 'Trà xanh TH True TEA')}
-                      className="p-2 rounded-xl bg-slate-900/90 hover:bg-blue-600 text-left border border-slate-700/60 text-slate-200 transition cursor-pointer"
-                    >
-                      <div className="font-bold text-[11px] text-slate-200">SKU-TEA-TH</div>
-                      <div className="text-[10px] text-slate-400 truncate">Trà xanh TH 350ml</div>
-                    </button>
+                    {quickRefs.products.map((prod) => (
+                      <button
+                        key={`prod-${prod.id}`}
+                        type="button"
+                        onClick={() => handleInjectBarcode(prod.sku, prod.name)}
+                        className="p-2 min-h-[44px] rounded-xl bg-slate-900/90 hover:bg-blue-600 text-left border border-slate-700/60 text-slate-200 transition cursor-pointer"
+                      >
+                        <div className="font-bold text-[11px] text-slate-200 truncate">{prod.sku}</div>
+                        <div className="text-[10px] text-slate-400 truncate">{prod.name}</div>
+                      </button>
+                    ))}
                   </div>
 
-                  <span className="text-[10px] uppercase font-bold text-slate-400 block pt-2">Vị trí Ô Kệ (Bin Barcode):</span>
+                  <span className="text-[10px] uppercase font-bold text-slate-400 block pt-2">Vị trí Ô Kệ đang hoạt động:</span>
                   <div className="grid grid-cols-1 gap-1.5">
-                    <button
-                      type="button"
-                      onClick={() => handleInjectBarcode('WH01-ZA-A01-R01-S01-B01', 'Ô Nhập Khu A')}
-                      className="p-2 rounded-xl bg-slate-900/90 hover:bg-blue-600 text-left border border-slate-700/60 text-slate-200 transition cursor-pointer flex items-center justify-between"
-                    >
-                      <span className="font-bold text-[11px] text-indigo-300">WH01-ZA-A01-R01-S01-B01</span>
-                      <span className="text-[10px] text-slate-400">Tầng 1 (S01)</span>
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => handleInjectBarcode('WH01-ZB-B01-R01-S02-B06', 'Ô Kệ B06 Khu B')}
-                      className="p-2 rounded-xl bg-slate-900/90 hover:bg-blue-600 text-left border border-slate-700/60 text-slate-200 transition cursor-pointer flex items-center justify-between"
-                    >
-                      <span className="font-bold text-[11px] text-indigo-300">WH01-ZB-B01-R01-S02-B06</span>
-                      <span className="text-[10px] text-slate-400">Tầng 2 (S02)</span>
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => handleInjectBarcode('WH01-ZB-B02-R02-S02-B12', 'Ô Kệ B12 Cận Hạn')}
-                      className="p-2 rounded-xl bg-slate-900/90 hover:bg-blue-600 text-left border border-slate-700/60 text-slate-200 transition cursor-pointer flex items-center justify-between"
-                    >
-                      <span className="font-bold text-[11px] text-amber-300">WH01-ZB-B02-R02-S02-B12</span>
-                      <span className="text-[10px] text-slate-400">Hàng Cận Hạn</span>
-                    </button>
+                    {quickRefs.locations.map((loc) => (
+                      <button
+                        key={`loc-${loc.id}`}
+                        type="button"
+                        onClick={() => handleInjectBarcode(loc.binBarcode, `${loc.zoneCode} • Tầng ${loc.shelf}`)}
+                        className="p-2 min-h-[44px] rounded-xl bg-slate-900/90 hover:bg-blue-600 text-left border border-slate-700/60 text-slate-200 transition cursor-pointer flex items-center justify-between gap-2"
+                      >
+                        <span className="font-bold text-[11px] text-indigo-300 truncate">{loc.binBarcode}</span>
+                        <span className="text-[10px] text-slate-400 shrink-0">Tầng {loc.shelf}</span>
+                      </button>
+                    ))}
                   </div>
                 </div>
               </div>
@@ -429,27 +448,33 @@ export const OperatorPortalPage: React.FC = () => {
                 <div className="flex items-center justify-between pb-2 border-b border-slate-700 text-slate-300">
                   <div className="flex items-center gap-1.5 font-bold uppercase text-[11px] text-emerald-400">
                     <History className="w-3.5 h-3.5" />
-                    <span>Nhật Ký Quét Barcode Thực Địa</span>
+                    <span>Nhật Ký Quét Mã Trong Ca</span>
                   </div>
                   <span className="text-[10px] text-slate-400">{scanHistory.length} mã gần nhất</span>
                 </div>
 
                 <div className="space-y-1.5 max-h-48 overflow-y-auto pr-1">
-                  {scanHistory.map((sh, idx) => (
-                    <div
-                      key={idx}
-                      className="p-2 rounded-xl bg-slate-900/80 border border-slate-700/60 flex items-center justify-between text-xs"
-                    >
-                      <div className="flex items-center gap-2 truncate">
-                        <Barcode className="w-3.5 h-3.5 text-blue-400 shrink-0" />
-                        <div className="truncate">
-                          <span className="text-slate-200 font-bold block truncate">{sh.code}</span>
-                          {sh.label && <span className="text-[10px] text-slate-400 block truncate">{sh.label}</span>}
-                        </div>
-                      </div>
-                      <span className="text-[10px] text-slate-500 shrink-0 font-mono">{sh.time}</span>
+                  {scanHistory.length === 0 ? (
+                    <div className="p-4 text-center text-[11px] text-slate-400 bg-slate-900/50 rounded-xl border border-dashed border-slate-700">
+                      Chưa có lượt quét mã vạch nào trong phiên làm việc này.
                     </div>
-                  ))}
+                  ) : (
+                    scanHistory.map((sh, idx) => (
+                      <div
+                        key={idx}
+                        className="p-2 rounded-xl bg-slate-900/80 border border-slate-700/60 flex items-center justify-between text-xs"
+                      >
+                        <div className="flex items-center gap-2 truncate">
+                          <Barcode className="w-3.5 h-3.5 text-blue-400 shrink-0" />
+                          <div className="truncate">
+                            <span className="text-slate-200 font-bold block truncate">{sh.code}</span>
+                            {sh.label && <span className="text-[10px] text-slate-400 block truncate">{sh.label}</span>}
+                          </div>
+                        </div>
+                        <span className="text-[10px] text-slate-500 shrink-0 font-mono">{sh.time}</span>
+                      </div>
+                    ))
+                  )}
                 </div>
               </div>
 

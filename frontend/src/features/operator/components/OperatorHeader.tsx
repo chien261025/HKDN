@@ -2,7 +2,6 @@ import React, { useState } from 'react';
 import {
   Smartphone,
   Wifi,
-  BatteryCharging,
   ScanLine,
   ArrowLeft,
   LogOut,
@@ -10,10 +9,8 @@ import {
   Minimize2,
   Volume2,
   VolumeX,
-  Radio,
-  Zap,
   Barcode,
-  Search,
+  Clock,
 } from 'lucide-react';
 import { authService } from '../../auth/services/authService';
 import { warehouseShiftService } from '../../masterdata/services/warehouseShiftService';
@@ -75,21 +72,22 @@ export const OperatorHeader: React.FC<OperatorHeaderProps> = ({
 
   return (
     <header className="bg-white border-b border-slate-200 sticky top-0 z-40 shadow-xs select-none">
-      {/* Top Telemetry Line (Zebra TC21 & Warehouse Shift Status) */}
+      {/* Top Status Bar */}
       <div className="bg-slate-900 text-slate-300 px-4 py-1.5 text-xs font-mono flex items-center justify-between border-b border-slate-800">
         <div className="flex items-center gap-3 flex-wrap">
           <div className="flex items-center gap-1.5 text-emerald-400 font-bold">
             <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
             <Smartphone className="w-3.5 h-3.5" />
-            <span>Zebra TC21 Enterprise (Wedge HID)</span>
+            <span>Thiết bị quét mã kho</span>
           </div>
           <span className="text-slate-600 hidden sm:inline">•</span>
           <div className="flex items-center gap-1.5 text-blue-400 font-medium hidden sm:flex">
             <Wifi className="w-3.5 h-3.5" />
-            <span>Kho Tổng Tân Bình (WH01)</span>
+            <span>{session.assignedWarehouse || 'Hệ thống kho'}</span>
           </div>
           <span className="text-slate-600 hidden md:inline">•</span>
-          <div className="text-amber-400 font-medium hidden md:block">
+          <div className="text-amber-400 font-medium hidden md:flex items-center gap-1">
+            <Clock className="w-3 h-3" />
             <span>{currentShift.name} ({currentShift.startTime} - {currentShift.endTime})</span>
           </div>
         </div>
@@ -104,17 +102,12 @@ export const OperatorHeader: React.FC<OperatorHeaderProps> = ({
                   ? 'bg-emerald-950 text-emerald-300 border border-emerald-800'
                   : 'bg-slate-800 text-slate-400 border border-slate-700'
               }`}
-              title={soundEnabled ? 'Âm báo súng quét: ĐANG BẬT' : 'Âm báo súng quét: ĐÃ TẮT'}
+              title={soundEnabled ? 'Âm báo quét mã: ĐANG BẬT' : 'Âm báo quét mã: ĐÃ TẮT'}
             >
               {soundEnabled ? <Volume2 className="w-3 h-3 text-emerald-400" /> : <VolumeX className="w-3 h-3 text-slate-400" />}
               <span className="hidden sm:inline">{soundEnabled ? 'BẬT ÂM' : 'TẮT ÂM'}</span>
             </button>
           )}
-
-          <div className="flex items-center gap-1 text-emerald-400 font-bold">
-            <BatteryCharging className="w-3.5 h-3.5" />
-            <span>95%</span>
-          </div>
         </div>
       </div>
 
@@ -130,9 +123,6 @@ export const OperatorHeader: React.FC<OperatorHeaderProps> = ({
               <h1 className="text-sm sm:text-base font-extrabold text-slate-900 tracking-tight truncate">
                 CỔNG THỦ KHO HIỆN TRƯỜNG
               </h1>
-              <span className="hidden md:inline-flex text-[10px] font-bold px-2 py-0.5 rounded bg-blue-50 text-blue-700 border border-blue-200 uppercase">
-                Zebra Terminal
-              </span>
             </div>
             <p className="text-[11px] text-slate-500 font-medium truncate">
               Tiếp Nhận • Cất Kệ • Lấy Hàng HSD • Chuyển Kệ • Kiểm Kê
@@ -177,23 +167,23 @@ export const OperatorHeader: React.FC<OperatorHeaderProps> = ({
             <span className="hidden sm:inline">Quét Mã</span>
           </button>
 
-          {/* Toggle View Mode: Console / Kiosk vs PDA Handheld */}
+          {/* Toggle View Mode: Expanded vs Handheld Compact */}
           {onToggleViewMode && (
             <button
               type="button"
               onClick={onToggleViewMode}
-              className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-100 hover:bg-slate-200 border border-slate-300 text-slate-700 rounded-xl text-xs font-bold transition-colors cursor-pointer"
-              title={viewMode === 'PDA' ? 'Chuyển sang chế độ Trạm Làm Việc Toàn Màn Hình' : 'Chuyển sang chế độ Giả Lập Cầm Tay Zebra TC21'}
+              className="flex items-center gap-1.5 px-3 py-2 min-h-[40px] bg-slate-100 hover:bg-slate-200 border border-slate-300 text-slate-700 rounded-xl text-xs font-bold transition-colors cursor-pointer"
+              title={viewMode === 'PDA' ? 'Chuyển sang giao diện toàn màn hình' : 'Thu gọn theo khổ máy cầm tay'}
             >
               {viewMode === 'PDA' ? (
                 <>
                   <Maximize2 className="w-3.5 h-3.5 text-blue-600" />
-                  <span className="hidden sm:inline">Trạm Làm Việc</span>
+                  <span className="hidden sm:inline">Toàn Màn Hình</span>
                 </>
               ) : (
                 <>
                   <Minimize2 className="w-3.5 h-3.5 text-indigo-600" />
-                  <span className="hidden sm:inline">Chế Độ PDA</span>
+                  <span className="hidden sm:inline">Khổ Cầm Tay</span>
                 </>
               )}
             </button>
@@ -204,15 +194,15 @@ export const OperatorHeader: React.FC<OperatorHeaderProps> = ({
             <button
               type="button"
               onClick={onToggleToolbox}
-              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold border transition-colors cursor-pointer ${
+              className={`flex items-center gap-1.5 px-3 py-2 min-h-[40px] rounded-xl text-xs font-bold border transition-colors cursor-pointer ${
                 isToolboxOpen
                   ? 'bg-slate-200 text-slate-900 border-slate-400 shadow-xs'
                   : 'bg-slate-100 hover:bg-slate-200 text-slate-700 border-slate-300'
               }`}
-              title="Mở nhật ký quét và danh mục mã tham chiếu hiện trường"
+              title="Mở lịch sử quét và danh mục mã nhanh"
             >
               <Barcode className="w-3.5 h-3.5 text-slate-600" />
-              <span className="hidden md:inline">Nhật Ký & Mã Nhanh</span>
+              <span className="hidden md:inline">Nhật Ký Quét</span>
             </button>
           )}
 
@@ -223,7 +213,7 @@ export const OperatorHeader: React.FC<OperatorHeaderProps> = ({
             </div>
             <div className="text-left hidden xl:block">
               <div className="text-xs font-bold text-slate-900 leading-tight">
-                {session.fullName || 'Lê Thủ Kho'}
+                {session.fullName || 'Thủ kho'}
               </div>
               <div className="text-[10px] text-slate-500 font-medium leading-tight">
                 @{session.username || 'operator01'} • Thủ kho
@@ -231,20 +221,22 @@ export const OperatorHeader: React.FC<OperatorHeaderProps> = ({
             </div>
           </div>
 
-          {/* Exit to Web Admin */}
-          <Link
-            to="/"
-            className="p-2 bg-slate-100 hover:bg-slate-200 border border-slate-300 text-slate-700 rounded-xl text-xs transition-colors flex items-center gap-1"
-            title="Quay lại Giao diện Quản Lý Kho (Web Admin)"
-          >
-            <ArrowLeft className="w-4 h-4" />
-            <span className="hidden sm:inline text-xs font-bold">Tháp Chỉ Huy</span>
-          </Link>
+          {/* Exit to Web Admin (chỉ hiển thị với Admin/Quản lý kho) */}
+          {session.role !== 'ROLE_OPERATOR' && (
+            <Link
+              to="/"
+              className="p-2 min-h-[40px] bg-slate-100 hover:bg-slate-200 border border-slate-300 text-slate-700 rounded-xl text-xs transition-colors flex items-center gap-1"
+              title="Quay lại giao diện quản lý"
+            >
+              <ArrowLeft className="w-4 h-4" />
+              <span className="hidden sm:inline text-xs font-bold">Trang Quản Lý</span>
+            </Link>
+          )}
 
           {/* Logout */}
           <button
             onClick={handleLogout}
-            className="p-2 bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 rounded-xl text-xs transition-colors cursor-pointer"
+            className="p-2 min-h-[40px] min-w-[40px] flex items-center justify-center bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 rounded-xl text-xs transition-colors cursor-pointer"
             title="Đăng xuất khỏi ca làm việc"
           >
             <LogOut className="w-4 h-4" />

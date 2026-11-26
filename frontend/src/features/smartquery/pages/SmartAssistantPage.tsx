@@ -1,49 +1,140 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { SmartQueryHeader } from '../components/SmartQueryHeader';
+import { SavedChatSession, SmartQueryHeader } from '../components/SmartQueryHeader';
 import { ChatMessageItem } from '../components/ChatMessageItem';
 import { ChatInputSection } from '../components/ChatInputSection';
-import { AstSecuritySidebar } from '../components/AstSecuritySidebar';
+import { AiDiagnosisCard } from '../components/AiDiagnosisCard';
+import { KoraAvatar } from '../components/KoraAvatar';
+import { SmartPromptGrid } from '../components/SmartPromptGrid';
 import { ChatMessage } from '../types';
 import { smartQueryApi } from '../services/smartQueryApi';
+import { authService } from '../../auth/services/authService';
+import { warehouseService, DEFAULT_WAREHOUSES } from '../../masterdata/services/warehouseService';
+
+const LEGACY_STORAGE_KEY = 'kora_ai_chat_sessions_v1';
+const MAX_SAVED_SESSIONS = 15;
+
+const getUserStorageKey = (): string => {
+  const username = (authService.getCurrentSession()?.username || 'guest').trim().toLowerCase();
+  return `${LEGACY_STORAGE_KEY}_${username}`;
+};
+
+const loadSavedSessions = (storageKey: string): SavedChatSession[] => {
+  try {
+    localStorage.removeItem(LEGACY_STORAGE_KEY);
+    const raw = localStorage.getItem(storageKey);
+    if (!raw) return [];
+    const parsed = JSON.parse(raw);
+    return Array.isArray(parsed) ? parsed : [];
+  } catch {
+    return [];
+  }
+};
 
 export const SmartAssistantPage: React.FC = () => {
   const navigate = useNavigate();
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
-  const [messages, setMessages] = useState<ChatMessage[]>([
-    {
-      id: 'welcome-1',
-      sender: 'ai',
-      timestamp: 'Hệ Thống Sẵn Sàng',
-      text: 'Chào bạn! Hệ thống hỗ trợ tra cứu nhanh các chỉ số kho vận qua câu hỏi tự nhiên. Bạn có thể tra cứu tồn kho, tìm các lô hàng cận hạn (FEFO), thống kê tỷ lệ lấp đầy ô kệ hoặc kiểm tra biến động thẻ kho.',
-    },
-  ]);
+  const [selectedWarehouse, setSelectedWarehouse] = useState<string>(
+    () => warehouseService.getActiveWarehouseId() || 'ALL'
+  );
+  const [warehouses, setWarehouses] = useState<Array<{ code: string; name: string }>>(() =>
+    DEFAULT_WAREHOUSES.map((w) => ({ code: w.code, name: w.name }))
+  );
 
+  useEffect(() => {
+    warehouseService
+      .getWarehouses()
+      .then((list) => {
+        if (list && list.length > 0) {
+          setWarehouses(list.map((w) => ({ code: w.code, name: w.name })));
+        }
+      })
+      .catch(() => {});
+  }, []);
+
+  const storageKey = getUserStorageKey();
+  const [sessions, setSessions] = useState<SavedChatSession[]>(() => loadSavedSessions(storageKey));
+  const [activeSessionId, setActiveSessionId] = useState<string>(() => `sess-${Date.now()}`);
+  const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
+  const [loadingStep, setLoadingStep] = useState('Đang xác thực quyền kho...');
+
+  useEffect(() => {
+    setSessions(loadSavedSessions(storageKey));
+    setActiveSessionId(`sess-${Date.now()}`);
+    setMessages([]);
+  }, [storageKey]);
 
   const quickPrompts = [
-    'Cho tôi xem các lô hàng sắp hết hạn trong 30 ngày tới (FEFO)',
-    'Tỷ lệ lấp đầy các ô kệ tại Phân khu A hiện tại',
-    'Kiểm tra sản phẩm nào đang có mức tồn thấp hơn 20 cái',
-    'Lịch sử biến động thẻ kho 24h gần nhất',
+    'Tổng hợp sự cố tồn kho, đơn chờ xuất và lô hết hạn / QC Hold hiện tại',
+    'Tại sao tồn vật lý nhiều nhưng tồn khả dụng thấp? (Kiểm tra Reserved & Blocked)',
+    'Cho tôi xem các lô hàng sắp hết hạn trong 30 ngày tới',
+    'Kiểm tra PO đang về hoặc hàng chờ cất lên kệ (Putaway)',
   ];
 
-  // Auto scroll to latest message
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages, loading]);
 
+  useEffect(() => {
+    if (!loading) return;
+    setLoadingStep('Đang xác thực quyền kho...');
+    const t1 = setTimeout(() => setLoadingStep('Đang truy xuất dữ liệu MySQL...'), 1400);
+    const t2 = setTimeout(() => setLoadingStep('Kora AI đang tổng hợp kết quả...'), 3500);
+    return () => {
+      clearTimeout(t1);
+      clearTimeout(t2);
+    };
+  }, [loading]);
+
+  const persistSession = (nextMsgs: ChatMessage[], whCode: string, sessId: string) => {
+    if (nextMsgs.length === 0) return;
+    const firstUser = nextMsgs.find((m) => m.sender === 'user');
+    const title = firstUser ? firstUser.text.slice(0, 60) : 'Cuộc trò chuyện Kora AI';
+    const updated: SavedChatSession = {
+      id: sessId,
+      title,
+      warehouseCode: whCode,
+      updatedAt: new Date().toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' }),
+      messages: nextMsgs.slice(-20),
+    };
+    setSessions((prev) => {
+      const nextList = [updated, ...prev.filter((s) => s.id !== sessId)].slice(0, MAX_SAVED_SESSIONS);
+      try {
+        localStorage.setItem(storageKey, JSON.stringify(nextList));
+      } catch {
+        // Ignore storage quota errors
+      }
+      return nextList;
+    });
+  };
+
   const handleClearHistory = () => {
-    setMessages([
-      {
-        id: 'welcome-reset',
-        sender: 'ai',
-        timestamp: new Date().toLocaleTimeString('vi-VN'),
-        text: 'Lịch sử hội thoại đã được làm mới. Mời bạn đặt câu hỏi liên quan đến dữ liệu kho!',
-      },
-    ]);
+    setActiveSessionId(`sess-${Date.now()}`);
+    setMessages([]);
+  };
+
+  const handleSelectSession = (s: SavedChatSession) => {
+    setActiveSessionId(s.id);
+    setSelectedWarehouse(s.warehouseCode || 'ALL');
+    setMessages(s.messages);
+  };
+
+  const handleDeleteSession = (id: string) => {
+    setSessions((prev) => {
+      const next = prev.filter((s) => s.id !== id);
+      try {
+        localStorage.setItem(storageKey, JSON.stringify(next));
+      } catch {
+        // Ignore
+      }
+      return next;
+    });
+    if (id === activeSessionId) {
+      handleClearHistory();
+    }
   };
 
   const handleSend = async (textToSend?: string) => {
@@ -57,120 +148,127 @@ export const SmartAssistantPage: React.FC = () => {
       text: query,
     };
 
-    setMessages((prev) => [...prev, userMsg]);
+    const withUser = [...messages, userMsg];
+    setMessages(withUser);
     setInput('');
     setLoading(true);
 
     try {
-      const result = await smartQueryApi.chat(query);
-      setMessages((prev) => [...prev, {
-        id: `ai-${Date.now()}`,
-        sender: 'ai',
-        timestamp: new Date().toLocaleTimeString('vi-VN'),
-        text: result.answer,
-        sqlQuery: result.sqlQuery,
-        astStatus: result.astStatus,
-        executionTimeMs: result.executionTimeMs,
-        tableData: result.tableData,
-      }]);
+      const result = await smartQueryApi.chat(query, selectedWarehouse);
+      const nextMessages: ChatMessage[] = [
+        ...withUser,
+        {
+          id: `ai-${Date.now()}`,
+          sender: 'ai',
+          timestamp: new Date().toLocaleTimeString('vi-VN'),
+          text: result.answer,
+          sqlQuery: result.sqlQuery,
+          astStatus: result.astStatus,
+          executionTimeMs: result.executionTimeMs,
+          tableData: result.tableData,
+          diagnosis: result.diagnosis,
+        },
+      ];
+      setMessages(nextMessages);
+      persistSession(nextMessages, selectedWarehouse, activeSessionId);
     } catch (error: any) {
-      setMessages((prev) => [...prev, {
-        id: `ai-error-${Date.now()}`,
-        sender: 'ai',
-        timestamp: new Date().toLocaleTimeString('vi-VN'),
-        text: error?.response?.data?.message || 'Không thể kết nối trợ lý Gemini. Vui lòng kiểm tra cấu hình GEMINI_API_KEY ở backend.',
-      }]);
+      const errMsgs: ChatMessage[] = [
+        ...withUser,
+        {
+          id: `ai-error-${Date.now()}`,
+          sender: 'ai',
+          timestamp: new Date().toLocaleTimeString('vi-VN'),
+          text:
+            error?.response?.data?.message ||
+            'Không thể kết nối Kora AI. Vui lòng kiểm tra cấu hình dịch vụ AI ở máy chủ.',
+        },
+      ];
+      setMessages(errMsgs);
     } finally {
       setLoading(false);
     }
   };
 
-  // Xử lý khi người dùng bấm nút thử nghiệm tấn công SQL Injection
-  const handleSimulateAttack = (attackSql: string) => {
-    const userMsg: ChatMessage = {
-      id: `attack-user-${Date.now()}`,
-      sender: 'user',
-      timestamp: new Date().toLocaleTimeString('vi-VN'),
-      text: `[TEST ATTACK] Thử nghiệm thực thi câu lệnh phá hoại: ${attackSql}`,
-    };
-
-    setMessages((prev) => [...prev, userMsg]);
-    setLoading(true);
-
-    setTimeout(() => {
-      let reason = 'Phát hiện câu lệnh nguy hại: Bộ phân tích AST chỉ cho phép câu lệnh SELECT.';
-      if (attackSql.includes('DROP')) {
-        reason = 'Cảnh báo AST: Cú pháp chứa lệnh [DropTableStatement]. Hành vi xóa bảng cơ sở dữ liệu bị chặn đứng 100%!';
-      } else if (attackSql.includes('UPDATE')) {
-        reason = 'Cảnh báo AST: Cú pháp chứa lệnh [UpdateStatement]. Thay đổi dữ liệu trực tiếp qua AI bị cấm triệt để để bảo vệ tính toàn vẹn!';
-      } else if (attackSql.includes('DELETE')) {
-        reason = 'Cảnh báo AST: Cú pháp chứa lệnh [DeleteStatement]. Sổ cái kho stock_ledger là cấu trúc bất biến (Append-Only), nghiêm cấm xóa!';
-      }
-
-      const aiRejection: ChatMessage = {
-        id: `attack-ai-${Date.now()}`,
-        sender: 'ai',
-        timestamp: new Date().toLocaleTimeString('vi-VN'),
-        text: 'CẢNH BÁO BẢO MẬT: Câu lệnh bị từ chối trước khi gửi đến MySQL!',
-        sqlQuery: attackSql,
-        astStatus: 'REJECTED',
-        astRejectionReason: reason,
-        executionTimeMs: 4,
-      };
-
-      setMessages((prev) => [...prev, aiRejection]);
-      setLoading(false);
-    }, 500);
-  };
-
   return (
-    <div className="space-y-4 pb-6">
-      {/* 1. Header component */}
+    <div className="flex flex-col h-[calc(100vh-104px)] min-h-[580px]">
       <SmartQueryHeader
         onClearHistory={handleClearHistory}
         messageCount={messages.length}
+        warehouses={warehouses}
+        selectedWarehouse={selectedWarehouse}
+        onWarehouseChange={setSelectedWarehouse}
+        sessions={sessions}
+        activeSessionId={activeSessionId}
+        onSelectSession={handleSelectSession}
+        onDeleteSession={handleDeleteSession}
       />
 
-      {/* 2. Grid 8 : 4 Master-Detail */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-5">
-        {/* CỘT TRÁI (8 COLS): KHU VỰC HỘI THOẠI & KẾT QUẢ TRUY VẤN */}
-        <div className="lg:col-span-8 flex flex-col h-[calc(100vh-210px)] min-h-[550px] bg-white rounded-2xl border border-slate-200 p-5 shadow-sm">
-          {/* Scrollable Message Stream */}
-          <div className="flex-1 overflow-y-auto space-y-4 pr-2 scrollbar-thin">
-            {messages.map((msg) => (
-              <ChatMessageItem
-                key={msg.id}
-                message={msg}
-                onNavigateAction={(url) => navigate(url)}
+      <div className="flex-1 overflow-y-auto py-6">
+        {messages.length === 0 ? (
+          <div className="max-w-2xl mx-auto h-full flex flex-col items-center justify-center text-center space-y-6 py-8">
+            <KoraAvatar size="lg" />
+            <div className="space-y-1.5">
+              <h2 className="text-xl font-semibold text-slate-900 tracking-tight">
+                Kora AI có thể giúp gì cho kho hàng hôm nay?
+              </h2>
+              <p className="text-sm text-slate-500 max-w-lg mx-auto">
+                Hỏi về tồn kho chi nhánh, đơn xuất SO thiếu hàng, lô cận hạn hoặc thống kê theo phân khu — mọi số liệu đều đọc trực tiếp từ MySQL theo quyền RBAC.
+              </p>
+            </div>
+            <div className="w-full text-left">
+              <SmartPromptGrid
+                prompts={quickPrompts}
+                onSelect={(prompt) => void handleSend(prompt)}
+                disabled={loading}
               />
-            ))}
+            </div>
+          </div>
+        ) : (
+          <div className="max-w-4xl mx-auto space-y-6 px-1">
+            {messages.map((msg) =>
+              msg.sender === 'ai' && msg.diagnosis ? (
+                <div key={msg.id} className="flex items-start gap-3.5">
+                  <div className="mt-0.5">
+                    <KoraAvatar size="md" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <AiDiagnosisCard
+                      diagnosis={msg.diagnosis}
+                      onNavigate={(url) => navigate(url)}
+                    />
+                  </div>
+                </div>
+              ) : (
+                <ChatMessageItem
+                  key={msg.id}
+                  message={msg}
+                  onNavigateAction={(url) => navigate(url)}
+                />
+              )
+            )}
 
             {loading && (
-              <div className="flex gap-3 items-center p-3.5 rounded-xl bg-indigo-50/80 border border-indigo-200 text-xs font-mono text-indigo-700 animate-pulse">
-                <div className="w-2.5 h-2.5 rounded-full bg-indigo-600 animate-ping"></div>
-                <span className="font-semibold">Đang phân tích cây cú pháp AST JSqlParser & kiểm tra whitelist an toàn...</span>
+              <div className="flex items-center gap-3">
+                <KoraAvatar size="md" pulse />
+                <span className="text-sm text-slate-500">{loadingStep}</span>
               </div>
             )}
             <div ref={messagesEndRef} />
           </div>
+        )}
+      </div>
 
-          {/* Input & Suggestion Chips Section */}
+      <div className="pt-2 pb-1">
+        <div className="max-w-4xl mx-auto">
           <ChatInputSection
             input={input}
             setInput={setInput}
             onSend={handleSend}
             loading={loading}
             quickPrompts={quickPrompts}
+            showPrompts={messages.length > 0}
           />
         </div>
-
-        {/* CỘT PHẢI (4 COLS): HÀNG RÀO BẢO VỆ AST, THỬ NGHIỆM TẤN CÔNG & LƯỢC ĐỒ BẢNG */}
-        {/* <div className="lg:col-span-4 h-[calc(100vh-210px)] min-h-[550px] overflow-y-auto pr-1 scrollbar-thin">
-          <AstSecuritySidebar
-            onSimulateAttack={handleSimulateAttack}
-            disabled={loading}
-          />
-        </div> */}
       </div>
     </div>
   );

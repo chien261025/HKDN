@@ -111,6 +111,11 @@ export const EditUserModal: React.FC<EditUserModalProps> = ({
       return;
     }
 
+    if (email.trim() && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) {
+      setErrorMsg('Địa chỉ email không đúng định dạng (VD: user@smartwms.vn)!');
+      return;
+    }
+
     if (selectedWarehouseIds.length === 0) {
       setErrorMsg('Vui lòng chọn ít nhất một kho hàng phân quyền truy cập!');
       return;
@@ -133,7 +138,14 @@ export const EditUserModal: React.FC<EditUserModalProps> = ({
       });
       onClose();
     } catch (err: any) {
-      setErrorMsg(err.message || 'Lỗi khi cập nhật thông tin người dùng!');
+      const serverMsg =
+        err?.response?.data?.message ||
+        err?.message ||
+        'Lỗi khi cập nhật thông tin người dùng!';
+      const cleanMsg = serverMsg.includes('status code')
+        ? 'Dữ liệu không hợp lệ hoặc thông tin tài khoản (Email) đã được sử dụng!'
+        : serverMsg;
+      setErrorMsg(cleanMsg);
     } finally {
       setSubmitting(false);
     }

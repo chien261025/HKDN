@@ -19,6 +19,7 @@ import {
   Layers,
   X,
   RotateCcw,
+  Sparkles,
 } from 'lucide-react';
 import { OutboundOrder } from '../types';
 import { OutboundMobileCards } from './OutboundMobileCards';
@@ -42,6 +43,7 @@ interface OutboundOrderTableProps {
   onStartPicking?: (order: OutboundOrder) => void;
   onOpenVoucher?: (order: OutboundOrder) => void;
   onOpenOrderLedger?: (soCode: string) => void;
+  onDiagnoseOrder?: (order: OutboundOrder) => void;
 }
 
 const getLocalDateString = (d: Date): string => {
@@ -63,6 +65,7 @@ export const OutboundOrderTable: React.FC<OutboundOrderTableProps> = ({
   onStartPicking,
   onOpenVoucher,
   onOpenOrderLedger,
+  onDiagnoseOrder,
 }) => {
   const [currentPage, setCurrentPage] = useState(1);
   const [searchTerm, setSearchTerm] = useState('');
@@ -524,6 +527,17 @@ export const OutboundOrderTable: React.FC<OutboundOrderTableProps> = ({
                     <td className="py-3.5 px-4 text-right whitespace-nowrap">
                       <div className="flex items-center justify-end gap-1.5 whitespace-nowrap">
                         {/* 1. Giai đoạn PENDING: Cần phân bổ lô FEFO */}
+                        {onDiagnoseOrder && order.status !== 'DISPATCHED' && order.status !== 'CANCELLED' && (
+                          <button
+                            type="button"
+                            onClick={() => onDiagnoseOrder(order)}
+                            title={`Phân tích đơn ${order.soCode} bằng Kora AI`}
+                            className="inline-flex items-center gap-1 px-2 py-1.5 rounded-lg bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200 text-xs font-bold transition-colors cursor-pointer"
+                          >
+                            <Sparkles className="w-3.5 h-3.5" />
+                            <span className="hidden xl:inline">Kora</span>
+                          </button>
+                        )}
                         {isPending && (
                           <>
                             <button

@@ -42,16 +42,6 @@ export const StockTransferModal: React.FC<StockTransferModalProps> = ({
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
-  // Danh sách các ô kệ đang khóa bảo trì lưu trong localStorage
-  const lockedBins = useMemo(() => {
-    try {
-      const saved = localStorage.getItem('smart_wms_locked_bins');
-      return saved ? JSON.parse(saved) : [];
-    } catch {
-      return [];
-    }
-  }, [isOpen]);
-
   const effectiveItem = sourceItem || internalSourceItem || (availableStocks && availableStocks.length > 0 ? availableStocks[0] : null);
 
   const targetWhId = effectiveItem?.warehouseId || (
@@ -133,7 +123,10 @@ export const StockTransferModal: React.FC<StockTransferModalProps> = ({
 
   if (!isOpen || !effectiveItem) return null;
 
-  const isSourceLocked = lockedBins.includes(effectiveItem.locationBarcode);
+  const sourceLocObj = locations.find(
+    (l) => l.id === effectiveItem.locationId || l.barcode === effectiveItem.locationBarcode
+  );
+  const isSourceLocked = sourceLocObj ? sourceLocObj.isActive === false : false;
   const onHand = effectiveItem.onHandQty != null ? effectiveItem.onHandQty : 0;
   const reserved = effectiveItem.reservedQty != null ? effectiveItem.reservedQty : 0;
   const available = effectiveItem.availableQty != null ? effectiveItem.availableQty : Math.max(0, onHand - reserved);
@@ -141,7 +134,7 @@ export const StockTransferModal: React.FC<StockTransferModalProps> = ({
   const maxQty = effectiveItem.isExpired ? onHand : available;
   const unitName = effectiveItem.unit || 'Cái';
   const selectedTargetLoc = locations.find((l) => l.id === Number(targetLocationId));
-  const isTargetLocked = selectedTargetLoc ? lockedBins.includes(selectedTargetLoc.barcode) : false;
+  const isTargetLocked = selectedTargetLoc ? selectedTargetLoc.isActive === false : false;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -172,7 +165,7 @@ export const StockTransferModal: React.FC<StockTransferModalProps> = ({
     }
 
     const targetLoc = locations.find((l) => l.id === Number(targetLocationId));
-    if (targetLoc && lockedBins.includes(targetLoc.barcode)) {
+    if (targetLoc && targetLoc.isActive === false) {
       setErrorMsg(`Ô kệ đích (${targetLoc.barcode}) đang bị khóa bảo trì! Vui lòng chọn ô kệ đang hoạt động bình thường.`);
       return;
     }
@@ -359,7 +352,7 @@ export const StockTransferModal: React.FC<StockTransferModalProps> = ({
                   const capDesc = loc.status === 'EMPTY' ? 'Ô trống' : loc.qty ? `Đang có ${loc.qty} SP` : 'Sẵn sàng';
                   const isQuarantine = loc.barcode?.includes('QUA') || (loc as any).zoneCode?.includes('QUA');
                   const isZoneB = loc.barcode?.includes('ZB') || (loc as any).zoneCode?.includes('ZONE_B');
-                  const isLocLocked = lockedBins.includes(loc.barcode);
+                  const isLocLocked = loc.isActive === false;
                   const isOverloaded = loc.maxWeight != null && loc.currentWeight != null && loc.currentWeight >= loc.maxWeight;
                   const lockTag = isLocLocked ? ' [ĐANG KHÓA BẢO TRÌ]' : isOverloaded ? ' [ĐÃ ĐẦY TẢI]' : '';
                   const tag = isQuarantine ? ' ★ [KHU CÁCH LY TIÊU HỦY]' : isZoneB ? ' [Kho Mát 2°C - 8°C]' : '';

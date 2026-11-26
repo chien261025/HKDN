@@ -5,7 +5,6 @@ import {
   Layers,
   Package,
   ScanLine,
-  Search,
   FileSpreadsheet,
   ShieldCheck,
   ChevronLeft,
@@ -17,6 +16,7 @@ import {
   Printer,
   Boxes,
   Building2,
+  Sparkles,
   X,
 } from 'lucide-react';
 import { AuthSession } from '../../features/auth/types';
@@ -93,7 +93,7 @@ export const AppSidebar: React.FC<AppSidebarProps> = ({
             { name: 'Tổng Quan Quản Trị', path: '/', icon: LayoutDashboard },
             { name: 'Tài Khoản & Phân Quyền', path: '/users', icon: ShieldCheck },
             { name: 'Mạng Lưới Chi Nhánh', path: '/warehouses', icon: Building2 },
-            { name: 'Kiểm Toán & Truy Vấn', path: '/smartquery', icon: Search },
+            { name: 'Kora AI', path: '/smartquery', icon: Sparkles },
           ],
         },
         {
@@ -141,6 +141,7 @@ export const AppSidebar: React.FC<AppSidebarProps> = ({
         {
           sectionTitle: 'Báo Cáo & Đội Ngũ',
           items: [
+            { name: 'Kora AI', path: '/smartquery', icon: Sparkles },
             { name: 'Báo Cáo & Thống Kê', path: '/reports', icon: FileSpreadsheet },
             { name: 'Đội Ngũ Nhân Sự Kho', path: '/users', icon: ShieldCheck },
           ],

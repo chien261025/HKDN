@@ -7,7 +7,7 @@ import { RackElevationGrid } from '../components/layout/RackElevationGrid';
 import { BinDetailPanel } from '../components/layout/BinDetailPanel';
 import { StockTransferModal } from '../../inventory/components/StockTransferModal';
 import { locationService } from '../services/locationService';
-import { warehouseService, DEFAULT_WAREHOUSES } from '../services/warehouseService';
+import { warehouseService, DEFAULT_WAREHOUSES, filterWarehousesForCurrentUser } from '../services/warehouseService';
 import { WarehouseItem } from '../types';
 import { StockItem } from '../../labels/types';
 
@@ -21,7 +21,7 @@ export const LocationLayoutPage: React.FC = () => {
   const [selectedZone, setSelectedZone] = useState<string>(() => initialZone);
   const [statusFilter, setStatusFilter] = useState<'ALL' | 'EMPTY' | 'OCCUPIED' | 'EXPIRING'>('ALL');
   const [selectedBinId, setSelectedBinId] = useState<number | null>(null);
-  const [searchTerm, setSearchTerm] = useState('');
+  const [searchTerm, setSearchTerm] = useState(() => searchParams.get('search') || '');
   const [viewMode, setViewMode] = useState<'FLOOR_PLAN' | 'RACK_ELEVATION'>('FLOOR_PLAN');
   const [loading, setLoading] = useState(true);
 
@@ -32,6 +32,10 @@ export const LocationLayoutPage: React.FC = () => {
     if (wh) {
       setActiveWarehouseId(wh);
       warehouseService.setActiveWarehouseId(wh);
+    }
+    const q = searchParams.get('search');
+    if (q !== null) {
+      setSearchTerm(q);
     }
   }, [searchParams]);
 
@@ -46,8 +50,18 @@ export const LocationLayoutPage: React.FC = () => {
         locationService.getLocations(),
         warehouseService.getWarehouses(),
       ]);
+      const scopedWhs = filterWarehousesForCurrentUser(whs);
       setLocations(locs);
-      setWarehouses(whs);
+      setWarehouses(scopedWhs);
+      // Nếu kho đang chọn không nằm trong phạm vi quản lý của user hiện tại, tự động chuyển về kho hợp lệ đầu tiên
+      if (
+        activeWarehouseId &&
+        activeWarehouseId !== 'ALL' &&
+        scopedWhs.length > 0 &&
+        !scopedWhs.some((w) => w.code === activeWarehouseId || String(w.id) === String(activeWarehouseId))
+      ) {
+        setActiveWarehouseId(scopedWhs[0].code);
+      }
     } finally {
       setLoading(false);
     }
@@ -63,15 +77,23 @@ export const LocationLayoutPage: React.FC = () => {
 
     const handleWhUpdated = async () => {
       const whs = await warehouseService.getWarehouses();
-      setWarehouses(whs);
+      setWarehouses(filterWarehousesForCurrentUser(whs));
+    };
+
+    const handleGlobalSearch = (e: any) => {
+      if (typeof e.detail === 'string') {
+        setSearchTerm(e.detail);
+      }
     };
 
     window.addEventListener('smart_wms_warehouse_changed', handleWhChanged);
     window.addEventListener('smart_wms_warehouses_updated', handleWhUpdated);
+    window.addEventListener('smart_wms_global_search', handleGlobalSearch);
 
     return () => {
       window.removeEventListener('smart_wms_warehouse_changed', handleWhChanged);
       window.removeEventListener('smart_wms_warehouses_updated', handleWhUpdated);
+      window.removeEventListener('smart_wms_global_search', handleGlobalSearch);
     };
   }, []);
 
@@ -250,12 +272,22 @@ export const LocationLayoutPage: React.FC = () => {
               selectedBinId={selectedBinId}
               onSelectBin={(bin) => setSelectedBinId(bin.id)}
               warehouseName={currentWarehouse?.name || 'Kho Vận'}
+              onResetFilters={() => {
+                setSelectedZone('ALL');
+                setStatusFilter('ALL');
+                setSearchTerm('');
+              }}
             />
           ) : (
             <RackElevationGrid
               locations={filteredLocations}
               selectedBinId={selectedBinId}
               onSelectBin={(bin) => setSelectedBinId(bin.id)}
+              onResetFilters={() => {
+                setSelectedZone('ALL');
+                setStatusFilter('ALL');
+                setSearchTerm('');
+              }}
             />
           )}
         </div>
@@ -267,6 +299,7 @@ export const LocationLayoutPage: React.FC = () => {
             totalLocationsCount={branchLocations.length}
             occupiedCount={counts.occupied}
             onOpenTransferModal={handleOpenTransfer}
+            onRefreshLocations={fetchLocations}
           />
         </div>
       </div>

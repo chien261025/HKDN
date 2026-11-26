@@ -423,8 +423,9 @@ public class InboundService {
         targetItem.setStockedQty(targetItem.getStockedQty() + request.getQuantity());
         targetItem.setStatus(targetItem.getRemainingQty() == 0 ? "COMPLETED" : "PARTIAL");
         if (order.getItems().stream().allMatch(item -> item.getRemainingQty() == 0)) {
-            boolean allExpectedStocked = order.getItems().stream().allMatch(item -> item.getStockedQty() >= item.getExpectedQty());
-            if (allExpectedStocked) {
+            boolean allFulfilled = order.getItems().stream().allMatch(item -> 
+                (item.getStockedQty() + item.getRejectedQty()) >= item.getExpectedQty());
+            if (allFulfilled) {
                 order.setStatus("STOCKED");
             } else {
                 order.setStatus("PARTIALLY_STOCKED");

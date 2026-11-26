@@ -332,17 +332,18 @@ export const warehouseService = {
 };
 
 export const getWarehouseDisplayName = (warehouseId?: number | string | null): string => {
-  if (!warehouseId) return 'Chưa xác định kho';
-  const idNum = Number(warehouseId);
+  if (!warehouseId || warehouseId === 'ALL') return 'Toàn bộ chi nhánh kho';
+  const idStr = String(warehouseId);
+  const idNum = Number(warehouseId) || (idStr.match(/\d+/) ? parseInt(idStr.match(/\d+/)![0], 10) : null);
   const cached = localStorage.getItem(STORAGE_KEY);
   if (cached) {
     try {
       const list = JSON.parse(cached);
-      const match = list.find((w: any) => Number(w.id) === idNum);
+      const match = list.find((w: any) => (idNum !== null && Number(w.id) === idNum) || w.code === idStr || String(w.id) === idStr);
       if (match && match.name) return match.name;
     } catch {}
   }
-  const defaultMatch = DEFAULT_WAREHOUSES.find((w) => Number(w.id) === idNum);
+  const defaultMatch = DEFAULT_WAREHOUSES.find((w) => (idNum !== null && Number(w.id) === idNum) || w.code === idStr);
   return defaultMatch ? defaultMatch.name : `Kho #${warehouseId}`;
 };
 
@@ -359,5 +360,29 @@ export const getWarehouseDisplayAddress = (warehouseId?: number | string | null)
   }
   const defaultMatch = DEFAULT_WAREHOUSES.find((w) => Number(w.id) === idNum);
   return defaultMatch && defaultMatch.address ? defaultMatch.address : '';
+};
+
+/**
+ * Cô lập danh sách chi nhánh kho theo vai trò người dùng hiện tại (chuẩn Multi-Warehouse RBAC).
+ * ROLE_ADMIN thấy toàn bộ chi nhánh; ROLE_WAREHOUSE_MANAGER chỉ thấy các kho được phân công quản lý.
+ */
+export const filterWarehousesForCurrentUser = (list: WarehouseItem[]): WarehouseItem[] => {
+  try {
+    const raw = localStorage.getItem('smart_wms_session');
+    if (!raw) return list;
+    const session = JSON.parse(raw);
+    if (!session || session.role === 'ROLE_ADMIN') return list;
+    if (session.role === 'ROLE_WAREHOUSE_MANAGER' && session.username) {
+      const assigned = list.filter(
+        (w) =>
+          w.managerUsername?.toLowerCase() === String(session.username).toLowerCase() ||
+          (session.id && w.managerId != null && String(w.managerId) === String(session.id))
+      );
+      return assigned.length > 0 ? assigned : list.filter((w) => w.code === 'WH01');
+    }
+    return list;
+  } catch {
+    return list;
+  }
 };
 

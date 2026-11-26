@@ -409,12 +409,13 @@ export const SafetyStockAlertsPanel: React.FC<SafetyStockAlertsPanelProps> = ({
                   <th className="py-3 px-4 text-center whitespace-nowrap">Ngưỡng Đặt Hàng</th>
                   <th className="py-3 px-4 text-center whitespace-nowrap">Đề Xuất Nhập</th>
                   <th className="py-3 px-4 whitespace-nowrap">Mức Cảnh Báo</th>
+                  <th className="py-3 px-4 text-right whitespace-nowrap">Thao Tác</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100 text-slate-800">
                 {visibleSafety.length === 0 ? (
                   <tr>
-                    <td colSpan={8} className="py-12 text-center text-slate-400">
+                    <td colSpan={9} className="py-12 text-center text-slate-400">
                       <CheckCircle2 className="w-8 h-8 mx-auto mb-2 text-emerald-500" />
                       <p className="font-semibold text-slate-700">Tồn kho khả dụng của các mặt hàng đang rất an toàn</p>
                     </td>
@@ -472,6 +473,17 @@ export const SafetyStockAlertsPanel: React.FC<SafetyStockAlertsPanelProps> = ({
                               <Clock className="w-3 h-3 text-amber-600" /> Chạm Ngưỡng Đặt Hàng
                             </span>
                           )}
+                        </td>
+                        <td className="py-3.5 px-4 text-right whitespace-nowrap">
+                          <button
+                            type="button"
+                            onClick={() => onCreatePo?.(item)}
+                            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold shadow-2xs transition-colors cursor-pointer"
+                            title={`Tạo đơn nhập hàng (PO) bổ sung +${item.suggestedReorderQty} ${item.unit}`}
+                          >
+                            <ShoppingCart className="w-3.5 h-3.5" />
+                            <span>Tạo PO</span>
+                          </button>
                         </td>
                       </tr>
                     );

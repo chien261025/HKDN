@@ -30,7 +30,7 @@ export const AuditHeader: React.FC<AuditHeaderProps> = ({
 }) => {
   const [warehouseList, setWarehouseList] = useState<any[]>([
     { id: 'ALL', code: 'ALL', name: 'Toàn bộ chi nhánh kho (Hệ Thống)' },
-    ...DEFAULT_WAREHOUSES.map((w) => ({ id: String(w.id), code: w.code, name: w.name })),
+    ...DEFAULT_WAREHOUSES.map((w) => ({ id: w.code, code: w.code, name: w.name })),
   ]);
 
   useEffect(() => {
@@ -40,7 +40,7 @@ export const AuditHeader: React.FC<AuditHeaderProps> = ({
         if (list && list.length > 0) {
           setWarehouseList([
             { id: 'ALL', code: 'ALL', name: 'Toàn bộ chi nhánh kho (Hệ Thống)' },
-            ...list.map((w) => ({ id: String(w.id), code: w.code, name: w.name })),
+            ...list.map((w) => ({ id: w.code, code: w.code, name: w.name })),
           ]);
         }
       } catch (err) {
@@ -63,14 +63,14 @@ export const AuditHeader: React.FC<AuditHeaderProps> = ({
   return (
     <div className="space-y-4">
       {/* Top Banner Row với Bộ Chọn Kho Đồng Bộ & Nút Đồng Bộ Động */}
-      <div className="bg-white rounded-2xl p-5 md:p-6 border border-slate-200/90 shadow-xs flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
-        <div className="flex items-center gap-4">
+      <div className="bg-white rounded-2xl p-5 md:p-6 border border-slate-200/90 shadow-xs flex flex-col xl:flex-row items-start xl:items-center justify-between gap-4">
+        <div className="flex items-center gap-4 min-w-0">
           <div className="w-12 h-12 rounded-xl bg-blue-600 flex items-center justify-center text-white shadow-md shadow-blue-200 shrink-0 ring-4 ring-blue-50">
             <ClipboardCheck className="w-6 h-6 text-white" />
           </div>
-          <div>
+          <div className="min-w-0">
             <h1 className="text-xl md:text-2xl font-bold text-slate-900 tracking-tight">
-              Quản Lý Kiểm Kê & Cân Đối Kho
+              Quản Lý Kiểm Kê &amp; Cân Đối Kho
             </h1>
             <p className="text-xs sm:text-sm text-slate-500 font-normal mt-0.5">
               Đối chiếu số lượng thực tế • Phát hiện chênh lệch thừa thiếu • Duyệt điều chỉnh tồn kho
@@ -78,10 +78,10 @@ export const AuditHeader: React.FC<AuditHeaderProps> = ({
           </div>
         </div>
 
-        <div className="flex items-center gap-3 w-full md:w-auto justify-between md:justify-end flex-wrap sm:flex-nowrap">
+        <div className="flex items-center gap-2.5 w-full xl:w-auto justify-start xl:justify-end flex-wrap">
           {/* Bộ Lọc Chi Nhánh Kho Đồng Bộ */}
           {onWarehouseChange && (
-            <div className="flex items-center gap-2.5 bg-slate-50 p-2 rounded-xl border border-slate-200 shadow-2xs">
+            <div className="flex items-center gap-2.5 bg-slate-50 p-2 rounded-xl border border-slate-200 shadow-2xs shrink-0">
               <Building2 className="w-4 h-4 text-blue-600 shrink-0 ml-1" />
               <div className="flex flex-col">
                 <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Phạm vi dữ liệu kho:</span>
@@ -106,7 +106,7 @@ export const AuditHeader: React.FC<AuditHeaderProps> = ({
               onClick={onRefresh}
               disabled={loading}
               title="Cập nhật tiến độ kiểm kê mới nhất"
-              className="inline-flex items-center gap-1.5 px-3 py-2.5 rounded-xl border border-emerald-300 bg-emerald-50 text-emerald-800 hover:bg-emerald-100 transition-colors text-xs font-bold cursor-pointer shadow-2xs disabled:opacity-50"
+              className="inline-flex items-center gap-1.5 px-3 py-2.5 rounded-xl border border-emerald-300 bg-emerald-50 text-emerald-800 hover:bg-emerald-100 transition-colors text-xs font-bold cursor-pointer shadow-2xs disabled:opacity-50 whitespace-nowrap shrink-0"
             >
               <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
               <span>Đồng bộ</span>
@@ -115,7 +115,7 @@ export const AuditHeader: React.FC<AuditHeaderProps> = ({
           )}
 
           {lastUpdated && (
-            <div className="hidden lg:flex items-center gap-1 text-[11px] font-medium text-slate-500 bg-slate-50 px-2.5 py-2 rounded-lg border border-slate-200">
+            <div className="hidden lg:flex items-center gap-1 text-[11px] font-medium text-slate-500 bg-slate-50 px-2.5 py-2 rounded-lg border border-slate-200 whitespace-nowrap shrink-0">
               <Clock className="w-3.5 h-3.5 text-slate-400" />
               <span>{lastUpdated}</span>
             </div>
@@ -123,10 +123,10 @@ export const AuditHeader: React.FC<AuditHeaderProps> = ({
 
           <button
             onClick={onOpenCreateModal}
-            className="flex items-center gap-2 px-4 py-2.5 bg-blue-600 hover:bg-blue-700 active:scale-[0.99] text-white rounded-xl text-xs sm:text-sm font-bold shadow-md shadow-blue-200 transition-all shrink-0 cursor-pointer"
+            className="flex items-center gap-1.5 px-4 py-2.5 bg-blue-600 hover:bg-blue-700 active:scale-[0.99] text-white rounded-xl text-xs sm:text-sm font-bold shadow-md shadow-blue-200 transition-all shrink-0 whitespace-nowrap cursor-pointer"
           >
             <Plus className="w-4 h-4" />
-            <span>+ Tạo Đợt Kiểm Kê Mới</span>
+            <span>Tạo Đợt Kiểm Kê Mới</span>
           </button>
         </div>
       </div>

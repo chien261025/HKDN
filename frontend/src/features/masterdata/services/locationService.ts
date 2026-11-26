@@ -1,7 +1,6 @@
 import { apiClient } from '../../../services/api';
 import { BinLocation } from '../types';
 
-const CACHE_KEY = 'smart_wms_locations_cache_v2';
 let memoryLocationsCache: BinLocation[] = [];
 
 export const locationService = {
@@ -26,6 +25,7 @@ export const locationService = {
             maxWeight: Number(l.maxWeight) || 1000,
             currentWeight: Number(l.currentWeight) || 0,
             status: l.status || 'EMPTY',
+            isActive: l.isActive !== false,
             productId: l.productId || undefined,
             batchId: l.batchId || undefined,
             productName: l.productName || undefined,
@@ -41,30 +41,34 @@ export const locationService = {
           };
         });
         memoryLocationsCache = mapped;
-        try {
-          localStorage.setItem(CACHE_KEY, JSON.stringify(mapped));
-        } catch {}
         return mapped;
       }
     } catch (err) {
-      console.warn('Backend locations occupancy error, loading from local cache:', err);
+      console.warn('Backend locations occupancy error, using in-memory snapshot:', err);
     }
 
     if (memoryLocationsCache.length > 0) {
       return memoryLocationsCache;
     }
 
-    try {
-      const cached = localStorage.getItem(CACHE_KEY);
-      if (cached) {
-        const parsed = JSON.parse(cached);
-        if (Array.isArray(parsed) && parsed.length > 0) {
-          memoryLocationsCache = parsed;
-          return parsed;
-        }
-      }
-    } catch {}
-
     return [];
+  },
+
+  async updateLocationStatus(id: number, isActive: boolean): Promise<boolean> {
+    const res = await apiClient.patch(`/masterdata/locations/${id}/status`, null, {
+      params: { isActive },
+    });
+    if (!res.data?.success) {
+      throw new Error(res.data?.message || 'Không thể cập nhật trạng thái ô kệ');
+    }
+    memoryLocationsCache = memoryLocationsCache.map((l) =>
+      l.id === id ? { ...l, isActive } : l
+    );
+    window.dispatchEvent(
+      new CustomEvent('smart_wms_bin_status_changed', {
+        detail: { id, isActive, locked: !isActive },
+      })
+    );
+    return true;
   },
 };

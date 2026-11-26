@@ -60,17 +60,27 @@ export const AuditManagementPage: React.FC = () => {
     }
   };
 
+  const normalizeWhCode = (wh?: string): string => {
+    if (!wh || wh === 'ALL') return 'ALL';
+    const s = String(wh).trim();
+    if (s.startsWith('WH')) return s;
+    const num = parseInt(s, 10);
+    return !isNaN(num) ? `WH0${num}` : s;
+  };
+
   const handleWarehouseChange = (whIdStr: string) => {
-    setSelectedWarehouse(whIdStr);
-    warehouseService.setActiveWarehouseId(whIdStr);
-    window.dispatchEvent(new CustomEvent('smart_wms_warehouse_changed', { detail: whIdStr }));
-    fetchSessions(whIdStr);
+    const norm = normalizeWhCode(whIdStr);
+    setSelectedWarehouse(norm);
+    warehouseService.setActiveWarehouseId(norm);
+    window.dispatchEvent(new CustomEvent('smart_wms_warehouse_changed', { detail: norm }));
+    fetchSessions(norm);
   };
 
   // Lắng nghe sự kiện đổi kho từ Global Header
   useEffect(() => {
     const handleWhChange = (e: any) => {
-      const newWh = e.detail || warehouseService.getActiveWarehouseId() || 'ALL';
+      const raw = e.detail || warehouseService.getActiveWarehouseId() || 'ALL';
+      const newWh = normalizeWhCode(raw);
       setSelectedWarehouse(newWh);
       fetchSessions(newWh);
     };

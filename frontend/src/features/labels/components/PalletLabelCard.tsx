@@ -21,6 +21,19 @@ interface PalletLabelCardProps {
 }
 
 export const PalletLabelCard: React.FC<PalletLabelCardProps> = ({ data, className = '' }) => {
+  if (!data || !data.palletCode) {
+    return (
+      <div
+        className={`bg-white border-2 border-dashed border-slate-200 rounded-xl p-4 flex flex-col items-center justify-center text-center text-xs text-slate-400 ${className}`}
+        style={{ width: '100%', maxWidth: '360px', minHeight: '210px' }}
+      >
+        <Truck className="w-8 h-8 text-slate-300 mb-2" />
+        <p className="font-semibold text-slate-600">Đang tải phiếu kiện Pallet...</p>
+        <p className="text-2xs text-slate-400 mt-0.5">Vui lòng chọn một kiện hàng để xem trước mẫu phiếu</p>
+      </div>
+    );
+  }
+
   const qrPayload = JSON.stringify({
     pallet: data.palletCode,
     order: data.orderCode,

@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useTransition } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { Package, Clock, Layers, ArrowRightLeft, CheckCircle2, AlertCircle, ShieldAlert, Building2, RefreshCw, Ban } from 'lucide-react';
+import { Package, Clock, Layers, ArrowRightLeft, CheckCircle2, AlertCircle, ShieldAlert, Building2, RefreshCw, Ban, Sparkles } from 'lucide-react';
 import { StockItem, StockTransferDto } from '../../labels/types';
 import { StockBalanceTable } from '../components/balance/StockBalanceTable';
 import { StockTransferHistoryTable } from '../components/balance/StockTransferHistoryTable';
@@ -13,6 +13,7 @@ import { OutboundStock } from '../../outbound/types';
 import { WarehouseClosingBalances } from '../components/WarehouseClosingBalances';
 
 import { warehouseService, DEFAULT_WAREHOUSES } from '../../masterdata/services/warehouseService';
+import { GeminiAssistantDrawer } from '../../smartquery/components/GeminiAssistantDrawer';
 
 export const InventoryBalancePage: React.FC = () => {
   const navigate = useNavigate();
@@ -88,6 +89,9 @@ export const InventoryBalancePage: React.FC = () => {
   const [activeLedgerEntry, setActiveLedgerEntry] = useState<LedgerEntryData | null>(null);
   const [showLedgerModal, setShowLedgerModal] = useState(false);
 
+  // Drawer Trợ lý Gemini AI phân tích tồn kho & ngoại lệ
+  const [showGeminiDrawer, setShowGeminiDrawer] = useState(false);
+
   const normalizeWarehouseCode = (wh?: string | number): string => {
     if (!wh || wh === 'ALL') return 'ALL';
     const s = String(wh).trim();
@@ -99,15 +103,20 @@ export const InventoryBalancePage: React.FC = () => {
     return s;
   };
 
-  const getTargetWhId = (whStr?: string | number): number | undefined => {
-    if (!whStr || whStr === 'ALL') return undefined;
+  const getTargetWhId = (whStr?: string | number): number | null => {
+    if (!whStr || whStr === 'ALL') return null;
     const match = String(whStr).match(/\d+/);
-    return match ? parseInt(match[0], 10) : undefined;
+    return match ? parseInt(match[0], 10) : null;
   };
 
   const currentWhId = getTargetWhId(selectedWarehouse);
+  const resolveWhId = (explicitWhId?: number | null): number | undefined => {
+    const resolved = explicitWhId === undefined ? currentWhId : explicitWhId;
+    return resolved === null ? undefined : resolved;
+  };
 
-  const loadStockData = (whId = currentWhId) => {
+  const loadStockData = (explicitWhId?: number | null) => {
+    const whId = resolveWhId(explicitWhId);
     setLoadingStocks(true);
     Promise.all([inventoryService.getInventoryBalances(whId), inventoryService.getClosingBalances(whId)])
       .then(([data, balances]) => {
@@ -121,7 +130,8 @@ export const InventoryBalancePage: React.FC = () => {
       .finally(() => setLoadingStocks(false));
   };
 
-  const loadAlertData = (whId = currentWhId) => {
+  const loadAlertData = (explicitWhId?: number | null) => {
+    const whId = resolveWhId(explicitWhId);
     setLoadingAlerts(true);
     setErrorAlerts(false);
     Promise.all([
@@ -141,7 +151,8 @@ export const InventoryBalancePage: React.FC = () => {
       .finally(() => setLoadingAlerts(false));
   };
 
-  const loadLedgers = (whId = currentWhId) => {
+  const loadLedgers = (explicitWhId?: number | null) => {
+    const whId = resolveWhId(explicitWhId);
     inventoryService
       .getRecentLedger({ warehouseId: whId })
       .then(setLedgers)
@@ -198,7 +209,7 @@ export const InventoryBalancePage: React.FC = () => {
   };
 
   const handleKpiCardClick = (filter: 'ALL' | 'RESERVED' | 'BLOCKED' | 'AVAILABLE') => {
-    setKpiFilter(filter);
+    setKpiFilter((prev) => (prev === filter && filter !== 'ALL' ? 'ALL' : filter));
     setActiveTab('balance');
   };
 
@@ -376,6 +387,17 @@ export const InventoryBalancePage: React.FC = () => {
             <RefreshCw className={`w-3.5 h-3.5 ${loadingStocks ? 'animate-spin' : ''}`} />
           </button>
 
+          {/* Nút Trợ Lý Gemini AI Phân Tích Tồn Kho */}
+          <button
+            type="button"
+            onClick={() => setShowGeminiDrawer(true)}
+            title="Hỏi Kora AI giải thích tồn khả dụng, hàng giữ chỗ SO và lô hết hạn/QC Hold"
+            className="inline-flex items-center gap-1.5 px-3 py-2.5 rounded-xl bg-white hover:bg-blue-50 text-blue-700 border border-blue-200 hover:border-blue-400 transition-all text-xs font-bold cursor-pointer shadow-[0_1px_2px_rgba(15,23,42,0.04)]"
+          >
+            <Sparkles className="w-3.5 h-3.5 text-blue-600" />
+            <span>Kora Giải Thích Kho</span>
+          </button>
+
           <div className="hidden lg:flex items-center gap-1 text-[11px] font-medium text-slate-500 bg-slate-50 px-2.5 py-2 rounded-lg border border-slate-200">
             <Clock className="w-3.5 h-3.5 text-slate-400" />
             <span>Cập nhật {lastUpdatedTime}</span>
@@ -386,12 +408,10 @@ export const InventoryBalancePage: React.FC = () => {
       {/* 4 Thẻ Chỉ Số Vận Hành Tồn Kho - Bấm trực tiếp để lọc dữ liệu */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3.5">
         {/* Card 1: Hàng Tồn Vật Lý */}
-        <div
-          role="button"
-          tabIndex={0}
+        <button
+          type="button"
           onClick={() => handleKpiCardClick('ALL')}
-          onKeyDown={(e) => (e.key === 'Enter' || e.key === ' ') && handleKpiCardClick('ALL')}
-          className={`p-4 sm:p-5 rounded-2xl border transition-all duration-200 cursor-pointer text-left select-none group relative ${
+          className={`w-full p-4 sm:p-5 rounded-2xl border transition-all duration-200 cursor-pointer text-left select-none group relative ${
             activeTab === 'balance' && kpiFilter === 'ALL'
               ? 'bg-blue-50/60 border-blue-600 ring-2 ring-blue-600/30 shadow-md'
               : 'bg-white border-slate-200/90 hover:border-blue-300 hover:shadow-sm'
@@ -412,15 +432,13 @@ export const InventoryBalancePage: React.FC = () => {
           <div className="mt-2 text-xs text-slate-500 font-medium">
             {stocks.length} dòng tồn • {uniqueLocationsCount} vị trí ô kệ
           </div>
-        </div>
+        </button>
 
         {/* Card 2: Hàng Đang Giữ Chỗ Cho Đơn */}
-        <div
-          role="button"
-          tabIndex={0}
+        <button
+          type="button"
           onClick={() => handleKpiCardClick('RESERVED')}
-          onKeyDown={(e) => (e.key === 'Enter' || e.key === ' ') && handleKpiCardClick('RESERVED')}
-          className={`p-4 sm:p-5 rounded-2xl border transition-all duration-200 cursor-pointer text-left select-none group relative ${
+          className={`w-full p-4 sm:p-5 rounded-2xl border transition-all duration-200 cursor-pointer text-left select-none group relative ${
             activeTab === 'balance' && kpiFilter === 'RESERVED'
               ? 'bg-amber-50 border-amber-600 ring-2 ring-amber-600/30 shadow-md'
               : 'bg-white border-slate-200/90 hover:border-amber-300 hover:shadow-sm'
@@ -441,15 +459,13 @@ export const InventoryBalancePage: React.FC = () => {
           <div className="mt-2 text-xs text-amber-700 font-medium">
             Cấp phát giữ chỗ theo đơn xuất hàng
           </div>
-        </div>
+        </button>
 
         {/* Card 3: Khóa Xuất & Cách Ly */}
-        <div
-          role="button"
-          tabIndex={0}
+        <button
+          type="button"
           onClick={() => handleKpiCardClick('BLOCKED')}
-          onKeyDown={(e) => (e.key === 'Enter' || e.key === ' ') && handleKpiCardClick('BLOCKED')}
-          className={`p-4 sm:p-5 rounded-2xl border transition-all duration-200 cursor-pointer text-left select-none group relative ${
+          className={`w-full p-4 sm:p-5 rounded-2xl border transition-all duration-200 cursor-pointer text-left select-none group relative ${
             activeTab === 'balance' && kpiFilter === 'BLOCKED'
               ? 'bg-rose-50 border-rose-600 ring-2 ring-rose-600/30 shadow-md'
               : 'bg-white border-slate-200/90 hover:border-rose-300 hover:shadow-sm'
@@ -470,15 +486,13 @@ export const InventoryBalancePage: React.FC = () => {
           <div className="mt-2 text-xs text-rose-600 font-medium">
             {totalUnavailable > 0 ? 'Lô hết hạn & cách ly chờ xử lý' : 'Không có hàng bị khóa'}
           </div>
-        </div>
+        </button>
 
         {/* Card 4: Tồn Khả Dụng */}
-        <div
-          role="button"
-          tabIndex={0}
+        <button
+          type="button"
           onClick={() => handleKpiCardClick('AVAILABLE')}
-          onKeyDown={(e) => (e.key === 'Enter' || e.key === ' ') && handleKpiCardClick('AVAILABLE')}
-          className={`p-4 sm:p-5 rounded-2xl border transition-all duration-200 cursor-pointer text-left select-none group relative ${
+          className={`w-full p-4 sm:p-5 rounded-2xl border transition-all duration-200 cursor-pointer text-left select-none group relative ${
             activeTab === 'balance' && kpiFilter === 'AVAILABLE'
               ? 'bg-emerald-50 border-emerald-600 ring-2 ring-emerald-600/30 shadow-md'
               : 'bg-white border-slate-200/90 hover:border-emerald-300 hover:shadow-sm'
@@ -499,7 +513,7 @@ export const InventoryBalancePage: React.FC = () => {
           <div className="mt-2 text-xs text-emerald-700 font-medium">
             Sẵn sàng cấp phát cho đơn mới
           </div>
-        </div>
+        </button>
       </div>
 
       {/* Horizontal Tabs */}
@@ -735,6 +749,24 @@ export const InventoryBalancePage: React.FC = () => {
           onClose={() => setShowLedgerModal(false)}
         />
       )}
+
+      {/* Drawer Trợ Lý Gemini AI Phân Tích Tồn Kho */}
+      <GeminiAssistantDrawer
+        isOpen={showGeminiDrawer}
+        onClose={() => setShowGeminiDrawer(false)}
+        context={{
+          title: 'Kora AI — Giải Thích Tồn Kho & Ngoại Lệ',
+          warehouseCode: normalizeWarehouseCode(selectedWarehouse),
+          initialQuestion:
+            activeTab === 'alerts'
+              ? `Phân tích các lô hàng hết hạn, cận hạn, QC Hold và SKU thiếu tồn tại ${
+                  normalizeWarehouseCode(selectedWarehouse) === 'ALL'
+                    ? 'các kho được phân quyền'
+                    : normalizeWarehouseCode(selectedWarehouse)
+                }.`
+              : undefined,
+        }}
+      />
     </div>
   );
 };

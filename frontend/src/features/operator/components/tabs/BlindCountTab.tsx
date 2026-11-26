@@ -260,7 +260,15 @@ export const BlindCountTab: React.FC<BlindCountTabProps> = ({
                       : 'bg-indigo-100 text-indigo-800'
                   }`}
                 >
-                  {currentAudit.status}
+                  {currentAudit.status === 'IN_PROGRESS'
+                    ? 'Đang kiểm kê'
+                    : currentAudit.status === 'PENDING'
+                    ? 'Chờ kiểm kê'
+                    : currentAudit.status === 'COMPLETED'
+                    ? 'Chờ duyệt'
+                    : currentAudit.status === 'APPROVED'
+                    ? 'Đã duyệt'
+                    : currentAudit.status}
                 </span>
               )}
             </div>
@@ -280,11 +288,11 @@ export const BlindCountTab: React.FC<BlindCountTabProps> = ({
                   setSelectedItemId(null);
                 }
               }}
-              className="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-xl text-xs font-bold text-slate-800 focus:outline-none focus:border-indigo-500"
+              className="w-full px-3 py-2.5 min-h-[42px] bg-slate-50 border border-slate-300 rounded-xl text-xs font-bold text-slate-800 focus:outline-none focus:border-indigo-500"
             >
               {auditSessions.map((a) => (
                 <option key={a.id} value={a.id}>
-                  {a.auditCode} ({a.status}) — {a.notes || 'Kiểm kê định kỳ'}
+                  {a.auditCode} — {a.notes || 'Kiểm kê định kỳ'}
                 </option>
               ))}
             </select>
@@ -470,35 +478,35 @@ export const BlindCountTab: React.FC<BlindCountTabProps> = ({
                     <button
                       type="button"
                       onClick={() => handleQuickQtyAdjust(-5)}
-                      className="py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg text-xs font-bold transition cursor-pointer"
+                      className="py-2.5 min-h-[42px] bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg text-xs font-bold transition cursor-pointer"
                     >
                       -5
                     </button>
                     <button
                       type="button"
                       onClick={() => handleQuickQtyAdjust(-1)}
-                      className="py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg text-xs font-bold transition cursor-pointer"
+                      className="py-2.5 min-h-[42px] bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg text-xs font-bold transition cursor-pointer"
                     >
                       -1
                     </button>
                     <button
                       type="button"
                       onClick={() => handleQuickQtyAdjust(+1)}
-                      className="py-1.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-200 rounded-lg text-xs font-bold transition cursor-pointer"
+                      className="py-2.5 min-h-[42px] bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-200 rounded-lg text-xs font-bold transition cursor-pointer"
                     >
                       +1
                     </button>
                     <button
                       type="button"
                       onClick={() => handleQuickQtyAdjust(+5)}
-                      className="py-1.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-200 rounded-lg text-xs font-bold transition cursor-pointer"
+                      className="py-2.5 min-h-[42px] bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-200 rounded-lg text-xs font-bold transition cursor-pointer"
                     >
                       +5
                     </button>
                     <button
                       type="button"
                       onClick={() => handleQuickQtyAdjust(+10)}
-                      className="py-1.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-200 rounded-lg text-xs font-bold transition cursor-pointer"
+                      className="py-2.5 min-h-[42px] bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-200 rounded-lg text-xs font-bold transition cursor-pointer"
                     >
                       +10
                     </button>

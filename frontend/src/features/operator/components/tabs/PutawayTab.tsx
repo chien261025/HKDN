@@ -85,7 +85,7 @@ export const PutawayTab: React.FC<PutawayTabProps> = ({
     if (scannedCode) {
       soundEffects.playSuccessBeep();
       setScannedBin(scannedCode);
-      setFeedback({ msg: `[PDA] Đã ghi nhận mã ô kệ: ${scannedCode}`, type: 'success' });
+      setFeedback({ msg: `Đã ghi nhận mã ô kệ: ${scannedCode}`, type: 'success' });
       onClearScannedCode?.();
     }
   }, [scannedCode, onClearScannedCode]);
@@ -244,7 +244,7 @@ export const PutawayTab: React.FC<PutawayTabProps> = ({
           </div>
           <div>
             <h2 className="text-xs font-bold text-slate-900 uppercase tracking-wider">
-              Cất Hàng Lên Ô Kệ (Put-Away)
+              Cất Hàng Lên Ô Kệ
             </h2>
           </div>
         </div>
@@ -348,10 +348,10 @@ export const PutawayTab: React.FC<PutawayTabProps> = ({
                     type="button"
                     disabled={loading}
                     onClick={() => handleRequestSuggestion(task)}
-                    className="flex items-center gap-2 px-4 py-2 bg-indigo-600 hover:bg-indigo-700 active:bg-indigo-800 text-white rounded-xl text-xs font-bold shadow-sm transition-all cursor-pointer"
+                    className="flex items-center gap-2 px-4 py-2.5 min-h-[44px] bg-indigo-600 hover:bg-indigo-700 active:bg-indigo-800 text-white rounded-xl text-xs font-bold shadow-sm transition-all cursor-pointer"
                   >
                     <ArrowRight className="w-4 h-4" />
-                    <span>Gợi Ý Vị Trí Cất Tối Ưu</span>
+                    <span>Gợi Ý Vị Trí Cất Hàng</span>
                   </button>
                 </div>
               </div>

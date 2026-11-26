@@ -50,6 +50,28 @@ public class LocationServiceImpl implements LocationService {
     }
 
     @Override
+    @Transactional
+    public Location updateLocationStatus(Long id, boolean isActive) {
+        Location location = locationRepository.findById(id)
+                .orElseThrow(() -> new BusinessException(ErrorCode.NOT_FOUND, "Không tìm thấy ô kệ với ID: " + id));
+        if (!isActive) {
+            int totalReserved = inventoryRepository.findByLocationId(id).stream()
+                    .filter(inv -> inv.getReservedQty() != null && inv.getReservedQty() > 0)
+                    .mapToInt(com.wms.module.inventory.entity.Inventory::getReservedQty)
+                    .sum();
+            if (totalReserved > 0) {
+                throw new BusinessException(
+                        ErrorCode.BAD_REQUEST,
+                        String.format("Không thể khóa bảo trì ô kệ %s vì đang có %d sản phẩm được giữ cho đơn xuất kho!",
+                                location.getBinBarcode(), totalReserved)
+                );
+            }
+        }
+        location.setIsActive(isActive);
+        return locationRepository.save(location);
+    }
+
+    @Override
     public List<LocationOccupancyDto> getLocationOccupancy() {
         List<Location> locations = locationRepository.findAll();
         List<com.wms.module.inventory.entity.Inventory> inventories = inventoryRepository.findAll();
@@ -164,6 +186,7 @@ public class LocationServiceImpl implements LocationService {
                     .maxWeight(loc.getMaxWeightKg())
                     .currentWeight(currentWeight)
                     .status(status)
+                    .isActive(loc.getIsActive() != null ? loc.getIsActive() : Boolean.TRUE)
                     .productId(productId)
                     .batchId(batchId)
                     .productName(productName)

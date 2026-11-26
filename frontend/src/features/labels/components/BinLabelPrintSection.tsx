@@ -20,96 +20,19 @@ import {
 import { useSearchParams } from 'react-router-dom';
 import { BinLabelCard, BinLabelData } from './BinLabelCard';
 import { apiClient } from '../../../services/api';
+import { locationService } from '../../masterdata/services/locationService';
+import { warehouseService, DEFAULT_WAREHOUSES } from '../../masterdata/services/warehouseService';
+import { WarehouseItem } from '../../masterdata/types';
 import { Pagination } from '../../../components/common';
 
 const PAGE_SIZE = 10;
-
-export const SAMPLE_BIN_LABELS: BinLabelData[] = [
-  {
-    binBarcode: 'WH01-ZA-A01-R01-S01-B01',
-    zoneCode: 'ZONE_A',
-    aisle: 'A01',
-    rack: 'R01',
-    shelf: 'S01',
-    bin: 'B01',
-    maxWeightKg: 500,
-    warehouseId: 1,
-    warehouseCode: 'WH01',
-    warehouseName: 'KHO TỔNG TÂN BÌNH',
-    isActive: true,
-  },
-  {
-    binBarcode: 'WH01-ZA-A01-R01-S02-B02',
-    zoneCode: 'ZONE_A',
-    aisle: 'A01',
-    rack: 'R01',
-    shelf: 'S02',
-    bin: 'B02',
-    maxWeightKg: 300,
-    warehouseId: 1,
-    warehouseCode: 'WH01',
-    warehouseName: 'KHO TỔNG TÂN BÌNH',
-    isActive: true,
-  },
-  {
-    binBarcode: 'WH01-ZA-A01-R02-S01-B03',
-    zoneCode: 'ZONE_A',
-    aisle: 'A01',
-    rack: 'R02',
-    shelf: 'S01',
-    bin: 'B03',
-    maxWeightKg: 500,
-    warehouseId: 1,
-    warehouseCode: 'WH01',
-    warehouseName: 'KHO TỔNG TÂN BÌNH',
-    isActive: true,
-  },
-  {
-    binBarcode: 'WH01-ZA-A02-R01-S01-B04',
-    zoneCode: 'ZONE_A',
-    aisle: 'A02',
-    rack: 'R01',
-    shelf: 'S01',
-    bin: 'B04',
-    maxWeightKg: 500,
-    warehouseId: 1,
-    warehouseCode: 'WH01',
-    warehouseName: 'KHO TỔNG TÂN BÌNH',
-    isActive: true,
-  },
-  {
-    binBarcode: 'WH01-ZB-B01-R01-S01-B05',
-    zoneCode: 'ZONE_B',
-    aisle: 'B01',
-    rack: 'R01',
-    shelf: 'S01',
-    bin: 'B05',
-    maxWeightKg: 200,
-    warehouseId: 1,
-    warehouseCode: 'WH01',
-    warehouseName: 'KHO TỔNG TÂN BÌNH',
-    isActive: true,
-  },
-  {
-    binBarcode: 'WH01-ZB-B01-R01-S02-B06',
-    zoneCode: 'ZONE_B',
-    aisle: 'B01',
-    rack: 'R01',
-    shelf: 'S02',
-    bin: 'B06',
-    maxWeightKg: 200,
-    warehouseId: 1,
-    warehouseCode: 'WH01',
-    warehouseName: 'KHO TỔNG TÂN BÌNH',
-    isActive: true,
-  },
-];
 
 export const BinLabelPrintSection: React.FC = () => {
   const [searchParams] = useSearchParams();
   const targetBinParam = searchParams.get('bin');
 
-  const [binsList, setBinsList] = useState<BinLabelData[]>(SAMPLE_BIN_LABELS);
+  const [binsList, setBinsList] = useState<BinLabelData[]>([]);
+  const [warehouses, setWarehouses] = useState<WarehouseItem[]>(DEFAULT_WAREHOUSES);
   const [selectedWarehouse, setSelectedWarehouse] = useState<string>('ALL');
   const [selectedZone, setSelectedZone] = useState<string>('ALL');
   const [selectedAisle, setSelectedAisle] = useState<string>('ALL');
@@ -123,7 +46,7 @@ export const BinLabelPrintSection: React.FC = () => {
   );
 
   // Tem được chọn để hiển thị trên Live Preview Panel
-  const [previewBinBarcode, setPreviewBinBarcode] = useState<string>('WH01-ZA-A01-R01-S01-B01');
+  const [previewBinBarcode, setPreviewBinBarcode] = useState<string>('');
 
   const [paperFormat, setPaperFormat] = useState<'100x60' | 'A4'>('100x60');
   const [printCopies, setPrintCopies] = useState<number>(1);
@@ -135,14 +58,13 @@ export const BinLabelPrintSection: React.FC = () => {
     const fetchRealLocations = async () => {
       setIsLoading(true);
       try {
-        let locallyLocked: string[] = [];
-        try {
-          const saved = localStorage.getItem('smart_wms_locked_bins');
-          if (saved) locallyLocked = JSON.parse(saved);
-        } catch {}
-
-        const res = await apiClient.get<{ success: boolean; data: any[] }>('/masterdata/locations');
-        if (res.data?.data && res.data.data.length > 0) {
+        const [res, whList] = await Promise.all([
+          apiClient.get<{ success: boolean; data: any[] }>('/masterdata/locations'),
+          warehouseService.getWarehouses(),
+        ]);
+        if (whList.length > 0) setWarehouses(whList);
+        if (res.data?.data && Array.isArray(res.data.data)) {
+          const whById = new Map(whList.map((w) => [Number(w.id), w]));
           const mapped: BinLabelData[] = res.data.data.map((item) => {
             const whId =
               item.warehouseId ||
@@ -153,18 +75,12 @@ export const BinLabelPrintSection: React.FC = () => {
                 : item.binBarcode.startsWith('WH04')
                 ? 4
                 : 1);
-            const whCode = whId === 2 ? 'WH02' : whId === 3 ? 'WH03' : whId === 4 ? 'WH04' : 'WH01';
-            const whName =
-              whId === 2
-                ? 'KHO VSIP BẮC NINH'
-                : whId === 3
-                ? 'KHO ĐÀ NẴNG'
-                : whId === 4
-                ? 'KHO SÓNG THẦN'
-                : 'KHO TỔNG TÂN BÌNH';
+            const matchedWh = whById.get(Number(whId));
+            const whCode = matchedWh?.code || (whId === 2 ? 'WH02' : whId === 3 ? 'WH03' : whId === 4 ? 'WH04' : 'WH01');
+            const whName = (matchedWh?.name || 'KHO VẬN').toUpperCase();
             const isDbInactive = item.isActive === false || item.is_active === 0;
-            const isLocalLocked = locallyLocked.includes(item.binBarcode);
             return {
+              id: item.id,
               binBarcode: item.binBarcode,
               zoneCode: item.zoneCode || 'ZONE_A',
               aisle: item.aisle || 'A01',
@@ -175,7 +91,7 @@ export const BinLabelPrintSection: React.FC = () => {
               warehouseId: whId,
               warehouseCode: whCode,
               warehouseName: whName,
-              isActive: !isDbInactive && !isLocalLocked,
+              isActive: !isDbInactive,
             };
           });
           setBinsList(mapped);
@@ -188,7 +104,7 @@ export const BinLabelPrintSection: React.FC = () => {
           }
         }
       } catch (err) {
-        console.warn('Lỗi khi tải locations từ API, dùng dữ liệu mẫu:', err);
+        console.warn('Lỗi khi tải danh sách ô kệ từ API:', err);
       } finally {
         setIsLoading(false);
       }
@@ -261,29 +177,19 @@ export const BinLabelPrintSection: React.FC = () => {
     setSelectedBins([]);
   };
 
-  // Chuyển đổi trạng thái Khóa / Mở Khóa ô kệ
-  const handleToggleLockBin = (barcode: string) => {
-    setBinsList((prev) => {
-      const updated = prev.map((b) => {
-        if (b.binBarcode === barcode) {
-          const nextActive = b.isActive === false ? true : false;
-          return { ...b, isActive: nextActive };
-        }
-        return b;
-      });
-
-      const locallyLocked = updated.filter((b) => b.isActive === false).map((b) => b.binBarcode);
-      try {
-        localStorage.setItem('smart_wms_locked_bins', JSON.stringify(locallyLocked));
-        window.dispatchEvent(
-          new CustomEvent('smart_wms_bin_status_changed', {
-            detail: { barcode, locked: locallyLocked.includes(barcode) },
-          })
-        );
-      } catch {}
-
-      return updated;
-    });
+  // Chuyển đổi trạng thái Khóa / Mở Khóa ô kệ trên cơ sở dữ liệu
+  const handleToggleLockBin = async (barcode: string) => {
+    const target = binsList.find((b) => b.binBarcode === barcode);
+    if (!target?.id) return;
+    const nextActive = target.isActive === false;
+    try {
+      await locationService.updateLocationStatus(target.id, nextActive);
+      setBinsList((prev) =>
+        prev.map((b) => (b.binBarcode === barcode ? { ...b, isActive: nextActive } : b))
+      );
+    } catch (err: any) {
+      alert(err?.response?.data?.message || err?.message || 'Không thể cập nhật trạng thái ô kệ!');
+    }
   };
 
   // Lệnh in hàng loạt
@@ -348,10 +254,14 @@ export const BinLabelPrintSection: React.FC = () => {
               className="w-full px-2.5 py-1.5 bg-slate-50 border border-slate-300 rounded-xl text-xs font-semibold text-slate-700 focus:border-blue-600 outline-none"
             >
               <option value="ALL">Toàn bộ chi nhánh kho ({binsList.length})</option>
-              <option value="WH01">Kho Tổng Tân Bình (WH01 - 16)</option>
-              <option value="WH02">Kho VSIP Bắc Ninh (WH02 - 6)</option>
-              <option value="WH03">Kho Đà Nẵng (WH03 - 5)</option>
-              <option value="WH04">Kho Sóng Thần (WH04 - 4)</option>
+              {warehouses.map((w) => {
+                const count = binsList.filter((b) => b.warehouseCode === w.code || Number(b.warehouseId) === Number(w.id)).length;
+                return (
+                  <option key={w.code} value={w.code}>
+                    {w.shortName || w.name} ({w.code} - {count})
+                  </option>
+                );
+              })}
             </select>
           </div>
 
@@ -657,7 +567,13 @@ export const BinLabelPrintSection: React.FC = () => {
 
             {/* LIVE PREVIEW CARD (RENDER DUY NHẤT 1 TEM CHUẨN) */}
             <div className="p-3 rounded-xl bg-slate-100/70 border border-slate-200 flex justify-center">
-              <BinLabelCard data={activePreviewData} />
+              {activePreviewData ? (
+                <BinLabelCard data={activePreviewData} />
+              ) : (
+                <div className="py-10 px-4 text-center text-xs text-slate-500">
+                  {isLoading ? 'Đang tải vị trí ô kệ từ máy chủ...' : 'Chưa có ô kệ nào được chọn để hiển thị mẫu tem.'}
+                </div>
+              )}
             </div>
 
             {/* Tùy chọn khổ giấy & số lượng in */}

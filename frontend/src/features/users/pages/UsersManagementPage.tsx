@@ -240,8 +240,7 @@ export const UsersManagementPage: React.FC = () => {
               }`}
             >
               <Smartphone className="w-4 h-4" />
-              <span>Máy Quét PDA & Thiết Bị Tin Cậy</span>
-              <span className="w-2 h-2 rounded-full bg-amber-500 animate-pulse"></span>
+              <span>Mạng Kho & Phiên Thiết Bị</span>
             </button>
           </div>
 
@@ -257,7 +256,7 @@ export const UsersManagementPage: React.FC = () => {
 
       {/* Nội dung Tab */}
       {isAdmin && activeTab === 'DEVICES' ? (
-        <PdaDeviceManagerTab />
+        <PdaDeviceManagerTab users={users} />
       ) : loading ? (
         <div className="bg-white rounded-2xl border border-slate-200 p-12 flex flex-col items-center justify-center gap-3 shadow-xs">
           <Loader2 className="w-8 h-8 text-indigo-600 animate-spin" />

@@ -65,7 +65,7 @@ export const PutawayActiveTaskCard: React.FC<PutawayActiveTaskCardProps> = ({
           )}
         </div>
         <span className="px-2 py-0.5 rounded-full text-xs font-bold bg-indigo-100 text-indigo-800 font-mono">
-          THUẬT TOÁN CHỈ ĐỊNH
+          VỊ TRÍ GỢI Ý
         </span>
       </div>
 

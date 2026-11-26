@@ -151,38 +151,11 @@ export const INITIAL_RBAC_MODULES: RbacModuleItem[] = [
   },
 ];
 
-const RBAC_STORAGE_KEY = 'smart_wms_rbac_matrix_v5';
-
-export const getStoredRbacModules = (): RbacModuleItem[] => {
-  try {
-    const raw = localStorage.getItem(RBAC_STORAGE_KEY);
-    if (raw) {
-      const parsed = JSON.parse(raw);
-      if (Array.isArray(parsed) && parsed.length > 0) {
-        return parsed;
-      }
-    }
-  } catch (e) {
-    console.warn('Lỗi đọc RBAC matrix từ localStorage:', e);
-  }
-  return INITIAL_RBAC_MODULES;
-};
-
-export const saveStoredRbacModules = (modules: RbacModuleItem[]): void => {
-  try {
-    localStorage.setItem(RBAC_STORAGE_KEY, JSON.stringify(modules));
-    window.dispatchEvent(new CustomEvent('smart_wms_rbac_updated', { detail: modules }));
-  } catch (e) {
-    console.error('Lỗi lưu RBAC matrix vào localStorage:', e);
-  }
-};
-
 export const isRouteAllowedForRole = (routePath: string, role?: string): boolean => {
   if (!role) return false;
   const cleanRole = role.toUpperCase();
 
-  const modules = getStoredRbacModules();
-  const targetModule = modules.find((m) => {
+  const targetModule = INITIAL_RBAC_MODULES.find((m) => {
     if (m.desktopRoute === routePath) return true;
     if (routePath === '/labels' && m.desktopRoute === '/layout') return true;
     if (routePath !== '/' && m.desktopRoute !== '/' && routePath.startsWith(m.desktopRoute)) return true;

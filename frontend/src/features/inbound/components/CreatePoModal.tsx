@@ -270,9 +270,15 @@ export const CreatePoModal: React.FC<CreatePoModalProps> = ({ initialWarehouseId
           {/* Danh sách mặt hàng đặt */}
           <div className="space-y-2">
             {supplierProducts.length === 0 && (
-              <p role="alert" className="text-xs text-amber-700 bg-amber-50 p-2 rounded-lg border border-amber-200">
-                Nhà cung cấp này chưa có sản phẩm nào đang hoạt động trong danh mục hàng hóa.
-              </p>
+              <div role="alert" className="text-xs text-amber-800 bg-amber-50 p-2.5 rounded-xl border border-amber-200 flex items-start gap-2 shadow-2xs">
+                <AlertTriangle className="w-4 h-4 text-amber-600 flex-shrink-0 mt-0.5" />
+                <div className="space-y-0.5">
+                  <p className="font-semibold text-amber-900">Nhà cung cấp này chưa có sản phẩm nào trong danh mục hàng hóa.</p>
+                  <p className="text-2xs text-amber-700 leading-relaxed">
+                    Vui lòng đổi sang Nhà cung cấp khác đã có sẵn sản phẩm (như Vinamilk, Samsung, TH True Milk...) hoặc vào mục <strong>Hàng hóa & Danh mục</strong> để tạo sản phẩm cho NCC này trước khi phát hành PO.
+                  </p>
+                </div>
+              </div>
             )}
             <div className="flex items-center justify-between">
               <label className="text-slate-700 font-bold text-xs">
@@ -281,7 +287,13 @@ export const CreatePoModal: React.FC<CreatePoModalProps> = ({ initialWarehouseId
               <button
                 type="button"
                 onClick={handleAddItem}
-                className="flex items-center gap-1 text-blue-600 hover:text-blue-800 font-bold text-xs cursor-pointer"
+                disabled={supplierProducts.length === 0}
+                className={`flex items-center gap-1 font-bold text-xs transition-colors ${
+                  supplierProducts.length === 0
+                    ? 'text-slate-400 cursor-not-allowed opacity-60'
+                    : 'text-blue-600 hover:text-blue-800 cursor-pointer'
+                }`}
+                title={supplierProducts.length === 0 ? 'Nhà cung cấp này chưa có sản phẩm nào để thêm dòng hàng' : 'Thêm dòng hàng mới'}
               >
                 <Plus className="w-3.5 h-3.5" />
                 <span>Thêm dòng hàng</span>
