@@ -10,13 +10,23 @@ export interface SmartQueryResponse {
   diagnosis?: AiDiagnosisResponse;
 }
 
+export interface ChatHistoryTurn {
+  sender: 'user' | 'ai';
+  text: string;
+}
+
 export const smartQueryApi = {
-  chat: async (question: string, warehouseCode?: string): Promise<SmartQueryResponse> => {
+  chat: async (
+    question: string,
+    warehouseCode?: string,
+    history?: ChatHistoryTurn[]
+  ): Promise<SmartQueryResponse> => {
     const response = await apiClient.post<{ data: SmartQueryResponse }>(
       '/smartquery/chat',
       {
         question,
         warehouseCode: warehouseCode && warehouseCode !== 'ALL' ? warehouseCode : undefined,
+        history: history && history.length > 0 ? history : undefined,
       },
       { timeout: 65000 }
     );

@@ -52,7 +52,10 @@ public class GeminiDiagnosticService {
             4. Nếu Tool báo lỗi quyền truy cập kho (FORBIDDEN), phải giải thích rõ ràng người dùng không được cấp quyền ở kho đó.
             5. Khi giải thích thiếu tồn kho hoặc đơn SO chưa xuất được, phải tách rạch ròi 4 thành phần:
                Tồn vật lý (On-hand) = Đang giữ cho đơn khác (Reserved) + Hết hạn/Cách ly/Kệ khóa (Blocked) + Khả dụng (Available).
-            6. Trả lời bằng tiếng Việt súc tích, chuyên nghiệp, nêu đích danh mã chứng từ thật từ Tool (SO-*, BATCH-*, PO-*, Bin-*). KHÔNG dùng cú pháp LaTeX như $\\rightarrow$; dùng dấu mũi tên Unicode `→`.
+               Nếu câu hỏi ở cấp toàn kho (không nêu SKU), dùng số liệu thực tế từ `warehouseStockSummary` và `constrainedSkus` (KHÔNG suy đoán đơn PENDING đang giữ chỗ nếu `totalReservedQty = 0`, và lưu ý ô kệ quá tải KHÔNG bị khóa phân bổ).
+            6. Trả lời bằng tiếng Việt súc tích, chuyên nghiệp, nêu đích danh mã chứng từ thật từ Tool (SO-xxx, BATCH-xxx, PO-xxx, Bin-xxx). KHÔNG dùng ký tự `*` làm wildcard (như `SO-*`) để tránh lỗi định dạng Markdown; KHÔNG dùng cú pháp LaTeX (`$$...$$`, `\\text{...}`, `$\\rightarrow$`); dùng chữ thường và dấu mũi tên Unicode `→`.
+            7. Tuyệt đối KHÔNG hiển thị tên biến kỹ thuật/JSON dạng camelCase (như pendingOutboundOrders, overloadBins, lockedBins, expiringOrExpiredBatches, orderLineItems) trong câu trả lời; luôn diễn đạt bằng thuật ngữ nghiệp vụ tiếng Việt tự nhiên.
+            8. Khi người dùng hỏi danh sách đơn SO PENDING hoặc yêu cầu chẩn đoán đơn đầu tiên, hãy liệt kê các mã từ `pendingOrderCodes` và gọi ngay `getOutboundOrderDiagnosis` cho mã đơn đầu tiên trong cùng lượt. Khi hỏi về PO đang về hoặc hàng chờ cất kệ (Putaway), luôn gọi `getIncomingPipeline` (có thể bỏ trống `sku` để xem toàn kho).
             """;
 
     private final GeminiClient geminiClient;
@@ -77,6 +80,14 @@ public class GeminiDiagnosticService {
 
         String resolvedOrderCode = firstNonBlank(request.orderCode(), extractRegex(SO_PATTERN, request.question()));
         String resolvedSku = firstNonBlank(request.sku(), detectSkuFromQuestion(request.question()));
+        if (resolvedSku == null && resolvedOrderCode == null && request.historyContext() != null && !request.historyContext().isBlank()) {
+            resolvedSku = extractLastRegex(SKU_PATTERN, request.historyContext());
+            if (resolvedSku != null) resolvedSku = resolvedSku.toUpperCase(Locale.ROOT);
+            if (resolvedSku == null) {
+                resolvedOrderCode = extractLastRegex(SO_PATTERN, request.historyContext());
+                if (resolvedOrderCode != null) resolvedOrderCode = resolvedOrderCode.toUpperCase(Locale.ROOT);
+            }
+        }
         Integer resolvedQty = request.requestedQty() != null
                 ? request.requestedQty()
                 : extractRequestedQty(request.question(), resolvedOrderCode, resolvedSku);
@@ -266,14 +277,14 @@ public class GeminiDiagnosticService {
                 ),
                 Map.of(
                         "name", "getIncomingPipeline",
-                        "description", "Kiểm tra đơn nhập kho PO đang chờ hàng về hoặc đang nằm tại cửa Staging chờ Putaway cho SKU.",
+                        "description", "Kiểm tra đơn nhập kho PO đang chờ hàng về hoặc đang nằm tại cửa Staging chờ Putaway (có thể truyền sku hoặc bỏ trống để xem toàn kho).",
                         "parameters", Map.of(
                                 "type", "OBJECT",
                                 "properties", Map.of(
                                         "warehouseCode", Map.of("type", "STRING", "description", "Mã kho (VD: WH01, WH02, WH04)"),
-                                        "sku", Map.of("type", "STRING", "description", "Mã SKU hoặc tên sản phẩm")
+                                        "sku", Map.of("type", "STRING", "description", "Mã SKU hoặc tên sản phẩm (tùy chọn, bỏ trống để quét toàn kho)")
                                 ),
-                                "required", List.of("sku")
+                                "required", List.of()
                         )
                 ),
                 Map.of(
@@ -391,14 +402,27 @@ public class GeminiDiagnosticService {
         return m.find() ? m.group(1) : null;
     }
 
+    private String extractLastRegex(Pattern pattern, String input) {
+        if (input == null || input.isBlank()) return null;
+        Matcher m = pattern.matcher(input);
+        String last = null;
+        while (m.find()) {
+            last = m.group(1);
+        }
+        return last;
+    }
+
     private String firstNonBlank(String a, String b) {
         return (a != null && !a.isBlank()) ? a.trim() : b;
     }
 
     private String buildEffectivePrompt(AiDiagnoseRequest req, String whHint, String orderCode, String sku, Integer reqQty) {
         StringBuilder sb = new StringBuilder();
+        if (req.historyContext() != null && !req.historyContext().isBlank()) {
+            sb.append("[Lịch sử hội thoại gần đây]\n").append(req.historyContext().trim()).append("\n\n");
+        }
         if (req.question() != null && !req.question().isBlank()) {
-            sb.append(req.question().trim());
+            sb.append("[Câu hỏi hiện tại]\n").append(req.question().trim());
         } else {
             sb.append("Hãy phân tích nguyên nhân sự cố kho vận dựa trên ngữ cảnh sau.");
         }

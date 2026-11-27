@@ -85,8 +85,9 @@ public class AiChatService {
 
         // 1. Các câu hỏi chẩn đoán sự cố / nguyên nhân / đơn SO / SKU thiếu tồn -> Gemini Function Calling
         if (isDiagnosticIntent(request.question())) {
+            String historyContext = buildHistoryContext(request.history());
             AiDiagnosisResponse diag = geminiDiagnosticService.diagnose(
-                    new AiDiagnoseRequest(request.question(), effectiveWhHint, null, null, null)
+                    new AiDiagnoseRequest(request.question(), effectiveWhHint, null, null, null, historyContext)
             );
             String toolSummary = diag.toolLogs().isEmpty()
                     ? "-- Gemini Function Calling"
@@ -129,7 +130,11 @@ public class AiChatService {
 
             if (Boolean.FALSE.equals(plan.inScope()) || plan.sql() == null || plan.sql().isBlank()) {
                 String convContext = buildConversationalSystemPrompt(allowedWh);
-                String conversationalReply = geminiClient.generate(convContext, request.question(), false);
+                String historyContext = buildHistoryContext(request.history());
+                String userPrompt = historyContext != null
+                        ? "[Ngữ cảnh hội thoại gần đây]\n" + historyContext + "\n[Câu hỏi hiện tại]\n" + request.question()
+                        : request.question();
+                String conversationalReply = geminiClient.generate(convContext, userPrompt, false);
                 return new AiChatResponse(conversationalReply, null, "VERIFIED", System.currentTimeMillis() - started, List.of(), null);
             }
 
@@ -156,6 +161,22 @@ public class AiChatService {
             throw new BusinessException(ErrorCode.INTERNAL_SERVER_ERROR,
                     "Gemini AI không thể xử lý truy vấn SQL này lúc này: " + ex.getMessage());
         }
+    }
+
+    private String buildHistoryContext(List<AiChatRequest.HistoryTurn> history) {
+        if (history == null || history.isEmpty()) return null;
+        int start = Math.max(0, history.size() - 4);
+        StringBuilder sb = new StringBuilder();
+        for (int i = start; i < history.size(); i++) {
+            AiChatRequest.HistoryTurn turn = history.get(i);
+            if (turn == null || turn.text() == null || turn.text().isBlank()) continue;
+            String role = "user".equalsIgnoreCase(turn.sender()) ? "Người dùng" : "Kora AI";
+            String text = turn.text().trim().replaceAll("\\s+", " ");
+            if (text.length() > 300) text = text.substring(0, 300) + "...";
+            sb.append(role).append(": ").append(text).append("\n");
+        }
+        String res = sb.toString().trim();
+        return res.isEmpty() ? null : res;
     }
 
     private String resolveEffectiveWarehouseHint(String requestWh, String question) {

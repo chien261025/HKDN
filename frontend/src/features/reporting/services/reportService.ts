@@ -18,6 +18,9 @@ export const reportService = {
     const response = await apiClient.get(`/reports/jobs/${id}/download`, { responseType: 'blob' });
     return response.data;
   },
+  async deleteJob(id: string): Promise<void> {
+    await apiClient.delete(`/reports/jobs/${id}`);
+  },
   async downloadTransactionsExcel(month?: string): Promise<Blob> {
     const response = await apiClient.get('/reports/transactions/excel', { params: month ? { month } : undefined, responseType: 'blob' });
     return response.data;

@@ -404,60 +404,101 @@ public class WmsDiagnosticTools {
 
     /**
      * Tool 3: Kiểm tra nguồn hàng từ PO đang chờ nhập hoặc đang nằm ở Staging chờ Putaway.
+     * Nếu không truyền skuOrName, quét toàn bộ PO đang mở / chờ Putaway của kho.
      */
     @Transactional(readOnly = true)
     public ToolBundleResult getIncomingPipeline(String warehouseHint, String skuOrName) {
         Warehouse wh = accessGuard.resolveAndRequireAccess(warehouseHint);
-        Product product = resolveProduct(skuOrName);
-        String unit = product.getUnit() != null ? product.getUnit() : "đơn vị";
+        boolean filterBySku = skuOrName != null && !skuOrName.isBlank();
+        Product targetProduct = filterBySku ? resolveProduct(skuOrName) : null;
+        Map<Long, Product> productMap = filterBySku
+                ? Map.of(targetProduct.getId(), targetProduct)
+                : productRepository.findAll().stream().collect(Collectors.toMap(Product::getId, p -> p));
 
         List<InboundOrder> orders = inboundOrderRepository.findByWarehouseIdOrderByCreatedAtDesc(wh.getId());
         List<DiagnosisEvidence> evidences = new ArrayList<>();
         List<Map<String, Object>> incomingItems = new ArrayList<>();
+        Set<String> pendingPoCodes = new LinkedHashSet<>();
+        Set<String> pendingPutawayCodes = new LinkedHashSet<>();
 
         for (InboundOrder po : orders) {
-            if ("STOCKED".equalsIgnoreCase(po.getStatus()) || "CANCELLED".equalsIgnoreCase(po.getStatus())) {
+            String st = po.getStatus() != null ? po.getStatus().toUpperCase(Locale.ROOT) : "";
+            if (Set.of("STOCKED", "CANCELLED", "CLOSED_NO_STOCK", "SHORT_CLOSED").contains(st)) {
                 continue;
             }
             if (po.getItems() == null) continue;
             for (InboundOrderItem it : po.getItems()) {
-                if (!product.getId().equals(it.getProductId())) continue;
+                if (filterBySku && !targetProduct.getId().equals(it.getProductId())) continue;
+                Product p = productMap.get(it.getProductId());
+                String sku = p != null ? p.getSku() : ("SP#" + it.getProductId());
+                String unit = (p != null && p.getUnit() != null) ? p.getUnit() : "đơn vị";
                 int expected = it.getExpectedQty() != null ? it.getExpectedQty() : 0;
                 int pendingPutaway = Math.max(0, it.getRemainingQty());
-                int qtyToReport = "RECEIVED".equalsIgnoreCase(po.getStatus()) ? pendingPutaway : expected;
-                if (qtyToReport <= 0 && "RECEIVED".equalsIgnoreCase(po.getStatus())) continue;
+                int qtyToReport = "RECEIVED".equals(st) ? pendingPutaway : expected;
+                if ("RECEIVED".equals(st) && qtyToReport <= 0) continue;
 
-                String stageLabel = "RECEIVED".equalsIgnoreCase(po.getStatus())
+                if ("RECEIVED".equals(st)) {
+                    pendingPutawayCodes.add(po.getOrderCode());
+                } else {
+                    pendingPoCodes.add(po.getOrderCode());
+                }
+
+                String stageLabel = "RECEIVED".equals(st)
                         ? "Đã nhận tại Staging — Chờ Putaway lên kệ"
-                        : "Đơn PO đang chờ hàng về kho (" + po.getStatus() + ")";
-                evidences.add(new DiagnosisEvidence(
-                        "INCOMING_PO",
-                        po.getOrderCode(),
-                        qtyToReport,
-                        po.getStatus(),
-                        String.format("%s %s (%s): %d %s.", po.getOrderCode(), stageLabel, product.getSku(), qtyToReport, unit),
-                        "/inbound"
-                ));
-                incomingItems.add(Map.of(
-                        "poCode", po.getOrderCode(),
-                        "status", po.getStatus(),
-                        "qty", qtyToReport
-                ));
+                        : "Đơn PO đang chờ hàng về kho (" + st + ")";
+                if (evidences.size() < 25) {
+                    evidences.add(new DiagnosisEvidence(
+                            "INCOMING_PO",
+                            po.getOrderCode(),
+                            qtyToReport,
+                            st,
+                            String.format("%s %s (%s): %d %s.", po.getOrderCode(), stageLabel, sku, qtyToReport, unit),
+                            "/inbound"
+                    ));
+                }
+                if (incomingItems.size() < 30) {
+                    Map<String, Object> itemMap = new LinkedHashMap<>();
+                    itemMap.put("poCode", po.getOrderCode());
+                    itemMap.put("status", st);
+                    itemMap.put("stage", "RECEIVED".equals(st) ? "CHO_PUTAWAY" : "DANG_VE_KHO");
+                    itemMap.put("sku", sku);
+                    itemMap.put("productName", p != null ? p.getName() : sku);
+                    itemMap.put("qty", qtyToReport);
+                    itemMap.put("unit", unit);
+                    incomingItems.add(itemMap);
+                }
             }
         }
 
         Map<String, Object> raw = new LinkedHashMap<>();
         raw.put("warehouseCode", wh.getCode());
-        raw.put("sku", product.getSku());
+        raw.put("warehouseName", wh.getName());
+        if (targetProduct != null) {
+            raw.put("sku", targetProduct.getSku());
+        }
+        raw.put("pendingArrivalOrderCount", pendingPoCodes.size());
+        raw.put("pendingPutawayOrderCount", pendingPutawayCodes.size());
+        raw.put("pendingArrivalPoCodes", new ArrayList<>(pendingPoCodes));
+        raw.put("pendingPutawayPoCodes", new ArrayList<>(pendingPutawayCodes));
         raw.put("incomingItems", incomingItems);
+
+        List<String> recs = new ArrayList<>();
+        if (incomingItems.isEmpty()) {
+            recs.add("Hiện chưa có đơn nhập PO đang về hoặc hàng chờ cất lên kệ (Putaway) tại " + wh.getCode() + ".");
+        } else {
+            if (!pendingPutawayCodes.isEmpty()) {
+                recs.add(String.format("Có %d đơn PO đã nhận hàng tại Staging chờ Putaway lên kệ — ưu tiên cất kệ sớm để tăng tồn khả dụng.", pendingPutawayCodes.size()));
+            }
+            if (!pendingPoCodes.isEmpty()) {
+                recs.add(String.format("Có %d đơn PO đang chờ hàng về kho — theo dõi lịch giao hàng để chuẩn bị ô kệ tiếp nhận.", pendingPoCodes.size()));
+            }
+        }
 
         return new ToolBundleResult(
                 wh,
                 null,
                 evidences,
-                incomingItems.isEmpty()
-                        ? List.of("Hiện chưa có đơn nhập PO mở nào chứa SKU này tại " + wh.getCode() + ".")
-                        : List.of("Hoàn tất bước cất hàng lên kệ (Putaway) cho các PO đang chờ để bổ sung tồn khả dụng."),
+                recs,
                 List.of(new ActionLink("Xem Đơn Nhập Kho (/inbound)", "/inbound", "primary")),
                 raw
         );
@@ -583,6 +624,66 @@ public class WmsDiagnosticTools {
         raw.put("lockedBins", lockedCount);
         raw.put("expiringOrExpiredBatches", expiringOrExpiredCount);
         raw.put("pendingOutboundOrders", pendingOrders.size());
+        raw.put("pendingOrderCodes", pendingOrders.stream()
+                .limit(15)
+                .map(so -> Map.of(
+                        "orderCode", so.getOrderCode(),
+                        "customerName", so.getCustomerName() != null ? so.getCustomerName() : "",
+                        "requestedQty", so.getItems() != null
+                                ? so.getItems().stream().mapToInt(i -> i.getRequestedQty() != null ? i.getRequestedQty() : 0).sum()
+                                : 0
+                ))
+                .toList());
+
+        int totalOnHand = 0;
+        int totalReserved = 0;
+        int totalBlocked = 0;
+        Map<String, int[]> skuStats = new LinkedHashMap<>();
+        for (Location loc : locations) {
+            boolean binLocked = !Boolean.TRUE.equals(loc.getIsActive());
+            for (Inventory inv : inventoryRepository.findByLocationId(loc.getId())) {
+                int oh = inv.getOnHandQty() != null ? inv.getOnHandQty() : 0;
+                if (oh <= 0) continue;
+                int res = inv.getReservedQty() != null ? inv.getReservedQty() : 0;
+                ProductBatch b = inv.getBatchId() != null ? batchMap.get(inv.getBatchId()) : null;
+                boolean expired = b != null && b.getExpiryDate() != null && b.getExpiryDate().isBefore(today);
+                boolean quarantine = b != null && b.getStatus() != null && !"ACTIVE".equalsIgnoreCase(b.getStatus());
+                boolean isBlocked = binLocked || expired || quarantine || (loc.getZoneCode() != null && loc.getZoneCode().toUpperCase(Locale.ROOT).contains("QUA"));
+                int blk = isBlocked ? Math.max(0, oh - res) : 0;
+                totalOnHand += oh;
+                totalReserved += res;
+                totalBlocked += blk;
+                Product p = productMap.get(inv.getProductId());
+                String skuKey = p != null ? p.getSku() : ("SP#" + inv.getProductId());
+                int[] st = skuStats.computeIfAbsent(skuKey, k -> new int[3]);
+                st[0] += oh;
+                st[1] += res;
+                st[2] += blk;
+            }
+        }
+        List<Map<String, Object>> constrainedSkus = skuStats.entrySet().stream()
+                .filter(e -> e.getValue()[1] > 0 || e.getValue()[2] > 0)
+                .limit(10)
+                .map(e -> {
+                    int oh = e.getValue()[0];
+                    int res = e.getValue()[1];
+                    int blk = e.getValue()[2];
+                    Map<String, Object> m = new LinkedHashMap<>();
+                    m.put("sku", e.getKey());
+                    m.put("onHandQty", oh);
+                    m.put("reservedQty", res);
+                    m.put("blockedQty", blk);
+                    m.put("availableQty", Math.max(0, oh - res - blk));
+                    return m;
+                })
+                .toList();
+        raw.put("warehouseStockSummary", Map.of(
+                "totalOnHandQty", totalOnHand,
+                "totalReservedQty", totalReserved,
+                "totalBlockedQty", totalBlocked,
+                "totalAvailableQty", Math.max(0, totalOnHand - totalReserved - totalBlocked),
+                "constrainedSkus", constrainedSkus
+        ));
 
         return new ToolBundleResult(
                 wh,

@@ -16,6 +16,7 @@ interface ReportsHeaderProps {
   reportPeriod?: string;
   onOpenAssistant?: () => void;
   onRefresh?: () => void;
+  isRefreshing?: boolean;
 }
 
 const formatReportPeriod = (period?: string) => {
@@ -31,6 +32,7 @@ export const ReportsHeader: React.FC<ReportsHeaderProps> = ({
   reportPeriod,
   onOpenAssistant,
   onRefresh,
+  isRefreshing = false,
 }) => {
   return (
     <section className="relative overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm">
@@ -77,7 +79,7 @@ export const ReportsHeader: React.FC<ReportsHeaderProps> = ({
 
           {onOpenAssistant && <button type="button" onClick={onOpenAssistant} className="inline-flex h-11 items-center justify-center gap-2 rounded-2xl bg-indigo-600 px-3.5 text-sm font-semibold text-white shadow-sm transition hover:bg-indigo-700" title="Mở trợ lý Kora AI"><MessageCircle className="h-4 w-4" /><span>Hỏi Kora</span></button>}
 
-          {onRefresh && <button type="button" onClick={onRefresh} className="inline-flex h-11 items-center justify-center gap-2 rounded-2xl border border-slate-200 bg-white px-3.5 text-sm font-semibold text-slate-600 shadow-sm transition hover:border-slate-300 hover:bg-slate-50 hover:text-slate-950" title="Làm mới trạng thái báo cáo"><RefreshCw className="h-4 w-4" /><span className="sm:hidden">Làm mới</span></button>}
+          {onRefresh && <button type="button" onClick={onRefresh} disabled={isRefreshing} className="inline-flex h-11 items-center justify-center gap-2 rounded-2xl border border-slate-200 bg-white px-3.5 text-sm font-semibold text-slate-600 shadow-sm transition hover:border-slate-300 hover:bg-slate-50 hover:text-slate-950 disabled:opacity-60 cursor-pointer" title="Làm mới trạng thái báo cáo"><RefreshCw className={`h-4 w-4 ${isRefreshing ? 'animate-spin text-blue-600' : ''}`} /><span className="sm:hidden">Làm mới</span></button>}
         </div>
       </div>
     </section>

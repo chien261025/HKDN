@@ -8,7 +8,7 @@ import {
   ShieldCheck,
   X,
 } from 'lucide-react';
-import { AiDiagnoseRequest, AiDiagnosisResponse } from '../types';
+import { AiDiagnoseRequest, AiDiagnosisResponse, ChatMessage } from '../types';
 import { smartQueryApi } from '../services/smartQueryApi';
 import { AiDiagnosisCard } from './AiDiagnosisCard';
 import { KoraAvatar } from './KoraAvatar';
@@ -184,6 +184,47 @@ export const GeminiAssistantDrawer: React.FC<GeminiAssistantDrawerProps> = ({
   };
 
   const handleNavigate = (url: string) => {
+    if (url === '/smartquery' && entries.length > 0) {
+      const now = new Date().toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' });
+      const handoffMessages: ChatMessage[] = [];
+      entries.forEach((entry, idx) => {
+        handoffMessages.push({
+          id: `handoff-u-${idx}-${Date.now()}`,
+          sender: 'user',
+          timestamp: now,
+          text: entry.question,
+        });
+        if (entry.diagnosis) {
+          handoffMessages.push({
+            id: `handoff-a-${idx}-${Date.now()}`,
+            sender: 'ai',
+            timestamp: now,
+            text: entry.diagnosis.answer,
+            astStatus: 'VERIFIED',
+            executionTimeMs: entry.diagnosis.executionTimeMs,
+            diagnosis: entry.diagnosis,
+          });
+        } else if (entry.error) {
+          handoffMessages.push({
+            id: `handoff-e-${idx}-${Date.now()}`,
+            sender: 'ai',
+            timestamp: now,
+            text: entry.error,
+          });
+        }
+      });
+      try {
+        sessionStorage.setItem(
+          'kora_ai_handoff_session_v1',
+          JSON.stringify({
+            warehouseCode: normalizedWh || 'ALL',
+            messages: handoffMessages,
+          })
+        );
+      } catch {
+        // Ignore storage errors
+      }
+    }
     onClose();
     navigate(url);
   };

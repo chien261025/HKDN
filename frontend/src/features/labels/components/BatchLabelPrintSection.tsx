@@ -379,6 +379,12 @@ export const BatchLabelPrintSection: React.FC = () => {
     });
   }, [batchesList, selectedWarehouse, selectedZone, selectedFefoStatus, searchQuery]);
 
+  useEffect(() => {
+    if (filteredBatches.length > 0 && !filteredBatches.some((b) => b.batchNumber === previewBatchNumber)) {
+      setPreviewBatchNumber(filteredBatches[0].batchNumber);
+    }
+  }, [filteredBatches, previewBatchNumber]);
+
   const totalPages = Math.max(1, Math.ceil(filteredBatches.length / PAGE_SIZE));
   const visibleBatches = filteredBatches.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE);
 
@@ -628,7 +634,7 @@ export const BatchLabelPrintSection: React.FC = () => {
 
                       return (
                         <tr
-                          key={row.batchNumber}
+                          key={row.id}
                           onClick={() => setPreviewBatchNumber(row.batchNumber)}
                           className={`transition-colors cursor-pointer ${
                             isPreviewing

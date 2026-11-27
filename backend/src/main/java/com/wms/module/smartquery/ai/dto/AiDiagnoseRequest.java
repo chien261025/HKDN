@@ -12,6 +12,11 @@ public record AiDiagnoseRequest(
         String warehouseCode,
         String orderCode,
         String sku,
-        Integer requestedQty
-) {}
+        Integer requestedQty,
+        String historyContext
+) {
+    public AiDiagnoseRequest(String question, String warehouseCode, String orderCode, String sku, Integer requestedQty) {
+        this(question, warehouseCode, orderCode, sku, requestedQty, null);
+    }
+}
 

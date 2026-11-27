@@ -99,7 +99,7 @@ export const CustomLabelPrintSection: React.FC = () => {
               productName: item.productName,
               sku: item.sku,
               totalQuantity: qty,
-              unit: `${qty} ${item.unit || 'Kiện'}`,
+              unit: item.unit || 'Kiện',
               grossWeightKg: Math.round(qty * unitWeight * 10) / 10,
               destinationLocation: matchedLoc?.barcode || `${whCode}-STAGING`,
               warehouseCode: whCode,
@@ -442,7 +442,7 @@ export const CustomLabelPrintSection: React.FC = () => {
                               {row.productName}
                             </div>
                             <div className="text-[10px] text-slate-400 font-mono mt-0.5">
-                              {row.unit}
+                              {row.totalQuantity} {row.unit}
                             </div>
                           </td>
 

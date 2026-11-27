@@ -12,7 +12,6 @@ export const getStoredManagerMeta = (): Record<string, { managerName: string; ma
       'WH02': { managerName: 'Quản Trị Viên 1', managerUsername: 'admin1', managerPhone: '0900 000 004', managerId: 4 },
       'WH03': { managerName: 'Nguyễn Quản Trị', managerUsername: 'admin', managerPhone: '0900 000 001', managerId: 1 },
       'WH04': { managerName: 'Trần Trưởng Kho', managerUsername: 'manager01', managerPhone: '0900 000 002', managerId: 2 },
-      'WH0': { managerName: 'Khánh Kelvin', managerUsername: 'khanhkelvin', managerPhone: '0908000001', managerId: 105 },
       'WH05': { managerName: 'Khánh Kelvin', managerUsername: 'khanhkelvin', managerPhone: '0908000001', managerId: 105 },
     };
   } catch {

@@ -33,7 +33,9 @@ export const BinLabelPrintSection: React.FC = () => {
 
   const [binsList, setBinsList] = useState<BinLabelData[]>([]);
   const [warehouses, setWarehouses] = useState<WarehouseItem[]>(DEFAULT_WAREHOUSES);
-  const [selectedWarehouse, setSelectedWarehouse] = useState<string>('ALL');
+  const [selectedWarehouse, setSelectedWarehouse] = useState<string>(
+    () => (targetBinParam ? 'ALL' : warehouseService.getActiveWarehouseId() || 'ALL')
+  );
   const [selectedZone, setSelectedZone] = useState<string>('ALL');
   const [selectedAisle, setSelectedAisle] = useState<string>('ALL');
   const [selectedStatus, setSelectedStatus] = useState<'ALL' | 'ACTIVE' | 'LOCKED'>('ALL');
@@ -112,6 +114,16 @@ export const BinLabelPrintSection: React.FC = () => {
     fetchRealLocations();
   }, [targetBinParam]);
 
+  // Đồng bộ kho khi đổi trên Global Header
+  useEffect(() => {
+    const onWhChanged = (e: Event) => {
+      const custom = e as CustomEvent<string>;
+      setSelectedWarehouse(custom.detail || warehouseService.getActiveWarehouseId() || 'ALL');
+    };
+    window.addEventListener('smart_wms_warehouse_changed', onWhChanged);
+    return () => window.removeEventListener('smart_wms_warehouse_changed', onWhChanged);
+  }, []);
+
   // Danh sách các Dãy có trong danh sách hiện tại để đưa vào bộ lọc Dãy
   const availableAisles = useMemo(() => {
     return Array.from(new Set(binsList.map((b) => b.aisle).filter(Boolean))).sort();
@@ -140,6 +152,12 @@ export const BinLabelPrintSection: React.FC = () => {
       return matchWarehouse && matchZone && matchAisle && matchStatus && matchQuery;
     });
   }, [binsList, selectedWarehouse, selectedZone, selectedAisle, selectedStatus, searchQuery]);
+
+  useEffect(() => {
+    if (filteredLabels.length > 0 && !filteredLabels.some((b) => b.binBarcode === previewBinBarcode)) {
+      setPreviewBinBarcode(filteredLabels[0].binBarcode);
+    }
+  }, [filteredLabels, previewBinBarcode]);
 
   const totalPages = Math.max(1, Math.ceil(filteredLabels.length / PAGE_SIZE));
   const visibleLabels = filteredLabels.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE);
@@ -556,12 +574,16 @@ export const BinLabelPrintSection: React.FC = () => {
                     Xem Trước Mẫu Tem Ô Kệ
                   </h4>
                   <p className="text-[11px] text-slate-500 font-mono">
-                    Tỷ lệ 100×60 mm · 300 DPI (Decal nhiệt)
+                    {paperFormat === '100x60'
+                      ? 'Tỷ lệ 100×60 mm · 300 DPI (Decal nhiệt)'
+                      : 'Khổ Decal A4 · 6 nhãn/trang · 300 DPI'}
                   </p>
                 </div>
               </div>
               <span className="text-[10px] px-2 py-0.5 rounded-md bg-slate-100 text-slate-700 font-mono font-bold">
-                1 / {filteredLabels.length}
+                {filteredLabels.length > 0
+                  ? `${Math.max(1, filteredLabels.findIndex((b) => b.binBarcode === previewBinBarcode) + 1)} / ${filteredLabels.length}`
+                  : '0 / 0'}
               </span>
             </div>
 
@@ -598,7 +620,7 @@ export const BinLabelPrintSection: React.FC = () => {
                     min={1}
                     max={10}
                     value={printCopies}
-                    onChange={(e) => setPrintCopies(Math.max(1, Number(e.target.value)))}
+                    onChange={(e) => setPrintCopies(Math.min(10, Math.max(1, Number(e.target.value) || 1)))}
                     className="w-full px-2.5 py-1.5 bg-white border border-slate-300 rounded-lg text-xs font-mono font-bold text-slate-800 outline-none focus:border-blue-600"
                   />
                 </div>
@@ -615,7 +637,9 @@ export const BinLabelPrintSection: React.FC = () => {
               >
                 <Printer className="w-4 h-4" />
                 <span>
-                  {selectedBins.length > 0 ? `XUẤT LỆNH IN (${selectedBins.length} TEM ĐÃ CHỌN)` : 'CHƯA CHỌN TEM NÀO (0)'}
+                  {selectedBins.length > 0
+                    ? `XUẤT LỆNH IN (${selectedBins.length * printCopies} TEM)`
+                    : 'CHƯA CHỌN TEM NÀO (0)'}
                 </span>
               </button>
 
@@ -626,7 +650,7 @@ export const BinLabelPrintSection: React.FC = () => {
                 className="w-full py-2 px-3 rounded-xl bg-slate-100 hover:bg-slate-200 disabled:opacity-40 disabled:cursor-not-allowed text-slate-700 font-bold text-xs flex items-center justify-center gap-1.5 transition-all border border-slate-300 cursor-pointer"
               >
                 <Eye className="w-3.5 h-3.5 text-slate-600" />
-                <span>Xem trước toàn bộ trang in ({selectedBins.length})</span>
+                <span>Xem trước toàn bộ trang in ({selectedBins.length * printCopies})</span>
               </button>
             </div>
           </div>
@@ -659,7 +683,7 @@ export const BinLabelPrintSection: React.FC = () => {
                 </div>
                 <div>
                   <h2 className="text-base sm:text-lg font-bold">
-                    Xem trước bản in thực tế ({selectedBins.length} tem vị trí ô kệ)
+                    Xem trước bản in thực tế ({selectedBins.length * printCopies} tem vị trí ô kệ)
                   </h2>
                   <p className="text-xs text-slate-300 mt-0.5">
                     Định dạng: <strong className="text-blue-300">{paperFormat === '100x60' ? 'Decal dầm kệ 100×60 mm' : 'Giấy Decal A4 (6 nhãn/trang)'}</strong>
@@ -676,9 +700,11 @@ export const BinLabelPrintSection: React.FC = () => {
 
             <div className="p-6 overflow-y-auto flex-1 bg-slate-100/60">
               <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 justify-items-center">
-                {selectedLabelsToPrint.map((label) => (
-                  <BinLabelCard key={`preview-${label.binBarcode}`} data={label} />
-                ))}
+                {selectedLabelsToPrint.map((label) =>
+                  Array.from({ length: printCopies }).map((_, idx) => (
+                    <BinLabelCard key={`preview-${label.binBarcode}-${idx}`} data={label} />
+                  ))
+                )}
               </div>
             </div>
 

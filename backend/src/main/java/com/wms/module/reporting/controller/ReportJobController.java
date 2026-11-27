@@ -119,6 +119,18 @@ public class ReportJobController {
         return excel(file, "bao-cao-" + job.getReportName().toLowerCase() + "-" + jobId + ".xlsx");
     }
 
+    @DeleteMapping("/jobs/{id}")
+    @Operation(summary = "Xóa một tệp báo cáo khỏi lịch sử xuất")
+    public ApiResponse<String> deleteReportJob(@PathVariable String id) {
+        if (!reportJobRepository.existsById(id)) {
+            throw new com.wms.common.exception.BusinessException(
+                    com.wms.common.exception.ErrorCode.NOT_FOUND,
+                    "Không tìm thấy tệp báo cáo cần xóa: " + id);
+        }
+        reportJobRepository.deleteById(id);
+        return ApiResponse.success("Đã xóa tệp báo cáo khỏi lịch sử!", id);
+    }
+
     private File generateAndRecord(UUID id, String reportName, ReportFileGenerator generator) throws Exception {
         ReportJob job = new ReportJob(); job.setId(id.toString()); job.setReportName(reportName); job.setStatus("PROCESSING"); job.setDownloadUrl("/reports/jobs/" + id + "/download"); job.setCreatedAt(Instant.now()); reportJobRepository.save(job);
         try {

@@ -200,6 +200,15 @@ export const FloatingGeminiWidget: React.FC<FloatingGeminiWidgetProps> = ({ sess
   const scrollRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
+    if (tooltipDismissed || isOpen) return;
+    const timer = setTimeout(() => {
+      setTooltipDismissed(true);
+      sessionStorage.setItem(TOOLTIP_DISMISSED_KEY, '1');
+    }, 5000);
+    return () => clearTimeout(timer);
+  }, [tooltipDismissed, isOpen]);
+
+  useEffect(() => {
     const onDrawerToggle = (e: Event) => {
       const custom = e as CustomEvent<boolean>;
       setDrawerOpen(Boolean(custom.detail));
@@ -431,9 +440,8 @@ export const FloatingGeminiWidget: React.FC<FloatingGeminiWidgetProps> = ({ sess
                                     return (
                                       <td
                                         key={col}
-                                        className={`px-2.5 py-1.5 text-slate-800 truncate max-w-[130px] whitespace-nowrap ${
-                                          isNum ? 'font-mono font-semibold text-right tabular-nums' : ''
-                                        }`}
+                                        className={`px-2.5 py-1.5 text-slate-800 truncate max-w-[130px] whitespace-nowrap ${isNum ? 'font-mono font-semibold text-right tabular-nums' : ''
+                                          }`}
                                       >
                                         {val !== null && val !== undefined
                                           ? isNum

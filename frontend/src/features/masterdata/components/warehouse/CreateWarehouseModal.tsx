@@ -21,6 +21,7 @@ import {
 } from 'lucide-react';
 import { WarehouseItem, WarehouseType, WarehouseRegion } from '../../types';
 import { UserAccount } from '../../../users/types';
+import { authService } from '../../../auth/services/authService';
 
 interface CreateWarehouseModalProps {
   isOpen: boolean;
@@ -61,6 +62,7 @@ export const CreateWarehouseModal: React.FC<CreateWarehouseModalProps> = ({
   availableUsers = [],
 }) => {
   const isEditing = !!editingWarehouse;
+  const isAdmin = authService.getCurrentSession()?.role === 'ROLE_ADMIN';
 
   const [code, setCode] = useState('');
   const [name, setName] = useState('');
@@ -97,16 +99,14 @@ export const CreateWarehouseModal: React.FC<CreateWarehouseModalProps> = ({
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // Eligible Managers from User Directory (Only ROLE_WAREHOUSE_MANAGER or ROLE_ADMIN)
+  // Eligible Managers from User Directory (Only operational ROLE_WAREHOUSE_MANAGER, excluding IT ROLE_ADMIN)
   const eligibleManagers = useMemo(() => {
     const list = availableUsers.filter(
       (u) =>
         u.status === 'ACTIVE' &&
         (u.role === 'ROLE_WAREHOUSE_MANAGER' ||
           u.role === 'ROLE_MANAGER' ||
-          u.role === 'ROLE_ADMIN' ||
-          (u.role as string) === 'WAREHOUSE_MANAGER' ||
-          (u.role as string) === 'ADMIN')
+          (u.role as string) === 'WAREHOUSE_MANAGER')
     );
     if (list.length > 0) return list;
 
@@ -505,18 +505,20 @@ export const CreateWarehouseModal: React.FC<CreateWarehouseModalProps> = ({
                   <UserCheck className="w-3.5 h-3.5 text-blue-600" />
                   <span>Nhân Sự Có Sẵn ({eligibleManagers.length})</span>
                 </button>
-                <button
-                  type="button"
-                  onClick={() => setManagerMode('PROVISION_NEW')}
-                  className={`px-3 py-1 rounded-lg transition-all cursor-pointer flex items-center gap-1 ${
-                    managerMode === 'PROVISION_NEW'
-                      ? 'bg-blue-600 text-white shadow-2xs font-extrabold'
-                      : 'text-slate-600 hover:text-slate-900'
-                  }`}
-                >
-                  <UserPlus className="w-3.5 h-3.5" />
-                  <span>Bổ Nhiệm Mới & Cấp Tài Khoản</span>
-                </button>
+                {isAdmin && (
+                  <button
+                    type="button"
+                    onClick={() => setManagerMode('PROVISION_NEW')}
+                    className={`px-3 py-1 rounded-lg transition-all cursor-pointer flex items-center gap-1 ${
+                      managerMode === 'PROVISION_NEW'
+                        ? 'bg-blue-600 text-white shadow-2xs font-extrabold'
+                        : 'text-slate-600 hover:text-slate-900'
+                    }`}
+                  >
+                    <UserPlus className="w-3.5 h-3.5" />
+                    <span>Bổ Nhiệm Mới & Cấp Tài Khoản</span>
+                  </button>
+                )}
               </div>
             </div>
 

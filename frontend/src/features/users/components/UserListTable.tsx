@@ -85,14 +85,24 @@ export const UserListTable: React.FC<UserListTableProps> = ({
       }
     }
 
-    const term = searchTerm.toLowerCase();
+    const normalizeSearchText = (val?: string): string =>
+      (val || '')
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '')
+        .replace(/[đĐ]/g, 'd')
+        .toLowerCase()
+        .trim();
+
+    const term = normalizeSearchText(searchTerm);
     const matchSearch =
-      u.username.toLowerCase().includes(term) ||
-      u.fullName.toLowerCase().includes(term) ||
-      u.email.toLowerCase().includes(term) ||
-      (u.phone ? u.phone.includes(term) : false) ||
-      (u.assignedWarehouse ? u.assignedWarehouse.toLowerCase().includes(term) : false) ||
-      (u.primaryWarehouse ? u.primaryWarehouse.toLowerCase().includes(term) : false);
+      !term ||
+      normalizeSearchText(u.username).includes(term) ||
+      normalizeSearchText(u.fullName).includes(term) ||
+      normalizeSearchText(u.email).includes(term) ||
+      (u.phone ? u.phone.toLowerCase().includes(term) : false) ||
+      normalizeSearchText(u.assignedWarehouse).includes(term) ||
+      normalizeSearchText(u.primaryWarehouse).includes(term) ||
+      (u.assignedWarehouses ? u.assignedWarehouses.some((w) => normalizeSearchText(w).includes(term)) : false);
 
     const matchRole = roleFilter === 'ALL' || u.role === roleFilter;
     const matchStatus =
@@ -102,12 +112,13 @@ export const UserListTable: React.FC<UserListTableProps> = ({
         ? u.isExpired
         : u.status === statusFilter;
 
+    const whNeedle = normalizeSearchText(warehouseFilter);
     const matchWh =
       warehouseFilter === 'ALL'
         ? true
-        : (u.primaryWarehouse && u.primaryWarehouse.toLowerCase().includes(warehouseFilter.toLowerCase())) ||
-          (u.assignedWarehouse && u.assignedWarehouse.toLowerCase().includes(warehouseFilter.toLowerCase())) ||
-          (u.assignedWarehouses && u.assignedWarehouses.some((w) => w.toLowerCase().includes(warehouseFilter.toLowerCase())));
+        : normalizeSearchText(u.primaryWarehouse).includes(whNeedle) ||
+          normalizeSearchText(u.assignedWarehouse).includes(whNeedle) ||
+          (u.assignedWarehouses && u.assignedWarehouses.some((w) => normalizeSearchText(w).includes(whNeedle)));
 
     return matchSearch && matchRole && matchStatus && matchWh;
   });
@@ -158,6 +169,16 @@ export const UserListTable: React.FC<UserListTableProps> = ({
     }
   };
 
+  const [csvNotice, setCsvNotice] = useState<string | null>(null);
+
+  const handleResetAllFilters = () => {
+    setSearchTerm('');
+    setRoleFilter('ALL');
+    setStatusFilter('ALL');
+    setWarehouseFilter('ALL');
+    onClearKpiFilter?.();
+  };
+
   const handleExportCsv = () => {
     const headers = ['ID', 'Tên Đăng Nhập', 'Họ Và Tên', 'Email', 'Số Điện Thoại', 'Vai Trò', 'Kho Phụ Trách', 'Hạn Dùng', 'Trạng Thái', 'Đăng Nhập Cuối', 'IP'];
     const rows = filteredUsers.map((u) => [
@@ -182,6 +203,9 @@ export const UserListTable: React.FC<UserListTableProps> = ({
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+    setCsvNotice(`Đã xuất ${filteredUsers.length} nhân sự ra file CSV`);
+    setTimeout(() => setCsvNotice(null), 3500);
   };
 
   return (
@@ -305,6 +329,12 @@ export const UserListTable: React.FC<UserListTableProps> = ({
             <Download className="w-3.5 h-3.5 text-slate-500" />
             <span>Xuất CSV</span>
           </button>
+          {csvNotice && (
+            <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-emerald-50 border border-emerald-200 text-[11px] font-semibold text-emerald-700">
+              <Check className="w-3.5 h-3.5" />
+              {csvNotice}
+            </span>
+          )}
         </div>
       </div>
 
@@ -389,8 +419,19 @@ export const UserListTable: React.FC<UserListTableProps> = ({
           <tbody className="divide-y divide-slate-100 font-sans">
             {filteredUsers.length === 0 ? (
               <tr>
-                <td colSpan={isAdmin ? 7 : 6} className="text-center py-10 text-slate-400 italic">
-                  Không tìm thấy nhân viên nào khớp với điều kiện lọc.
+                <td colSpan={isAdmin ? 7 : 6} className="text-center py-10 text-slate-500">
+                  <div className="flex flex-col items-center gap-2.5">
+                    <span className="italic text-slate-400">
+                      Không tìm thấy nhân viên nào khớp với điều kiện lọc.
+                    </span>
+                    <button
+                      type="button"
+                      onClick={handleResetAllFilters}
+                      className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-xs font-semibold text-slate-700 transition-colors cursor-pointer"
+                    >
+                      Đặt lại bộ lọc
+                    </button>
+                  </div>
                 </td>
               </tr>
             ) : (

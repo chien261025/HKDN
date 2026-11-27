@@ -63,7 +63,24 @@ export const SmartAssistantPage: React.FC = () => {
 
   useEffect(() => {
     setSessions(loadSavedSessions(storageKey));
-    setActiveSessionId(`sess-${Date.now()}`);
+    const newId = `sess-${Date.now()}`;
+    setActiveSessionId(newId);
+    try {
+      const handoffRaw = sessionStorage.getItem('kora_ai_handoff_session_v1');
+      if (handoffRaw) {
+        sessionStorage.removeItem('kora_ai_handoff_session_v1');
+        const handoff = JSON.parse(handoffRaw);
+        if (Array.isArray(handoff?.messages) && handoff.messages.length > 0) {
+          const wh = handoff.warehouseCode || selectedWarehouse || 'ALL';
+          if (handoff.warehouseCode) setSelectedWarehouse(handoff.warehouseCode);
+          setMessages(handoff.messages);
+          persistSession(handoff.messages, wh, newId);
+          return;
+        }
+      }
+    } catch {
+      // Ignore handoff parse errors
+    }
     setMessages([]);
   }, [storageKey]);
 
@@ -154,7 +171,11 @@ export const SmartAssistantPage: React.FC = () => {
     setLoading(true);
 
     try {
-      const result = await smartQueryApi.chat(query, selectedWarehouse);
+      const historyPayload = messages.slice(-4).map((m) => ({
+        sender: m.sender,
+        text: m.text.slice(0, 300),
+      }));
+      const result = await smartQueryApi.chat(query, selectedWarehouse, historyPayload);
       const nextMessages: ChatMessage[] = [
         ...withUser,
         {

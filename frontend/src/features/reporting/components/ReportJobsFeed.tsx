@@ -110,9 +110,15 @@ export const ReportJobsFeed: React.FC<ReportJobsFeedProps> = ({
 
                     {/* Quy mô */}
                     <td className="py-4 px-4 font-mono text-xs">
-                      <div className="text-slate-900 font-semibold">{job.fileSize || 'Đang tính toán...'}</div>
+                      <div className="text-slate-900 font-semibold">
+                        {job.fileSize || (isDone ? 'Tệp Excel (.xlsx)' : 'Đang tính toán...')}
+                      </div>
                       <div className="text-xs text-slate-500 mt-0.5">
-                        {job.totalRows.toLocaleString()} dòng dữ liệu
+                        {job.totalRows > 0
+                          ? `${job.totalRows.toLocaleString()} dòng dữ liệu`
+                          : isDone
+                          ? 'Sẵn sàng đối soát'
+                          : 'Đang tổng hợp...'}
                       </div>
                     </td>
 
