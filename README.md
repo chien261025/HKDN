@@ -161,10 +161,10 @@ graph TB
 ```text
 smart-wms/
 ├── docker/
-│   ├── mysql/init/                           # 01..10 SQL init (schema, views, AI read-only user, triggers, seed)
+│   ├── mysql/init/                           # 01-init-db.sql (khởi tạo wms_db utf8mb4 cho container)
 │   ├── nginx/nginx.conf                      # Reverse Proxy định tuyến /api -> backend & SPA static
 │   └── rabbitmq/                             # definitions.json & rabbitmq.conf
-├── docker-compose.yml                        # Điều phối 6 service + container wms-schema nâng cấp DB tự động
+├── docker-compose.yml                        # Điều phối 6 service lõi (MySQL, Redis, RabbitMQ, MinIO, Backend, Frontend)
 ├── Makefile                                  # Tác vụ vận hành nhanh
 ├── README.md                                 # Tổng quan dự án
 ├── SMART_WMS_ARCHITECTURE.md                 # Đặc tả kiến trúc kỹ thuật chi tiết
@@ -186,7 +186,7 @@ smart-wms/
 │       │       ├── notification/             # Real-time SSE Stream & WebSocket Notification
 │       │       ├── reporting/                # RabbitMQ Worker, Apache POI SXSSFWorkbook, MinIO S3 Storage
 │       │       └── smartquery/               # Kora AI (Gemini Function Calling, Text-to-SQL, JSqlParser 4.9 AST)
-│       └── resources/db/migration/           # Flyway/SQL migrations V1..V10
+│       └── resources/db/migration/           # Flyway Migrations V1..V4 (+ Hibernate ddl-auto=validate)
 │
 └── frontend/                                 # ================= REACT 18.3 + TYPESCRIPT 5.5 =================
     ├── Dockerfile

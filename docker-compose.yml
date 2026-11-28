@@ -22,20 +22,6 @@ services:
     networks:
       - wms-net
 
-  # Apply the same upgrade to existing named volumes before Hibernate starts.
-  wms-schema:
-    image: mysql:8.0
-    depends_on:
-      wms-mysql:
-        condition: service_healthy
-    environment:
-      MYSQL_PWD: password123
-    entrypoint: ["sh", "-ec", "mysql --default-character-set=utf8mb4 -hwms-mysql -uroot wms_db < /upgrade.sql"]
-    volumes:
-      - ./docker/mysql/init/08-inbound-qc-ledger.sql:/upgrade.sql:ro
-    networks:
-      - wms-net
-
   # 2. Hàng đợi thông điệp RabbitMQ (Hỗ trợ Management Web UI)
   wms-rabbitmq:
     image: rabbitmq:3-management-alpine
@@ -110,8 +96,6 @@ services:
         condition: service_healthy
       wms-minio:
         condition: service_started
-      wms-schema:
-        condition: service_completed_successfully
       wms-redis:
         condition: service_healthy
     environment:

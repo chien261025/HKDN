@@ -6,3 +6,11 @@ server:
 spring:
   profiles:
     active: ${SPRING_PROFILES_ACTIVE:dev}
+  flyway:
+    enabled: ${FLYWAY_ENABLED:true}
+    locations: classpath:db/migration
+    baseline-on-migrate: true
+    baseline-version: 4
+    baseline-description: Baseline existing smart-wms schema
+    out-of-order: false
+    validate-on-migrate: true

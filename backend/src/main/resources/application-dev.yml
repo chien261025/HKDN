@@ -12,7 +12,7 @@ spring:
 
   jpa:
     hibernate:
-      ddl-auto: update           # Tự động tạo/cập nhật schema khi dev
+      ddl-auto: validate         # Validate JPA entities against Flyway migrations
     show-sql: true               # Bật log SQL để debug
     properties:
       hibernate:

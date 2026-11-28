@@ -20,7 +20,7 @@ spring:
 
   jpa:
     hibernate:
-      ddl-auto: update # PROD
+      ddl-auto: validate         # PROD: Schema managed strictly by Flyway
     show-sql: false
     properties:
       hibernate:

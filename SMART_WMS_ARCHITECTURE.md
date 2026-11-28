@@ -106,9 +106,7 @@ smart-wms/
 │   │   └── nginx.conf                         # Reverse Proxy, SSL, Rate Limit, định tuyến API/Static
 │   ├── mysql/
 │   │   └── init/
-│   │       ├── 01-init-schema.sql             # Tạo database, các bảng nghiệp vụ wms_db
-│   │       ├── 02-create-views.sql            # Tạo các View nghiệp vụ báo cáo (ẩn trường nhạy cảm)
-│   │       └── 03-create-readonly-ai-user.sql # Tạo user `ai_readonly` chỉ có quyền SELECT trên View
+│   │       └── 01-init-db.sql                 # Khởi tạo database `wms_db` utf8mb4 tối giản cho container
 │   └── rabbitmq/
 │       ├── definitions.json                  # Tạo sẵn Exchange, Queues, DLX, DLQ, Routing Keys
 │       └── rabbitmq.conf                      # Cấu hình Web Management UI trên cổng 15672
@@ -265,13 +263,14 @@ smart-wms/
 │       │   │           └── SmartQueryService.java        # Điều phối luồng Intent -> Handler -> Đóng gói Action
 │       │   │
 │       │   └── resources/
-│       │       ├── application.yml                   # Cấu hình chung của ứng dụng
-│       │       ├── application-dev.yml               # Môi trường chạy local dev
-│       │       ├── application-prod.yml              # Môi trường chạy Docker production
-│       │       └── db/migration/                     # Flyway DB Migration Scripts
-│       │           ├── V1__create_core_tables.sql
-│       │           ├── V2__create_indexes.sql        # Index tối ưu barcode, sku, expiry_date
-│       │           └── V3__seed_demo_data.sql        # Nạp dữ liệu giả lập (Lô cận date, sơ đồ kho demo)
+│       │       ├── application.yml                   # Cấu hình chung (Flyway enabled, baseline v4)
+│       │       ├── application-dev.yml               # Môi trường chạy local dev (ddl-auto: validate)
+│       │       ├── application-prod.yml              # Môi trường chạy Docker production (ddl-auto: validate)
+│       │       └── db/migration/                     # Flyway DB Migration Scripts (V1..V4)
+│       │           ├── V1__init_schema.sql           # 31 bảng lõi theo thứ tự khóa ngoại (InnoDB utf8mb4)
+│       │           ├── V2__views_triggers_and_security.sql # View báo cáo, Trigger bất biến & user ai_readonly
+│       │           ├── V3__seed_core_rbac.sql        # Vai trò, 20 quyền RBAC, user mẫu & 4 kho WH01..WH04
+│       │           └── V4__seed_demo_data.sql        # 11 danh mục, 19 đối tác, 15 SKU & tồn kho/đơn mẫu
 │       │
 │       └── test/                                     # INTEGRATION & CONCURRENCY TESTS
 │           └── java/com/wms/

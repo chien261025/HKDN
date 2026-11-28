@@ -68,6 +68,16 @@
             <scope>runtime</scope>
         </dependency>
 
+        <!-- Database Migration: Flyway Core + MySQL 8 Adapter -->
+        <dependency>
+            <groupId>org.flywaydb</groupId>
+            <artifactId>flyway-core</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.flywaydb</groupId>
+            <artifactId>flyway-mysql</artifactId>
+        </dependency>
+
         <!-- JWT Authentication -->
         <dependency>
             <groupId>io.jsonwebtoken</groupId>
