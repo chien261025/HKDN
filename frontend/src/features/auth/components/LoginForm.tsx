@@ -34,7 +34,7 @@ export const LoginForm: React.FC<LoginFormProps> = ({
 
   return (
     <div className="space-y-4">
-      <form onSubmit={onSubmit} className="space-y-4 text-sm">
+      <form onSubmit={onSubmit} noValidate className="space-y-4 text-sm">
         <div>
           <label className="block text-slate-700 font-semibold mb-1.5 text-xs sm:text-sm">
             Tên đăng nhập hoặc Email

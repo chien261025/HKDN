@@ -31,7 +31,7 @@ export const PutawayTab: React.FC<PutawayTabProps> = ({
         operatorService.getInboundOrders(),
         operatorService.getProducts(),
       ]);
-      const receivedOrders = orders.filter((o) => o.status === 'RECEIVED');
+      const receivedOrders = orders.filter((o) => o.status === 'RECEIVED' || o.status === 'PARTIALLY_STOCKED');
       if (receivedOrders.length > 0) {
         const dynamicTasks: ActivePutawayTask[] = [];
         for (const o of receivedOrders) {
@@ -163,7 +163,16 @@ export const PutawayTab: React.FC<PutawayTabProps> = ({
     if (!activeTask || !activeTask.suggestedLocation) return;
     const targetBarcode = activeTask.suggestedLocation.binBarcode;
 
-    if (scannedBin.trim() && scannedBin.trim() !== targetBarcode) {
+    if (!scannedBin.trim()) {
+      soundEffects.playErrorBuzz();
+      setFeedback({
+        msg: `Vui lòng quét hoặc nhập mã vạch ô kệ đích (${targetBarcode}) trước khi xác nhận cất hàng!`,
+        type: 'error',
+      });
+      return;
+    }
+
+    if (scannedBin.trim().toUpperCase() !== targetBarcode.toUpperCase()) {
       soundEffects.playErrorBuzz();
       setFeedback({
         msg: `Cảnh báo: Bạn đang quét ô ${scannedBin}, trong khi thuật toán chỉ định ô ${targetBarcode}!`,

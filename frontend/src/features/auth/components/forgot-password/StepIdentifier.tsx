@@ -17,7 +17,7 @@ export const StepIdentifier: React.FC<StepIdentifierProps> = ({
   onCancel,
 }) => {
   return (
-    <form onSubmit={onSubmit} className="space-y-4">
+    <form onSubmit={onSubmit} noValidate className="space-y-4">
       <p className="text-slate-600 leading-relaxed text-xs sm:text-sm">
         Vui lòng nhập <span className="font-semibold text-slate-900">Tên đăng nhập</span> hoặc{' '}
         <span className="font-semibold text-slate-900">Email</span> đã liên kết với tài khoản để nhận mã xác thực (OTP) qua hòm thư:

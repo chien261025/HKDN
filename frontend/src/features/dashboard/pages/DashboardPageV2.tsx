@@ -259,7 +259,9 @@ export const DashboardPage: React.FC = () => {
   const [warehousesList, setWarehousesList] = useState<WarehouseItem[]>(DEFAULT_WAREHOUSES);
 
   // Bộ chọn kho riêng cho widget Zone
-  const [zoneSelectedWarehouse, setZoneSelectedWarehouse] = useState<string>('WH01');
+  const [zoneSelectedWarehouse, setZoneSelectedWarehouse] = useState<string>(() =>
+    warehouseService.getActiveWarehouseId() || 'ALL'
+  );
 
   useEffect(() => {
     const loadWhs = async () => {
@@ -271,7 +273,7 @@ export const DashboardPage: React.FC = () => {
     const onWhChanged = (e: any) => {
       if (e.detail) {
         setActiveWarehouse(e.detail);
-        if (e.detail !== 'ALL') setZoneSelectedWarehouse(e.detail);
+        setZoneSelectedWarehouse(e.detail);
       }
     };
     const onWhUpdated = () => {
@@ -289,7 +291,7 @@ export const DashboardPage: React.FC = () => {
 
   const handleWarehouseChange = (id: string) => {
     setActiveWarehouse(id);
-    if (id !== 'ALL') setZoneSelectedWarehouse(id);
+    setZoneSelectedWarehouse(id);
     warehouseService.setActiveWarehouseId(id);
   };
 
@@ -488,10 +490,29 @@ export const DashboardPage: React.FC = () => {
     const networkOccupiedBins = data.locations.filter((l) => l.status && l.status !== 'EMPTY').length;
     const networkFillRate = networkTotalBins > 0 ? Math.round((networkOccupiedBins / networkTotalBins) * 100) : 0;
 
-    // Sức chứa Zone tính toán trực tiếp từ dữ liệu ô kệ thực địa
-    const zoneALocs = branchLocations.filter((l) => l.zone === 'ZONE_A' || l.barcode?.includes('ZA'));
-    const zoneBLocs = branchLocations.filter((l) => l.zone === 'ZONE_B' || l.barcode?.includes('ZB'));
-    const zoneCLocs = branchLocations.filter((l) => l.zone === 'ZONE_C' || l.barcode?.includes('ZC'));
+    // Sức chứa Zone tính toán theo đúng kho đang chọn trên widget (hoặc toàn mạng lưới)
+    const effectiveZoneWh = isAll ? zoneSelectedWarehouse : activeWarehouse;
+    const zoneWhObj = warehousesList.find((w) => w.code === effectiveZoneWh);
+    const zoneLocations =
+      effectiveZoneWh === 'ALL'
+        ? data.locations
+        : data.locations.filter(
+            (l: any) =>
+              l.warehouseId === zoneWhObj?.id ||
+              (l.warehouseCode && l.warehouseCode === effectiveZoneWh) ||
+              (zoneWhObj?.id === 1 && (!l.warehouseId || l.warehouseId === 1))
+          );
+
+    const zoneTotalBins = zoneLocations.length;
+    const zoneOccupiedBins = zoneLocations.filter((l) => l.status && l.status !== 'EMPTY').length;
+    const zoneFillRate = zoneTotalBins > 0 ? Math.round((zoneOccupiedBins / zoneTotalBins) * 100) : 0;
+
+    const zoneALocs = zoneLocations.filter((l) => l.zone === 'ZONE_A' || l.barcode?.includes('-ZA-'));
+    const zoneBLocs = zoneLocations.filter((l) => l.zone === 'ZONE_B' || l.barcode?.includes('-ZB-'));
+    const zoneCLocs = zoneLocations.filter((l) => l.zone === 'ZONE_C' || l.barcode?.includes('-ZC-'));
+    const zoneQLocs = zoneLocations.filter(
+      (l) => String(l.zone || '').toUpperCase().includes('QUA') || l.barcode?.includes('-ZQ-')
+    );
 
     const zoneATotal = zoneALocs.length;
     const zoneAOccupied = zoneALocs.filter((l) => l.status && l.status !== 'EMPTY').length;
@@ -501,6 +522,9 @@ export const DashboardPage: React.FC = () => {
 
     const zoneCTotal = zoneCLocs.length;
     const zoneCOccupied = zoneCLocs.filter((l) => l.status && l.status !== 'EMPTY').length;
+
+    const zoneQTotal = zoneQLocs.length;
+    const zoneQOccupied = zoneQLocs.filter((l) => l.status && l.status !== 'EMPTY').length;
 
     const zoneBreakdown = [
       {
@@ -533,6 +557,20 @@ export const DashboardPage: React.FC = () => {
         percent: zoneCTotal > 0 ? Math.round((zoneCOccupied / zoneCTotal) * 100) : 0,
         barColor: 'bg-[#D97706]',
       },
+      ...(zoneQTotal > 0
+        ? [
+            {
+              id: 'Zone QUA',
+              name: 'Zone QUA',
+              fullName: 'Khu Cách Ly: Kiểm Định & Hàng Chờ Xử Lý',
+              total: zoneQTotal,
+              occupied: zoneQOccupied,
+              desc: `${zoneQOccupied}/${zoneQTotal} vị trí có hàng`,
+              percent: Math.round((zoneQOccupied / zoneQTotal) * 100),
+              barColor: 'bg-rose-500',
+            },
+          ]
+        : []),
     ];
 
     const stockByProduct = new Map<number, number>();
@@ -613,8 +651,8 @@ export const DashboardPage: React.FC = () => {
       });
     });
 
-    // 3. Đợt kiểm kê chờ duyệt
-    const pendingAudits = effectiveAudits.filter((a) => a.status === 'PENDING_REVIEW' || a.discrepanciesCount > 0);
+    // 3. Đợt kiểm kê chờ duyệt (chỉ hiển thị các phiếu thực sự đang chờ phê duyệt, loại trừ phiếu đã cân đối/hủy)
+    const pendingAudits = effectiveAudits.filter((a) => a.status === 'PENDING_REVIEW');
     pendingAudits.forEach((aud) => {
       actionableTasks.push({
         id: `aud-${aud.id}`,
@@ -625,7 +663,7 @@ export const DashboardPage: React.FC = () => {
         priorityLabel: 'Chờ duyệt',
         priorityColor: 'bg-purple-50 text-purple-700 border-purple-200',
         assignedTo: (aud as any).createdByName || (aud as any).auditor || 'Nhân viên kiểm đếm',
-        deadlineText: `Ngày lập: ${date((aud as any).createdAt)} · Chênh lệch: ${aud.discrepanciesCount || 0} mục`,
+        deadlineText: `Ngày lập: ${date((aud as any).rawCreatedAt || (aud as any).createdAt || (aud as any).auditDate)} · Chênh lệch: ${aud.discrepanciesCount || 0} mục`,
         extraInfo: `Người lập: ${(aud as any).createdByName || 'Quản lý kho'}`,
         data: aud,
       });
@@ -635,9 +673,11 @@ export const DashboardPage: React.FC = () => {
     const totalActionableTasks = actionableTasks.length;
 
     const currentZoneWarehouseName =
-      currentWhObj?.name ||
-      warehousesList.find((w) => w.code === (isAll ? zoneSelectedWarehouse : activeWarehouse))?.name ||
-      'Kho Tổng Tân Bình - TP.HCM';
+      (isAll && zoneSelectedWarehouse === 'ALL'
+        ? 'Toàn bộ chi nhánh kho'
+        : currentWhObj?.name ||
+          warehousesList.find((w) => w.code === (isAll ? zoneSelectedWarehouse : activeWarehouse))?.name) ||
+      'Toàn bộ chi nhánh kho';
 
     return {
       isAll,
@@ -657,6 +697,9 @@ export const DashboardPage: React.FC = () => {
       currentBranchTotalBins,
       currentBranchOccupiedBins,
       currentBranchFillRate,
+      zoneTotalBins,
+      zoneOccupiedBins,
+      zoneFillRate,
       networkTotalBins,
       networkOccupiedBins,
       networkFillRate,
@@ -1751,10 +1794,10 @@ export const DashboardPage: React.FC = () => {
                     </div>
                     <div>
                       <p className="text-sm font-bold text-slate-900 group-hover:text-orange-800 transition-colors">
-                        Lô hàng cận hạn (&lt; 45 ngày)
+                        Lô hàng cận hạn &amp; hết hạn
                       </p>
                       <p className="text-[13px] text-slate-600 font-medium">
-                        {summary.nearExpiryItems} lô hàng sắp hết hạn sử dụng
+                        {summary.nearExpiryItems} lô hàng hết hạn hoặc còn &lt; 45 ngày
                       </p>
                     </div>
                   </div>
@@ -1928,6 +1971,7 @@ export const DashboardPage: React.FC = () => {
                     onChange={(e) => setZoneSelectedWarehouse(e.target.value)}
                     className="rounded-lg border border-[#E2E8F0] bg-slate-50 px-2.5 py-1 text-xs font-semibold text-slate-700 outline-none focus:border-[#2563EB] cursor-pointer"
                   >
+                    <option value="ALL">Toàn mạng lưới</option>
                     {warehousesList.map((w) => (
                       <option key={w.code} value={w.code}>
                         {w.shortName || w.name} ({w.code})
@@ -1938,13 +1982,20 @@ export const DashboardPage: React.FC = () => {
               </div>
 
               <p className="text-[13px] text-slate-500 mt-1">
-                Kho: <strong className="text-slate-800 font-semibold">{summary.currentZoneWarehouseName}</strong>
+                Phạm vi: <strong className="text-slate-800 font-semibold">{summary.currentZoneWarehouseName}</strong>
               </p>
             </div>
 
             <div className="space-y-2 pt-1">
               {summary.zoneBreakdown.map((z, idx) => {
-                const zoneCode = z.id === 'Zone A' ? 'ZONE_A' : z.id === 'Zone B' ? 'ZONE_B' : 'ZONE_C';
+                const zoneCode =
+                  z.id === 'Zone A'
+                    ? 'ZONE_A'
+                    : z.id === 'Zone B'
+                    ? 'ZONE_B'
+                    : z.id === 'Zone QUA'
+                    ? 'ZONE_QUA'
+                    : 'ZONE_C';
                 return (
                   <Link
                     key={idx}
@@ -1977,8 +2028,8 @@ export const DashboardPage: React.FC = () => {
 
           <div className="mt-5 pt-3 border-t border-[#E2E8F0] flex items-center justify-between text-xs sm:text-[13px]">
             <span className="text-slate-600">
-              Tổng kho {summary.currentZoneWarehouseName.split(' - ')[0]}:{' '}
-              <strong className="text-slate-900">{summary.currentBranchFillRate}%</strong> ({summary.currentBranchOccupiedBins}/{summary.currentBranchTotalBins} vị trí)
+              {summary.currentZoneWarehouseName.split(' - ')[0]}:{' '}
+              <strong className="text-slate-900">{summary.zoneFillRate}%</strong> ({summary.zoneOccupiedBins}/{summary.zoneTotalBins} vị trí)
             </span>
             <Link to="/layout" className="font-semibold text-[#2563EB] hover:underline inline-flex items-center gap-1">
               Sơ đồ mặt bằng kho <ArrowRight className="h-3.5 w-3.5" />

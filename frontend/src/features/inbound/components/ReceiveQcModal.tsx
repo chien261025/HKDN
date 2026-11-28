@@ -230,6 +230,13 @@ export const ReceiveQcModal: React.FC<ReceiveQcModalProps> = ({ order, onClose, 
       return;
     }
 
+    // 0. Kiểm tra mã lô bắt buộc với các mặt hàng có số lượng thực nhận > 0 (chuẩn truy xuất FEFO)
+    const missingBatchItem = itemStates.find((it) => it.receivedQty > 0 && !it.batchNumber.trim());
+    if (missingBatchItem) {
+      setError(`Vui lòng nhập Mã lô (Batch/Lot) cho mặt hàng "${missingBatchItem.productName}" khi số lượng thực nhận > 0.`);
+      return;
+    }
+
     // 1. Kiểm tra dung sai giao nhận (+10%) theo chuẩn doanh nghiệp
     for (const it of itemStates) {
       const maxAllowed = Math.floor(it.expectedQty * 1.10);

@@ -33,7 +33,7 @@ apiClient.interceptors.response.use(
       localStorage.removeItem(STORAGE_KEYS.TOKEN);
       localStorage.removeItem(STORAGE_KEYS.SESSION);
       if (window.location.pathname !== '/login') {
-        window.location.href = '/login';
+        window.location.href = '/login?expired=true';
       }
     }
 

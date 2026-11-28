@@ -5,8 +5,8 @@
 </p>
 
 <p align="center">
-  <b>Hệ Thống Quản Trị Kho Hàng Doanh Nghiệp Thông Minh Tích Hợp AI & Hàng Đợi Bất Đồng Bộ</b><br>
-  <i>Quản lý kho đa chi nhánh theo Lô và Ô kệ (Bin Location), cấp phát xuất kho FEFO, sổ cái thẻ kho bất biến (Immutable Ledger), phân tách nhiệm vụ độc lập (SoD) và trợ lý AI truy vấn an toàn.</i>
+  <b>Hệ Thống Quản Trị Kho Hàng Doanh Nghiệp Thông Minh Tích Hợp Trợ Lý Kora AI & Hàng Đợi Bất Đồng Bộ</b><br>
+  <i>Quản lý kho đa chi nhánh 6 cấp theo Lô (Batch) & Ô kệ (Bin Location), cấp phát xuất kho FEFO, sổ cái thẻ kho bất biến (Immutable Ledger), phân tách nhiệm vụ độc lập (SoD), kiểm soát phiên tối đa 2 thiết bị FIFO và trợ lý Kora AI đa lớp bảo mật.</i>
 </p>
 
 <p align="center">
@@ -14,282 +14,251 @@
   <img src="https://img.shields.io/badge/Spring%20Boot-3.5.0-6DB33F?style=for-the-badge&logo=springboot&logoColor=white" alt="Spring Boot 3.5">
   <img src="https://img.shields.io/badge/MySQL-8.0-4479A1?style=for-the-badge&logo=mysql&logoColor=white" alt="MySQL 8.0">
   <img src="https://img.shields.io/badge/Redis-7.0-DC382D?style=for-the-badge&logo=redis&logoColor=white" alt="Redis 7">
-  <img src="https://img.shields.io/badge/RabbitMQ-3.13-FF6600?style=for-the-badge&logo=rabbitmq&logoColor=white" alt="RabbitMQ 3.13">
-  <img src="https://img.shields.io/badge/MinIO-S3%20Compatible-C72C48?style=for-the-badge&logo=minio&logoColor=white" alt="MinIO">
+  <img src="https://img.shields.io/badge/RabbitMQ-3-FF6600?style=for-the-badge&logo=rabbitmq&logoColor=white" alt="RabbitMQ 3">
+  <img src="https://img.shields.io/badge/MinIO-S3%20Compatible-C72C48?style=for-the-badge&logo=minio&logoColor=white" alt="MinIO S3">
   <img src="https://img.shields.io/badge/React-18.3-61DAFB?style=for-the-badge&logo=react&logoColor=black" alt="React 18">
   <img src="https://img.shields.io/badge/TypeScript-5.5-3178C6?style=for-the-badge&logo=typescript&logoColor=white" alt="TypeScript 5.5">
-  <img src="https://img.shields.io/badge/Tailwind%20CSS-3.4-38B2AC?style=for-the-badge&logo=tailwind-css&logoColor=white" alt="Tailwind CSS">
+  <img src="https://img.shields.io/badge/Tailwind%20CSS-3.4-38B2AC?style=for-the-badge&logo=tailwind-css&logoColor=white" alt="Tailwind CSS 3.4">
+  <img src="https://img.shields.io/badge/Kora%20AI-Gemini%20Function%20Calling-4285F4?style=for-the-badge&logo=google&logoColor=white" alt="Kora AI">
+  <img src="https://img.shields.io/badge/SQL%20Guard-JSqlParser%204.9%20AST-059669?style=for-the-badge" alt="JSqlParser 4.9 AST">
   <img src="https://img.shields.io/badge/Docker-Compose%20v2-2496ED?style=for-the-badge&logo=docker&logoColor=white" alt="Docker Compose">
-  <img src="https://img.shields.io/badge/License-MIT-green?style=for-the-badge" alt="License MIT">
 </p>
 
 ---
 
 ## 📖 1. Giới thiệu tổng quan
 
-**SMART WMS** là giải pháp phần mềm quản trị kho hàng doanh nghiệp chuẩn Enterprise, được thiết kế để giải quyết triệt để các bài toán sống còn trong quản lý kho hiện đại: thất thoát hàng hóa, tồn kho ảo, xung đột xuất hàng giờ cao điểm (Race Condition), hết hạn sử dụng không kịp luân chuyển và rủi ro gian lận kiểm toán.
+**SMART WMS** là giải pháp phần mềm quản trị kho hàng doanh nghiệp chuẩn Enterprise, được thiết kế để giải quyết triệt để các bài toán sống còn trong vận hành kho hiện đại: thất thoát hàng hóa, tồn kho ảo, xung đột xuất hàng giờ cao điểm (Race Condition), hàng cận hạn không kịp luân chuyển, lỗi thao tác thủ kho hiện trường và rủi ro gian lận kiểm toán.
 
-Thay vì quản lý tồn kho theo kiểu số lượng gộp truyền thống, **Smart WMS** xây dựng mô hình số hóa kho vận khép kín từ **A đến Z**:
+Hệ thống xây dựng quy trình số hóa kho vận khép kín từ **A đến Z**:
 
-1. **Quản lý vị trí 6 cấp (Bin Location Topology)**: Chia nhỏ mặt bằng kho chi tiết đến từng vị trí: `Kho (Warehouse) -> Khu vực (Zone) -> Dãy (Aisle) -> Kệ (Rack) -> Tầng (Shelf) -> Ô (Bin)`.
-2. **Chiến lược cấp phát xuất kho FEFO (First-Expired, First-Out)**: Tự động phát hiện và cấp phát các Lô hàng có hạn dùng gần nhất ra trước, triệt tiêu tối đa rủi ro hư hỏng hàng quá hạn.
-3. **Sổ cái thẻ kho bất biến (Immutable Stock Ledger)**: Áp dụng nguyên tắc kế toán tài chính **Append-Only**, CSDL MySQL kích hoạt Trigger chặn 100% lệnh UPDATE/DELETE lịch sử biến động kho.
-4. **Kiểm soát nội bộ & Phân tách nhiệm vụ (Segregation of Duties - SoD)**: Rào chắn bảo mật nghiêm ngặt ngăn không cho người tạo đợt kiểm kê tự duyệt chênh lệch sổ sách.
-5. **Cổng tác nghiệp di động PDA / Quét Barcode**: Nhân viên cầm tay quét mã vạch kiểm nhận tại khu đệm (Staging QC), cất hàng (Putaway), gom hàng (Picking), điều chuyển và đếm mù (Blind Count).
-6. **Trợ lý Trí tuệ Nhân tạo Lai (Hybrid AI) & Lá chắn AST**: Kết hợp Google Gemini AI và Semantic Engine hỗ trợ sinh mã SKU chuẩn, tự phân loại danh mục và truy vấn ngôn ngữ tự nhiên an toàn tuyệt đối với JSqlParser.
+1. **Cấu trúc vị trí 6 cấp (Bin Location Topology)**: Chia nhỏ mặt bằng kho chi tiết đến từng ô chứa: `Kho (Warehouse) → Khu vực (Zone: A/B/C/QUA) → Dãy (Aisle) → Kệ (Rack) → Tầng (Shelf) → Ô (Bin)`.
+2. **Chiến lược cấp phát & lộ trình nhặt hàng FEFO (First-Expired, First-Out)**: Tự động giữ chỗ các lô có hạn sử dụng gần nhất bằng Khóa bi quan (`SELECT FOR UPDATE`), kết hợp sắp xếp lộ trình nhặt hàng ưu tiên HSD theo từng ô kệ.
+3. **Sổ cái thẻ kho bất biến (Immutable Stock Ledger)**: Áp dụng nguyên tắc kế toán **Append-Only**; Trigger MySQL chặn 100% lệnh `UPDATE` / `DELETE` trên lịch sử biến động tồn kho.
+4. **Kiểm soát nội bộ & Phân tách nhiệm vụ (Segregation of Duties — SoD)**: Rào chắn bảo mật ngăn người lập phiếu kiểm kê tự phê duyệt cân đối sổ sách; ép quy trình kiểm kê mù (`Blind Count`) trên thiết bị cầm tay.
+5. **Cổng Thủ Kho Hiện Trường PDA (`/operator`)**: Tối ưu cho súng quét mã vạch (Hardware Scanner Wedge) và Camera thiết bị di động qua 5 phân hệ khép kín: Tiếp nhận QC (`Staging`), Cất kệ (`Putaway`), Lấy hàng `FEFO`, Điều chuyển nội bộ và Đếm mù (`Blind Count`).
+6. **Trợ lý Kho Vận Thông Minh Kora AI (`smartquery`)**: Kết hợp **Google Gemini Function Calling** (4 công cụ Read-Only chẩn đoán sự cố thực tế) với **Text-to-SQL được kiểm duyệt bằng cây cú pháp AST (`JSqlParser 4.9`)** và **cô lập đa kho theo JWT (`WmsWarehouseAccessGuard`)**.
 
 ---
 
 ## ✨ 2. Tính năng nổi bật & Nghiệp vụ thực chiến
 
-### 🏢 Quản lý Mặt bằng Số hóa 2D (Digital Twin Warehouse)
-- **Mặt bằng kho 2D tương tác trực quan**: Xem tỷ lệ lấp đầy (Occupancy Rate), cảnh báo ô kệ quá tải, kiểm tra hạn dùng theo mã màu trực tiếp trên lưới tọa độ.
-- **Khung nhìn hình chiếu đứng (Rack Elevation Grid)**: Bóc tách từng Rack/Shelf/Bin, xem mặt cắt dọc từng tầng kệ để điều phối xe nâng pallet.
-- **In tem nhãn Barcode chuẩn GS1**: Tự động sinh và in nhãn mã vạch Code128 / QR Code cho vị trí ô kệ, thùng hàng và lô sản phẩm.
+### 📊 Dashboard Hai Góc Nhìn (Super Admin System & Operations Audit)
+- **Góc nhìn Quản Trị Hệ Thống (chuẩn ISO 27001 / SoD)**: Theo dõi tổng nhân sự & ma trận RBAC, mạng lưới 7 chi nhánh kho toàn quốc, IP tin cậy từng kho và Nhật ký Kiểm toán An ninh (`Security Audit Logs`).
+- **Góc nhìn Giám Sát Vận Hành (Audit)**: Chuyển đổi phạm vi toàn mạng lưới (`ALL`) hoặc từng chi nhánh (`WH01`–`WH07`), lọc theo kỳ thời gian (`Tháng này`, `Hôm nay`, `7 ngày qua`, `Tùy chọn`, `Toàn thời gian`), hàng đợi `Công việc cần xử lý` (SO Picking / PO Putaway / Audit `PENDING_REVIEW`), `Cảnh báo kho` (`Cận hạn & hết hạn`, `Dưới an toàn`, `Hết tồn`), biểu đồ `Xu hướng nhập – xuất 6 tháng`, `Tỷ lệ ô lưu trữ theo Zone` (gồm cả `ZONE_QUA` Khu cách ly) và bảng xếp hạng `Top mặt hàng xuất`.
 
-### 📥 Nhập kho & Kiểm định QC 2 bước (Inbound & Putaway)
-- **Cổng tiếp nhận Staging Buffer**: Nhân viên đếm hàng thực nhận (`receivedQty`) và bóc tách hàng lỗi/hỏng (`rejectedQty`). Chỉ hàng đạt QC mới được cấp mã Lô và HSD.
-- **Động cơ cất kệ thông minh (Putaway Engine)**: Tự động tính toán dung tích khả dụng, phân loại Zone bảo quản (Khô/Mát/Lạnh/An ninh) và tự động ưu tiên tầng trệt (`Shelf S01`) cho hàng nặng (> 100kg).
-- **Cất kệ đa vị trí (Multi-bin Putaway)**: Cho phép chia nhỏ một lô hàng lớn để cất vào nhiều ô kệ khác nhau linh hoạt.
+### 🏢 Mặt bằng Số hóa 2D & In Tem Nhãn GS1 (`masterdata` & `labels`)
+- **Mặt bằng kho 2D & Mặt cắt kệ dọc**: Theo dõi tỷ lệ lấp đầy, cảnh báo quá tải trọng, lô cận hạn và thao tác khóa/mở bảo trì ô kệ trực tiếp.
+- **In Tem Nhãn Mã Vạch & QR**: Sinh mã vạch Code128 (`JsBarcode`) và QR Code (`qrcode`) chuẩn tem nhiệt **`100×60mm`**, **`Decal A4`** và phiếu kiện **`Pallet A6`** cho Ô kệ, Lô hàng FEFO và Sản phẩm, hỗ trợ chọn hàng loạt và chỉnh số bản sao.
 
-### 📤 Xuất kho FEFO & Giải phóng Giữ chỗ tức thì (Outbound & Order Release)
-- **Cấp phát tự động FEFO**: Tự động khóa giữ chỗ (`reservedQty`) trên các ô kệ có lô cận date nhất bằng Khóa bi quan (`SELECT FOR UPDATE`), bảo đảm `Available Qty = OnHand - Reserved >= 0`.
-- **Cơ chế Hủy đơn & Giải phóng kho tức thời (Order Release Guard)**: Khi đơn SO bị hủy ở trạng thái `ALLOCATED` hoặc `PICKING`, hệ thống tự động hoàn trả 100% số lượng giữ chỗ về tồn khả dụng ngay lập tức, không làm gián đoạn nguồn cung.
-- **Gom hàng Picking & Xuất xưởng Dispatch**: Hỗ trợ lộ trình nhặt hàng tối ưu 1 chiều, đóng gói và chốt trừ tồn vật lý khi xe lăn bánh.
+### 📥 Nhập kho, Kiểm định QC & Cất kệ Thông minh (`inbound` & `Putaway`)
+- **Cổng tiếp nhận Staging & QC Gate**: Kiểm đếm thực nhận (`receivedQty`), bóc tách hàng lỗi/hỏng (`rejectedQty`), kiểm tra dung sai hợp đồng (+10%) và bắt buộc khai báo Mã lô (Batch/Lot) & HSD trước khi đưa vào khu đệm.
+- **Putaway Engine**: Gợi ý ô kệ trống cùng chi nhánh theo điều kiện bảo quản (`AMBIENT` → `ZONE_A`, `COOL` → `ZONE_B`, `COLD` → `ZONE_C`, `SECURE` → `ZONE_D`) và ưu tiên tầng trệt cho hàng nặng; hỗ trợ cất kệ đa vị trí (`PARTIALLY_STOCKED`) và bắt buộc quét mã xác nhận ô đích.
 
-### 🔍 Kiểm kê Thực địa & Cân đối Sổ cái (Cycle Count Audit & Reconciliation)
-- **Kiểm kê mù (Blind Count)**: Nhân viên PDA quét mã ô kệ đếm thực tế mà không nhìn thấy số tồn lý thuyết trên hệ thống để tránh đoán số.
-- **Vòng đếm lại (Recount / Double-check)**: Tự động kích hoạt khi có sai lệch lớn, yêu cầu thủ kho thứ hai thẩm tra.
-- **Cân đối chuẩn xác chống âm kho**: Tồn sau cân đối được gán trực tiếp bằng số lượng thực đếm (`after = countedQty`), triệt tiêu hoàn toàn lỗi âm kho do lệch snapshot. Tự động sinh chứng từ `ADJ-AUD-...` và ghi thẻ kho bất biến.
+### 📤 Xuất kho FEFO, Routing 2D & Giải phóng Giữ chỗ (`outbound`)
+- **Cấp phát FEFO bi quan (`SELECT FOR UPDATE`)**: Tự động giữ chỗ lô gần hạn nhất, bảo đảm `Available = On-Hand - Reserved >= 0` ngay cả khi nhiều đơn xuất đồng thời.
+- **Pick Path 2D & Order Release Guard**: Sắp xếp thứ tự nhặt hàng theo HSD & tọa độ kho; khi hủy đơn `ALLOCATED`/`PICKING`, hệ thống hoàn trả 100% `reservedQty` về tồn khả dụng ngay lập tức.
 
-### ⚡ Thông báo Thời gian thực & Điều hướng Sâu (Real-time SSE & Deep Linking)
-- **Server-Sent Events (SSE) Stream**: Kênh HTTP 1 chiều đẩy thông báo ngay lập tức khi có biến động kho, tự động kết nối lại khi rớt mạng.
-- **Deep Linking**: Click vào thông báo lập tức chuyển hướng đến đúng đơn hàng `/outbound?soCode=...` hoặc đợt kiểm kê `/audit?auditCode=...` và tự động mở modal chi tiết.
+### 🔍 Kiểm kê Thực địa & Cân đối Sổ cái (`audit`)
+- **Kiểm kê mù (Blind Count)** trên PDA ẩn hoàn toàn tồn sổ sách (`systemQty`) để thủ kho đếm trung thực; tự động mở vòng đếm lại (`Recount`) khi phát hiện chênh lệch lớn.
+- **Cân đối chuẩn SoD**: Bắt buộc Quản lý kho độc lập phê duyệt; tồn sau cân đối gán trực tiếp bằng số thực đếm (`after = countedQty`), sinh chứng từ `ADJ-AUD-...` và ghi sổ cái bất biến.
+
+### ⚡ Shell Toàn Hệ Thống, Thông báo Real-time SSE & Báo cáo Excel Bất đồng bộ
+- **Omni-Search (`Ctrl+K`)**: Nhập mã ô kệ (VD: `WH01-ZB-...`) để mở thẳng Sơ đồ kho `/layout` và chọn đúng ô; nhập SKU/tên sản phẩm từ bất kỳ trang nào để nhảy sang `/inventory?search=...` và lọc tức thì.
+- **Real-time SSE + Toast & Deep Linking**: Tự động kết nối `/api/notifications/stream` ngay sau khi đăng nhập SPA, phát âm báo nhẹ, đánh dấu đã đọc và mở thẳng modal SO/PO/Audit khi bấm vào thông báo.
+- **Báo cáo Excel Bất đồng bộ (`reporting`)**: Đẩy job qua RabbitMQ Worker xuất file streaming `SXSSFWorkbook` (Apache POI), lưu trữ trên MinIO S3 (`pgsty/silo`) để tải xuống hoặc quản lý tập trung.
 
 ---
 
-## 📂 3. Cấu trúc thư mục dự án
+## 🤖 3. Kiến trúc Trợ lý Kora AI (`smartquery`) & Phòng thủ Đa tầng
+
+Khác với chatbot Text-to-SQL thông thường, **Kora AI** sử dụng kiến trúc **Dual-Pipeline (Function Calling + AST-Guarded Text-to-SQL)** kết hợp cơ chế tự động chuyển dự phòng model (Resilient Model Fallback) qua Google Gemini REST API (`gemini-flash-lite-latest`, `gemini-3.8-flash`, `gemini-3-flash-preview`, `gemini-3.1-flash-lite`):
+
+1. **Nhánh Chẩn đoán Sự cố (`GeminiDiagnosticService` — 4-Step Function Calling Loop)**:
+   Tự động kích hoạt cho câu hỏi điều tra nguyên nhân hoặc nút **`Kora Giải Thích Kho`** (`GeminiAssistantDrawer`) nhúng ngay trong màn hình Tồn kho & Xuất kho, gọi tối đa 4 vòng các công cụ Read-Only từ `WmsDiagnosticTools`:
+   - `getOutboundOrderDiagnosis`: Phân tích trạng thái cấp phát FEFO và nguyên nhân thiếu hàng từng dòng trong đơn `SO-*` / `RTV-*`.
+   - `getSkuStockBreakdown`: Bóc tách 4 thành phần `On-Hand = Reserved + Blocked/Expired + Available` khớp 100% số liệu kho.
+   - `getIncomingPipeline`: Kiểm tra nguồn hàng PO đang về hoặc đang nằm ở khu đệm Staging chờ Putaway.
+   - `getWarehouseExceptions`: Quét nhanh điểm nghẽn toàn chi nhánh (ô kệ khóa, quá tải, lô cận/hết hạn, đơn chờ).
+2. **Nhánh Truy vấn Bảng & Đàm thoại (`AiChatService` + `SqlAstSanitizer`)**:
+   - **Đàm thoại ngữ cảnh**: Giữ lịch sử đa lượt theo từng tài khoản (`kora_ai_chat_sessions_v1_<username>`), bàn giao ngữ cảnh mượt mà từ Widget nổi (`FloatingGeminiWidget`) sang không gian làm việc toàn màn hình (`/assistant`), cấp thời gian thực múi giờ `Asia/Ho_Chi_Minh`.
+   - **Text-to-SQL AST & Grain Rule**: Sinh SQL có kiểm soát chỉ từ hai View tổng hợp (`v_stock_summary`, `v_expiring_batches`), ép `GROUP BY sku` khi tổng hợp toàn kho tránh bị cắt dòng bởi `LIMIT 50`.
+3. **3 Lớp Phòng Thủ Bảo Mật Tuyệt Đối**:
+   - **Lớp 1 — JWT Warehouse RBAC (`WmsWarehouseAccessGuard`)**: Chặn hoàn toàn `ROLE_OPERATOR` truy cập AI quản trị; `ROLE_WAREHOUSE_MANAGER` chỉ được phép truy vấn các kho có trong `wms_user_warehouse_access` (mọi gợi ý mã kho trái phép trong prompt đều bị từ chối).
+   - **Lớp 2 — Read-Only View & Policy Filter**: Chặn tức thì câu hỏi đòi bảng nhạy cảm (`users`, mật khẩu, lương, PII) hoặc SQL Injection (`UNION`, `SLEEP`, `BENCHMARK`, `LOAD_FILE`, `INTO OUTFILE`, `FOR UPDATE`, `INFORMATION_SCHEMA`).
+   - **Lớp 3 — AST Sanitizer (`JSqlParser 4.9`)**: Phân tích cây cú pháp SQL, chỉ chấp nhận lệnh `SELECT` trên View cho phép và tự động ép `LIMIT <= 50`.
+
+---
+
+## 🏗️ 4. Kiến trúc hệ thống & Hạ tầng Container
+
+```mermaid
+graph TB
+    subgraph Clients ["GIAO DIỆN NGƯỜI DÙNG (REACT 18 + VITE)"]
+        WebAdmin["💻 Web Quản Trị & Điều Hành (Dashboard / Inventory / Audit / Kora AI)"]
+        MobilePDA["📱 Cổng Thủ Kho PDA (/operator — Scanner Wedge & Camera)"]
+    end
+
+    subgraph Gateway ["PROXY & SPA ROUTING"]
+        Nginx["🛡️ Nginx Reverse Proxy (:3000 -> :8080/api/v1)"]
+    end
+
+    subgraph SpringBootApp ["BACKEND CORE (SPRING BOOT 3.5.0 — JAVA 25)"]
+        direction TB
+        subgraph API_Security ["Controllers & Security (JWT + Dynamic RBAC + Brute-force Lockout)"]
+            IdentityCtrl["identity (Auth / Users / Sessions / Audit)"]
+            MasterCtrl["masterdata (Warehouses / Bins / Products / Shifts)"]
+            InvCtrl["inventory (Stock / Pessimistic Lock / Transfers / Audits)"]
+            OrderCtrl["order (Inbound PO / Outbound SO / FEFO / Putaway)"]
+            NotifCtrl["notification (SSE Stream / WebSocket)"]
+            ReportCtrl["reporting (Async Report Producer)"]
+            KoraCtrl["smartquery (Kora AI Chat / Diagnose / AST Guard)"]
+        end
+
+        subgraph AI_Workers ["Workers & Read-Only AI Tools"]
+            ExcelWorker["Excel Streaming Worker (SXSSFWorkbook)"]
+            GeminiEngine["GeminiClient + WmsDiagnosticTools + JSqlParser"]
+        end
+    end
+
+    subgraph Storage_Infra ["HẠ TẦNG DỮ LIỆU & HÀNG ĐỢI"]
+        MySQL[(🗄️ MySQL 8.0 wms_db :3307)]
+        Redis[(⚡ Redis 7 Cache & Locks :6379)]
+        RabbitMQ[(📬 RabbitMQ Broker :5672 / UI :15672)]
+        MinIO[(📦 MinIO-Compatible S3 :9000 / UI :9001)]
+    end
+
+    WebAdmin & MobilePDA -->|HTTP / SSE| Nginx
+    Nginx --> IdentityCtrl & MasterCtrl & InvCtrl & OrderCtrl & NotifCtrl & ReportCtrl & KoraCtrl
+    IdentityCtrl & MasterCtrl & InvCtrl & OrderCtrl -->|ACID & SELECT FOR UPDATE| MySQL
+    IdentityCtrl --> Redis
+    ReportCtrl -->|Publish Job| RabbitMQ
+    RabbitMQ -->|Consume| ExcelWorker
+    ExcelWorker -->|Upload .xlsx| MinIO
+    ExcelWorker -->|Update Status| MySQL
+    KoraCtrl --> GeminiEngine
+    GeminiEngine -->|Read-Only Views & Tools| MySQL
+```
+
+---
+
+## 🔐 5. Ma trận Phân quyền RBAC & Kiểm soát Phiên
+
+### 5.1. Ma trận 3 cấp vai trò
+- **`ROLE_ADMIN` (`admin`)**: Toàn quyền cấu hình chi nhánh kho, nhân sự & ma trận RBAC động, nhật ký kiểm toán an ninh, khóa/mở tài khoản, tạo/duyệt mọi nghiệp vụ và dùng **Kora AI**.
+- **`ROLE_WAREHOUSE_MANAGER` (`manager01`)**: Điều hành xuất/nhập kho, cấp phát FEFO, hủy đơn giải phóng giữ chỗ, phê duyệt cân đối kiểm kê SoD, xem danh sách nhân sự (chỉ đọc), báo cáo Excel và dùng **Kora AI** trong phạm vi kho được phân quyền.
+- **`ROLE_OPERATOR` (`operator01`)**: Tác nghiệp hiện trường tại `/operator` (chặn truy cập mọi trang Web quản trị & bị ẩn 100% giá vốn `***`). Thực hiện 5 quy trình PDA: Staging QC, Putaway, Picking FEFO, Transfer nội bộ và Blind Count.
+
+### 5.2. Bảo mật Phiên & Xác thực Chuẩn Doanh nghiệp
+- **Brute-Force Lockout đa tầng**: Tạm khóa lũy tiến theo **Tài khoản + IP + Device Fingerprint** (`useLoginLockout`) kèm đồng hồ đếm ngược thời gian thực.
+- **Anti-User-Enumeration & Đổi mật khẩu lần đầu**: Quên mật khẩu qua OTP 6 số (SMTP) luôn trả thông điệp trung lập; tài khoản mới có thể bật cờ `mustChangePassword`.
+- **Giới hạn tối đa 2 thiết bị đồng thời (FIFO Session Eviction)**: Đăng nhập thiết bị thứ 3 tự động thu hồi phiên cũ nhất (`401` → `/login?expired=true`), quản lý trực quan qua **Thiết Bị & Phiên Đăng Nhập (`ActiveSessionsTab`)** với IP, định vị địa lý, nhãn Mạng nội bộ kho vs Remote, nút thu hồi từ xa và `IdleTimeoutGuard` đồng bộ đa tab.
+
+---
+
+## 📂 6. Cấu trúc thư mục dự án
 
 ```text
 smart-wms/
 ├── docker/
-│   ├── nginx/
-│   │   └── nginx.conf                         # Reverse Proxy, SSL, Rate Limit, định tuyến API/Static
-│   ├── mysql/
-│   │   └── init/
-│   │       ├── 01-init-schema.sql             # Khởi tạo CSDL, bảng nghiệp vụ wms_db
-│   │       ├── 02-create-views.sql            # Tạo các View nghiệp vụ báo cáo
-│   │       └── 08-inbound-qc-ledger.sql       # Trigger bảo vệ thẻ kho bất biến
-│   └── rabbitmq/
-│       ├── definitions.json                  # Cấu hình Exchanges, Queues, DLX, Routing Keys
-│       └── rabbitmq.conf                      # Cấu hình Web Management UI trên cổng 15672
-├── docker-compose.yml                        # Điều phối 6 container: MySQL, Redis, RabbitMQ, MinIO, Backend, Frontend
-├── Makefile                                  # Lệnh tắt: make up, make down, make test
-├── README.md                                 # Cẩm nang tổng quan dự án (Showcase GitHub)
-├── SMART_WMS_ARCHITECTURE.md                 # Tài liệu đặc tả kiến trúc kỹ thuật chuyên sâu
-├── LUONG_DU_LIEU_VA_QUY_TAC_NGHIEP_VU.md      # Quy tắc nghiệp vụ và các bất biến kỹ thuật
+│   ├── mysql/init/                           # 01..10 SQL init (schema, views, AI read-only user, triggers, seed)
+│   ├── nginx/nginx.conf                      # Reverse Proxy định tuyến /api -> backend & SPA static
+│   └── rabbitmq/                             # definitions.json & rabbitmq.conf
+├── docker-compose.yml                        # Điều phối 6 service + container wms-schema nâng cấp DB tự động
+├── Makefile                                  # Tác vụ vận hành nhanh
+├── README.md                                 # Tổng quan dự án
+├── SMART_WMS_ARCHITECTURE.md                 # Đặc tả kiến trúc kỹ thuật chi tiết
+├── LUONG_DU_LIEU_VA_QUY_TAC_NGHIEP_VU.md      # Luồng dữ liệu & quy tắc bất biến
+├── HUONG_DAN_CHI_TIET_TUNG_GIAI_DOAN.md      # Tài liệu triển khai từng giai đoạn
 ├── favicon.svg                               # Logo biểu trưng của hệ thống
 │
-├── backend/                                  # ================= JAVA SPRING BOOT 3.5 =================
+├── backend/                                  # ================= JAVA 25 + SPRING BOOT 3.5.0 =================
 │   ├── Dockerfile
-│   ├── pom.xml                               # Java 25, Spring Boot 3.5, MySQL Connector, JSqlParser, POI
-│   └── src/main/java/com/wms/
-│       ├── common/                           # Exception Handler, Base ApiResponse, Security Utils
-│       └── module/
-│           ├── identity/                     # Phân hệ Xác thực JWT, User, RBAC, SoD, Session Lock
-│           ├── masterdata/                   # Phân hệ Kho, Ô kệ (Bin), Sản phẩm, Lô hàng, Ca trực
-│           ├── order/                        # Phân hệ Đơn Nhập (PO), Đơn Xuất (SO), Cấp phát FEFO, Picking
-│           ├── inventory/                    # Phân hệ Tồn kho, Khóa bi quan, Thẻ kho, Kiểm kê Audit, Điều chuyển
-│           ├── notification/                 # Phân hệ Real-time SSE Stream & WebSocket Broadcasting
-│           ├── reporting/                    # Phân hệ Báo cáo nền với RabbitMQ Worker & MinIO S3
-│           └── smartquery/                   # Trợ lý AI Gemini 1.5, Lá chắn AST Sanitizer JSqlParser
+│   ├── pom.xml
+│   └── src/main/
+│       ├── java/com/wms/
+│       │   ├── common/                       # ApiResponse, GlobalExceptionHandler, Outbox, Redis/Security Config
+│       │   └── module/
+│       │       ├── identity/                 # Auth, JWT, Dynamic RBAC, Lockout, OTP, FIFO 2-Device Session
+│       │       ├── masterdata/               # Warehouses, Bins, Products, Suppliers, Shifts
+│       │       ├── inventory/                # Inventory, Pessimistic Lock, Stock Ledger, Transfers, Cycle Audit
+│       │       ├── order/                    # PO/SO, Receive QC, Putaway Engine, FEFO Allocation, Pick Path 2D
+│       │       ├── notification/             # Real-time SSE Stream & WebSocket Notification
+│       │       ├── reporting/                # RabbitMQ Worker, Apache POI SXSSFWorkbook, MinIO S3 Storage
+│       │       └── smartquery/               # Kora AI (Gemini Function Calling, Text-to-SQL, JSqlParser 4.9 AST)
+│       └── resources/db/migration/           # Flyway/SQL migrations V1..V10
 │
-└── frontend/                                 # ================= REACT 18 + TYPESCRIPT =================
+└── frontend/                                 # ================= REACT 18.3 + TYPESCRIPT 5.5 =================
     ├── Dockerfile
-    ├── nginx.conf                            # Nginx phân phối bundle SPA & proxy /api/
-    ├── package.json                          # React 18, Vite, Tailwind CSS, TanStack Query, Zustand, Lucide
+    ├── nginx.conf
+    ├── package.json
     └── src/
-        ├── app/                              # Layout, Sidebar, Header, Routes bảo vệ theo Role
-        ├── components/                       # Scanner Barcode Camera, UI Dialogs, Badges
+        ├── app/                              # AppShell, AppSidebar, AppHeader (Global Search Ctrl+K), AppRoutes
+        ├── components/                       # CameraBarcodeScanner, Common Pagination/Dialogs
         └── features/
-            ├── auth/                         # Form Đăng nhập, Quên mật khẩu, Rào chắn giá vốn
-            ├── dashboard/                    # KPI Kho, Biểu đồ lấp đầy, Sandbox mô phỏng Khóa bi quan
-            ├── masterdata/                   # Sơ đồ kho 2D Floor Plan, Quản lý Chi nhánh, Ca trực
-            ├── inbound/                      # Quản lý PO, Modal QC Staging, Modal Cất kệ Multi-bin
-            ├── outbound/                     # Quản lý SO, Bàn làm việc FEFO, Modal Hủy đơn giải phóng kho
-            ├── inventory/                    # Tra cứu Thẻ kho bất biến, Tồn khả dụng, Điều chuyển ô kệ
-            ├── audit/                        # Quản lý Đợt kiểm kê, Modal Đếm thực tế, Modal Cân đối SoD
-            ├── operator/                     # Cổng di động PDA: Staging, Putaway, Picking, Transfer, Blind Count
-            ├── labels/                       # Trung tâm thiết kế & in tem Barcode ô kệ, Lô sản phẩm
-            ├── users/                        # Quản trị Nhân sự, Phân quyền RBAC Matrix, Thiết bị PDA
-            ├── reporting/                    # Trung tâm trích xuất báo cáo Excel bất đồng bộ
-            └── smartquery/                   # Giao diện Chatbot AI truy vấn kho bằng tiếng Việt
+            ├── audit/                        # Kiểm kê, Đếm lại, Đối soát & Cân đối SoD
+            ├── auth/                         # Login, Lockout Timer, Anti-Enum OTP, FirstTimeChangePassword, IdleGuard
+            ├── dashboard/                    # Dual-View Super Admin & Operations Audit Dashboard
+            ├── inbound/                      # Đơn nhập PO, ReceiveQcModal, PutawayModal, Phiếu GRN
+            ├── inventory/                    # Tồn kho 4 chiều, Thẻ kho bất biến, Cảnh báo tồn, Điều chuyển ô
+            ├── labels/                       # Thiết kế & in tem nhiệt 100x60mm / Decal A4 / Pallet A6 (Code128 + QR)
+            ├── masterdata/                   # Sơ đồ kho 2D Floor Plan, Rack Elevation, Chi nhánh kho
+            ├── notifications/                # NotificationContext (SSE + Web Audio Toast) & Deep-Linking
+            ├── operator/                     # Cổng Thủ kho PDA (/operator) 5 phân hệ & Hardware Scanner Wedge
+            ├── outbound/                     # Đơn xuất SO, Cấp phát FEFO, Lộ trình Pick 2D, Phiếu GIN, Hủy đơn
+            ├── products/                     # Danh mục SKU, Giá vốn/Giá bán, Quy cách CBM & Khóa SP
+            ├── reporting/                    # Xuất báo cáo Excel bất đồng bộ (RabbitMQ + MinIO)
+            ├── smartquery/                   # Kora AI Full Workspace, Floating Widget & Embedded Diagnosis Drawer
+            └── users/                        # Quản trị Nhân sự, Ma trận RBAC động, ActiveSessionsTab & Security Audit
 ```
 
 ---
 
-## 🏗️ 4. Kiến trúc hệ thống (Modular Monolith & Event-Driven)
+## 📱 7. Cổng vận hành thực địa Mobile PDA (`/operator`)
 
-```mermaid
-graph TB
-    subgraph Clients ["GIAO DIỆN NGƯỜI DÙNG"]
-        WebAdmin["💻 Web Quản Lý Doanh Nghiệp (React 18 / Tailwind)"]
-        MobileScanner["📱 Cổng Tác Nghiệp PDA / Camera Scanner"]
-    end
+Giao diện chuyên biệt cho thiết bị cầm tay PDA (hỗ trợ chuyển đổi `Khổ Cầm Tay 480px` ↔ `Toàn Màn Hình`, **Scanner Wedge** với debounce thông minh `180ms` + phím tắt `Alt+1..5` chống nuốt số khi bắn súng quét, `Sổ Tay Mã Nhanh & Nhật Ký Quét`):
 
-    subgraph Gateway ["PROXY & BẢO MẬT"]
-        Nginx["🛡️ Nginx Reverse Proxy (Port 3000 -> 8080)"]
-    end
-
-    subgraph SpringBootApp ["BACKEND CORE (SPRING BOOT 3.5 - JAVA 25)"]
-        direction TB
-        subgraph REST_Controllers ["REST API & Security (JWT)"]
-            AuthCtrl["Identity Controller"]
-            MasterCtrl["Master Data Controller"]
-            InvCtrl["Inventory Controller"]
-            OrderCtrl["Order Controller"]
-            ReportCtrl["Report Controller"]
-            AICtrl["AI Smart Query Controller"]
-        end
-
-        subgraph Core_Services ["Business Service Layer (Transaction & Locks)"]
-            InvLockSvc["InventoryLockService (Pessimistic Lock)"]
-            PutAwaySvc["Put-away Engine Service"]
-            FEFOSvc["FEFO Picking Route Optimizer"]
-            AuditSvc["Blind Count Audit & SoD Service"]
-            ReportSvc["Report Job Producer"]
-            AISvc["Smart Query Router & JSqlParser"]
-        end
-
-        subgraph Worker_Services ["Background Workers"]
-            ExcelWorker["Excel Streaming Worker (SXSSFWorkbook)"]
-        end
-    end
-
-    subgraph Storage_Infrastructure ["HẠ TẦNG DỮ LIỆU & HÀNG ĐỢI"]
-        MySQL[(🗄️ MySQL 8.0 Database: wms_db)]
-        Redis[(⚡ Redis 7 Cache & Locks)]
-        RabbitMQ[(📬 RabbitMQ Message Broker)]
-        MinIO[(📦 MinIO Object Storage S3)]
-    end
-
-    WebAdmin & MobileScanner -->|HTTPS / REST API| Nginx
-    Nginx --> AuthCtrl & MasterCtrl & InvCtrl & OrderCtrl & ReportCtrl & AICtrl
-    InvCtrl --> InvLockSvc
-    OrderCtrl --> PutAwaySvc & FEFOSvc
-    ReportCtrl --> ReportSvc
-    AICtrl --> AISvc
-    InvLockSvc & PutAwaySvc & FEFOSvc & AuditSvc -->|ACID Transactions| MySQL
-    ReportSvc -->|Publish Task| RabbitMQ
-    RabbitMQ -->|Consume Task| ExcelWorker
-    ExcelWorker -->|Stream Excel & Upload| MinIO
-    ExcelWorker -->|Update Status| MySQL
-    AISvc -->|Sanitized Read-Only Queries| MySQL
-```
+1. **Tab `[1]` Tiếp Nhận Hàng (`InboundStagingTab`)**: Quét mã `PO-*` / `SKU`, nhập thực nhận & hàng lỗi QC, bắt buộc khai báo Mã lô (`Batch/Lot`) & HSD trước khi vào khu đệm.
+2. **Tab `[2]` Cất Kệ Lưu Kho (`PutawayTab`)**: Nhận gợi ý ô kệ theo vùng bảo quản & trọng tải (bao gồm cả đơn `PARTIALLY_STOCKED`), bắt buộc quét khớp mã ô đích mới cho hoàn tất.
+3. **Tab `[3]` Lấy Hàng Theo HSD (`PickingFefoTab`)**: Sắp xếp chặng lấy hàng ưu tiên **HSD sớm nhất trước (FEFO)** + mã ô, chặn quét sai ô/SKU và bàn giao vận chuyển.
+4. **Tab `[4]` Điều Chuyển Kệ (`StockTransferTab`)**: Lọc ô đích an toàn trong cùng chi nhánh kho, chặn trùng ô / khóa bảo trì / vượt tồn khả dụng.
+5. **Tab `[5]` Kiểm Kê Kho (`BlindCountTab`)**: Thực thi **Kiểm kê mù (Blind Count)** ẩn 100% tồn lý thuyết, cập nhật tiến độ tức thì sang `/audit`.
 
 ---
 
-## 👥 5. Ma trận phân quyền RBAC & Kiểm soát nội bộ SoD
-
-### 5.1. Ma trận 3 cấp vai trò
-- **`ROLE_ADMIN` (Nguyễn Quản Trị / `admin`)**: Cấu hình chi nhánh kho, phân quyền người dùng, quản trị thiết bị PDA, quản lý danh mục sản phẩm/vị trí ô kệ, tạo đợt kiểm kê tổng thể.
-- **`ROLE_WAREHOUSE_MANAGER` (Trần Trưởng Kho / `manager01`)**: Điều hành hoạt động xuất/nhập, duyệt lệnh cấp phát FEFO, hủy đơn giải phóng hàng giữ trước, đối soát và phê duyệt cân đối kiểm kê (ghi thẻ kho bất biến), xem báo cáo giá vốn.
-- **`ROLE_OPERATOR` (Lê Thủ Kho / `operator01`)**: Nhân viên hiện trường vận hành máy quét PDA. Bị ẩn hoàn toàn giá tiền (`canViewCostPrice = false` $\rightarrow$ hiển thị `***`). Thao tác 5 nghiệp vụ thực địa: Tiếp nhận Staging QC, Cất hàng Putaway, Nhặt hàng Picking FEFO, Điều chuyển ô kệ, Đếm mù Blind Count.
-
-### 5.2. Rào chắn Phân tách Nhiệm vụ Kiểm kê (SoD Security Guard)
-```
-[Người Lập Kiểm Kê (Created By)] ──X── BỊ CHẶN TUYỆT ĐỐI ──X──► [Duyệt Cân Đối Kho & Ghi Sổ Cái]
-                                                                        ▲
-                                                              BẮT BUỘC  │
-                                                                        ▼
-                                                   [Quản Lý Kho Độc Lập (Independent Manager)]
-```
-- **Quy tắc**: Người tạo đợt kiểm kê hoặc người trực tiếp kiểm đếm tại kệ không được phép tự duyệt cân đối kho. Giao diện hiển thị cảnh báo đỏ và khóa nút nếu phát hiện người duyệt trùng với người lập đợt.
-
----
-
-## 📊 6. Bộ 6 Quy tắc bất biến kỹ thuật cốt tử (Critical Invariants)
-
-> [!IMPORTANT]
-> 6 nguyên tắc bất biến bảo đảm hệ thống vận hành ổn định và không bao giờ xảy ra lỗi sai lệch số liệu:
-
-1. **Bất biến Tồn Khả Dụng (Availability Invariant)**:
-   $$\text{Tồn khả dụng (Available)} = \text{Tồn thực tế (On-Hand)} - \text{Đang giữ chỗ (Reserved)} \ge 0$$
-   Tồn khả dụng không bao giờ được phép âm.
-2. **Bất biến Thẻ Kho (Immutability Invariant)**: Bảng `wms_stock_ledger` chỉ nhận lệnh `INSERT`. CSDL kích hoạt trigger chặn đứng 100% mọi câu lệnh `UPDATE` hoặc `DELETE`.
-3. **Bất biến Khóa Đồng Thời (Pessimistic Locking)**: Mọi thao tác tranh chấp tồn kho (giữ chỗ FEFO, cất hàng, xuất kho) đều phải sử dụng khóa dòng bi quan:
-   ```sql
-   SELECT * FROM wms_inventory WHERE id = :id FOR UPDATE
-   ```
-4. **Bất biến Cổng Kiểm Định Chất Lượng (QC Quality Gate)**: Chỉ hàng đạt chuẩn chất lượng (`receivedQty - rejectedQty > 0`) mới được cấp phát mã lô và cất lên kệ. Hàng hỏng buộc phải nằm lại khu đệm Staging.
-5. **Bất biến Phân Tách Trách Nhiệm (SoD Gate)**: Người tạo đợt kiểm kê không được phép duyệt cân đối đợt kiểm kê do chính mình tạo ra.
-6. **Bất biến Phạm Vi Chi Nhánh Kho**: Mọi ô kệ cất hàng, nhặt hàng hoặc điều chuyển bắt buộc phải thuộc cùng một chi nhánh kho (`warehouse_id`) của chứng từ đó.
-
----
-
-## 🛠️ 7. Hướng dẫn cài đặt & Khởi chạy 1-Click
+## 🛠️ 8. Hướng dẫn cài đặt & Khởi chạy
 
 ### Yêu cầu tiên quyết
-- **Docker & Docker Compose v2**: Đã cài đặt Docker Desktop trên Windows/macOS/Linux.
+- **Docker & Docker Compose v2** trên Windows/macOS/Linux.
+- Tạo tệp `.env` từ `.env.example` (điền `GEMINI_API_KEY` để kích hoạt **Kora AI**, và thông tin SMTP nếu bật gửi OTP Email).
 
-### Khởi chạy toàn bộ hệ thống
-Tại thư mục gốc của dự án, mở Terminal và chạy:
+### Khởi chạy toàn bộ 6 container
 
 ```bash
-# 1. Khởi chạy toàn bộ 6 container (Build Java 25 & React 18)
+# 1. Sao chép cấu hình mẫu (tùy chọn chỉnh API Key Gemini & SMTP)
+cp .env.example .env
+
+# 2. Build & khởi chạy toàn hệ thống (Java 25 Backend + React 18 Frontend + MySQL + Redis + RabbitMQ + MinIO)
 docker compose up -d --build
 
-# 2. Kiểm tra trạng thái hoạt động của các dịch vụ
+# 3. Kiểm tra trạng thái container
 docker compose ps
 ```
 
-### Danh mục Cổng dịch vụ (Service Endpoints)
+### Danh mục Cổng dịch vụ & Tài khoản Demo
 
 | Dịch vụ | Địa chỉ truy cập | Tài khoản mặc định | Mật khẩu mặc định |
 | :--- | :--- | :---: | :---: |
-| **Web Doanh Nghiệp (Frontend)** | **http://localhost:3000** | `admin` / `manager01` / `operator01` | `123456` |
-| **REST API Backend** | `http://localhost:8080/api/v1` | — | — |
-| **Cơ sở dữ liệu MySQL 8.0** | `localhost:3307` (DB: `wms_db`) | `wms_user` | `wms_password` |
-| **Quản trị Hàng đợi RabbitMQ**| `http://localhost:15672` | `guest` | `guest` |
-| **Quản trị Lưu trữ MinIO S3** | `http://localhost:9001` | `minioadmin` | `minioadmin` |
-
----
-
-## 📱 8. Cổng vận hành thực địa Mobile PDA
-
-Giao diện chuyên dụng tối ưu cho thiết bị cầm tay PDA hoặc điện thoại thông minh tại `/operator`:
-
-<p align="center">
-  <img src="https://img.shields.io/badge/Chế%20độ%20hiển%20thị-PDA%20Mobile%20%2F%20Expanded%20Desktop-4F46E5?style=for-the-badge" alt="PDA Display Mode">
-  <img src="https://img.shields.io/badge/Camera%20Scanner-Tích%20hợp%20sẵn-10B981?style=for-the-badge" alt="Camera Scanner">
-  <img src="https://img.shields.io/badge/Bảo%20mật%20giá%20vốn-Ẩn%20100%25%20(***)-EF4444?style=for-the-badge" alt="Price Masked">
-</p>
-
-1. **Tab STAGING (Tiếp nhận hàng)**: Quét mã PO, nhập số lượng thực nhận, nhập số lượng lỗi, khai báo Lô & HSD.
-2. **Tab PUTAWAY (Cất kệ)**: Nhận gợi ý ô kệ thông minh từ hệ thống, quét Barcode ô đích, cất hàng vào kệ.
-3. **Tab PICKING (Gom hàng FEFO)**: Hiển thị danh sách lấy hàng sắp xếp theo lộ trình tối ưu, quét mã xác nhận lấy hàng.
-4. **Tab TRANSFER (Điều chuyển ô)**: Quét mã ô nguồn, quét mã ô đích, chuyển hàng nội bộ trong kho tức thì.
-5. **Tab BLIND COUNT (Đếm mù)**: Quét mã ô kệ, đếm số lượng thực tế tại chỗ không hiển thị tồn lý thuyết.
-
----
-
-## 🤖 9. Trợ lý AI Lai & Lá chắn an toàn Text-to-SQL
-
-<p align="center">
-  <img src="https://img.shields.io/badge/AI%20Model-Google%20Gemini%201.5-4285F4?style=for-the-badge&logo=google&logoColor=white" alt="Gemini AI">
-  <img src="https://img.shields.io/badge/SQL%20Guard-JSqlParser%20AST-059669?style=for-the-badge" alt="JSqlParser AST">
-  <img src="https://img.shields.io/badge/SKU%20Generator-Zero--Collision-D97706?style=for-the-badge" alt="Zero-Collision SKU">
-</p>
-
-- **Hỏi đáp kho bằng Tiếng Việt**: *"Cho tôi xem top 5 mặt hàng có hạn dùng gần nhất tại Kho Tổng Tân Bình"*.
-- **Phòng thủ 3 lớp an toàn tuyệt đối**:
-  1. **Lớp 1 (Read-Only User)**: Kết nối CSDL sử dụng tài khoản chỉ có quyền `SELECT` trên các View tổng hợp.
-  2. **Lớp 2 (AST Parser với JSqlParser)**: Phân tích cú pháp cây trừu tượng của câu SQL. Chặn 100% nếu phát hiện câu lệnh thay đổi dữ liệu (`DROP`, `DELETE`, `UPDATE`, `INSERT`, `ALTER`), chỉ chấp nhận câu lệnh `SELECT`.
-  3. **Lớp 3 (Resource Guard)**: Tự động ép mệnh đề `LIMIT 50` vào cuối câu để ngăn chặn tràn bộ nhớ RAM.
+| **Web Doanh Nghiệp (Frontend)** | **http://localhost:3000** | `admin` / `operator01` | `123456` |
+| **Tài khoản Trưởng Kho (Demo)** | **http://localhost:3000** | `manager01` | `1234567` |
+| **Backend REST API (via Proxy / Direct)** | `http://localhost:3000/api/` · `http://localhost:8080/api/v1` | — | — |
+| **Cơ sở dữ liệu MySQL 8.0** | `localhost:3307` (DB: `wms_db`) | `root` | `password123` |
+| **Quản trị Hàng đợi RabbitMQ** | `http://localhost:15672` | `admin1` | `1234567` |
+| **Quản trị Lưu trữ S3 (MinIO / Silo)** | `http://localhost:9001` (`API :9000`) | `minioadmin` | `minioadmin` |
 
 ---
 
 <p align="center">
   <b>Smart WMS — Enterprise Warehouse Management System</b><br>
-  Enterprise-grade Supply Chain, Multi-bin Tracking & Warehouse Automation Solution.
+  Multi-Warehouse FEFO Tracking, Immutable Stock Ledger, Operator PDA Portal & Guarded Kora AI.
 </p>

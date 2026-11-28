@@ -101,14 +101,14 @@ export const OperatorPortalPage: React.FC = () => {
     });
   };
 
-  const handleScanSuccess = (code: string) => {
+  const handleScanSuccess = (code: string, label?: string) => {
     setShowScanner(false);
     setScannedCode(code);
     if (soundEnabled) {
       soundEffects.playSuccessBeep();
     }
     setScanHistory((prev) => [
-      { code, time: new Date().toLocaleTimeString('vi-VN') },
+      { code, time: new Date().toLocaleTimeString('vi-VN'), ...(label ? { label } : {}) },
       ...prev.slice(0, 7),
     ]);
   };
@@ -124,58 +124,83 @@ export const OperatorPortalPage: React.FC = () => {
 
   // Tiêm mã test nhanh từ panel hỗ trợ (Dành cho kiểm thử giao diện & báo cáo)
   const handleInjectBarcode = (code: string, label?: string) => {
-    handleScanSuccess(code);
-    if (label) {
-      setScanHistory((prev) => [
-        { code, time: new Date().toLocaleTimeString('vi-VN'), label },
-        ...prev.slice(0, 7),
-      ]);
-    }
+    handleScanSuccess(code, label);
   };
 
   // Hardware Scanner Wedge Listener (Zebra TC21 / Honeywell Barcode Gun / Keyboard)
   useEffect(() => {
     let buffer = '';
     let lastKeyTime = Date.now();
+    let shortcutTimer: ReturnType<typeof setTimeout> | null = null;
+    const TAB_SHORTCUT_MAP: Record<string, OperatorTab> = {
+      '1': 'STAGING',
+      '2': 'PUTAWAY',
+      '3': 'PICKING',
+      '4': 'TRANSFER',
+      '5': 'AUDIT',
+    };
+
+    const clearShortcutTimer = () => {
+      if (shortcutTimer) {
+        clearTimeout(shortcutTimer);
+        shortcutTimer = null;
+      }
+    };
 
     const handleKeyDown = (e: KeyboardEvent) => {
       const target = e.target as HTMLElement;
       const isInput = target && (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA');
 
-      // Phím tắt bàn phím toàn cục (khi không gõ chữ trong ô input)
-      if (!isInput) {
-        if (e.key === '1') { setActiveTab('STAGING'); return; }
-        if (e.key === '2') { setActiveTab('PUTAWAY'); return; }
-        if (e.key === '3') { setActiveTab('PICKING'); return; }
-        if (e.key === '4') { setActiveTab('TRANSFER'); return; }
-        if (e.key === '5') { setActiveTab('AUDIT'); return; }
-        if (e.key === 'F1' || ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k')) {
-          e.preventDefault();
-          setShowScanner((prev) => !prev);
-          return;
-        }
+      if (!isInput && (e.key === 'F1' || ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k'))) {
+        e.preventDefault();
+        clearShortcutTimer();
+        setShowScanner((prev) => !prev);
+        return;
       }
 
       if (isInput) return;
+
+      // Alt + [1..5]: Chuyển tab tức thì
+      if (e.altKey && TAB_SHORTCUT_MAP[e.key]) {
+        e.preventDefault();
+        clearShortcutTimer();
+        buffer = '';
+        setActiveTab(TAB_SHORTCUT_MAP[e.key]);
+        return;
+      }
 
       const currentTime = Date.now();
       if (currentTime - lastKeyTime > 150) {
         buffer = '';
       }
       lastKeyTime = currentTime;
+      clearShortcutTimer();
 
       if (e.key === 'Enter') {
         if (buffer.length >= 2) {
           handleScanSuccess(buffer.trim());
           buffer = '';
         }
-      } else if (e.key.length === 1) {
+      } else if (e.key.length === 1 && !e.ctrlKey && !e.metaKey && !e.altKey) {
         buffer += e.key;
+        // Chỉ coi phím 1..5 là phím tắt đổi tab nếu buffer chỉ có đúng 1 ký tự đó và không có ký tự tiếp theo từ súng quét trong 180ms
+        if (buffer.length === 1 && TAB_SHORTCUT_MAP[e.key]) {
+          const targetTab = TAB_SHORTCUT_MAP[e.key];
+          shortcutTimer = setTimeout(() => {
+            if (buffer.length === 1 && TAB_SHORTCUT_MAP[buffer]) {
+              setActiveTab(targetTab);
+              buffer = '';
+            }
+          }, 180);
+        }
       }
     };
 
     window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
+    return () => {
+      clearShortcutTimer();
+      window.removeEventListener('keydown', handleKeyDown);
+    };
   }, [soundEnabled]);
 
   const tabList = [

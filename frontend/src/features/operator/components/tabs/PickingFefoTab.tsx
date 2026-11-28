@@ -61,8 +61,14 @@ export const PickingFefoTab: React.FC<PickingFefoTabProps> = ({
             });
           });
         }
-        // Sắp xếp các chặng lấy hàng theo thứ tự lộ trình tối ưu qua các dãy kệ
-        allSteps.sort((a, b) => (a.binBarcode || '').localeCompare(b.binBarcode || ''));
+        // Sắp xếp các chặng lấy hàng theo chuẩn FEFO (Hạn sử dụng gần nhất trước), sau đó tối ưu theo mã ô kệ
+        allSteps.sort((a, b) => {
+          const expA = a.expiryDate || '9999-12-31';
+          const expB = b.expiryDate || '9999-12-31';
+          const expCmp = expA.localeCompare(expB);
+          if (expCmp !== 0) return expCmp;
+          return (a.binBarcode || '').localeCompare(b.binBarcode || '');
+        });
         setPickSteps(allSteps.map((s, idx) => ({ ...s, stepOrder: idx + 1, picked: s.picked || false })));
         if (allSteps.length === 0) {
           setNotice({
@@ -116,8 +122,11 @@ export const PickingFefoTab: React.FC<PickingFefoTabProps> = ({
       const code = scannedCode;
       onClearScannedCode?.();
 
+      const normalizedCode = code.trim().toUpperCase();
       const matchedIdx = pickSteps.findIndex(
-        (s) => !s.picked && (s.binBarcode === code || s.productSku === code)
+        (s) =>
+          !s.picked &&
+          (s.binBarcode?.toUpperCase() === normalizedCode || s.productSku?.toUpperCase() === normalizedCode)
       );
 
       if (matchedIdx !== -1) {

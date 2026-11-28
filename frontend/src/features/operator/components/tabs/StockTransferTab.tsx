@@ -145,6 +145,14 @@ export const StockTransferTab: React.FC<StockTransferTabProps> = ({
       setFeedback({ msg: 'Ô nguồn và ô đích không được trùng nhau!', type: 'error' });
       return;
     }
+    if (fromLocation.warehouseId && toLocation.warehouseId && fromLocation.warehouseId !== toLocation.warehouseId) {
+      soundEffects.playErrorBuzz();
+      setFeedback({
+        msg: 'Điều chuyển ô kệ nội bộ chỉ áp dụng cho các ô trong cùng chi nhánh kho!',
+        type: 'error',
+      });
+      return;
+    }
     if (fromLocation.isActive === false) {
       soundEffects.playErrorBuzz();
       setFeedback({ msg: `Ô nguồn ${fromLocation.binBarcode} đang bị khóa bảo trì!`, type: 'error' });
@@ -246,7 +254,7 @@ export const StockTransferTab: React.FC<StockTransferTabProps> = ({
         </div>
       )}
 
-      <form onSubmit={handleConfirmTransfer} className="space-y-4">
+      <form onSubmit={handleConfirmTransfer} noValidate className="space-y-4">
         <div className={`grid grid-cols-1 ${isCompact ? '' : 'lg:grid-cols-2'} gap-4`}>
           {/* Cột Trái: Ô Nguồn & Mặt Hàng */}
           <div className="space-y-3.5">
@@ -267,8 +275,25 @@ export const StockTransferTab: React.FC<StockTransferTabProps> = ({
               <select
                 value={fromBarcode}
                 onChange={(e) => {
-                  setFromBarcode(e.target.value);
+                  const nextFrom = e.target.value;
+                  setFromBarcode(nextFrom);
                   setSelectedInvId(null);
+                  const nextFromLoc = locations.find((l) => l.binBarcode === nextFrom);
+                  const currentToLoc = locations.find((l) => l.binBarcode === toBarcode);
+                  if (
+                    nextFromLoc &&
+                    (!currentToLoc ||
+                      currentToLoc.warehouseId !== nextFromLoc.warehouseId ||
+                      currentToLoc.binBarcode === nextFrom)
+                  ) {
+                    const fallbackTo = locations.find(
+                      (l) =>
+                        l.warehouseId === nextFromLoc.warehouseId &&
+                        l.binBarcode !== nextFrom &&
+                        l.isActive !== false
+                    );
+                    if (fallbackTo) setToBarcode(fallbackTo.binBarcode);
+                  }
                 }}
                 className="w-full px-3.5 py-2.5 min-h-[42px] bg-slate-50 border border-slate-300 rounded-xl text-xs font-mono font-bold text-slate-900 focus:bg-white focus:border-purple-600 focus:outline-none"
               >
@@ -362,7 +387,9 @@ export const StockTransferTab: React.FC<StockTransferTabProps> = ({
                 onChange={(e) => setToBarcode(e.target.value)}
                 className="w-full px-3.5 py-2.5 min-h-[42px] bg-slate-50 border border-slate-300 rounded-xl text-xs font-mono font-bold text-slate-900 focus:bg-white focus:border-purple-600 focus:outline-none"
               >
-                {locations.map((loc) => {
+                {locations
+                  .filter((loc) => !fromLocation?.warehouseId || loc.warehouseId === fromLocation.warehouseId)
+                  .map((loc) => {
                   const isLocked = loc.isActive === false;
                   return (
                     <option

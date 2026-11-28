@@ -1,4 +1,5 @@
 import React, { useEffect, useState, useMemo } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import {
   Search,
   TrendingDown,
@@ -75,12 +76,21 @@ export const StockBalanceTable: React.FC<StockBalanceTableProps> = ({
   activeKpiFilter = 'ALL',
   onKpiFilterChange,
 }) => {
+  const [searchParams] = useSearchParams();
   const [dimensionView, setDimensionView] = useState<DimensionView>('batch');
-  const [searchQuery, setSearchQuery] = useState('');
+  const [searchQuery, setSearchQuery] = useState(() => searchParams.get('search') || '');
   const [agingFilter, setAgingFilter] = useState<AgingFilter>('ALL');
   const [filterExpiring, setFilterExpiring] = useState(false);
   const [filterReservedOnly, setFilterReservedOnly] = useState(false);
   const [localWarehouse, setLocalWarehouse] = useState<string>('ALL');
+
+  // Đồng bộ từ khóa tìm kiếm từ URL ?search=... (khi điều hướng từ Global Search)
+  useEffect(() => {
+    const q = searchParams.get('search');
+    if (q !== null) {
+      setSearchQuery(q);
+    }
+  }, [searchParams]);
 
   // Lắng nghe sự kiện tìm kiếm toàn hệ thống từ AppHeader (Global Search)
   useEffect(() => {

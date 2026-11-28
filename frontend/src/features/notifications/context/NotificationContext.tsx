@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
+import { useLocation } from 'react-router-dom';
 import { NotificationMessage, ToastItem } from '../types';
 import { notificationService } from '../services/notificationService';
 
@@ -45,6 +46,8 @@ const playNotificationSound = () => {
 export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [notifications, setNotifications] = useState<NotificationMessage[]>([]);
   const [toasts, setToasts] = useState<ToastItem[]>([]);
+  const location = useLocation();
+  const authToken = typeof window !== 'undefined' ? localStorage.getItem('smart_wms_token') : null;
 
   const refreshNotifications = useCallback(async () => {
     const list = await notificationService.getRecentNotifications();
@@ -102,10 +105,12 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
     []
   );
 
-  // Khởi tạo tải dữ liệu và lắng nghe SSE Real-time
+  // Khởi tạo tải dữ liệu và lắng nghe SSE Real-time theo vòng đời token đăng nhập
   useEffect(() => {
-    const token = localStorage.getItem('smart_wms_token');
-    if (!token) return;
+    if (!authToken || location.pathname === '/login') {
+      setNotifications([]);
+      return;
+    }
 
     refreshNotifications();
 
@@ -121,7 +126,7 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
     return () => {
       unsubscribe();
     };
-  }, [refreshNotifications, addToast]);
+  }, [authToken, refreshNotifications, addToast]);
 
   const unreadCount = notifications.filter((n) => !n.read).length;
 

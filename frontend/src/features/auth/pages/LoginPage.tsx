@@ -12,7 +12,7 @@ export const LoginPage: React.FC = () => {
   const location = useLocation();
   const searchParams = new URLSearchParams(location.search);
   const fromPath = (location.state as any)?.from?.pathname;
-  const isExpired = (location.state as any)?.expired;
+  const isExpired = (location.state as any)?.expired || searchParams.get('expired') === 'true';
   const isLoggedOut = searchParams.get('logged_out') === 'true';
   const isIdle = searchParams.get('idle') === 'true';
 

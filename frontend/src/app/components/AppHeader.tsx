@@ -94,7 +94,7 @@ export const AppHeader: React.FC<AppHeaderProps> = ({
       const pagesWithOwnSearch = ['/inbound', '/outbound', '/inventory', '/products', '/users', '/audit', '/staging', '/layout'];
       const hasOwnSearch = pagesWithOwnSearch.some((p) => location.pathname.startsWith(p));
       if (!hasOwnSearch) {
-        navigate('/inventory');
+        navigate(term ? `/inventory?search=${encodeURIComponent(term)}` : '/inventory');
       }
     }
   };
